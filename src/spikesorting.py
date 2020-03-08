@@ -143,7 +143,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
     if do_ZCA_transform:
         if verbose: print("Doing ZCA transform")
         zca_cushion = int(2 * np.ceil(np.amax(np.abs(clip_width)) * Probe.sampling_rate))
-        zca_matrix = preprocessing.get_noise_sampled_zca_matrix(Probe.voltage, thresholds, sigma, zca_cushion, n_samples=1e9)
+        zca_matrix = preprocessing.get_noise_sampled_zca_matrix(Probe.voltage, thresholds, sigma, zca_cushion, n_samples=1e6)
         zca_voltage = zca_matrix @ Probe.voltage
         Probe.voltage = zca_voltage
         if verbose: print("Finding ZCA'ed thresholds")

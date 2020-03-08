@@ -615,7 +615,7 @@ def spike_sort_parallel(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         print("Doing ZCA transform")
         thresholds, _, _ = single_thresholds_and_order(Probe, sigma)
         zca_cushion = (2 * np.ceil(np.amax(np.abs(clip_width)) * Probe.sampling_rate)).astype(np.int64)
-        zca_matrix = preprocessing.get_noise_sampled_zca_matrix(Probe.voltage, thresholds, sigma, zca_cushion, n_samples=1e9)
+        zca_matrix = preprocessing.get_noise_sampled_zca_matrix(Probe.voltage, thresholds, sigma, zca_cushion, n_samples=1e6)
         Probe.voltage = zca_matrix @ Probe.voltage
         # with open('voltage_49_10min', 'wb') as fp:
         #     pickle.dump(Probe.voltage, fp, protocol=-1)

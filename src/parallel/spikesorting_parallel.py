@@ -777,16 +777,22 @@ if __name__ == '__main__':
     """
 
     spike_sort_args = {'sigma': 4.5,
-                       'clip_width': [-6e-4, 10e-4], 'filter_band': (300, 6000),
-                       'p_value_cut_thresh': 0.01, 'check_components': None,
+                       'clip_width': [-6e-4, 8e-4], 'filter_band': (300, 6000),
+                       'p_value_cut_thresh': 0.001, 'check_components': None,
                        'max_components': 10,
-                       'min_firing_rate': 1, 'do_binary_pursuit': True,
+                       'min_firing_rate': 2, 'do_binary_pursuit': True,
                        'add_peak_valley': False, 'cleanup_neurons': False,
                        'remove_false_positives': False, 'verbose': True,
                        'test_flag': False, 'log_dir': log_dir,
-                       'do_ZCA_transform': False}
+                       'do_ZCA_transform': True}
 
-    use_voltage_file = 'C:\\Users\\plexon\\Documents\\Python Scripts\\voltage_49_10min'
+    use_voltage_file = 'C:\\Users\\plexon\\Documents\\Python Scripts\\voltage_49_1min'
+    # use_voltage_file = None
+
+    if use_voltage_file is None:
+        spike_sort_args['do_ZCA_transform'] = True
+    else:
+        spike_sort_args['do_ZCA_transform'] = False
 
     if spike_sort_args['cleanup_neurons']:
         print("CLEANUP IS ON WON'T BE ABLE TO TEST !")

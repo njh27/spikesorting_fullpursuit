@@ -477,7 +477,7 @@ cdef int64_t sign_fun(double x):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)    # turn division by zero checking off
-cdef double fixed_point(double t, int64_t N, int64_t[::1] I, double[::1] a2):
+cdef double fixed_point(double t, int64_t N, double[::1] I, double[::1] a2):
   # this implements the function t-zeta*gamma^[l](t)
   cdef int64_t s, K0_int, s2
   cdef int64_t l = 7
@@ -491,6 +491,8 @@ cdef double fixed_point(double t, int64_t N, int64_t[::1] I, double[::1] a2):
   if f_fac < 1.0e-6 or N == 0:
     # Prevent zero division, which converges to negative infinity
     return -INFINITY
+  if not isfinite(f_fac):
+    raise RuntimeError('Too many spikes are present to compute KDE')
   f = 2.0 * M_PI ** (2.0*l) * f_fac
 
   for s in range(l - 1, 1, -1):
@@ -516,7 +518,7 @@ cdef double fixed_point(double t, int64_t N, int64_t[::1] I, double[::1] a2):
     return -INFINITY
 
 
-cdef double fixed_point_abs(double t, int64_t N, int64_t[::1] I, double[::1] a2):
+cdef double fixed_point_abs(double t, int64_t N, double[::1] I, double[::1] a2):
   """ I added this for the case where no root is found and we seek the
   minimum absolute value in the main optimization while loop below.  It
   returns the absolute value of "fixed_point".
@@ -535,7 +537,7 @@ cdef double fixed_point_abs(double t, int64_t N, int64_t[::1] I, double[::1] a2)
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)    # turn division by zero checking off
-cdef double bound_grad_desc_fixed_point_abs(int64_t N, int64_t[::1] I, double[::1] a2,
+cdef double bound_grad_desc_fixed_point_abs(int64_t N, double[::1] I, double[::1] a2,
       double lower, double upper, double xtol, double ytol):
   """ I added this for the case where no root is found and we seek the
   minimum absolute value in the main optimization while loop below.  It
@@ -741,7 +743,7 @@ def kde(double[::1] data, int64_t n_points):
 
   # now compute the optimal bandwidth^2 using the referenced method
   I = np.empty((n - 1, ), dtype=np.float64) # Do I as float64 so it doesn't overflow in fixed_point
-  cdef int64_t[::1] I_view = I
+  cdef double[::1] I_view = I
   cdef int64_t I_i = 1
   for x in range(0, n-1):
     I_view[x] = I_i ** 2

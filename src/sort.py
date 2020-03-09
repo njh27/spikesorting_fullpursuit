@@ -528,7 +528,7 @@ def kde_builtin(data, n):
     a = dct1d(initial_data) # discrete cosine transform of initial data
 
     # now compute the optimal bandwidth^2 using the referenced method
-    I = np.arange(1, n) ** 2
+    I = np.arange(1, n, dtype=np.float64) ** 2 # Do I as float64 so it doesn't overflow in fixed_point
     a2 = (a[1:] / 2) ** 2;
     N_tol = 50 * (N <= 50) + 1050 * (N >= 1050) + N * (np.logical_and(N < 1050, N>50))
     tol = 10.0 ** -12.0 + 0.01 * (N_tol - 50.0) / 1000.0

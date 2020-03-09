@@ -740,7 +740,7 @@ def kde(double[::1] data, int64_t n_points):
   a_view[0] = 1.0
 
   # now compute the optimal bandwidth^2 using the referenced method
-  I = np.empty((n - 1, ), dtype=np.int64)
+  I = np.empty((n - 1, ), dtype=np.float64) # Do I as float64 so it doesn't overflow in fixed_point
   cdef int64_t[::1] I_view = I
   cdef int64_t I_i = 1
   for x in range(0, n-1):

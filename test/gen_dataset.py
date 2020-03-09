@@ -1,10 +1,9 @@
 import numpy as np
 from scipy import signal
 from scipy import stats
-import electrode
-import SpikeSorting
-import SpikeSortingParallel
-import ManualSorter
+from spikesorting_python.src import electrode
+from spikesorting_python.src import spikesorting
+from spikesorting_python.src.parallel import spikesorting_parallel
 
 
 

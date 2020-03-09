@@ -5,7 +5,6 @@ from spikesorting_python.src import sort
 from spikesorting_python.src import overlap
 from spikesorting_python.src import binary_pursuit
 from spikesorting_python.src import consolidate
-import consolidate
 
 
 

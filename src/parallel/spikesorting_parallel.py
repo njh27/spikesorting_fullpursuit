@@ -6,14 +6,14 @@ import mkl
 import numpy as np
 import multiprocessing as mp
 import psutil
-import segment_parallel
-import sort
-import overlap_parallel
-import binary_pursuit_parallel
-import consolidate
-import electrode
-import preprocessing
-import ManualSorter
+from spikesorting_python.src.parallel import segment_parallel
+from spikesorting_python.src import sort
+from spikesorting_python.src.parallel import overlap_parallel
+from spikesorting_python.src.parallel import binary_pursuit_parallel
+from spikesorting_python.src import consolidate
+from spikesorting_python.src import electrode
+from spikesorting_python.src import preprocessing
+from spikesorting_python.src import consolidate
 from scipy import signal
 import PL2_read
 import time
@@ -716,8 +716,8 @@ def spike_sort_parallel(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
     neurons = consolidate.summarize_neurons(Probe, crossings, labels, waveforms, thresholds, false_positives, false_negatives, clip_width=clip_width, new_waveforms=new_waveforms, max_components=max_components)
 
     if verbose: print("Ordering neurons and finding peak valleys")
-    neurons = ManualSorter.recompute_template_wave_properties(neurons)
-    neurons = ManualSorter.reorder_neurons_by_raw_peak_valley(neurons)
+    neurons = consolidate.recompute_template_wave_properties(neurons)
+    neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
 
     # Consolidate neurons across channels
     if cleanup_neurons:
@@ -726,8 +726,8 @@ def spike_sort_parallel(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         if verbose: print("Combining same neurons in neighborhood")
         neurons = consolidate.combine_stolen_spikes(neurons, max_offset_samples=20, p_value_combine=.05, p_value_cut_thresh=p_value_cut_thresh, max_components=max_components)
         neurons = consolidate.combine_neighborhood_neurons(neurons, overlap_time=5e-4, overlap_threshold=5, max_offset_samples=10, p_value_cut_thresh=p_value_cut_thresh, max_components=max_components)
-        neurons = ManualSorter.recompute_template_wave_properties(neurons)
-        neurons = ManualSorter.reorder_neurons_by_raw_peak_valley(neurons)
+        neurons = consolidate.recompute_template_wave_properties(neurons)
+        neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
         neurons = consolidate.remove_across_channel_duplicate_neurons(neurons, overlap_time=5e-4, overlap_threshold=5)
 
     if verbose: print("Done.")

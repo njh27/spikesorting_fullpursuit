@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.signal import fftconvolve
 from scipy import stats
-import segment_parallel
-import consolidate
+from spikesorting_python.src.parallel import segment_parallel
+from spikesorting_python.src import consolidate
 
 
 

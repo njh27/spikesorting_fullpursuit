@@ -467,13 +467,13 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
         else:
             new_inds = np.zeros(crossings.size, dtype='bool')
 
-        if verbose: print("Sharpening clips onto templates")
-        neuron_labels = sharpen_clusters(clips, neuron_labels, curr_chan_inds,
-                            p_value_cut_thresh, merge_only=True,
-                            add_peak_valley=add_peak_valley,
-                            check_components=check_components,
-                            max_components=max_components, max_iters=np.inf,
-                            method='pca')
+        # if verbose: print("Sharpening clips onto templates")
+        # neuron_labels = sharpen_clusters(clips, neuron_labels, curr_chan_inds,
+        #                     p_value_cut_thresh, merge_only=True,
+        #                     add_peak_valley=add_peak_valley,
+        #                     check_components=check_components,
+        #                     max_components=max_components, max_iters=np.inf,
+        #                     method='pca')
 
         if verbose: print("Sharpening single channel clips onto templates")
         neuron_labels = sharpen_clusters(clips, neuron_labels,

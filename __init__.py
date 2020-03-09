@@ -1,2 +1,1 @@
-from Mammals import Mammals
-from Birds import Birds
+print("loaded up init")

@@ -6,7 +6,6 @@ import re
 import math
 from sort import reorder_labels
 import segment
-import segment_parallel
 from overlap import reassign_simultaneous_spiking_clusters, get_zero_phase_kernel, remove_overlapping_spikes
 from scipy.signal import fftconvolve
 os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
@@ -15,9 +14,8 @@ import matplotlib.pyplot as plt
 import time
 
 
-def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
-                   event_indices, neuron_labels, clip_width, threshold,
-                   kernels_path=None, max_gpu_memory=None):
+def binary_pursuit(Probe, channel, event_indices, neuron_labels,
+        clip_width, threshold, kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
 
@@ -51,35 +49,35 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         be converted to 1x(M*N) vector where the first N points refer to the first template.
 
     """
-    chan_win, clip_width = segment_parallel.time_window_to_samples(clip_width, probe_dict['sampling_rate'])
+    chan_win, clip_width = segment.time_window_to_samples(clip_width, Probe.sampling_rate)
     _, master_channel_index, clip_samples, template_samples_per_chan, curr_chan_inds = segment.get_windows_and_indices(
-        clip_width, probe_dict['sampling_rate'], channel, neighbors)
+        clip_width, Probe.sampling_rate, channel, Probe.get_neighbors(channel))
     # Remove any spikes within 1 clip width of each other
     event_indices.sort()
-    event_indices, removed_index = remove_overlapping_spikes(event_indices,
-                                        clip_samples[1]-clip_samples[0])
+    event_indices, removed_index = remove_overlapping_spikes(event_indices, clip_samples[1]-clip_samples[0])
     neuron_labels = neuron_labels[~removed_index]
 
     # Get clips NOT THRESHOLD NORMALIZED since raw voltage is not normalized
-    clips, valid_inds = segment_parallel.get_singlechannel_clips(probe_dict, neighbor_voltage[master_channel_index, :], event_indices, clip_width=clip_width, thresholds=None)
-    event_indices, neuron_labels = segment_parallel.keep_valid_inds([event_indices, neuron_labels], valid_inds)
+    clips, valid_inds = segment.get_singlechannel_clips(Probe, channel, event_indices, clip_width=clip_width, thresholds=None)
+    event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
     # Remove clusters that are overlaps of different spikes
-    neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, probe_dict['sampling_rate'], clip_width, 0.75)
-    event_indices, neuron_labels, valid_inds = segment_parallel.align_events_with_template(probe_dict, neighbor_voltage[master_channel_index, :], neuron_labels, event_indices, clip_width=clip_width)
+    neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, Probe.sampling_rate, clip_width, 0.75)
+    event_indices, neuron_labels, valid_inds = segment.align_events_with_template(Probe, channel, neuron_labels, event_indices, clip_width=clip_width)
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
-    clips, valid_inds = segment_parallel.get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width=clip_width, neighbor_thresholds=None)
-    event_indices, neuron_labels = segment_parallel.keep_valid_inds([event_indices, neuron_labels], valid_inds)
+    clips, valid_inds = segment.get_multichannel_clips(Probe, Probe.get_neighbors(channel), event_indices, clip_width=clip_width, thresholds=None)
+    event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
 
     # Ensure our neuron_labels go from 0 to M - 1 (required for kernels)
     # This MUST be done after removing overlaps and reassigning simultaneous
     reorder_labels(neuron_labels)
 
-    templates, _ = segment_parallel.calculate_templates(clips, neuron_labels)
+    templates, _ = segment.calculate_templates(clips, neuron_labels)
     templates = np.vstack(templates).astype(np.float32)
     # Reshape our templates so that instead of being an MxN array, this
     # becomes a 1x(M*N) vector. The first template should be in the first N points
     templates_vector = templates.reshape(templates.size).astype(np.float32)
     # Index of current channel in the neighborhood
+    neighbors = np.uint32(Probe.get_neighbors(channel))
     master_channel_index = np.uint32(master_channel_index)
     n_neighbor_chans = np.uint32(neighbors.size)
 
@@ -88,13 +86,13 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         current_path = os.path.realpath(__file__)
         if sys_platform.system() == 'Windows':
             kernels_path = current_path.split('\\')
-            # slice at -2 if parallel folder is same level as kernels folder
-            kernels_path = [x + '\\' for x in kernels_path[0:-2]]
+            # slice at -1 if this function at same level as kernels folder
+            kernels_path = [x + '\\' for x in kernels_path[0:-1]]
             kernels_path = ''.join(kernels_path) + 'kernels\\binary_pursuit.cl'
         else:
             kernels_path = current_path.split('/')
-            # slice at -2 if parallel folder is same level as kernels folder
-            kernels_path = [x + '/' for x in kernels_path[0:-2]]
+            # slice at -1 if this function at same level as kernels folder
+            kernels_path = [x + '/' for x in kernels_path[0:-1]]
             kernels_path = ''.join(kernels_path) + 'kernels/binary_pursuit.cl'
     fp = open(kernels_path, 'r')
     kernels = fp.read()
@@ -148,18 +146,18 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         # This is skipping the gamma and template squared error buffers which are small
         constant_memory_usage = templates_vector.nbytes + event_indices.nbytes + neuron_labels.nbytes
         # Usage for voltage, additional spike indices, additional spike labels
-        memory_usage_per_second = (n_neighbor_chans * probe_dict['sampling_rate'] * np.dtype(np.float32).itemsize +
-                                   probe_dict['sampling_rate'] * (np.dtype(np.uint32).itemsize +
+        memory_usage_per_second = (n_neighbor_chans * Probe.sampling_rate * np.dtype(np.float32).itemsize +
+                                   Probe.sampling_rate * (np.dtype(np.uint32).itemsize +
                                    np.dtype(np.uint32).itemsize) / template_samples_per_chan)
         num_seconds_per_chunk = (gpu_memory_size - constant_memory_usage) / memory_usage_per_second
         # Do not exceed a the length of a buffer in bytes that can be addressed
         # Note: there is also a max allocation size,
         # device.get_info(cl.device_info.MAX_MEM_ALLOC_SIZE)
         max_addressable_seconds = (((1 << device.get_info(cl.device_info.ADDRESS_BITS)) - 1)
-                                    / (np.dtype(np.float32).itemsize * probe_dict['sampling_rate']
+                                    / (np.dtype(np.float32).itemsize * Probe.sampling_rate
                                      * n_neighbor_chans))
         num_seconds_per_chunk = min(num_seconds_per_chunk, np.floor(max_addressable_seconds))
-        num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * probe_dict['sampling_rate']))
+        num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * Probe.sampling_rate))
         print("Note: Can fit ", num_seconds_per_chunk, "s of data in GPU memory.")
 
         if num_indices_per_chunk < 4 * template_samples_per_chan:
@@ -208,16 +206,17 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         # Note: Any spikes in the last template width of data are not checked
         chunk_onsets = []
         curr_onset = 0
-        while ((curr_onset) < (probe_dict['n_samples'] - template_samples_per_chan)):
+        while ((curr_onset) < (Probe.n_samples - template_samples_per_chan)):
             chunk_onsets.append(curr_onset)
             curr_onset += num_indices_per_chunk - 3 * template_samples_per_chan
         print("Using ", len(chunk_onsets), " chunks for binary pursuit.")
 
         # Loop over chunks
         for chunk_number, start_index in enumerate(chunk_onsets):
-            stop_index = np.uint32(min(probe_dict['n_samples'], start_index + num_indices_per_chunk))
+            stop_index = np.uint32(min(Probe.n_samples, start_index + num_indices_per_chunk))
             print("Starting chunk number", chunk_number, "from", start_index, "to", stop_index)
-            chunk_voltage = np.float32(neighbor_voltage[:, start_index:stop_index])
+            chunk_voltage = np.float32(Probe.get_voltage(neighbors,
+                                slice(start_index, stop_index, 1)))
             # Reshape voltage over channels into a single 1D vector
             chunk_voltage = chunk_voltage.reshape(chunk_voltage.size)
             select = np.logical_and(event_indices >= start_index, event_indices < stop_index)

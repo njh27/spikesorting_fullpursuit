@@ -182,12 +182,11 @@ def remove_overlapping_spikes(event_indices, max_samples):
     return event_indices, removed_index
 
 
-def find_multichannel_max_neuron(Probe, channel, check_time, indices, labels,
+def find_multichannel_max_neuron(Probe, channel, neighbors, check_time, indices, labels,
         templates, template_labels, chan_win, spike_bool, spike_probabilities,
         spike_biases, new_indices, new_labels):
     """ This assumes templates are not normalized and can thus be directly subtracted from voltage. """
 
-    neighbors = np.array(Probe.get_neighbors(channel)).astype(np.int64)
     samples_per_chan = chan_win[1] - chan_win[0]
     # Window big enough to cover all spikes possibly overlapping with check_time
     min_t = int(np.abs(chan_win[0]))
@@ -257,10 +256,11 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
         threshold, clip_width, return_adjusted_clips=False):
     """
         """
+    neighbors = np.array(Probe.get_neighbors(channel)).astype(np.int64)
     # Need to find the indices of the current channel within the multichannel template
     chan_win, clip_width = segment.time_window_to_samples(clip_width, Probe.sampling_rate)
-    _, _, clip_samples, samples_per_chan, curr_chan_inds = segment.get_windows_and_indices(clip_width, Probe.sampling_rate, channel, Probe.get_neighbors(channel))
-    default_multi_check = True if Probe.get_neighbors(channel).size > 1 else False
+    _, _, clip_samples, samples_per_chan, curr_chan_inds = segment.get_windows_and_indices(clip_width, Probe.sampling_rate, channel, neighbors)
+    default_multi_check = True if neighbors.size > 1 else False
     # Remove any spikes within 1 clip width of each other
     event_indices.sort()
     event_indices, removed_index = remove_overlapping_spikes(event_indices, clip_samples[1]-clip_samples[0])
@@ -275,7 +275,7 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
     event_indices, neuron_labels, valid_inds = segment.align_events_with_template(Probe, channel, neuron_labels, event_indices, clip_width=clip_width)
 
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
-    multi_clips, valid_inds = segment.get_multichannel_clips(Probe, Probe.get_neighbors(channel), event_indices, clip_width=clip_width, thresholds=None)
+    multi_clips, valid_inds = segment.get_multichannel_clips(Probe, neighbors, event_indices, clip_width=clip_width, thresholds=None)
     event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
 
     multi_templates, template_labels = segment.calculate_templates(multi_clips, neuron_labels)
@@ -286,7 +286,6 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
     residual_voltage = np.copy(Probe.get_voltage(channel))
     spike_times = np.zeros(residual_voltage.size, dtype='byte')
     spike_probabilities = np.zeros(template_labels.size)
-    spike_biases = np.zeros(template_labels.size)
     template_error = np.zeros(template_labels.size)
     spike_bool = np.zeros((template_labels.size, residual_voltage.size), dtype='bool')
     n = 0
@@ -299,12 +298,17 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
         window_kernel = get_zero_phase_kernel(np.ones(chan_win[1] - chan_win[0]), np.abs(chan_win[0]))
         # spike_bool[n, :] = np.rint(fftconvolve(spike_times, window_kernel, mode='same')).astype('bool')
         n += 1
+    spike_biases = np.zeros((template_labels.size, neighbors.size))
     n = 0
-    for temp_label, temp in zip(template_labels, templates):
-        temp_kernel = get_zero_phase_kernel(temp, np.abs(chan_win[0]))
-        spike_biases[n] = np.median(np.abs(fftconvolve(residual_voltage, temp_kernel, mode='same')))
-        spike_probabilities[n] = current_event_indices.size / (residual_voltage.size)# / (chan_win[1] - chan_win[0]))
-        template_error[n] = -0.5 * np.dot(temp, temp)
+    raise RuntimeError("This needs to compute residual for EVERY channel for bias. Maybe do the david method...")
+    for temp_label, temp in zip(template_labels, multi_templates):
+        for chan in range(0, neighbors.size)
+            chan_temp_win = [chan * samples_per_chan,
+                             chan * samples_per_chan + samples_per_chan]
+            temp_kernel = get_zero_phase_kernel(temp[n][chan_temp_win[0]:chan_temp_win[1]], np.abs(chan_win[0]))
+            spike_biases[n, chan] = np.median(np.abs(fftconvolve(residual_voltage, temp_kernel, mode='same')))
+            spike_probabilities[n] = current_event_indices.size / (residual_voltage.size)# / (chan_win[1] - chan_win[0]))
+            template_error[n] = -0.5 * np.dot(temp, temp)
         print("GAMMA IS", spike_biases[n])
         n += 1
     spike_probabilities = -1 * np.log(spike_probabilities) + np.log(1 - spike_probabilities)
@@ -371,7 +375,7 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
                 int(residual_voltage.size - (3 * chan_win[1]))
                 check_time = int(max_delta_likelihood[mdl_ind] + t + chan_win[0])
                 check_max_neuron = find_multichannel_max_neuron(Probe, channel,
-                                    check_time, event_indices, neuron_labels,
+                                    neighbors, check_time, event_indices, neuron_labels,
                                     multi_templates, template_labels,
                                     chan_win, spike_bool, spike_probabilities,
                                     spike_biases, new_event_indices,

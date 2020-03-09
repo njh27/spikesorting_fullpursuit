@@ -2,8 +2,8 @@ import numpy as np
 from numpy import linalg as la
 from scipy.fftpack import dct, idct, fft, ifft
 from scipy.optimize import fsolve, fminbound
-import isotonic
-import sort_cython
+from spikesorting_python.src import isotonic
+from spikesorting_python.src.c_cython import sort_cython
 
 
 

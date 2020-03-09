@@ -1,10 +1,8 @@
 import numpy as np
 from scipy.signal import fftconvolve
 from scipy import stats
-import segment
-import consolidate
-
-import matplotlib.pyplot as plt
+from spikesorting_python.src import segment
+from spikesorting_python.src import consolidate
 
 
 
@@ -263,7 +261,7 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
     chan_win, clip_width = segment.time_window_to_samples(clip_width, Probe.sampling_rate)
     _, _, clip_samples, samples_per_chan, curr_chan_inds = segment.get_windows_and_indices(clip_width, Probe.sampling_rate, channel, Probe.get_neighbors(channel))
     default_multi_check = True if Probe.get_neighbors(channel).size > 1 else False
-    # Remove any spikes within 1 clip width of each other 
+    # Remove any spikes within 1 clip width of each other
     event_indices.sort()
     event_indices, removed_index = remove_overlapping_spikes(event_indices, clip_samples[1]-clip_samples[0])
     neuron_labels = neuron_labels[~removed_index]

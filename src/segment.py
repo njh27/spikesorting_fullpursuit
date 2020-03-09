@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import signal
 import copy
-import sort
+from spikesorting_python.src import sort
 
 
 

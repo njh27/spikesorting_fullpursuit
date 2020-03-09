@@ -1,7 +1,7 @@
 import numpy as np
-import segment
-import sort
-import preprocessing
+from spikesorting_python.src import segment
+from spikesorting_python.src import sort
+from spikesorting_python.src import preprocessing
 from scipy import stats
 from scipy.optimize import nnls, lsq_linear
 import copy

@@ -4,14 +4,12 @@ import os
 import platform as sys_platform
 import re
 import math
-from sort import reorder_labels
-import segment
-from overlap import reassign_simultaneous_spiking_clusters, get_zero_phase_kernel, remove_overlapping_spikes
+from spikesorting_python.src.sort import reorder_labels
+from spikesorting_python.src import segment
+from spikesorting_python.src.overlap import reassign_simultaneous_spiking_clusters, get_zero_phase_kernel, remove_overlapping_spikes
 from scipy.signal import fftconvolve
 os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
 
-import matplotlib.pyplot as plt
-import time
 
 
 def binary_pursuit(Probe, channel, event_indices, neuron_labels,

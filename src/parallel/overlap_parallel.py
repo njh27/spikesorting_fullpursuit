@@ -307,16 +307,13 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
     for temp_label, temp in zip(template_labels, templates):
         temp_kernel = get_zero_phase_kernel(temp, np.abs(chan_win[0]))
         spike_biases[n] = np.median(np.abs(fftconvolve(residual_voltage, temp_kernel, mode='same')))
-        spike_probabilities[n] = current_event_indices.size / (residual_voltage.size)# / (chan_win[1] - chan_win[0]))
+        # spike_probabilities[n] = current_event_indices.size / (residual_voltage.size)# / (chan_win[1] - chan_win[0]))
         template_error[n] = -0.5 * np.dot(temp, temp)
         n += 1
-    spike_probabilities = -1 * np.log(spike_probabilities) + np.log(1 - spike_probabilities)
+    # spike_probabilities = -1 * np.log(spike_probabilities) + np.log(1 - spike_probabilities)
     new_event_indices = []
     new_event_labels = []
     false_event_ind = []
-
-    spike_probabilities *= 0
-    print("SETTING SPIKE PROBABILITIES TO ZERO IN OVERLAP")
 
     min_t = int(2 * np.abs(chan_win[0]))
     max_t = int(residual_voltage.size - (4 * chan_win[1]))

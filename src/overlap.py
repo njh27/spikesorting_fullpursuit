@@ -298,26 +298,17 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
         window_kernel = get_zero_phase_kernel(np.ones(chan_win[1] - chan_win[0]), np.abs(chan_win[0]))
         # spike_bool[n, :] = np.rint(fftconvolve(spike_times, window_kernel, mode='same')).astype('bool')
         n += 1
-    spike_biases = np.zeros((template_labels.size, neighbors.size))
     n = 0
-    raise RuntimeError("This needs to compute residual for EVERY channel for bias. Maybe do the david method...")
-    for temp_label, temp in zip(template_labels, multi_templates):
-        for chan in range(0, neighbors.size)
-            chan_temp_win = [chan * samples_per_chan,
-                             chan * samples_per_chan + samples_per_chan]
-            temp_kernel = get_zero_phase_kernel(temp[n][chan_temp_win[0]:chan_temp_win[1]], np.abs(chan_win[0]))
-            spike_biases[n, chan] = np.median(np.abs(fftconvolve(residual_voltage, temp_kernel, mode='same')))
-            spike_probabilities[n] = current_event_indices.size / (residual_voltage.size)# / (chan_win[1] - chan_win[0]))
-            template_error[n] = -0.5 * np.dot(temp, temp)
-        print("GAMMA IS", spike_biases[n])
+    for temp_label, temp in zip(template_labels, templates):
+        temp_kernel = get_zero_phase_kernel(temp, np.abs(chan_win[0]))
+        spike_biases[n] = np.median(np.abs(fftconvolve(residual_voltage, temp_kernel, mode='same')))
+        # spike_probabilities[n] = current_event_indices.size / (residual_voltage.size)# / (chan_win[1] - chan_win[0]))
+        template_error[n] = -0.5 * np.dot(temp, temp)
         n += 1
-    spike_probabilities = -1 * np.log(spike_probabilities) + np.log(1 - spike_probabilities)
+    # spike_probabilities = -1 * np.log(spike_probabilities) + np.log(1 - spike_probabilities)
     new_event_indices = []
     new_event_labels = []
     false_event_ind = []
-
-    spike_probabilities *= 0
-    print("SETTING SPIKE PROBABILITIES TO ZERO IN OVERLAP")
 
     min_t = int(2 * np.abs(chan_win[0]))
     max_t = int(residual_voltage.size - (4 * chan_win[1]))

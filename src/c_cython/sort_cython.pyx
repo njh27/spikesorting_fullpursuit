@@ -4,7 +4,7 @@ from libc.stdint cimport int64_t, int32_t
 from numpy.math cimport INFINITY, NAN
 from numpy import linalg as la
 cimport cython
-from libc.math cimport exp, sqrt, M_PI, M_SQRT2, log2, ceil, floor, isfinite
+from libc.math cimport exp, sqrt, M_PI, M_SQRT2, log, log2, ceil, floor, isfinite
 from libc.stdlib cimport calloc, free
 from scipy.fftpack import dct, ifft
 
@@ -487,12 +487,17 @@ cdef double fixed_point(double t, int64_t N, double[::1] I, double[::1] a2):
 
   f_fac = 0.0
   for x in range(I_size):
-    f_fac += I[x] ** l * a2[x] * exp(-1.0*I[x] * M_PI * M_PI * t)
+    # This line removes I ** l and keeps things in range of float64
+    f_fac += exp(log(I[x]) * l + log(a2[x]) - I[x] * M_PI * M_PI * t)
+
   if f_fac < 1.0e-6 or N == 0:
     # Prevent zero division, which converges to negative infinity
     return -INFINITY
-  if not isfinite(f_fac):
-    raise RuntimeError('Too many spikes are present to compute KDE')
+  if not isfinite(f_fac) and f_fac > 0.0:
+    return t
+  elif not isfinite(f_fac):
+    # I think this is an error that probably shouldn't happen?
+    raise RuntimeError('Something is wrong in KDE compuation...')
   f = 2.0 * M_PI ** (2.0*l) * f_fac
 
   for s in range(l - 1, 1, -1):
@@ -505,7 +510,8 @@ cdef double fixed_point(double t, int64_t N, double[::1] I, double[::1] a2):
     time = (2.0 * const * K0 / N / f) ** (2.0 / (3.0 + 2.0*s))
     f_fac = 0.0
     for x in range(I_size):
-      f_fac += I[x] ** s * a2[x] * exp(-1.0*I[x] * M_PI * M_PI * time)
+      # This line removes I ** s and keeps things in range of float64
+      f_fac += exp(log(I[x]) * s + log(a2[x]) - I[x] * M_PI * M_PI * time)
     if f_fac < 1.0e-6:
       # Prevent zero division, which converges to negative infinity
       f = -1.0

@@ -402,7 +402,9 @@ def kde_builtin(data, n):
     def fixed_point(t, N, I, a2):
         # this implements the function t-zeta*gamma^[l](t)
         l = 7
-        f_fac = np.sum(I ** l * a2 * np.exp(-I * np.pi ** 2 * t))
+        # f_fac = np.sum(I ** l * a2 * np.exp(-I * np.pi ** 2 * t))
+        # This line removes I ** l and keeps things in range of float64
+        f_fac = np.sum(np.exp(np.log(I) * l + np.log(a2) - I * np.pi ** 2 * t)
         if f_fac < 1e-6 or N == 0:
             # Prevent zero division, which converges to negative infinity
             return -np.inf
@@ -411,7 +413,9 @@ def kde_builtin(data, n):
             K0 = np.prod(np.arange(1, 2*s, 2)) / np.sqrt(2*np.pi)
             const = (1 + (1/2) ** (s + 1/2)) / 3
             time = (2 * const * K0 / N / f) ** (2 / (3 + 2*s))
-            f_fac = np.sum(I ** s * a2 * np.exp(-I * np.pi ** 2 * time))
+            # f_fac = np.sum(I ** s * a2 * np.exp(-I * np.pi ** 2 * time))
+            # This line removes I ** s and keeps things in range of float64
+            f_fac = np.sum(np.exp(np.log(I) * s + np.log(a2) - I * np.pi ** 2 * time)
             if f_fac < 1e-6:
                 # Prevent zero division, which converges to negative infinity
                 f = -1.0
@@ -587,6 +591,7 @@ def iso_cut(projection, p_value_cut_thresh):
     if num_points < 2: num_points = 2
 
     smooth_pdf, x_axis, _ = sort_cython.kde(projection, num_points)
+    # smooth_pdf, x_axis, _ = kde_builtin(projection, num_points)
     if x_axis.size == 1:
         # All data are in same bin so merge
         return 1., None

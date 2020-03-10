@@ -159,7 +159,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
     new_waveforms = [[] for x in range(0, Probe.num_electrodes)]
     false_positives = [[] for x in range(0, Probe.num_electrodes)]
     false_negatives = [[] for x in range(0, Probe.num_electrodes)]
-    for chan in range(0, Probe.num_electrodes):
+    for chan in range(2,3):#0, Probe.num_electrodes):
         if verbose: print("Working on electrode ", chan)
         median_cluster_size = min(100, int(np.around(crossings[chan].size / 1000)))
         if verbose: print("Getting clips")
@@ -190,6 +190,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         # Do multi channel sort, all channels considered together SPLIT ONLY
         scores = preprocessing.compute_pca(clips, check_components, max_components,
                     add_peak_valley=add_peak_valley, curr_chan_inds=curr_chan_inds)
+        # neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size)
         neuron_labels = sort.merge_clusters(scores, neuron_labels,
                             split_only = True,
                             p_value_cut_thresh=p_value_cut_thresh)
@@ -232,7 +233,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
                             add_peak_valley=add_peak_valley,
                             check_components=check_components,
                             max_components=max_components, max_iters=1,
-                            method='chan_pca')
+                            method='pca')
 
         # Delete any clusters under min_cluster_size before binary pursuit
         unique_vals, n_unique = np.unique(neuron_labels, return_counts=True)
@@ -287,22 +288,22 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         else:
             new_inds = np.zeros(crossings[chan].size, dtype='bool')
 
-        # if verbose: print("Sharpening clips onto templates")
-        # neuron_labels = sharpen_clusters(clips, neuron_labels, curr_chan_inds,
+        if verbose: print("Sharpening clips onto templates")
+        neuron_labels = sharpen_clusters(clips, neuron_labels, curr_chan_inds,
+                            p_value_cut_thresh, merge_only=True,
+                            add_peak_valley=add_peak_valley,
+                            check_components=check_components,
+                            max_components=max_components, max_iters=np.inf,
+                            method='pca')
+
+        # if verbose: print("Sharpening single channel clips onto templates")
+        # neuron_labels = sharpen_clusters(clips[:, curr_chan_inds], neuron_labels,
+        #                     np.arange(0, curr_chan_inds.size),
         #                     p_value_cut_thresh, merge_only=True,
         #                     add_peak_valley=add_peak_valley,
         #                     check_components=check_components,
         #                     max_components=max_components, max_iters=np.inf,
         #                     method='pca')
-
-        if verbose: print("Sharpening single channel clips onto templates")
-        neuron_labels = sharpen_clusters(clips, neuron_labels,
-                            curr_chan_inds,
-                            p_value_cut_thresh, merge_only=True,
-                            add_peak_valley=add_peak_valley,
-                            check_components=check_components,
-                            max_components=max_components, max_iters=np.inf,
-                            method='chan_pca')
 
         if verbose: print("currently", np.unique(neuron_labels).size, "different clusters")
         if verbose: print("Done sorting")

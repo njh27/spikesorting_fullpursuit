@@ -1,10 +1,9 @@
 import numpy as np
 from scipy import signal
 from scipy import stats
-import electrode
-import SpikeSorting
-import SpikeSortingParallel
-import ManualSorter
+from spikesorting_python.src import electrode
+from spikesorting_python.src import spikesorting
+from spikesorting_python.src.parallel import spikesorting_parallel
 
 
 
@@ -163,7 +162,7 @@ class TestDataset(object):
             spike_sort_kwargs[key] = kwargs[key]
 
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        neurons = SpikeSorting.spike_sort(self.Probe, **spike_sort_kwargs)
+        neurons = spikesorting.spike_sort(self.Probe, **spike_sort_kwargs)
 
         return neurons
 
@@ -182,7 +181,7 @@ class TestDataset(object):
             spike_sort_kwargs[key] = kwargs[key]
 
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        neurons = SpikeSortingParallel.spike_sort_parallel(self.Probe, **spike_sort_kwargs)
+        neurons = spikesorting_parallel.spike_sort_parallel(self.Probe, **spike_sort_kwargs)
 
         return neurons
 
@@ -214,11 +213,11 @@ class TestDataset(object):
         first_state = self.random_state
         np.random.set_state(first_state)
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        neurons = SpikeSorting.spike_sort(self.Probe, **single_sort_kwargs)
+        neurons = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
 
         np.random.set_state(first_state)
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        neurons_parallel = SpikeSortingParallel.spike_sort_parallel(self.Probe, **par_sort_kwargs)
+        neurons_parallel = spikesorting_parallel.spike_sort_parallel(self.Probe, **par_sort_kwargs)
         self.random_state = first_state
 
         n_ind = 0

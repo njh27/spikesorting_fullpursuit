@@ -1,11 +1,10 @@
 import numpy as np
-import segment
-import preprocessing
-import sort
-import overlap
-import binary_pursuit
-import consolidate
-import ManualSorter
+from spikesorting_python.src import segment
+from spikesorting_python.src import preprocessing
+from spikesorting_python.src import sort
+from spikesorting_python.src import overlap
+from spikesorting_python.src import binary_pursuit
+from spikesorting_python.src import consolidate
 
 
 
@@ -288,13 +287,13 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         else:
             new_inds = np.zeros(crossings[chan].size, dtype='bool')
 
-        if verbose: print("Sharpening clips onto templates")
-        neuron_labels = sharpen_clusters(clips, neuron_labels, curr_chan_inds,
-                            p_value_cut_thresh, merge_only=True,
-                            add_peak_valley=add_peak_valley,
-                            check_components=check_components,
-                            max_components=max_components, max_iters=np.inf,
-                            method='pca')
+        # if verbose: print("Sharpening clips onto templates")
+        # neuron_labels = sharpen_clusters(clips, neuron_labels, curr_chan_inds,
+        #                     p_value_cut_thresh, merge_only=True,
+        #                     add_peak_valley=add_peak_valley,
+        #                     check_components=check_components,
+        #                     max_components=max_components, max_iters=np.inf,
+        #                     method='pca')
 
         if verbose: print("Sharpening single channel clips onto templates")
         neuron_labels = sharpen_clusters(clips, neuron_labels,
@@ -391,8 +390,8 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
     neurons = consolidate.summarize_neurons(Probe, crossings, labels, waveforms, thresholds, false_positives, false_negatives, clip_width=clip_width, new_waveforms=new_waveforms, max_components=max_components)
 
     if verbose: print("Ordering neurons and finding peak valleys")
-    neurons = ManualSorter.recompute_template_wave_properties(neurons)
-    neurons = ManualSorter.reorder_neurons_by_raw_peak_valley(neurons)
+    neurons = consolidate.recompute_template_wave_properties(neurons)
+    neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
 
     # Consolidate neurons across channels
     if cleanup_neurons:
@@ -401,8 +400,8 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         if verbose: print("Combining same neurons in neighborhood")
         neurons = consolidate.combine_stolen_spikes(neurons, max_offset_samples=20, p_value_combine=.05, p_value_cut_thresh=p_value_cut_thresh, max_components=max_components)
         neurons = consolidate.combine_neighborhood_neurons(neurons, overlap_time=5e-4, overlap_threshold=5, max_offset_samples=10, p_value_cut_thresh=p_value_cut_thresh, max_components=max_components)
-        neurons = ManualSorter.recompute_template_wave_properties(neurons)
-        neurons = ManualSorter.reorder_neurons_by_raw_peak_valley(neurons)
+        neurons = consolidate.recompute_template_wave_properties(neurons)
+        neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
         neurons = consolidate.remove_across_channel_duplicate_neurons(neurons, overlap_time=5e-4, overlap_threshold=5)
 
     if verbose: print("Done.")

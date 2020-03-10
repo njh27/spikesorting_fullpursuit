@@ -2,7 +2,7 @@ import numpy as np
 from numpy import linalg as la
 from scipy import signal, linalg
 from scipy.spatial.distance import pdist
-import sort_cython
+from spikesorting_python.src.c_cython import sort_cython
 
 import matplotlib.pyplot as plt
 
@@ -35,7 +35,7 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
         return 1.
     elif voltage_data.shape[0] == 1:
         return 1.
-    zca_thresholds = thresholds
+    zca_thresholds = thresholds / 2
     # convert cushion to zero centered window
     thresh_cushion = (thresh_cushion * 2 + 1)
     volt_thresh_bool = np.zeros(voltage_data.shape, dtype='bool')

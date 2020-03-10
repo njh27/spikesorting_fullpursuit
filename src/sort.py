@@ -529,7 +529,7 @@ def kde_builtin(data, n):
 
     # now compute the optimal bandwidth^2 using the referenced method
     I = np.arange(1, n, dtype=np.float64) ** 2 # Do I as float64 so it doesn't overflow in fixed_point
-    a2 = (a[1:] / 2) ** 2;
+    a2 = (a[1:] / 2) ** 2
     N_tol = 50 * (N <= 50) + 1050 * (N >= 1050) + N * (np.logical_and(N < 1050, N>50))
     tol = 10.0 ** -12.0 + 0.01 * (N_tol - 50.0) / 1000.0
     fixed_point_0 = fixed_point(0, N, I, a2)
@@ -561,7 +561,7 @@ def kde_builtin(data, n):
             # t_star = fminbound(fixed_point_abs, 0, 1.0, args=(N, I, a2))
             t_star = bound_grad_desc_fixed_point_abs(N, I, a2, 0, 1.0, 1e-6, 1e-6)
             break
-    # print(t_star)
+    print(t_star)
     # smooth the discrete cosine transform of initial data using t_star
     a_t = a * np.exp(-1 * np.arange(0, n) ** 2 * np.pi ** 2 * t_star / 2)
     # now apply the inverse discrete cosine transform

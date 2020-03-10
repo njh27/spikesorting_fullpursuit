@@ -286,6 +286,7 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
     residual_voltage = np.copy(Probe.get_voltage(channel))
     spike_times = np.zeros(residual_voltage.size, dtype='byte')
     spike_probabilities = np.zeros(template_labels.size)
+    spike_biases = np.zeros((template_labels.size, neighbors.size))
     template_error = np.zeros(template_labels.size)
     spike_bool = np.zeros((template_labels.size, residual_voltage.size), dtype='bool')
     n = 0

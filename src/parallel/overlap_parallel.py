@@ -287,11 +287,11 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
     templates = [t[curr_chan_inds] for t in multi_templates]
 
     # Compute residual voltage by subtracting all known spikes
-    spike_times = np.zeros(residual_voltage.size, dtype='byte')
+    spike_times = np.zeros(probe_dict['n_samples'], dtype='byte')
     spike_probabilities = np.zeros(template_labels.size)
     spike_biases = np.zeros((template_labels.size, neighbors.size))
     template_error = np.zeros((template_labels.size, neighbors.size))
-    spike_bool = np.zeros((template_labels.size, residual_voltage.size), dtype='bool')
+    spike_bool = np.zeros((template_labels.size, probe_dict['n_samples']), dtype='bool')
     for chan_ind, chan in enumerate(neighbors):
         if chan == channel:
             # Wait to do main channel last so we can keep residual voltage
@@ -304,7 +304,7 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
             spike_times[:] = 0  # Reset to zero each iteration
             current_event_indices = event_indices[neuron_labels == temp_label]
             spike_times[current_event_indices] = 1
-            temp_kernel = get_zero_phase_kernel(temp[temp_win[0]:temp_win[1]],, np.abs(chan_win[0]))
+            temp_kernel = get_zero_phase_kernel(temp[temp_win[0]:temp_win[1]], np.abs(chan_win[0]))
             residual_voltage -= fftconvolve(spike_times, temp_kernel, mode='same')
             window_kernel = get_zero_phase_kernel(np.ones(chan_win[1] - chan_win[0]), np.abs(chan_win[0]))
             # spike_bool[n, :] = np.rint(fftconvolve(spike_times, window_kernel, mode='same')).astype('bool')
@@ -465,7 +465,7 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
             # Best spike falls within current window, so add it
             new_event_time = max_delta_likelihood[max_neuron] + t + chan_win[0]
             residual_voltage[new_event_time+chan_win[0]:new_event_time+chan_win[1]] -= templates[max_neuron]
-            spike_bool[max_neuron, new_event_time+chan_win[0]:new_event_time+chan_win[1]] = True
+            # spike_bool[max_neuron, new_event_time+chan_win[0]:new_event_time+chan_win[1]] = True
             new_event_indices.append(new_event_time)
             new_event_labels.append(template_labels[max_neuron])
             false_event_ind.append(False)
@@ -530,6 +530,6 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
             for spk_event in current_spike_indices:
                 adjusted_clips[spk_event, :] = templates[l_ind] + residual_voltage[event_indices[spk_event]+chan_win[0]:event_indices[spk_event]+chan_win[1]]
                 adjusted_clips[spk_event, :] /= threshold
-        return event_indices, neuron_labels, secret_spike_bool, multi_templates, adjusted_clips
+        return event_indices, neuron_labels, secret_spike_bool, adjusted_clips
     else:
-        return event_indices, neuron_labels, secret_spike_bool, multi_templates
+        return event_indices, neuron_labels, secret_spike_bool

@@ -276,13 +276,17 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         if do_binary_pursuit:
             if verbose: print("currently", np.unique(neuron_labels).size, "different clusters")
             if verbose: print("Doing binary pursuit")
-            # crossings[chan], neuron_labels, new_inds, clips = overlap.binary_pursuit_secret_spikes(
+            # crossings[chan], neuron_labels, new_inds = overlap.binary_pursuit_secret_spikes(
             #                         Probe, chan, neuron_labels, crossings[chan],
             #                         thresholds[chan], clip_width,
             #                         return_adjusted_clips=False)
+            # clips, valid_event_indices = segment.get_multichannel_clips(Probe, Probe.get_neighbors(chan), crossings[chan], clip_width=clip_width, thresholds=thresholds)
+            # crossings[chan], neuron_labels = segment.keep_valid_inds([crossings[chan], neuron_labels], valid_event_indices)
+
             crossings[chan], neuron_labels, new_inds, clips = binary_pursuit.binary_pursuit(
                 Probe, chan, crossings[chan], neuron_labels, clip_width,
                 thresholds[chan], kernels_path=None, max_gpu_memory=None)
+
             if verbose: print("currently", np.unique(neuron_labels).size, "different clusters")
         else:
             new_inds = np.zeros(crossings[chan].size, dtype='bool')

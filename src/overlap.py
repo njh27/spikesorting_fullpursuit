@@ -283,11 +283,11 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
     templates = [t[curr_chan_inds] for t in multi_templates]
 
     # Compute residual voltage by subtracting all known spikes
-    spike_times = np.zeros(residual_voltage.size, dtype='byte')
+    spike_times = np.zeros(Probe.n_samples, dtype='byte')
     spike_probabilities = np.zeros(template_labels.size)
     spike_biases = np.zeros((template_labels.size, neighbors.size))
     template_error = np.zeros((template_labels.size, neighbors.size))
-    spike_bool = np.zeros((template_labels.size, residual_voltage.size), dtype='bool')
+    spike_bool = np.zeros((template_labels.size, Probe.n_samples), dtype='bool')
     for chan_ind, chan in enumerate(neighbors):
         if chan == channel:
             # Wait to do main channel last so we can keep residual voltage
@@ -526,6 +526,6 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
             for spk_event in current_spike_indices:
                 adjusted_clips[spk_event, :] = templates[l_ind] + residual_voltage[event_indices[spk_event]+chan_win[0]:event_indices[spk_event]+chan_win[1]]
                 adjusted_clips[spk_event, :] /= threshold
-        return event_indices, neuron_labels, secret_spike_bool, multi_templates, adjusted_clips
+        return event_indices, neuron_labels, secret_spike_bool, adjusted_clips
     else:
-        return event_indices, neuron_labels, secret_spike_bool, multi_templates
+        return event_indices, neuron_labels, secret_spike_bool

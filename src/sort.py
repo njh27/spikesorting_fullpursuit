@@ -248,8 +248,7 @@ def compute_ks5(counts_1, counts_2):
     --------
     compute_ks4_p_value
     """
-    print("Zero counts1", np.count_nonzero(counts_1 == 0), counts_1.size)
-    print("Zero counts2", np.count_nonzero(counts_2 == 0), counts_2.size)
+
     # Find the actual number of data points that went into these bin counts
     sum_counts_1 = np.sum(counts_1)
     sum_counts_2 = np.sum(counts_2)

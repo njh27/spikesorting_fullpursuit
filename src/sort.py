@@ -415,7 +415,7 @@ def kde_builtin(data, n):
             time = (2 * const * K0 / N / f) ** (2 / (3 + 2*s))
             # f_fac = np.sum(I ** s * a2 * np.exp(-I * np.pi ** 2 * time))
             # This line removes I ** s and keeps things in range of float64
-            f_fac = np.sum(np.exp(np.log(I) * s + np.log(a2) - I * np.pi ** 2 * time)
+            f_fac = np.sum(np.exp(np.log(I) * s + np.log(a2) - I * np.pi ** 2 * time))
             if f_fac < 1e-6:
                 # Prevent zero division, which converges to negative infinity
                 f = -1.0

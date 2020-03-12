@@ -133,6 +133,9 @@ def unimodal_prefix_isotonic_regression_l2(y, w):
             for l in range(left_vec[k], right_vec[k]+1):
                 y_new[n - l - 1] = mean_vec[k]
 
-    mode_peak = pos_min - 1 # pos_min is sliceable so subtract one for actual index
+    # pos_min is sliceable so subtract one for actual index but make sure it is
+    # positive and in bounds
+    mode_peak = max(0, pos_min - 1)
+    mode_peak = min(mode_peak, y_new.size)
 
     return y_new, mode_peak

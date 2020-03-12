@@ -166,13 +166,12 @@ def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes
 
     # Choose first local maxima as point at which there is decrease in vaf
     if (vaf_ptr[comp] > vaf_ptr[comp - 1]) and (comp > 2):
-      max_vaf_components = comp # Used as slice so this includes peak
       break
     if comp == max_components:
       # Won't use more than this so break
-      max_vaf_components = comp
       break
-
+      
+  max_vaf_components = comp
   # This is to account for slice indexing and edge effects
   if comp >= check_comp_ssize_t - 1:
     # This implies that we found no maxima before reaching the end of vaf
@@ -186,7 +185,7 @@ def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes
       max_vaf_components = max_components
   if max_vaf_components < min_components:
       max_vaf_components = min_components
-  return comp_order[0:max_vaf_components]
+  return comp_order[0:max_vaf_components-1]
 
 
 @cython.boundscheck(False)
@@ -290,13 +289,12 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
 
     # Choose first local maxima as point at which there is decrease in vaf
     if (vaf[comp] > vaf[comp - 1]) and (comp > 2):
-      max_vaf_components = comp # Used as slice so this includes peak
       break
     if comp == max_components:
       # Won't use more than this so break
-      max_vaf_components = comp
       break
 
+  max_vaf_components = comp
   # This is to account for slice indexing and edge effects
   if comp >= check_comp_ssize_t - 1:
     # This implies that we found no maxima before reaching the end of vaf
@@ -310,7 +308,7 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
     max_vaf_components = max_components
   if max_vaf_components < min_components:
     max_vaf_components = min_components
-  return comp_order[0:max_vaf_components]
+  return comp_order[0:max_vaf_components-1]
 
 
 @cython.boundscheck(False)

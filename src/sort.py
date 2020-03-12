@@ -5,6 +5,8 @@ from scipy.optimize import fsolve, fminbound
 from spikesorting_python.src import isotonic
 from spikesorting_python.src.c_cython import sort_cython
 
+from scipy.stats import chisquare, chi2
+import matplotlib.pyplot as plt
 
 
 def initial_cluster_farthest(data, median_cluster_size):
@@ -248,17 +250,27 @@ def compute_ks5(counts_1, counts_2):
     --------
     compute_ks4_p_value
     """
-    print("Zero counts1", np.count_nonzero(counts_1 == 0), counts_1.size)
-    print("Zero counts2", np.count_nonzero(counts_2 == 0), counts_2.size)
+    # Quick test for identical PDFs
+    if np.all(counts_1 == counts_2):
+        return 0, 0, 1
     # Find the actual number of data points that went into these bin counts
-    sum_counts_1 = np.sum(counts_1)
-    sum_counts_2 = np.sum(counts_2)
-    if sum_counts_1 == 0 or sum_counts_2 == 0:
-      return 0, 0, 1
+    sum_counts_1 = np.floor(np.sum(counts_1))
+    sum_counts_2 = np.floor(np.sum(counts_2))
+    if ((sum_counts_1 == 0) or (sum_counts_2 == 0)
+        or (counts_1.size <= 1) or (counts_2.size <= 1)):
+        # These cases don't have enough data to do anything useful
+        return 0, 0, 1
+
+    # if counts_1.size > 10:
+    #     print("Zero counts1", sum_counts_1, counts_1.size)
+    #     print("Zero counts2", sum_counts_2, counts_2.size)
+    #     plt.plot(counts_1)
+    #     plt.plot(counts_2)
+    #     plt.show()
 
     # Make something like a binning adjusted degrees of freedom for n values
-    n1_dof = sum_counts_1 - len(counts_1)
-    n2_dof = sum_counts_2 - len(counts_2)
+    n1_dof = sum_counts_1 - counts_1.size
+    n2_dof = sum_counts_2 - counts_2.size
 
     # Compute empirical *binned* CDF
     S1 = np.cumsum(counts_1) / sum_counts_1
@@ -273,9 +285,102 @@ def compute_ks5(counts_1, counts_2):
         ks = ks * np.sqrt(mean_dof)
     else:
         ks = 0
-    p_value = compute_ks4_p_value(n1_dof, n2_dof, ks)
+    p_value = compute_ks4_p_value(n1_dof/2, n2_dof/2, ks)
 
     return ks, I, p_value
+
+
+def compute_ks5_permuted(counts_1, counts_2, num_permutations=1000):
+    """
+    """
+
+    # if counts_1.size < 12:
+    #     ks, I, ks_pval = compute_ks5(counts_1, counts_2)
+    #     return ks, I, ks_pval
+
+    # df_tot = np.sum(counts_1) - counts_1.size + np.count_nonzero(np.logical_and(counts_1 == 0, counts_2 == 0)) - 1
+    # if df_tot < 0:
+    #     df_tot = 0
+    # print("DOF IS", df_tot)
+    # chi2_stat = np.sum((counts_1-counts_2)**2 / counts_2)
+    # df_tot = counts_1.size - np.count_nonzero(np.logical_and(counts_1 == 0, counts_2 == 0)) - 1
+    df_tot = 2 ** np.floor(np.log2(counts_1.size - np.count_nonzero(np.logical_and(counts_1 == 0, counts_2 == 0)) - 1)) - 1
+    chi2_stat = 0
+    K1 = np.sqrt(np.sum(counts_2) / np.sum(counts_1))
+    K2 = np.sqrt(np.sum(counts_1) / np.sum(counts_2))
+    for bin_i in range(0, counts_1.size):
+        if (counts_1[bin_i] + counts_2[bin_i]) == 0:
+            continue
+        chi2_stat += ((K1 * counts_1[bin_i] - K2 * counts_2[bin_i]) ** 2) / (counts_1[bin_i] + counts_2[bin_i])
+    pval = (1 - chi2.cdf(chi2_stat, df_tot))
+    # chis_stat, pval = chisquare(counts_1, counts_2)
+    if np.isnan(pval):
+        # print("GOT NAN PVAL WITH", np.count_nonzero(counts_1), np.count_nonzero(counts_2))
+        ks, I, ks_pval = compute_ks5(counts_1, counts_2)
+        return ks, I, ks_pval
+
+    # Quick test for identical PDFs
+    if np.all(counts_1 == counts_2):
+        return 0, 0, 1
+    # Find the actual number of data points that went into these bin counts
+    sum_counts_1 = np.floor(np.sum(counts_1))
+    sum_counts_2 = np.floor(np.sum(counts_2))
+    if ((sum_counts_1 == 0) or (sum_counts_2 == 0)
+        or (counts_1.size <= 1) or (counts_2.size <= 1)):
+        # These cases don't have enough data to do anything useful
+        return 0, 0, 1
+
+    # Compute empirical *binned* CDF
+    S1 = np.cumsum(counts_1) / sum_counts_1
+    S2 = np.cumsum(counts_2) / sum_counts_2
+    # Compute actual KS statistic
+    diff_dist = np.abs(S1 - S2)
+    I = np.argmax(diff_dist)
+    ks = diff_dist[I]
+    ks = ks * 2 * np.sqrt(counts_1.size + counts_2.size)
+
+
+    return ks, I, pval
+
+
+    permutation_indices = np.zeros(counts_1.size, dtype=np.bool)
+    permutation_indices[0:counts_1.size // 2] = True
+    ks_distribution = np.zeros(num_permutations)
+    permuted_counts_1 = np.zeros_like(counts_1)
+    permuted_counts_2 = np.zeros_like(counts_2)
+    for n_perm in range(0, num_permutations):
+        permutation_indices[:] = False
+        permutation_indices[0:np.random.randint(0, counts_1.size)] = True
+
+        np.random.shuffle(permutation_indices) # New indices in place
+        permuted_counts_1[permutation_indices] = counts_1[permutation_indices]
+        permuted_counts_1[~permutation_indices] = counts_2[~permutation_indices]
+        permuted_counts_2[~permutation_indices] = counts_1[~permutation_indices]
+        permuted_counts_2[permutation_indices] = counts_2[permutation_indices]
+
+        # Compute KS statistic for current permutation
+        S1 = np.cumsum(permuted_counts_1) / np.sum(permuted_counts_1)
+        S2 = np.cumsum(permuted_counts_2) / np.sum(permuted_counts_2)
+        diff_dist = np.abs(S1 - S2)
+        perm_ks = np.amax(diff_dist)
+        ks_distribution[n_perm] = perm_ks * 2 * np.sqrt(counts_1.size + counts_2.size)
+
+    ks_pval = np.count_nonzero(ks_distribution > ks) / num_permutations
+    # Remove mean of the distribution
+    # mean_ks = np.mean(ks_distribution)
+    # ks_distribution -= mean_ks
+    # ks -= mean_ks
+    # # Two-sided ks-test
+    # ks_pval = (np.sum(np.abs(ks) <= np.abs(ks_distribution))) / num_permutations
+
+    if counts_1.size > 20:
+        # hist, xv = np.histogram(ks_distribution, 100)
+        # plt.bar(xv[0:-1], hist, width=xv[1]-xv[0])
+        # plt.show()
+
+        print("chi pval", pval, "ks pval", ks_pval)
+
+    return ks, I, ks_pval
 
 
 def kde_builtin(data, n):
@@ -588,17 +693,17 @@ def iso_cut(projection, p_value_cut_thresh):
     if N == 1:
         # Don't try any comparison with only one sample
         return 1., None
-    num_points = np.ceil(np.sqrt(N)).astype(np.int64)
-    if num_points < 2: num_points = 2
+    num_bins = np.ceil(np.sqrt(N)).astype(np.int64)
+    if num_bins < 2: num_bins = 2
 
-    smooth_pdf, x_axis, _ = sort_cython.kde(projection, num_points)
+    smooth_pdf, x_axis, _ = sort_cython.kde(projection, num_bins)
     # smooth_pdf, x_axis, _ = kde_builtin(projection, num_points)
     if x_axis.size == 1:
         # All data are in same bin so merge
         return 1., None
     # Output density of kde does not sum to one, so normalize it.
     smooth_pdf = smooth_pdf / np.sum(smooth_pdf)
-    # kde function estimates at power of two spacing levels so update num_points
+    # kde function estimates at power of two spacing levels so compute num_points
     num_points = smooth_pdf.size
     if np.any(np.isnan(smooth_pdf)):
         return 1., None
@@ -611,12 +716,17 @@ def iso_cut(projection, p_value_cut_thresh):
     else:
         iso_fit_weights = np.hstack((np.arange(1, num_points // 2 + 1), np.arange(num_points // 2 + 1, 0, -1)))
     densities_unimodal_fit, peak_density_ind = isotonic.unimodal_prefix_isotonic_regression_l2(densities, iso_fit_weights)
-
-    ks_left, ks_left_index, ks_left_pvalue = compute_ks5(densities[0:peak_density_ind+1],
+    # ks_left, ks_left_index, ks_left_pvalue = compute_ks5(densities[0:peak_density_ind+1],
+    #                          densities_unimodal_fit[0:peak_density_ind+1])
+    # ks_right, ks_right_index, ks_right_pvalue = compute_ks5(densities[peak_density_ind:],
+    #                            densities_unimodal_fit[peak_density_ind:])
+    densities = np.floor(densities)
+    densities_unimodal_fit = np.floor(densities_unimodal_fit)
+    ks_left, ks_left_index, ks_left_pvalue = compute_ks5_permuted(densities[0:peak_density_ind+1],
                              densities_unimodal_fit[0:peak_density_ind+1])
-    ks_right, ks_right_index, ks_right_pvalue = compute_ks5(densities[peak_density_ind:],
+    ks_right, ks_right_index, ks_right_pvalue = compute_ks5_permuted(densities[peak_density_ind:],
                                densities_unimodal_fit[peak_density_ind:])
-    ks_right_index = len(x_axis) - ks_right_index
+
     if ks_left > ks_right:
         # critical_range = np.arange(peak_density_ind - ks_left_index, peak_density_ind + 1)
         critical_range = np.arange(0, peak_density_ind + 1)
@@ -628,8 +738,8 @@ def iso_cut(projection, p_value_cut_thresh):
         critical_range = np.arange(peak_density_ind, densities.size)
         dip_score = ks_right
         p_value = ks_right_pvalue
-        ind = ks_right_index
-
+        ind = len(x_axis) - ks_right_index # formerly used to reset ks_right_index
+    # print(p_value, p_value_cut_thresh)
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None
     if p_value < p_value_cut_thresh:
@@ -764,8 +874,8 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
         if len(minimum_distance_pairs) == 0 and none_merged:
             break # Done, no more clusters to compare
         none_merged = True
-        if len(minimum_distance_pairs) != 0:
-            p_value_cut_thresh = original_pval / len(minimum_distance_pairs)
+        # if len(minimum_distance_pairs) != 0:
+        #     p_value_cut_thresh = original_pval / len(minimum_distance_pairs)
         for c1, c2 in minimum_distance_pairs:
             if verbose: print("Comparing ", c1, " with ", c2)
             merge = merge_test(data, labels, c1, c2)

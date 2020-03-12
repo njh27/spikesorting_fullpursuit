@@ -73,7 +73,7 @@ def branch_pca_2_0(neuron_labels, clips, curr_chan_inds, p_value_cut_thresh=0.01
     neuron_labels_copy = np.copy(neuron_labels)
     clusters_to_check = [ol for ol in np.unique(neuron_labels_copy)]
     next_label = int(np.amax(clusters_to_check) + 1)
-    p_value_cut_thresh = p_value_cut_thresh / len(clusters_to_check)
+    # p_value_cut_thresh = p_value_cut_thresh / len(clusters_to_check)
     while len(clusters_to_check) > 0:
         curr_clust = clusters_to_check.pop()
         curr_clust_bool = neuron_labels_copy == curr_clust
@@ -139,7 +139,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
     align_window = [skip, skip]
     if verbose: print("Finding thresholds")
     thresholds = segment.median_threshold(Probe, sigma=sigma)
-    if do_ZCA_transform:
+    if do_ZCA_transform and Probe.num_electrodes > 1:
         if verbose: print("Doing ZCA transform")
         zca_cushion = int(2 * np.ceil(np.amax(np.abs(clip_width)) * Probe.sampling_rate))
         zca_matrix = preprocessing.get_noise_sampled_zca_matrix(Probe.voltage, thresholds, sigma, zca_cushion, n_samples=1e6)

@@ -248,7 +248,8 @@ def compute_ks5(counts_1, counts_2):
     --------
     compute_ks4_p_value
     """
-
+    print("Zero counts1", np.count_nonzero(counts_1 == 0), counts_1.size)
+    print("Zero counts2", np.count_nonzero(counts_2 == 0), counts_2.size)
     # Find the actual number of data points that went into these bin counts
     sum_counts_1 = np.sum(counts_1)
     sum_counts_2 = np.sum(counts_2)
@@ -404,7 +405,7 @@ def kde_builtin(data, n):
         l = 7
         # f_fac = np.sum(I ** l * a2 * np.exp(-I * np.pi ** 2 * t))
         # This line removes I ** l and keeps things in range of float64
-        f_fac = np.sum(np.exp(np.log(I) * l + np.log(a2) - I * np.pi ** 2 * t)
+        f_fac = np.sum(np.exp(np.log(I) * l + np.log(a2) - I * np.pi ** 2 * t))
         if f_fac < 1e-6 or N == 0:
             # Prevent zero division, which converges to negative infinity
             return -np.inf

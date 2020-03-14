@@ -126,9 +126,9 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
         # Determine the segment size that we need to use to fit into the
         # memory on this GPU device.
         gpu_memory_size = device.get_info(cl.device_info.GLOBAL_MEM_SIZE) # Total memory size in bytes
-        # Save 25% or 1GB, whichever is less for the operating system to use
+        # Save 50% or 1GB, whichever is less for the operating system to use
         # assuming this is not a headless system.
-        gpu_memory_size = max(gpu_memory_size * 0.75, gpu_memory_size - (1024 * 1024 * 1024))
+        gpu_memory_size = max(gpu_memory_size * 0.5, gpu_memory_size - (1024 * 1024 * 1024))
         if max_gpu_memory is not None:
             gpu_memory_size = min(gpu_memory_size, max_gpu_memory)
         # Windows 10 only allows 80% of the memory on the graphics card to be used,

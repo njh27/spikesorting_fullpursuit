@@ -35,7 +35,7 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
         return 1.
     elif voltage_data.shape[0] == 1:
         return 1.
-    zca_thresholds = thresholds / 2
+    zca_thresholds = thresholds
     # convert cushion to zero centered window
     thresh_cushion = (thresh_cushion * 2 + 1)
     volt_thresh_bool = np.zeros(voltage_data.shape, dtype='bool')
@@ -130,84 +130,96 @@ def pca_scores(spikes, compute_pcs=None, pcs_as_index=True, return_V=False, retu
         return U
 
 
-# """
-# Used as an alternative to 'max_pca_components_cross_validation'.
-# This function computes the reconstruction based on each principal component
-# separately and then reorders the principal components according to their
-# reconstruction accuracy rather than variance accounted for.  It then iterates
-# through the reconstructions adding one PC at a time in this new order and at each
-# step computing the ratio of improvement from the addition of a PC.  All PCs up to
-# and including the first local maxima of this VAF function are output as the
-# the optimal ones to use. """
-# def optimal_reconstruction_pca_order(spikes, check_components=None,
-#                                      max_components=None, min_components=0):
-#     # Limit max-components based on the size of the dimensions of spikes
-#     if max_components is None:
-#         max_components = spikes.shape[1]
-#     if check_components is None:
-#         check_components = spikes.shape[1]
-#     max_components = np.amin([max_components, spikes.shape[1]])
-#     check_components = np.amin([check_components, spikes.shape[1]])
-#     if (max_components <= 1) or (check_components <= 1):
-#         # Only choosing from among the first PC so just return index to first PC
-#         return np.array([0])
-#
-#     # Get residual sum of squared error for each PC separately
-#     resid_error = np.zeros(check_components)
-#     _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)
-#     for comp in range(0, check_components):
-#         reconstruction = (spikes @ components[:, comp][:, None]) @ components[:, comp][:, None].T
-#         RESS = np.nanmean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
-#         resid_error[comp] = RESS
-#
-#     # Optimal order of components based on reconstruction accuracy
-#     comp_order = np.argsort(resid_error)
-#
-#     # Find improvement given by addition of each ordered PC
-#     vaf = np.zeros(check_components)
-#     # reconstruction = (spikes @ components[:, comp_order[0:1]]) @ components[:, comp_order[0:1]].T
-#     PRESS = resid_error[comp_order[0]]#np.nanmean(np.mean((spikes) ** 2, axis=1), axis=0)
-#     for comp in range(1, check_components):
-#         reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T
-#         RESS = np.nanmean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
-#         vaf[comp] = 1 - RESS / PRESS
-#         PRESS = RESS
-#
-#         # Choose first local maxima as point at which there is decrease in vaf
-#         if (vaf[comp] > vaf[comp - 1]) and (comp > 2):
-#           max_vaf_components = comp # Used as slice so this includes peak
-#           break
-#         if comp == max_components:
-#           # Won't use more than this so break
-#           max_vaf_components = comp
-#           break
-#     # plt.plot(vaf)
-#     # plt.scatter(max_vaf_components, vaf[max_vaf_components])
-#     # plt.show()
-#
-#     # This is to account for slice indexing and edge effects
-#     if comp >= vaf.size - 1:
-#         # This implies that we found no maxima before reaching the end of vaf
-#         if vaf[-1] > vaf[-2]:
-#             # vaf still increasing so choose last point
-#             max_vaf_components = vaf.size
-#         else:
-#             # vaf has become flat so choose second to last point
-#             max_vaf_components = vaf.size - 1
-#     if max_vaf_components > max_components:
-#         max_vaf_components = max_components
-#     if max_vaf_components < min_components:
-#         max_vaf_components = min_components
-#     return comp_order[0:max_vaf_components]
+"""
+Used as an alternative to 'max_pca_components_cross_validation'.
+This function computes the reconstruction based on each principal component
+separately and then reorders the principal components according to their
+reconstruction accuracy rather than variance accounted for.  It then iterates
+through the reconstructions adding one PC at a time in this new order and at each
+step computing the ratio of improvement from the addition of a PC.  All PCs up to
+and including the first local maxima of this VAF function are output as the
+the optimal ones to use. """
+def optimal_reconstruction_pca_order(spikes, check_components=None,
+                                     max_components=None, min_components=0):
+    # Limit max-components based on the size of the dimensions of spikes
+    if max_components is None:
+        max_components = spikes.shape[1]
+    if check_components is None:
+        check_components = spikes.shape[1]
+    max_components = np.amin([max_components, spikes.shape[1]])
+    check_components = np.amin([check_components, spikes.shape[1]])
+    if (max_components <= 1) or (check_components <= 1):
+        # Only choosing from among the first PC so just return index to first PC
+        return np.array([0])
+
+    # Get residual sum of squared error for each PC separately
+    resid_error = np.zeros(check_components)
+    _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)
+    for comp in range(0, check_components):
+        reconstruction = (spikes @ components[:, comp][:, None]) @ components[:, comp][:, None].T
+        RESS = np.nanmean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
+        resid_error[comp] = RESS
+
+    # Optimal order of components based on reconstruction accuracy
+    comp_order = np.argsort(resid_error)
+
+    # Find improvement given by addition of each ordered PC
+    vaf = np.zeros(check_components)
+    PRESS = np.nanmean(np.mean((spikes) ** 2, axis=1), axis=0)
+    RESS = np.nanmean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)
+    vaf[0] = 1. - RESS / PRESS
+
+    PRESS = RESS
+    for comp in range(1, check_components):
+        reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T
+        RESS = np.nanmean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
+        vaf[comp] = 1. - RESS / PRESS
+        PRESS = RESS
+        # Choose first local maxima
+        if (vaf[comp] < vaf[comp - 1]):
+          break
+        if comp == max_components:
+          # Won't use more than this so break
+          break
+
+    max_vaf_components = comp
+
+    # plt.plot(vaf)
+    # plt.scatter(max_vaf_components, vaf[max_vaf_components])
+    # plt.show()
+    # plt.plot(components[:, comp_order[0:comp]])
+    # plt.show()
+
+    is_worse_than_mean = False
+    if vaf[1] < 0:
+        # First PC is worse than the mean
+        is_worse_than_mean = True
+        max_vaf_components = 1
+
+    # This is to account for slice indexing and edge effects
+    if max_vaf_components >= vaf.size - 1:
+        # This implies that we found no maxima before reaching the end of vaf
+        if vaf[-1] > vaf[-2]:
+            # vaf still increasing so choose last point
+            max_vaf_components = vaf.size
+        else:
+            # vaf has become flat so choose second to last point
+            max_vaf_components = vaf.size - 1
+    if max_vaf_components < min_components:
+        max_vaf_components = min_components
+    if max_vaf_components > max_components:
+        max_vaf_components = max_components
+
+    return comp_order[0:max_vaf_components], is_worse_than_mean
 
 
 def compute_pca(clips, check_components, max_components, add_peak_valley=False,
                 curr_chan_inds=None):
-    # use_components = optimal_reconstruction_pca_order(clips, check_components, max_components)
+    # use_components, _ = optimal_reconstruction_pca_order(clips, check_components, max_components)
     if clips.flags['C_CONTIGUOUS']:
-        use_components = sort_cython.optimal_reconstruction_pca_order(clips, check_components, max_components)
+        use_components, _ = sort_cython.optimal_reconstruction_pca_order(clips, check_components, max_components)
     else:
-        use_components = sort_cython.optimal_reconstruction_pca_order_F(clips, check_components, max_components)
+        use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(clips, check_components, max_components)
     print("Automatic component detection chose", use_components, "PCA components.", flush=True)
     scores = pca_scores(clips, use_components, pcs_as_index=True)
     if add_peak_valley:
@@ -222,10 +234,9 @@ def compute_pca(clips, check_components, max_components, add_peak_valley=False,
 def compute_pca_by_channel(clips, curr_chan_inds, check_components,
                            max_components, add_peak_valley=False):
     pcs_by_chan = []
-
     # Do current channel first
-    # use_components = optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
-    use_components = sort_cython.optimal_reconstruction_pca_order_F(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
+    # use_components, _ = optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
+    use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
     print("Automatic component detection (get by channel) chose", use_components, "PCA components.", flush=True)
     scores = pca_scores(clips[:, curr_chan_inds], use_components, pcs_as_index=True)
     if add_peak_valley:
@@ -242,10 +253,13 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
         if ch*samples_per_chan == curr_chan_inds[0]:
             continue
         ch_inds = np.arange(ch*samples_per_chan, (ch+1)*samples_per_chan)
-        # use_components = optimal_reconstruction_pca_order(clips[:, ch_inds], check_components, max_components)
-        use_components = sort_cython.optimal_reconstruction_pca_order_F(clips[:, ch_inds], check_components, max_components)
-        if use_components.size > n_curr_max:
-            use_components = use_components[0:n_curr_max]
+        # use_components, is_worse_than_mean = optimal_reconstruction_pca_order(clips[:, ch_inds], check_components, max_components)
+        use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order_F(clips[:, ch_inds], check_components, max_components)
+        if is_worse_than_mean:
+            print("Automatic component detection (get by channel) chose !NO! PCA components.", flush=True)
+            continue
+        # if use_components.size > n_curr_max:
+        #     use_components = use_components[0:n_curr_max]
         print("Automatic component detection (get by channel) chose", use_components, "PCA components.", flush=True)
         scores = pca_scores(clips[:, ch_inds], use_components, pcs_as_index=True)
         pcs_by_chan.append(scores)
@@ -353,8 +367,8 @@ def compute_template_pca(clips, labels, curr_chan_inds, check_components, max_co
     for ind, l in enumerate(unique_labels):
         templates[ind, :] = np.mean(clips[labels == l, :], axis=0) * np.sqrt(u_counts[ind] / labels.size)
 
-    # use_components = optimal_reconstruction_pca_order(templates, check_components, max_components)
-    use_components = sort_cython.optimal_reconstruction_pca_order(templates, check_components, max_components)
+    # use_components, _ = optimal_reconstruction_pca_order(templates, check_components, max_components)
+    use_components, _ = sort_cython.optimal_reconstruction_pca_order(templates, check_components, max_components)
     print("Automatic component detection (FULL TEMPLATES) chose", use_components, "PCA components.")
     _, score_mat = pca_scores(templates, use_components, pcs_as_index=True, return_V=True)
     scores = clips @ score_mat
@@ -379,8 +393,8 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_compone
 
     pcs_by_chan = []
     # Do current channel first
-    # use_components = optimal_reconstruction_pca_order(templates[:, curr_chan_inds], check_components, max_components)
-    use_components = sort_cython.optimal_reconstruction_pca_order_F(templates[:, curr_chan_inds], check_components, max_components)
+    # use_components, _ = optimal_reconstruction_pca_order(templates[:, curr_chan_inds], check_components, max_components)
+    use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(templates[:, curr_chan_inds], check_components, max_components)
     print("Automatic component detection (TEMPLATES by channel) chose", use_components, "PCA components.")
     _, score_mat = pca_scores(templates[:, curr_chan_inds], use_components, pcs_as_index=True, return_V=True)
     scores = clips[:, curr_chan_inds] @ score_mat
@@ -397,11 +411,13 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_compone
         if ch*samples_per_chan == curr_chan_inds[0]:
             continue
         ch_inds = np.arange(ch*samples_per_chan, (ch+1)*samples_per_chan)
-        # use_components = optimal_reconstruction_pca_order(templates[:, ch_inds], check_components, max_components)
-        use_components = sort_cython.optimal_reconstruction_pca_order_F(templates[:, ch_inds], check_components, max_components)
-        if use_components.size > n_curr_max:
-            use_components = use_components[0:n_curr_max]
-        # print("USING", use_components, "COMPONENTS")
+        # use_components, is_worse_than_mean = optimal_reconstruction_pca_order(templates[:, ch_inds], check_components, max_components)
+        use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order_F(templates[:, ch_inds], check_components, max_components)
+        if is_worse_than_mean:
+            print("Automatic component detection (TEMPLATES by channel) chose !NO! PCA components.", flush=True)
+            continue
+        # if use_components.size > n_curr_max:
+        #     use_components = use_components[0:n_curr_max]
         print("Automatic component detection (TEMPLATES by channel) chose", use_components, "PCA components.")
         _, score_mat = pca_scores(templates[:, ch_inds], use_components, pcs_as_index=True, return_V=True)
         scores = clips[:, ch_inds] @ score_mat

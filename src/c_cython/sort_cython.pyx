@@ -145,35 +145,44 @@ def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes
   # Find improvement given by addition of each ordered PC
   cdef np.ndarray[double, ndim=1, mode="c"] vaf = np.zeros(check_comp_ssize_t)
   cdef double *vaf_ptr = &vaf[0]
-  # Start with RESS as total error, i.e. no improvement
+  cdef double PRESS
+  # Start with PRESS as total error, i.e. no improvement
   for x in range(0, spikes_x):
     for y in range(0, spikes_y):
-      RESS += spikes[x, y] ** 2
-  RESS /= spikes_x * spikes_y
-  if RESS < 1.0e-14:
+      PRESS += spikes[x, y] ** 2
+  PRESS /= spikes_x * spikes_y
+  if PRESS < 1.0e-14:
     if min_components == 0:
       return np.array([])
     else:
       return np.arange(0, min_components)
+  RESS = np.mean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)
+  vaf_ptr[0] = 1. - RESS / PRESS
 
-  cdef double PRESS = resid_error[comp_order[0]]
+  PRESS = RESS
   cdef Py_ssize_t max_vaf_components
   for comp in range(1, check_comp_ssize_t):
     reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T
     RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
-    vaf_ptr[comp] = 1 - RESS / PRESS
+    vaf_ptr[comp] = 1. - RESS / PRESS
     PRESS = RESS
 
-    # Choose first local maxima as point at which there is decrease in vaf
-    if (vaf_ptr[comp] > vaf_ptr[comp - 1]) and (comp > 2):
+    # Choose first local maxima
+    if (vaf_ptr[comp] < vaf_ptr[comp - 1]):
       break
     if comp == max_components:
       # Won't use more than this so break
       break
-      
+
   max_vaf_components = comp
+  is_worse_than_mean = False
+  if vaf_ptr[1] < 0:
+    # First PC is worse than the mean
+    is_worse_than_mean = True
+    max_vaf_components = 1
+
   # This is to account for slice indexing and edge effects
-  if comp >= check_comp_ssize_t - 1:
+  if max_vaf_components >= check_comp_ssize_t - 1:
     # This implies that we found no maxima before reaching the end of vaf
     if vaf_ptr[check_comp_ssize_t] > vaf_ptr[check_comp_ssize_t - 1]:
       # vaf still increasing so choose last point
@@ -181,11 +190,11 @@ def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes
     else:
       # vaf has become flat so choose second to last point
       max_vaf_components = check_comp_ssize_t - 1
-  if max_vaf_components > max_components:
-      max_vaf_components = max_components
   if max_vaf_components < min_components:
       max_vaf_components = min_components
-  return comp_order[0:max_vaf_components-1]
+  if max_vaf_components > max_components:
+    max_vaf_components = max_components
+  return comp_order[0:max_vaf_components], is_worse_than_mean
 
 
 @cython.boundscheck(False)
@@ -268,35 +277,44 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
   # Find improvement given by addition of each ordered PC
   cdef np.ndarray[double, ndim=1, mode="c"] vaf = np.zeros(check_comp_ssize_t)
   cdef double *vaf_ptr = &vaf[0]
-  # Start with RESS as total error, i.e. no improvement
+  cdef double PRESS
+  # Start with PRESS as total error, i.e. no improvement
   for x in range(0, spikes_x):
     for y in range(0, spikes_y):
-      RESS += spikes[x, y] ** 2
-  RESS /= spikes_x * spikes_y
-  if RESS < 1.0e-14:
+      PRESS += spikes[x, y] ** 2
+  PRESS /= spikes_x * spikes_y
+  if PRESS < 1.0e-14:
     if min_components == 0:
       return np.array([])
     else:
       return np.arange(0, min_components)
+  RESS = np.mean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)
+  vaf_ptr[0] = 1. - RESS / PRESS
 
-  cdef double PRESS = resid_error[comp_order[0]]
+  PRESS = RESS
   cdef Py_ssize_t max_vaf_components
   for comp in range(1, check_comp_ssize_t):
     reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T
     RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
-    vaf_ptr[comp] = 1 - RESS / PRESS
+    vaf_ptr[comp] = 1. - RESS / PRESS
     PRESS = RESS
 
-    # Choose first local maxima as point at which there is decrease in vaf
-    if (vaf[comp] > vaf[comp - 1]) and (comp > 2):
+    # Choose first local maxima
+    if (vaf[comp] < vaf[comp - 1]):
       break
     if comp == max_components:
       # Won't use more than this so break
       break
 
   max_vaf_components = comp
+  is_worse_than_mean = False
+  if vaf_ptr[1] < 0:
+    # First PC is worse than the mean
+    is_worse_than_mean = True
+    max_vaf_components = 1
+
   # This is to account for slice indexing and edge effects
-  if comp >= check_comp_ssize_t - 1:
+  if max_vaf_components >= check_comp_ssize_t - 1:
     # This implies that we found no maxima before reaching the end of vaf
     if vaf_ptr[check_comp_ssize_t] > vaf_ptr[check_comp_ssize_t - 1]:
       # vaf still increasing so choose last point
@@ -304,11 +322,11 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
     else:
       # vaf has become flat so choose second to last point
       max_vaf_components = check_comp_ssize_t - 1
-  if max_vaf_components > max_components:
-    max_vaf_components = max_components
   if max_vaf_components < min_components:
     max_vaf_components = min_components
-  return comp_order[0:max_vaf_components-1]
+  if max_vaf_components > max_components:
+    max_vaf_components = max_components
+  return comp_order[0:max_vaf_components], is_worse_than_mean
 
 
 @cython.boundscheck(False)

@@ -5,7 +5,7 @@ from scipy.optimize import fsolve, fminbound
 from spikesorting_python.src import isotonic
 from spikesorting_python.src.c_cython import sort_cython
 
-from scipy.stats import chi2
+from scipy.stats import chi2, fisher_exact
 import matplotlib.pyplot as plt
 
 
@@ -295,34 +295,42 @@ def compute_ks5(counts_1, counts_2, x_axis):
     return ks, I, p_value
 
 
-def chi2_best_index(counts_1, counts_2):
+def chi2_best_index(observed, expected):
     """
     """
+    # if observed.size <= 2:
+    #     print("CHI2 with less than 2 with", expected, "expected points")
     best_chi2_stat = 0
     min_pval = 1.
     best_ind = 0
-    orig1 = np.copy(counts_1)
-    orig2 = np.copy(counts_2)
-    for index in range(0, counts_1.size-1):
-        counts_1 = orig1[index:]
-        counts_2 = orig2[index:]
-        remove_counts = np.logical_and(counts_1 == 0, counts_2 == 0)
-        counts_1 = counts_1[~remove_counts]
-        counts_2 = counts_2[~remove_counts]
-        df_tot = counts_1.size - 1
-        K1 = np.sqrt(np.sum(counts_2) / np.sum(counts_1))
-        K2 = np.sqrt(np.sum(counts_1) / np.sum(counts_2))
-        chi2_stat = np.sum(((K1*counts_1 - K2*counts_2) ** 2) / (counts_1 + counts_2))
+    observed_cp = np.copy(observed)
+    expected_cp = np.copy(expected)
+    for index in range(0, observed.size-2):
+        observed = observed_cp[index:]
+        expected = expected_cp[index:]
+        remove_counts = np.logical_and(observed == 0, expected == 0)
+        observed = observed[~remove_counts]
+        expected = expected[~remove_counts]
 
-        if chi2_stat == 0:
-            continue
-        pval = 1 - chi2.cdf(chi2_stat, df_tot)
+        if observed.size == 2:
+            # Doesn't seem to use this value much but probably a good idea to
+            # have just in case, especially with deleting empty bins
+            _, pval = fisher_exact(np.int64(np.vstack((observed, expected))))
+            if pval < min_pval:
+                print("CHOSE FISHER WINDOW")
+        else:
+            df_tot = observed.size - 1
+            K1 = np.sqrt(np.sum(expected) / np.sum(observed))
+            K2 = np.sqrt(np.sum(observed) / np.sum(expected))
+            chi2_stat = np.sum(((K1*observed - K2*expected) ** 2) / (observed + expected))
+            if chi2_stat == 0:
+                continue
+            pval = 1 - chi2.cdf(chi2_stat, df_tot)
         if pval < min_pval:
             best_chi2_stat = chi2_stat
             min_pval = pval
             best_ind = index
 
-    # best_ind = min(best_ind+1, counts_1.size)
     best_ind = max(best_ind-1, 0)
     pval = min_pval
 
@@ -643,10 +651,25 @@ def bin_data(data, n):
     N = np.unique(data).size
     # bin the data uniformly using the grid defined above
     """ ADD np.inf as the final bin edge to get MatLab histc like behavior """
-    initial_data = np.histogram(data, bins=np.hstack((xmesh, np.inf)))[0] / N
-    initial_data = initial_data / np.sum(initial_data)
+    initial_data = np.histogram(data, bins=np.hstack((xmesh, np.inf)))[0] #/ N
+    # initial_data = initial_data / np.sum(initial_data)
 
     return initial_data, xmesh
+
+
+def iso_cut_fisher(projection, p_value_cut_thresh):
+
+    smooth_pdf, x_axis, _ = sort_cython.kde(projection, 2)
+    smooth_pdf = smooth_pdf / np.sum(smooth_pdf)
+    densities = np.int64(np.around(smooth_pdf * projection.size))
+    densities_unimodal_fit = np.int64(np.ceil(np.sum(densities) / 2) * np.ones(2))
+    _, p_value = fisher_exact(np.vstack((densities, densities_unimodal_fit)))
+    cutpoint = None
+    if p_value < p_value_cut_thresh:
+        # print("SPLIT WITH ISO CUT FISHER")
+        cutpoint = x_axis[0] + (x_axis[1] - x_axis[0])/2
+
+    return p_value, cutpoint
 
 
 """ This helper function determines the optimal cutpoint given a distribution.
@@ -658,6 +681,13 @@ def iso_cut(projection, p_value_cut_thresh):
     if N == 1:
         # Don't try any comparison with only one sample
         return 1., None
+
+    if N <= 20:
+        # This is pretty active for samples under 20, not really at all for 10,
+        # and way too active for 30+
+        p_value, cutpoint = iso_cut_fisher(projection, p_value_cut_thresh)
+        return p_value, cutpoint
+
     num_bins = np.ceil(np.sqrt(N)).astype(np.int64)
     if num_bins < 2: num_bins = 2
 
@@ -730,6 +760,9 @@ def iso_cut(projection, p_value_cut_thresh):
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None
     if p_value < p_value_cut_thresh:
+        if num_points <= 2:
+            print("Making a cut based on", num_points, "bins")
+
         residual_densities = densities - densities_unimodal_fit
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
         residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities[critical_range], np.ones_like(critical_range))

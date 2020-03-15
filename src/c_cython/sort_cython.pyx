@@ -1,6 +1,6 @@
 cimport numpy as np
 import numpy as np
-from libc.stdint cimport int64_t, int32_t
+from libc.stdint cimport int64_t, int32_t, uint8_t
 from numpy.math cimport INFINITY, NAN
 from numpy import linalg as la
 cimport cython
@@ -147,15 +147,13 @@ def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes
   cdef double *vaf_ptr = &vaf[0]
   cdef double PRESS
   # Start with PRESS as total error, i.e. no improvement
+  spikes_ptr = &spikes[0,0]
+  idx_sp = 0
   for x in range(0, spikes_x):
     for y in range(0, spikes_y):
-      PRESS += spikes[x, y] ** 2
+      PRESS += spikes_ptr[idx_sp] ** 2
+      idx_sp += 1
   PRESS /= spikes_x * spikes_y
-  if PRESS < 1.0e-14:
-    if min_components == 0:
-      return np.array([])
-    else:
-      return np.arange(0, min_components)
   RESS = np.mean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)
   vaf_ptr[0] = 1. - RESS / PRESS
 
@@ -168,32 +166,34 @@ def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes
     PRESS = RESS
 
     # Choose first local maxima
-    if (vaf_ptr[comp] < vaf_ptr[comp - 1]):
+    if (vaf[comp] < vaf[comp - 1]):
       break
     if comp == max_components:
       # Won't use more than this so break
       break
 
   max_vaf_components = comp
-  is_worse_than_mean = False
+  cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
+  cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]
   if vaf_ptr[1] < 0:
     # First PC is worse than the mean
-    is_worse_than_mean = True
+    iwtm_ptr[0] = True
     max_vaf_components = 1
 
   # This is to account for slice indexing and edge effects
   if max_vaf_components >= check_comp_ssize_t - 1:
     # This implies that we found no maxima before reaching the end of vaf
-    if vaf_ptr[check_comp_ssize_t] > vaf_ptr[check_comp_ssize_t - 1]:
+    if vaf_ptr[check_comp_ssize_t - 1] > vaf_ptr[check_comp_ssize_t - 2]:
       # vaf still increasing so choose last point
       max_vaf_components = check_comp_ssize_t
     else:
       # vaf has become flat so choose second to last point
       max_vaf_components = check_comp_ssize_t - 1
   if max_vaf_components < min_components:
-      max_vaf_components = min_components
+    max_vaf_components = min_components
   if max_vaf_components > max_components:
     max_vaf_components = max_components
+
   return comp_order[0:max_vaf_components], is_worse_than_mean
 
 
@@ -279,15 +279,13 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
   cdef double *vaf_ptr = &vaf[0]
   cdef double PRESS
   # Start with PRESS as total error, i.e. no improvement
+  spikes_ptr = &spikes[0,0]
+  idx_sp = 0
   for x in range(0, spikes_x):
     for y in range(0, spikes_y):
-      PRESS += spikes[x, y] ** 2
+      PRESS += spikes_ptr[idx_sp] ** 2
+      idx_sp += 1
   PRESS /= spikes_x * spikes_y
-  if PRESS < 1.0e-14:
-    if min_components == 0:
-      return np.array([])
-    else:
-      return np.arange(0, min_components)
   RESS = np.mean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)
   vaf_ptr[0] = 1. - RESS / PRESS
 
@@ -307,16 +305,17 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
       break
 
   max_vaf_components = comp
-  is_worse_than_mean = False
+  cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
+  cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]
   if vaf_ptr[1] < 0:
     # First PC is worse than the mean
-    is_worse_than_mean = True
+    iwtm_ptr[0] = True
     max_vaf_components = 1
 
   # This is to account for slice indexing and edge effects
   if max_vaf_components >= check_comp_ssize_t - 1:
     # This implies that we found no maxima before reaching the end of vaf
-    if vaf_ptr[check_comp_ssize_t] > vaf_ptr[check_comp_ssize_t - 1]:
+    if vaf_ptr[check_comp_ssize_t - 1] > vaf_ptr[check_comp_ssize_t - 2]:
       # vaf still increasing so choose last point
       max_vaf_components = check_comp_ssize_t
     else:
@@ -326,6 +325,7 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
     max_vaf_components = min_components
   if max_vaf_components > max_components:
     max_vaf_components = max_components
+
   return comp_order[0:max_vaf_components], is_worse_than_mean
 
 

@@ -166,7 +166,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
     new_waveforms = [[] for x in range(0, Probe.num_electrodes)]
     false_positives = [[] for x in range(0, Probe.num_electrodes)]
     false_negatives = [[] for x in range(0, Probe.num_electrodes)]
-    for chan in range(0, Probe.num_electrodes):
+    for chan in range(2, 3):# Probe.num_electrodes):
         if verbose: print("Working on electrode ", chan)
         median_cluster_size = min(100, int(np.around(crossings[chan].size / 1000)))
         if verbose: print("Getting clips")

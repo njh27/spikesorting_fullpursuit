@@ -277,8 +277,8 @@ def compute_ks5(counts_1, counts_2, x_axis):
     counts_1 = counts_1[~remove_counts]
     counts_2 = counts_2[~remove_counts]
 
-    n1 = counts_1.size - 1
-    n2 = counts_2.size - 1
+    n1 = counts_1.size
+    n2 = counts_2.size
     # counts_1 = counts_1 / (x_axis[1] - x_axis[0])
     # counts_2 = counts_2 / (x_axis[1] - x_axis[0])
 
@@ -682,7 +682,7 @@ def iso_cut(projection, p_value_cut_thresh):
         # Don't try any comparison with only one sample
         return 1., None
 
-    if N <= 20:
+    if N <= 30:
         # This is pretty active for samples under 20, not really at all for 10,
         # and way too active for 30+
         p_value, cutpoint = iso_cut_fisher(projection, p_value_cut_thresh)

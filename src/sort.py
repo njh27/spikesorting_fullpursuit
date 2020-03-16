@@ -672,6 +672,33 @@ def iso_cut_fisher(projection, p_value_cut_thresh):
     return p_value, cutpoint
 
 
+def multinomial_probability(observed, null_proportions):
+    N = np.sum(observed)
+    first_term = np.math.factorial(N)
+    second_term = np.zeros(null_proportions.shape[0])
+    for n in range(0, observed.shape[0]):
+        first_term /= np.math.factorial(observed[n])
+        second_term[n] = null_proportions[n] ** observed[n]
+    second_term = np.prod(second_term)
+    probability = first_term * second_term
+    return probability
+
+def multinomial_gof(observed, null_proportions):
+    # Must be integers > 0
+    expected = np.ceil(np.sum(observed) * null_proportions)
+    observed_pval = multinomial_probability(observed, null_proportions)
+    p_value = 0 # Computation below will include actual p_value so start at 0
+    for n_o in range(0, observed.shape[0]):
+        observed_dip_count = observed[n_o]
+        observe_test = np.copy(observed)
+        while observed_dip_count >= 0:
+            observe_test[n_o] = observed_dip_count
+            prob = multinomial_probability(observe_test, null_proportions)
+            if prob <= observed_pval:
+                p_value += prob
+            observed_dip_count -= 1
+
+
 """ This helper function determines the optimal cutpoint given a distribution.
     First, it tests to determine whether the histogram has a single peak
     If not, it returns the optimal cut point. """

@@ -110,13 +110,32 @@ that categories be ordered.
 #============================================================================================
 import numpy as np
 import copy
+from functools import reduce
+from operator import mul
+
+
+def listprod( alist ):
+	"""Return the product of all elements of a list."""
+	if alist == []:
+		return 1
+	else:
+		return reduce(mul, alist)
+
+def fact(n):
+	"""Return the factorial."""
+	if n is None:
+		return 1
+	elif n == 1 or n == 0:
+		return 1
+	else:
+		return reduce(mul, range(1, n+1), 1)
 
 
 class MultinomialGOF(object):
 
     def __init__(self, observed, null_proportions, p_threshold=1.):
-        self.observed = observed
-        self.null_proportions = null_proportions
+        self.observed = np.around(observed).astype(np.int64)
+        self.null_proportions = null_proportions / np.sum(null_proportions)
         self.p_threshold = p_threshold
         self.stop_recursing = False
         self.p_value = 0.0
@@ -125,12 +144,21 @@ class MultinomialGOF(object):
         self.n_factorial = np.math.factorial(self.n_counts)
         self.__curr_mod_src = None
 
-    def multinomial_probability(self, observed, null_proportions):
-        first_term = self.n_factorial
-        for n in range(0, self.n_cats):
-            first_term /= np.math.factorial(observed[n])
+        if np.any(self.null_proportions == 0):
+            raise ValueError("Cannot have zero expected proportions!")
 
-        return first_term * np.prod(null_proportions ** observed)
+    # def multinomial_probability(self, observed, null_proportions):
+    #     first_term = self.n_factorial
+    #     first_denom = np.zeros(self.n_cats)
+    #     for n in range(0, self.n_cats):
+    #         # first_term /= np.math.factorial(observed[n])
+    #         first_denom[n] = np.math.factorial(observed[n])
+    #
+    #     return (self.n_factorial / np.prod(first_denom)) * np.prod(null_proportions ** observed)
+    #     # return first_term * np.prod(null_proportions ** observed)
+
+    def multinomial_probability(self, obs, probs):
+        return fact(sum(obs))/listprod(list(map(fact, obs))) * listprod([pow(probs[i], obs[i]) for i in range(len(probs))])
 
     def new_sink_set(self, sink_set):
         """Internal callback routine.
@@ -218,6 +246,7 @@ class MultinomialGOF(object):
 
     def random_perm_test(self, n_perms=1000):
 
+        self.ref_p = self.multinomial_probability(self.observed, self.null_proportions)
         p_distribution = np.zeros(n_perms)
         new_draws = np.random.multinomial(self.n_counts, self.null_proportions, size=(n_perms))
         for perm in range(0, n_perms):

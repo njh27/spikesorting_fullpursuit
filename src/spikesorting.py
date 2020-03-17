@@ -114,7 +114,8 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
                p_value_cut_thresh=0.01, check_components=None,
                max_components=10, min_firing_rate=1,
                do_binary_pursuit=True, add_peak_valley=False,
-               do_ZCA_transform=True, cleanup_neurons=False, verbose=False,
+               do_ZCA_transform=True, do_branch_PCA=True,
+               cleanup_neurons=False, verbose=False,
                remove_false_positives=False):
 
     """ Example:
@@ -166,7 +167,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
     new_waveforms = [[] for x in range(0, Probe.num_electrodes)]
     false_positives = [[] for x in range(0, Probe.num_electrodes)]
     false_negatives = [[] for x in range(0, Probe.num_electrodes)]
-    for chan in range(2, 3):# Probe.num_electrodes):
+    for chan in range(0, Probe.num_electrodes):
         if verbose: print("Working on electrode ", chan)
         median_cluster_size = min(100, int(np.around(crossings[chan].size / 1000)))
         if verbose: print("Getting clips")
@@ -190,6 +191,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         # if Probe.num_electrodes > 1:
         #     scores = preprocessing.compute_pca(clips, check_components, max_components,
         #                 add_peak_valley=add_peak_valley, curr_chan_inds=curr_chan_inds)
+        #     # neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size)
         #     neuron_labels = sort.merge_clusters(scores, neuron_labels,
         #                         split_only = True,
         #                         p_value_cut_thresh=p_value_cut_thresh)
@@ -207,7 +209,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         #     if verbose: print("After PCA by channel", curr_num_clusters, "different clusters")
 
         # Single channel branch
-        if curr_num_clusters > 1:
+        if curr_num_clusters > 1 and do_branch_PCA:
             neuron_labels = branch_pca_2_0(neuron_labels, clips[:, curr_chan_inds],
                                 np.arange(0, curr_chan_inds.size),
                                 p_value_cut_thresh=p_value_cut_thresh,
@@ -219,7 +221,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
             if verbose: print("After SINGLE BRANCH", curr_num_clusters, "different clusters")
 
         # Multi channel branch
-        if Probe.num_electrodes > 1:
+        if Probe.num_electrodes > 1 and do_branch_PCA:
             neuron_labels = branch_pca_2_0(neuron_labels, clips, curr_chan_inds,
                                 p_value_cut_thresh=p_value_cut_thresh,
                                 add_peak_valley=add_peak_valley,
@@ -230,7 +232,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
             if verbose: print("After MULTI BRANCH", curr_num_clusters, "different clusters")
 
         # Multi channel branch by channel
-        if Probe.num_electrodes > 1:
+        if Probe.num_electrodes > 1 and do_branch_PCA:
             neuron_labels = branch_pca_2_0(neuron_labels, clips, curr_chan_inds,
                                 p_value_cut_thresh=p_value_cut_thresh,
                                 add_peak_valley=add_peak_valley,

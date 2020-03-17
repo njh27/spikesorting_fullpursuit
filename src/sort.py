@@ -5,7 +5,7 @@ from scipy.optimize import fsolve, fminbound
 from spikesorting_python.src import isotonic
 from spikesorting_python.src.c_cython import sort_cython
 
-import copy
+from spikesorting_python.src import multinomial_gof
 from functools import reduce
 from operator import mul
 from scipy.stats import chi2, fisher_exact
@@ -268,8 +268,8 @@ def compute_ks5(counts_1, counts_2, x_axis):
     if np.all(counts_1 == counts_2):
         return 0, 0, 1
     # Find the actual number of data points that went into these bin counts
-    sum_counts_1 = np.floor(np.sum(counts_1))
-    sum_counts_2 = np.floor(np.sum(counts_2))
+    sum_counts_1 = np.sum(counts_1)
+    sum_counts_2 = np.sum(counts_2)
     if ((sum_counts_1 == 0) or (sum_counts_2 == 0)
         or (counts_1.size <= 1) or (counts_2.size <= 1)):
         # These cases don't have enough data to do anything useful
@@ -280,11 +280,8 @@ def compute_ks5(counts_1, counts_2, x_axis):
     counts_1 = counts_1[~remove_counts]
     counts_2 = counts_2[~remove_counts]
 
-    n1 = counts_1.size
-    n2 = counts_2.size
-    # counts_1 = counts_1 / (x_axis[1] - x_axis[0])
-    # counts_2 = counts_2 / (x_axis[1] - x_axis[0])
-
+    n1 = (counts_1.size)
+    n2 = (counts_2.size)
     # Compute empirical *binned* CDF
     S1 = np.cumsum(counts_1) / sum_counts_1
     S2 = np.cumsum(counts_2) / sum_counts_2
@@ -301,43 +298,45 @@ def compute_ks5(counts_1, counts_2, x_axis):
 def chi2_best_index(observed, expected):
     """
     """
-    # if observed.size <= 2:
-    #     print("CHI2 with less than 2 with", expected, "expected points")
+
     best_chi2_stat = 0
-    min_pval = 1.
-    best_ind = 0
+    best_stop = observed.size
+    start_ind = 0
+    best_start = 0
     observed_cp = np.copy(observed)
     expected_cp = np.copy(expected)
-    for index in range(0, observed.size-2):
-        observed = observed_cp[index:]
-        expected = expected_cp[index:]
+    for index in range(1, observed_cp.size):
+        observed = observed_cp[start_ind:index]
+        expected = expected_cp[start_ind:index]
         remove_counts = np.logical_and(observed == 0, expected == 0)
         observed = observed[~remove_counts]
         expected = expected[~remove_counts]
 
-        if observed.size == 2:
-            # Doesn't seem to use this value much but probably a good idea to
-            # have just in case, especially with deleting empty bins
-            _, pval = fisher_exact(np.int64(np.vstack((observed, expected))))
-            if pval < min_pval:
-                print("CHOSE FISHER WINDOW")
+        obs_sum = np.sum(observed)
+        exp_sum = np.sum(expected)
+        # Can't be both zero since we removed above
+        if obs_sum == 0:
+            K1 = 1.
         else:
-            df_tot = observed.size - 1
-            K1 = np.sqrt(np.sum(expected) / np.sum(observed))
-            K2 = np.sqrt(np.sum(observed) / np.sum(expected))
-            chi2_stat = np.sum(((K1*observed - K2*expected) ** 2) / (observed + expected))
-            if chi2_stat == 0:
-                continue
-            pval = 1 - chi2.cdf(chi2_stat, df_tot)
-        if pval < min_pval:
+            K1 = np.sqrt(exp_sum / obs_sum)
+        if exp_sum == 0:
+            K2 = 1.
+        else:
+            K2 = np.sqrt(obs_sum / exp_sum)
+        chi2_stat = np.sum(((K1*observed - K2*expected) ** 2) / (observed + expected))
+
+        if chi2_stat == 0:
+            start_ind = index
+            continue
+        if chi2_stat > best_chi2_stat:
             best_chi2_stat = chi2_stat
-            min_pval = pval
-            best_ind = index
+            best_stop = index
+            best_start = start_ind
 
-    best_ind = max(best_ind-1, 0)
-    pval = min_pval
+    best_start = max(best_start - 1, 0)
+    best_stop = min(best_stop+1, observed_cp.size)
 
-    return best_chi2_stat, best_ind, pval
+    return best_chi2_stat, best_start, best_stop
 
 
 def kde_builtin(data, n):
@@ -695,17 +694,6 @@ def compute_dip_probabilities(observed, null_proportions, n1, p_value):
 
     return p_value
 
-def multinomial_gof(observed, null_proportions):
-    # Must be integers > 0
-    nonzero = null_proportions > 0
-    observed = observed[nonzero]
-    null_proportions = null_proportions[nonzero]
-    expected = np.ceil(np.sum(observed) * null_proportions)
-
-    p_value = compute_dip_probabilities(observed, null_proportions, 0, 0.0)
-
-    return p_value
-
 
 """ This helper function determines the optimal cutpoint given a distribution.
     First, it tests to determine whether the histogram has a single peak
@@ -713,17 +701,12 @@ def multinomial_gof(observed, null_proportions):
 def iso_cut(projection, p_value_cut_thresh):
 
     N = projection.size
-    if N == 1:
-        # Don't try any comparison with only one sample
+    if N <= 2:
+        # Don't try any comparison with only two samples since can't split
         return 1., None
 
     num_bins = np.ceil(np.sqrt(N)).astype(np.int64)
     if num_bins < 2: num_bins = 2
-    # if N <= 20:
-    #     # This is pretty active for samples under 20, not really at all for 10,
-    #     # and way too active for 30+
-    #     p_value, cutpoint = iso_cut_fisher(projection, p_value_cut_thresh)
-    #     return p_value, cutpoint
 
     smooth_pdf, x_axis, _ = sort_cython.kde(projection, num_bins)
     # smooth_pdf, x_axis, _ = kde_builtin(projection, num_bins)
@@ -737,96 +720,75 @@ def iso_cut(projection, p_value_cut_thresh):
     if np.any(np.isnan(smooth_pdf)):
         return 1., None
 
+
     # Approximate observations per spacing used for computing n for statistics
-    densities = (smooth_pdf * N)
+    obs_counts = np.around(smooth_pdf * N).astype(np.int64)
+    remove_counts = np.logical_and(obs_counts == 0, smooth_pdf == 0)
+    smooth_pdf = smooth_pdf[~remove_counts]
+    obs_counts = obs_counts[~remove_counts]
+    x_axis = x_axis[~remove_counts]
+    num_points = obs_counts.shape[0]
+
     # Generate a triange weighting to bias regression towards center of distribution
     if num_points % 2 == 0:
         iso_fit_weights = np.hstack((np.arange(1, num_points // 2 + 1), np.arange(num_points // 2, 0, -1)))
     else:
         iso_fit_weights = np.hstack((np.arange(1, num_points // 2 + 1), np.arange(num_points // 2 + 1, 0, -1)))
-    densities_unimodal_fit, peak_density_ind = isotonic.unimodal_prefix_isotonic_regression_l2(densities, iso_fit_weights)
+    densities_unimodal_fit, peak_density_ind = isotonic.unimodal_prefix_isotonic_regression_l2(smooth_pdf, iso_fit_weights)
+    densities_unimodal_fit = densities_unimodal_fit / np.sum(densities_unimodal_fit)
+    null_counts = np.around(densities_unimodal_fit * N).astype(np.int64)
 
-
-
-    # if N <= 4:
-    #     null_proportions = densities_unimodal_fit / N
-    #     null_proportions /= np.sum(null_proportions)
-    #     p_value = multinomial_gof(np.around(densities), null_proportions)
-        # if p_value < p_value_cut_thresh and N >15:
-        #     print("MULTINOMIAL", N, p_value, observed_chi2, n_chi2, np.sum(np.around(densities)), np.sum(null_proportions))
-        #     print(smooth_pdf)
-        #     print(null_proportions)
-        #     plt.plot(smooth_pdf)
-        #     plt.plot(null_proportions)
-        #
-        #     plt.show()
-
-    # Approximate observations per spacing used for computing n for statistics
-    densities_unimodal_fit = (densities_unimodal_fit * N)
-
-    # ks_left, ks_left_index, ks_left_pvalue = compute_ks5(densities[0:peak_density_ind+1],
-    #                          densities_unimodal_fit[0:peak_density_ind+1], x_axis)
-    # ks_right, ks_right_index, ks_right_pvalue = compute_ks5(densities[peak_density_ind:],
-    #                            densities_unimodal_fit[peak_density_ind:], x_axis)
-    # ks_right_index = ks_right_index + peak_density_ind
-
-    chi2_left, left_index, left_pvalue = chi2_best_index(densities[0:peak_density_ind+1],
-                             densities_unimodal_fit[0:peak_density_ind+1])
-    chi2_right, right_index, right_pvalue = chi2_best_index(densities[peak_density_ind:][-1::-1],
-                               densities_unimodal_fit[peak_density_ind:][-1::-1])
-    right_index = len(x_axis) - right_index
-
-    # # Check left KS
-    # critical_range = np.arange(left_index, peak_density_ind + 1)
-    # counts_1 = densities[critical_range]
-    # counts_2 = densities_unimodal_fit[critical_range]
-    # ks, I, left_ks_p_value = compute_ks5(counts_1, counts_2, x_axis)
-    # # Check right KS
-    # critical_range = np.arange(peak_density_ind, right_index)
-    # counts_1 = densities[critical_range]
-    # counts_2 = densities_unimodal_fit[critical_range]
-    # ks, I, right_ks_p_value = compute_ks5(counts_1, counts_2, x_axis)
-    #
-    # if left_ks_p_value < right_ks_p_value:
-    #     critical_range = np.arange(left_index, peak_density_ind + 1)
-    #     p_value = left_ks_p_value
-    #     ind = left_index
-    # else:
-    #     critical_range = np.arange(peak_density_ind, right_index)
-    #     p_value = right_ks_p_value
-    #     ind = right_index
-
-    if left_pvalue < right_pvalue:
-        critical_range = np.arange(left_index, peak_density_ind + 1)
-        p_value = left_pvalue
-        ind = left_index
+    chi2_left, left_start, left_stop = chi2_best_index(obs_counts[0:peak_density_ind+1],
+                             null_counts[0:peak_density_ind+1])
+    chi2_right, right_start, right_stop = chi2_best_index(obs_counts[peak_density_ind:][-1::-1],
+                               null_counts[peak_density_ind:][-1::-1])
+    if chi2_left > chi2_right:
+        critical_range = np.arange(left_start, left_stop)
     else:
-        critical_range = np.arange(peak_density_ind, right_index)
-        p_value = right_pvalue
-        ind = right_index
-    counts_1 = densities[critical_range]
-    counts_2 = densities_unimodal_fit[critical_range]
-    ks, I, ks_p_value = compute_ks5(counts_1, counts_2, x_axis)
-    if N < 200 and N > 10:
-        if ks_p_value < p_value:
-            print("KS WAS LESS", N)
-        else:
-            print("KS WAS MORE")
-        print(ks_p_value, p_value)
-        p_value = ks_p_value
+        critical_range = np.arange(len(x_axis) - right_stop, len(x_axis) - right_start)
+        if critical_range[0] == peak_density_ind and critical_range[-1] == obs_counts.size - 1:
+            # This means all the points are the same so no reason to check p-value
+            # Due to if/else statement, this only happens here and not for left above
+            return 1., None
+
+    critical_num_points = critical_range.shape[0]
+    critical_num_counts = np.sum(obs_counts[critical_range])
+    if critical_num_points <= 4 and critical_num_counts <= 16:
+        m_gof = multinomial_gof.MultinomialGOF(
+                    obs_counts[critical_range],
+                    densities_unimodal_fit[critical_range],
+                    p_threshold=p_value_cut_thresh)
+        p_value = m_gof.twosided_exact_test()
+    elif critical_num_points <= 8 and critical_num_counts <= 64:
+        m_gof = multinomial_gof.MultinomialGOF(
+                    obs_counts[critical_range],
+                    densities_unimodal_fit[critical_range],
+                    p_threshold=p_value_cut_thresh)
+        p_value = m_gof.random_perm_test(n_perms=1000)
+    else:
+        ks, I, p_value = compute_ks5(obs_counts[critical_range],
+                                null_counts[critical_range],
+                                x_axis)
 
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None
     if p_value < p_value_cut_thresh:
-        if num_points <= 2:
-            print("Making a cut based on", num_points, "bins")
-
-        residual_densities = densities - densities_unimodal_fit
+        residual_densities = obs_counts - null_counts
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
         residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities[critical_range], np.ones_like(critical_range))
         cutpoint_ind = np.argmax(residual_densities_fit)
         cutpoint_ind += critical_range[0]
         cutpoint = x_axis[cutpoint_ind]
+
+    # print(critical_num_points, critical_num_counts, p_value)
+    # axes = plt.axes()
+    # axes.plot(x_axis, null_counts, color='g')
+    # axes.plot(x_axis, obs_counts, color='r')
+    # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
+    # axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
+    # if cutpoint is not None:
+    #     axes.axvline(cutpoint, color='k')
+    # plt.show()
 
     return p_value, cutpoint
 

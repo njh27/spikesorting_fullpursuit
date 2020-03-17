@@ -265,9 +265,7 @@ class MultinomialGOF(object):
         # new_draws = np.random.multinomial(self.n_counts, self.null_proportions, size=(n_perms))
         for perm in range(0, n_perms):
             # p_distribution[perm] = self.multinomial_probability(new_draws[perm, :], self.null_proportions)
-            # log_p_distribution[perm] = self.multinomial_log_probability(new_draws[perm, :], self.null_proportions)
-            new_draw = np.random.multinomial(self.n_counts, self.null_proportions)
-            log_p_distribution[perm] = self.multinomial_log_probability(new_draw, self.null_proportions)
+            log_p_distribution[perm] = self.multinomial_log_probability(new_draws[perm, :], self.null_proportions)
         # self.p_value = np.count_nonzero(p_distribution <= self.ref_p) / n_perms
         self.p_value = np.count_nonzero(log_p_distribution <= self.ref_logp) / n_perms
         return self.p_value

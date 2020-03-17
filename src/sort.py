@@ -303,6 +303,7 @@ def chi2_best_index(observed, expected):
     best_stop = observed.size
     start_ind = 0
     best_start = 0
+    flexible_start = True
     observed_cp = np.copy(observed)
     expected_cp = np.copy(expected)
     for index in range(1, observed_cp.size):
@@ -315,23 +316,20 @@ def chi2_best_index(observed, expected):
         obs_sum = np.sum(observed)
         exp_sum = np.sum(expected)
         # Can't be both zero since we removed above
-        if obs_sum == 0:
-            K1 = 1.
-        else:
-            K1 = np.sqrt(exp_sum / obs_sum)
-        if exp_sum == 0:
-            K2 = 1.
-        else:
-            K2 = np.sqrt(obs_sum / exp_sum)
+        K1 = 1. if obs_sum == 0 else np.sqrt(exp_sum / obs_sum)
+        K2 = 1. if exp_sum == 0 else np.sqrt(obs_sum / exp_sum)
+        # K1, K2 = 1., 1.
         chi2_stat = np.sum(((K1*observed - K2*expected) ** 2) / (observed + expected))
 
         if chi2_stat == 0:
-            start_ind = index
+            if flexible_start:
+                start_ind = index
             continue
         if chi2_stat > best_chi2_stat:
             best_chi2_stat = chi2_stat
             best_stop = index
             best_start = start_ind
+            flexible_start = False
 
     best_start = max(best_start - 1, 0)
     best_stop = min(best_stop+1, observed_cp.size)
@@ -711,19 +709,19 @@ def iso_cut(projection, p_value_cut_thresh):
     smooth_pdf, x_axis, _ = sort_cython.kde(projection, num_bins)
     # smooth_pdf, x_axis, _ = kde_builtin(projection, num_bins)
     if x_axis.size == 1:
-        # All data are in same bin so merge
+        # All data are in same bin so merge (shouldn't happen)
         return 1., None
     # Output density of kde does not sum to one, so normalize it.
     smooth_pdf = smooth_pdf / np.sum(smooth_pdf)
     # kde function estimates at power of two spacing levels so compute num_points
     num_points = smooth_pdf.size
     if np.any(np.isnan(smooth_pdf)):
-        return 1., None
-
+        return 1., None # (shouldn't happen)
 
     # Approximate observations per spacing used for computing n for statistics
+    smooth_pdf[smooth_pdf < 0] = 0
     obs_counts = np.around(smooth_pdf * N).astype(np.int64)
-    remove_counts = np.logical_and(obs_counts == 0, smooth_pdf == 0)
+    remove_counts = np.logical_and(obs_counts <= 0, smooth_pdf <= 0)
     smooth_pdf = smooth_pdf[~remove_counts]
     obs_counts = obs_counts[~remove_counts]
     x_axis = x_axis[~remove_counts]
@@ -737,6 +735,27 @@ def iso_cut(projection, p_value_cut_thresh):
     densities_unimodal_fit, peak_density_ind = isotonic.unimodal_prefix_isotonic_regression_l2(smooth_pdf, iso_fit_weights)
     densities_unimodal_fit = densities_unimodal_fit / np.sum(densities_unimodal_fit)
     null_counts = np.around(densities_unimodal_fit * N).astype(np.int64)
+
+    # m_gof = multinomial_gof.MultinomialGOF(
+    #             obs_counts,
+    #             densities_unimodal_fit,
+    #             p_threshold=p_value_cut_thresh)
+    # p_value = m_gof.random_perm_test(n_perms=10000)
+    # cutpoint = None
+    # if p_value < p_value_cut_thresh:
+    #     cutpoint = x_axis[np.argmax(null_counts - obs_counts)]
+
+    # print(num_points, N, p_value)
+    # axes = plt.axes()
+    # axes.plot(x_axis, null_counts, color='g')
+    # axes.plot(x_axis, obs_counts, color='r')
+    # # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
+    # axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
+    # if cutpoint is not None:
+    #     axes.axvline(cutpoint, color='k')
+    # plt.show()
+
+    # return p_value, cutpoint
 
     chi2_left, left_start, left_stop = chi2_best_index(obs_counts[0:peak_density_ind+1],
                              null_counts[0:peak_density_ind+1])
@@ -753,18 +772,19 @@ def iso_cut(projection, p_value_cut_thresh):
 
     critical_num_points = critical_range.shape[0]
     critical_num_counts = np.sum(obs_counts[critical_range])
-    if critical_num_points <= 4 and critical_num_counts <= 16:
+    if False:#critical_num_points <= 4 and critical_num_counts <= 16:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
                     p_threshold=p_value_cut_thresh)
         p_value = m_gof.twosided_exact_test()
-    elif critical_num_points <= 8 and critical_num_counts <= 64:
+    elif True:#critical_num_points <= 32 and critical_num_counts <= 512:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
                     p_threshold=p_value_cut_thresh)
-        p_value = m_gof.random_perm_test(n_perms=1000)
+        p_value = m_gof.random_perm_test(n_perms=10000)
+        print("Perm p-value", p_value)
     else:
         ks, I, p_value = compute_ks5(obs_counts[critical_range],
                                 null_counts[critical_range],
@@ -777,6 +797,9 @@ def iso_cut(projection, p_value_cut_thresh):
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
         residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities[critical_range], np.ones_like(critical_range))
         cutpoint_ind = np.argmax(residual_densities_fit)
+        if residual_densities_fit[cutpoint_ind] <= 0:
+            print("!!! CUTPOINT ISNT A DIP !!!")
+
         cutpoint_ind += critical_range[0]
         cutpoint = x_axis[cutpoint_ind]
 

@@ -112,6 +112,7 @@ import numpy as np
 import copy
 from functools import reduce
 from operator import mul
+from scipy.special import gammaln
 
 
 def listprod( alist ):
@@ -131,6 +132,20 @@ def fact(n):
 		return reduce(mul, range(1, n+1), 1)
 
 
+def multinomial_log_probability(observed, null_proportions):
+
+    N = np.sum(observed)
+    first_term = gammaln(N+1)
+    second_term = np.sum(observed * np.log(null_proportions))
+    third_term = gammaln(observed + 1)
+    log_p = first_term + second_term - np.sum(third_term)
+
+    return log_p
+
+def old_multinomial_probability(obs, probs):
+    return fact(sum(obs))/listprod(list(map(fact, obs))) * listprod([pow(probs[i], obs[i]) for i in range(len(probs))])
+
+
 class MultinomialGOF(object):
 
     def __init__(self, observed, null_proportions, p_threshold=1.):
@@ -147,15 +162,12 @@ class MultinomialGOF(object):
         if np.any(self.null_proportions == 0):
             raise ValueError("Cannot have zero expected proportions!")
 
-    # def multinomial_probability(self, observed, null_proportions):
-    #     first_term = self.n_factorial
-    #     first_denom = np.zeros(self.n_cats)
-    #     for n in range(0, self.n_cats):
-    #         # first_term /= np.math.factorial(observed[n])
-    #         first_denom[n] = np.math.factorial(observed[n])
-    #
-    #     return (self.n_factorial / np.prod(first_denom)) * np.prod(null_proportions ** observed)
-    #     # return first_term * np.prod(null_proportions ** observed)
+    def multinomial_log_probability(self, observed, null_proportions):
+        first_term = gammaln(self.n_counts+1)
+        second_term = np.sum(observed * np.log(null_proportions))
+        third_term = gammaln(observed + 1)
+        log_p = first_term + second_term - np.sum(third_term)
+        return log_p
 
     def multinomial_probability(self, obs, probs):
         return fact(sum(obs))/listprod(list(map(fact, obs))) * listprod([pow(probs[i], obs[i]) for i in range(len(probs))])
@@ -246,13 +258,18 @@ class MultinomialGOF(object):
 
     def random_perm_test(self, n_perms=1000):
 
-        self.ref_p = self.multinomial_probability(self.observed, self.null_proportions)
-        p_distribution = np.zeros(n_perms)
-        new_draws = np.random.multinomial(self.n_counts, self.null_proportions, size=(n_perms))
+        self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
+        # self.ref_p = self.multinomial_probability(self.observed, self.null_proportions)
+        # p_distribution = np.zeros(n_perms)
+        log_p_distribution = np.zeros(n_perms)
+        # new_draws = np.random.multinomial(self.n_counts, self.null_proportions, size=(n_perms))
         for perm in range(0, n_perms):
-            p_distribution[perm] = self.multinomial_probability(new_draws[perm, :], self.null_proportions)
-
-        self.p_value = np.count_nonzero(p_distribution <= self.ref_p) / n_perms
+            # p_distribution[perm] = self.multinomial_probability(new_draws[perm, :], self.null_proportions)
+            # log_p_distribution[perm] = self.multinomial_log_probability(new_draws[perm, :], self.null_proportions)
+            new_draw = np.random.multinomial(self.n_counts, self.null_proportions)
+            log_p_distribution[perm] = self.multinomial_log_probability(new_draw, self.null_proportions)
+        # self.p_value = np.count_nonzero(p_distribution <= self.ref_p) / n_perms
+        self.p_value = np.count_nonzero(log_p_distribution <= self.ref_logp) / n_perms
         return self.p_value
 
 

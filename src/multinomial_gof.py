@@ -1,11 +1,14 @@
+##########################################
+# ADAPTED FROM THE ORIGINAL VERSION met.py
+# original text header, license etc. follow
+##########################################
+
 """Perform exact tests of a (site or test) distribution of multinomial count data against
 a distribution of equivalent ordered multinomial count data from another (reference or control)
 data set.  Both two-sided and one-sided tests can be performed.  One-sided tests require
 that categories be ordered.
 """
-##########################################
-# ADAPTED FROM THE ORIGINAL VERSION met.py
-##########################################
+
 
 # met.py
 # Multinomial Exact Tests

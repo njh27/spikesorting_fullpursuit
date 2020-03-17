@@ -5,6 +5,9 @@ from scipy.optimize import fsolve, fminbound
 from spikesorting_python.src import isotonic
 from spikesorting_python.src.c_cython import sort_cython
 
+import copy
+from functools import reduce
+from operator import mul
 from scipy.stats import chi2, fisher_exact
 import matplotlib.pyplot as plt
 
@@ -657,20 +660,14 @@ def bin_data(data, n):
     return initial_data, xmesh
 
 
-def iso_cut_fisher(projection, p_value_cut_thresh):
 
-    smooth_pdf, x_axis, _ = sort_cython.kde(projection, 2)
-    smooth_pdf = smooth_pdf / np.sum(smooth_pdf)
-    densities = np.int64(np.around(smooth_pdf * projection.size))
-    densities_unimodal_fit = np.int64(np.ceil(np.sum(densities) / 2) * np.ones(2))
-    _, p_value = fisher_exact(np.vstack((densities, densities_unimodal_fit)))
-    cutpoint = None
-    if p_value < p_value_cut_thresh:
-        # print("SPLIT WITH ISO CUT FISHER")
-        cutpoint = x_axis[0] + (x_axis[1] - x_axis[0])/2
 
-    return p_value, cutpoint
 
+
+
+def chi2_statistic(observed, expected):
+    chi2 = np.sum(((observed - expected) ** 2) / expected)
+    return chi2
 
 def multinomial_probability(observed, null_proportions):
     N = np.sum(observed)
@@ -681,22 +678,33 @@ def multinomial_probability(observed, null_proportions):
         second_term[n] = null_proportions[n] ** observed[n]
     second_term = np.prod(second_term)
     probability = first_term * second_term
+
     return probability
+
+def compute_dip_probabilities(observed, null_proportions, n1, p_value):
+
+    for n_o in range(n1, observed.shape[0]):
+        observe_test = np.copy(observed)
+        observed_dip_count = observe_test[n_o]
+        while observed_dip_count >= 0:
+            observe_test[n_o] = observed_dip_count
+            p_value = compute_dip_probabilities(observe_test, null_proportions, n_0 + 1, p_value)
+            prob = multinomial_probability(observe_test, null_proportions)
+            p_value += prob
+            observed_dip_count -= 1
+
+    return p_value
 
 def multinomial_gof(observed, null_proportions):
     # Must be integers > 0
+    nonzero = null_proportions > 0
+    observed = observed[nonzero]
+    null_proportions = null_proportions[nonzero]
     expected = np.ceil(np.sum(observed) * null_proportions)
-    observed_pval = multinomial_probability(observed, null_proportions)
-    p_value = 0 # Computation below will include actual p_value so start at 0
-    for n_o in range(0, observed.shape[0]):
-        observed_dip_count = observed[n_o]
-        observe_test = np.copy(observed)
-        while observed_dip_count >= 0:
-            observe_test[n_o] = observed_dip_count
-            prob = multinomial_probability(observe_test, null_proportions)
-            if prob <= observed_pval:
-                p_value += prob
-            observed_dip_count -= 1
+
+    p_value = compute_dip_probabilities(observed, null_proportions, 0, 0.0)
+
+    return p_value
 
 
 """ This helper function determines the optimal cutpoint given a distribution.
@@ -709,14 +717,13 @@ def iso_cut(projection, p_value_cut_thresh):
         # Don't try any comparison with only one sample
         return 1., None
 
-    if N <= 30:
-        # This is pretty active for samples under 20, not really at all for 10,
-        # and way too active for 30+
-        p_value, cutpoint = iso_cut_fisher(projection, p_value_cut_thresh)
-        return p_value, cutpoint
-
     num_bins = np.ceil(np.sqrt(N)).astype(np.int64)
     if num_bins < 2: num_bins = 2
+    # if N <= 20:
+    #     # This is pretty active for samples under 20, not really at all for 10,
+    #     # and way too active for 30+
+    #     p_value, cutpoint = iso_cut_fisher(projection, p_value_cut_thresh)
+    #     return p_value, cutpoint
 
     smooth_pdf, x_axis, _ = sort_cython.kde(projection, num_bins)
     # smooth_pdf, x_axis, _ = kde_builtin(projection, num_bins)
@@ -738,6 +745,24 @@ def iso_cut(projection, p_value_cut_thresh):
     else:
         iso_fit_weights = np.hstack((np.arange(1, num_points // 2 + 1), np.arange(num_points // 2 + 1, 0, -1)))
     densities_unimodal_fit, peak_density_ind = isotonic.unimodal_prefix_isotonic_regression_l2(densities, iso_fit_weights)
+
+
+
+    # if N <= 4:
+    #     null_proportions = densities_unimodal_fit / N
+    #     null_proportions /= np.sum(null_proportions)
+    #     p_value = multinomial_gof(np.around(densities), null_proportions)
+        # if p_value < p_value_cut_thresh and N >15:
+        #     print("MULTINOMIAL", N, p_value, observed_chi2, n_chi2, np.sum(np.around(densities)), np.sum(null_proportions))
+        #     print(smooth_pdf)
+        #     print(null_proportions)
+        #     plt.plot(smooth_pdf)
+        #     plt.plot(null_proportions)
+        #
+        #     plt.show()
+
+    # Approximate observations per spacing used for computing n for statistics
+    densities_unimodal_fit = (densities_unimodal_fit * N)
 
     # ks_left, ks_left_index, ks_left_pvalue = compute_ks5(densities[0:peak_density_ind+1],
     #                          densities_unimodal_fit[0:peak_density_ind+1], x_axis)
@@ -782,7 +807,13 @@ def iso_cut(projection, p_value_cut_thresh):
     counts_1 = densities[critical_range]
     counts_2 = densities_unimodal_fit[critical_range]
     ks, I, ks_p_value = compute_ks5(counts_1, counts_2, x_axis)
-    p_value = ks_p_value
+    if N < 200 and N > 10:
+        if ks_p_value < p_value:
+            print("KS WAS LESS", N)
+        else:
+            print("KS WAS MORE")
+        print(ks_p_value, p_value)
+        p_value = ks_p_value
 
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None

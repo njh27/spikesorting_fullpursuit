@@ -114,9 +114,11 @@ import copy
 
 class MultinomialGOF(object):
 
-    def __init__(self, observed, null_proportions):
+    def __init__(self, observed, null_proportions, p_threshold=1.):
         self.observed = observed
         self.null_proportions = null_proportions
+        self.p_threshold = p_threshold
+        self.stop_recursing = False
         self.p_value = 0.0
         self.n_cats = observed.shape[0]
         self.n_counts = np.sum(observed)
@@ -182,12 +184,16 @@ class MultinomialGOF(object):
         """Add to the list of cases a new case consisting of the 'counts' list, after
         distributing 'items' items over 'categories' remaining categories.
         """
+        if self.stop_recursing:
+            return
         if categories == 1:
             # There's only one category left to be filled, so put all remaining items in it.
             counts.append(items)
             p = self.multinomial_probability(counts, self.null_proportions)
             if p <= self.ref_p:
                 self.p_value += p
+                if self.p_value >= self.p_threshold:
+                    self.stop_recursing = True
         elif items == 0:
             # There are no more items, so put 0 in all remaining categories
             for n in range(categories):
@@ -195,6 +201,8 @@ class MultinomialGOF(object):
             p = self.multinomial_probability(counts, self.null_proportions)
             if p <= self.ref_p:
                 self.p_value += p
+                if self.p_value >= self.p_threshold:
+                    self.stop_recursing = True
         else:
             for n in range(items+1):
                 newcounts = copy.copy(counts)
@@ -228,10 +236,12 @@ class MultinomialGOF(object):
 
         return self.p_value
 
-    def twosided_exact_test(self, p_cut=1.):
+    def twosided_exact_test(self):
 
         ref_p = self.multinomial_probability(self.observed, self.null_proportions)
         self.ref_p = ref_p
+        self.stop_recursing = False
+        self.p_value = 0.0
         self.all_multinom_cases(self.n_cats, self.n_counts)
 
         return self.p_value

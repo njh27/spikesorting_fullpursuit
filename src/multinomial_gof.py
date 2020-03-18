@@ -229,18 +229,20 @@ class MultinomialGOF(object):
         if categories == 1:
             # There's only one category left to be filled, so put all remaining items in it.
             counts.append(items)
-            p = self.multinomial_probability(counts, self.null_proportions)
-            if p <= self.ref_p:
-                self.p_value += p
+            # p = self.multinomial_probability(counts, self.null_proportions)
+            log_p = self.multinomial_log_probability(counts, self.null_proportions)
+            if log_p <= self.ref_logp:
+                self.p_value += np.exp(log_p)
                 if self.p_value >= self.p_threshold:
                     self.stop_recursing = True
         elif items == 0:
             # There are no more items, so put 0 in all remaining categories
             for n in range(categories):
                 counts.append(0)
-            p = self.multinomial_probability(counts, self.null_proportions)
-            if p <= self.ref_p:
-                self.p_value += p
+            # p = self.multinomial_probability(counts, self.null_proportions)
+            log_p = self.multinomial_log_probability(counts, self.null_proportions)
+            if log_p <= self.ref_logp:
+                self.p_value += np.exp(log_p)
                 if self.p_value >= self.p_threshold:
                     self.stop_recursing = True
         else:
@@ -258,8 +260,8 @@ class MultinomialGOF(object):
 
     def random_perm_test(self, n_perms=1000):
 
-        self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
         # self.ref_p = self.multinomial_probability(self.observed, self.null_proportions)
+        self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
         # p_distribution = np.zeros(n_perms)
         log_p_distribution = np.zeros(n_perms)
         new_draws = np.random.multinomial(self.n_counts, self.null_proportions, size=(n_perms))
@@ -282,10 +284,11 @@ class MultinomialGOF(object):
 
     def twosided_exact_test(self):
 
-        ref_p = self.multinomial_probability(self.observed, self.null_proportions)
-        self.ref_p = ref_p
+        # ref_p = self.multinomial_probability(self.observed, self.null_proportions)
+        self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
         self.stop_recursing = False
-        self.p_value = 0.0
+        # self.p_value = 0.0
+        self.log_p_value = 0.0
         self.all_multinom_cases(self.n_cats, self.n_counts)
 
         return self.p_value

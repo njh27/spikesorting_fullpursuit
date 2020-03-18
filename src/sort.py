@@ -736,26 +736,27 @@ def iso_cut(projection, p_value_cut_thresh):
     densities_unimodal_fit = densities_unimodal_fit / np.sum(densities_unimodal_fit)
     null_counts = np.around(densities_unimodal_fit * N).astype(np.int64)
 
-    # m_gof = multinomial_gof.MultinomialGOF(
-    #             obs_counts,
-    #             densities_unimodal_fit,
-    #             p_threshold=p_value_cut_thresh)
-    # p_value = m_gof.random_perm_test(n_perms=10000)
-    # cutpoint = None
-    # if p_value < p_value_cut_thresh:
-    #     cutpoint = x_axis[np.argmax(null_counts - obs_counts)]
+    if num_points <= 4:
+        m_gof = multinomial_gof.MultinomialGOF(
+                    obs_counts,
+                    densities_unimodal_fit,
+                    p_threshold=p_value_cut_thresh)
+        p_value = m_gof.twosided_exact_test()
+        cutpoint = None
+        if p_value < p_value_cut_thresh:
+            cutpoint = x_axis[np.argmax(null_counts - obs_counts)]
 
-    # print(num_points, N, p_value)
-    # axes = plt.axes()
-    # axes.plot(x_axis, null_counts, color='g')
-    # axes.plot(x_axis, obs_counts, color='r')
-    # # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
-    # axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
-    # if cutpoint is not None:
-    #     axes.axvline(cutpoint, color='k')
-    # plt.show()
+        print(num_points, N, p_value)
+        axes = plt.axes()
+        axes.plot(x_axis, null_counts, color='g')
+        axes.plot(x_axis, obs_counts, color='r')
+        # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
+        axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
+        if cutpoint is not None:
+            axes.axvline(cutpoint, color='k')
+        plt.show()
 
-    # return p_value, cutpoint
+        return p_value, cutpoint
 
     chi2_left, left_start, left_stop = chi2_best_index(obs_counts[0:peak_density_ind+1],
                              null_counts[0:peak_density_ind+1])
@@ -778,13 +779,13 @@ def iso_cut(projection, p_value_cut_thresh):
                     densities_unimodal_fit[critical_range],
                     p_threshold=p_value_cut_thresh)
         p_value = m_gof.twosided_exact_test()
-    elif True:#critical_num_points <= 32 and critical_num_counts <= 512:
+    elif True:#critical_num_points <= 8 and critical_num_counts <= 32:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
                     p_threshold=p_value_cut_thresh)
         p_value = m_gof.random_perm_test(n_perms=10000)
-        print("Perm p-value", p_value)
+        # print("Perm p-value", p_value)
     else:
         ks, I, p_value = compute_ks5(obs_counts[critical_range],
                                 null_counts[critical_range],
@@ -797,21 +798,25 @@ def iso_cut(projection, p_value_cut_thresh):
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
         residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities[critical_range], np.ones_like(critical_range))
         cutpoint_ind = np.argmax(residual_densities_fit)
-        if residual_densities_fit[cutpoint_ind] <= 0:
-            print("!!! CUTPOINT ISNT A DIP !!!")
-
         cutpoint_ind += critical_range[0]
         cutpoint = x_axis[cutpoint_ind]
+        if residual_densities[cutpoint_ind] >= 0:
+            print("!!! CUTPOINT ISNT A DIP !!!")
+            print("skipping this cut")
 
-    # print(critical_num_points, critical_num_counts, p_value)
-    # axes = plt.axes()
-    # axes.plot(x_axis, null_counts, color='g')
-    # axes.plot(x_axis, obs_counts, color='r')
-    # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
-    # axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
-    # if cutpoint is not None:
-    #     axes.axvline(cutpoint, color='k')
-    # plt.show()
+
+            print(critical_num_points, critical_num_counts, p_value)
+            axes = plt.axes()
+            axes.plot(x_axis, null_counts, color='g')
+            axes.plot(x_axis, obs_counts, color='r')
+            axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
+            axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
+            if cutpoint is not None:
+                axes.axvline(cutpoint, color='k')
+            plt.show()
+
+            p_value = 1.
+            cutpoint = None
 
     return p_value, cutpoint
 

@@ -116,6 +116,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
                max_components=10, min_firing_rate=1,
                do_binary_pursuit=True, add_peak_valley=False,
                do_ZCA_transform=True, do_branch_PCA=True,
+               max_gpu_memory=None,
                cleanup_neurons=False, verbose=False,
                remove_false_positives=False):
 
@@ -189,27 +190,6 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         curr_num_clusters = np.unique(neuron_labels).size
         if verbose: print("Currently", curr_num_clusters, "different clusters")
 
-        # # Do multi channel sort, all channels considered together SPLIT ONLY
-        # if Probe.num_electrodes > 1:
-        #     scores = preprocessing.compute_pca(clips, check_components, max_components,
-        #                 add_peak_valley=add_peak_valley, curr_chan_inds=curr_chan_inds)
-        #     # neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size)
-        #     neuron_labels = sort.merge_clusters(scores, neuron_labels,
-        #                         split_only = True,
-        #                         p_value_cut_thresh=p_value_cut_thresh)
-        #     curr_num_clusters = np.unique(neuron_labels).size
-        #     if verbose: print("Currently", curr_num_clusters, "different clusters")
-        #
-        # # Do multi channel sort, each channel considered separately SPLIT ONLY
-        # if Probe.num_electrodes > 1:
-        #     scores = preprocessing.compute_pca_by_channel(clips, curr_chan_inds,
-        #                 check_components, max_components, add_peak_valley=add_peak_valley)
-        #     neuron_labels = sort.merge_clusters(scores, neuron_labels,
-        #                         split_only = True,
-        #                         p_value_cut_thresh=p_value_cut_thresh)
-        #     curr_num_clusters = np.unique(neuron_labels).size
-        #     if verbose: print("After PCA by channel", curr_num_clusters, "different clusters")
-
         # Single channel branch
         if curr_num_clusters > 1 and do_branch_PCA:
             neuron_labels = branch_pca_2_0(neuron_labels, clips[:, curr_chan_inds],
@@ -266,30 +246,30 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         #                     max_components=max_components, max_iters=1,
         #                     method='pca')
 
-        # # Delete any clusters under min_cluster_size before binary pursuit
-        # unique_vals, n_unique = np.unique(neuron_labels, return_counts=True)
-        # if verbose: print("Current smallest cluster has", np.amin(n_unique), "spikes")
-        # n_small_clusters = 0
-        # if np.any(n_unique < min_cluster_size):
-        #     for l_ind in range(0, unique_vals.size):
-        #         if n_unique[l_ind] < min_cluster_size:
-        #             keep_inds = ~(neuron_labels == unique_vals[l_ind])
-        #             crossings[chan] = crossings[chan][keep_inds]
-        #             neuron_labels = neuron_labels[keep_inds]
-        #             clips = clips[keep_inds, :]
-        #             n_small_clusters += 1
-        # if verbose: print("Deleted", n_small_clusters, "small clusters under min_cluster_size")
-        #
-        # if neuron_labels.size == 0:
-        #     if verbose: print("No clusters over min_firing_rate")
-        #     false_positives[chan] = np.zeros(unique_labels.size)
-        #     false_negatives[chan] = np.zeros(unique_labels.size)
-        #     labels[chan] = neuron_labels
-        #     waveforms[chan] = clips
-        #     new_waveforms[chan] = np.array([])
-        #     if verbose: print("Done.")
-        #     continue
-        #
+        # Delete any clusters under min_cluster_size before binary pursuit
+        unique_vals, n_unique = np.unique(neuron_labels, return_counts=True)
+        if verbose: print("Current smallest cluster has", np.amin(n_unique), "spikes")
+        n_small_clusters = 0
+        if np.any(n_unique < min_cluster_size):
+            for l_ind in range(0, unique_vals.size):
+                if n_unique[l_ind] < min_cluster_size:
+                    keep_inds = ~(neuron_labels == unique_vals[l_ind])
+                    crossings[chan] = crossings[chan][keep_inds]
+                    neuron_labels = neuron_labels[keep_inds]
+                    clips = clips[keep_inds, :]
+                    n_small_clusters += 1
+        if verbose: print("Deleted", n_small_clusters, "small clusters under min_cluster_size")
+
+        if neuron_labels.size == 0:
+            if verbose: print("No clusters over min_firing_rate")
+            false_positives[chan] = np.zeros(unique_labels.size)
+            false_negatives[chan] = np.zeros(unique_labels.size)
+            labels[chan] = neuron_labels
+            waveforms[chan] = clips
+            new_waveforms[chan] = np.array([])
+            if verbose: print("Done.")
+            continue
+
         # if verbose: print("Sharpening clips onto templates")
         # neuron_labels = sharpen_clusters(clips, neuron_labels, curr_chan_inds,
         #                     p_value_cut_thresh, merge_only=False,
@@ -314,10 +294,9 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
             #                         return_adjusted_clips=False)
             # clips, valid_event_indices = segment.get_multichannel_clips(Probe, Probe.get_neighbors(chan), crossings[chan], clip_width=clip_width, thresholds=thresholds)
             # crossings[chan], neuron_labels = segment.keep_valid_inds([crossings[chan], neuron_labels], valid_event_indices)
-
             crossings[chan], neuron_labels, new_inds, clips = binary_pursuit.binary_pursuit(
                 Probe, chan, crossings[chan], neuron_labels, clip_width,
-                thresholds[chan], kernels_path=None, max_gpu_memory=None)
+                thresholds[chan], kernels_path=None, max_gpu_memory=max_gpu_memory)
 
             if verbose: print("currently", np.unique(neuron_labels).size, "different clusters")
         else:

@@ -12,7 +12,7 @@ from scipy.stats import chi2, fisher_exact
 import matplotlib.pyplot as plt
 
 
-def initial_cluster_farthest(data, median_cluster_size, choose_percentile=1.0, n_random=0):
+def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, n_random=0):
     """
     Create distance based cluster labels along the rows of data.
 
@@ -64,12 +64,11 @@ def initial_cluster_farthest(data, median_cluster_size, choose_percentile=1.0, n
 
     if n_random > 0:
         n_random = np.ceil(n_random).astype(np.int64)
-        choice_weights = (distances ** 2)
-        choice_weights /= np.sum(choice_weights)
-        rand_inds = np.random.choice(data.shape[0], n_random, p=choice_weights, replace=False)
         for nl in range(0, n_random):
+            rand_ind = np.random.choice(data.shape[0], 1,
+                            p=(distances/np.sum(distances)), replace=False)
             current_num_centers += 1
-            new_center = data[rand_inds[nl], :]
+            new_center = data[rand_ind, :]
             centers = np.vstack((centers, new_center))
             temp_distance = np.sum((data - new_center)**2, axis=1)
             select = temp_distance < distances
@@ -726,21 +725,21 @@ def iso_cut(projection, p_value_cut_thresh):
                     p_threshold=p_value_cut_thresh)
         p_value = m_gof.twosided_exact_test()
         if p_value < p_value_cut_thresh:
-            print("EXACT critical cut!")
-    elif critical_num_points <= 32:# and critical_num_counts <= 256:
+            print("EXACT critical cut at p=", p_value,"!")
+    elif True:#critical_num_points <= 32:# and critical_num_counts <= 256:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
                     p_threshold=p_value_cut_thresh)
         p_value = m_gof.random_perm_test(n_perms=10000)
         if p_value < p_value_cut_thresh:
-            print("PERM critical cut!")
+            print("PERM critical cut at p=", p_value,"!")
     else:
         _, _, p_value = compute_ks5(obs_counts[critical_range],
                                 null_counts[critical_range],
                                 x_axis)
         if p_value < p_value_cut_thresh:
-            print("KS critical cut!")
+            print("KS critical cut at p=", p_value,"!")
 
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None

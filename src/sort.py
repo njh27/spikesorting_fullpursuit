@@ -736,6 +736,9 @@ def iso_cut(projection, p_value_cut_thresh):
     densities_unimodal_fit = densities_unimodal_fit / np.sum(densities_unimodal_fit)
     null_counts = np.around(densities_unimodal_fit * N).astype(np.int64)
 
+    if np.all(obs_counts == null_counts):
+        return 1., None
+
     if num_points <= 4:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts,
@@ -746,15 +749,15 @@ def iso_cut(projection, p_value_cut_thresh):
         if p_value < p_value_cut_thresh:
             cutpoint = x_axis[np.argmax(null_counts - obs_counts)]
 
-        print(num_points, N, p_value)
-        axes = plt.axes()
-        axes.plot(x_axis, null_counts, color='g')
-        axes.plot(x_axis, obs_counts, color='r')
-        # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
-        axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
-        if cutpoint is not None:
-            axes.axvline(cutpoint, color='k')
-        plt.show()
+            print("Cut in early exact", num_points, N, p_value)
+            axes = plt.axes()
+            axes.plot(x_axis, null_counts, color='g')
+            axes.plot(x_axis, obs_counts, color='r')
+            # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
+            axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
+            if cutpoint is not None:
+                axes.axvline(cutpoint, color='k')
+            plt.show()
 
         return p_value, cutpoint
 
@@ -773,23 +776,28 @@ def iso_cut(projection, p_value_cut_thresh):
 
     critical_num_points = critical_range.shape[0]
     critical_num_counts = np.sum(obs_counts[critical_range])
-    if False:#critical_num_points <= 4 and critical_num_counts <= 16:
+    if critical_num_points <= 4 and critical_num_counts <= 16:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
                     p_threshold=p_value_cut_thresh)
         p_value = m_gof.twosided_exact_test()
-    elif True:#critical_num_points <= 8 and critical_num_counts <= 32:
+        if p_value < p_value_cut_thresh:
+            print("EXACT critical cut!")
+    elif critical_num_points <= 16 and critical_num_counts <= 256:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
                     p_threshold=p_value_cut_thresh)
         p_value = m_gof.random_perm_test(n_perms=10000)
-        # print("Perm p-value", p_value)
+        if p_value < p_value_cut_thresh:
+            print("PERM critical cut!")
     else:
         ks, I, p_value = compute_ks5(obs_counts[critical_range],
                                 null_counts[critical_range],
                                 x_axis)
+        if p_value < p_value_cut_thresh:
+            print("KS critical cut!")
 
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None

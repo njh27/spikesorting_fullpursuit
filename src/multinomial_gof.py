@@ -230,7 +230,7 @@ class MultinomialGOF(object):
             # There's only one category left to be filled, so put all remaining items in it.
             counts.append(items)
             # p = self.multinomial_probability(counts, self.null_proportions)
-            log_p = self.multinomial_log_probability(counts, self.null_proportions)
+            log_p = self.multinomial_log_probability(np.array(counts), self.null_proportions)
             if log_p <= self.ref_logp:
                 self.p_value += np.exp(log_p)
                 if self.p_value >= self.p_threshold:
@@ -240,7 +240,7 @@ class MultinomialGOF(object):
             for n in range(categories):
                 counts.append(0)
             # p = self.multinomial_probability(counts, self.null_proportions)
-            log_p = self.multinomial_log_probability(counts, self.null_proportions)
+            log_p = self.multinomial_log_probability(np.array(counts), self.null_proportions)
             if log_p <= self.ref_logp:
                 self.p_value += np.exp(log_p)
                 if self.p_value >= self.p_threshold:
@@ -287,7 +287,7 @@ class MultinomialGOF(object):
         # ref_p = self.multinomial_probability(self.observed, self.null_proportions)
         self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
         self.stop_recursing = False
-        # self.p_value = 0.0
+        self.p_value = 0.0
         self.log_p_value = 0.0
         self.all_multinom_cases(self.n_cats, self.n_counts)
 

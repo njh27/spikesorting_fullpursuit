@@ -12,7 +12,7 @@ from scipy.stats import chi2, fisher_exact
 import matplotlib.pyplot as plt
 
 
-def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, centers=None):
+def initial_cluster_farthest(data, median_cluster_size, choose_percentile=1.0, n_random=0):
     """
     Create distance based cluster labels along the rows of data.
 
@@ -50,32 +50,34 @@ def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, 
         # Only 1 spike so return 1 label!
         return np.array([0], dtype=np.int64)
 
-    if centers is None:
-        # Begin with a single cluster (all data belong to the same cluster)
-        labels = np.zeros((data.shape[0]), dtype=np.int64)
-        label_counts = labels.size
-        current_num_centers = 0
-        if labels.size <= median_cluster_size:
-            return labels
-        if median_cluster_size <= 1:
-            labels = np.arange(0, labels.size, dtype=np.int64)
-            return labels
-        centers = np.mean(data, axis=0)
-        distances = np.sum((data - centers)**2, axis=1)
-    else:
-        if centers.ndim <= 1:
-            centers = centers.reshape((1, centers.size))
-        labels = np.zeros((data.shape[0]), dtype=np.int64)
-        distances = np.inf * np.ones(data.shape[0])
-        for current_num_centers in range(centers.shape[0]):
-            new_center = centers[current_num_centers, :]
+    # Begin with a single cluster (all data belong to the same cluster)
+    labels = np.zeros((data.shape[0]), dtype=np.int64)
+    label_counts = labels.size
+    current_num_centers = 0
+    if labels.size <= median_cluster_size:
+        return labels
+    if median_cluster_size <= 1:
+        labels = np.arange(0, labels.size, dtype=np.int64)
+        return labels
+    centers = np.mean(data, axis=0)
+    distances = np.sum((data - centers)**2, axis=1)
+
+    if n_random > 0:
+        n_random = np.ceil(n_random).astype(np.int64)
+        choice_weights = (distances ** 2)
+        choice_weights /= np.sum(choice_weights)
+        rand_inds = np.random.choice(data.shape[0], n_random, p=choice_weights, replace=False)
+        for nl in range(0, n_random):
+            current_num_centers += 1
+            new_center = data[rand_inds[nl], :]
+            centers = np.vstack((centers, new_center))
             temp_distance = np.sum((data - new_center)**2, axis=1)
-            # Add any points closer to new center than their previous center
             select = temp_distance < distances
             labels[select] = current_num_centers
             distances[select] = temp_distance[select]
-        _, label_counts = np.unique(labels, return_counts=True)
+    pre_centers = current_num_centers
 
+    _, label_counts = np.unique(labels, return_counts=True)
     # Convert percentile to an index
     n_percentile = np.ceil((labels.size-1) * (1 - choose_percentile)).astype(np.int64)
     while np.median(label_counts) > median_cluster_size and current_num_centers < labels.size:
@@ -91,6 +93,8 @@ def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, 
         labels[select] = current_num_centers
         distances[select] = temp_distance[select]
         _, label_counts = np.unique(labels, return_counts=True)
+
+    print("Max farthest added", current_num_centers - pre_centers, "labels")
 
     return labels
 
@@ -299,6 +303,9 @@ def chi2_best_index(observed, expected):
     """
     """
 
+    # for start_index = range(0, observed_cp.size):
+    # for stop_index = range(start_index + 1, observed_cp.size):
+
     best_chi2_stat = 0
     best_stop = observed.size
     start_ind = 0
@@ -318,7 +325,6 @@ def chi2_best_index(observed, expected):
         # Can't be both zero since we removed above
         K1 = 1. if obs_sum == 0 else np.sqrt(exp_sum / obs_sum)
         K2 = 1. if exp_sum == 0 else np.sqrt(obs_sum / exp_sum)
-        # K1, K2 = 1., 1.
         chi2_stat = np.sum(((K1*observed - K2*expected) ** 2) / (observed + expected))
 
         if chi2_stat == 0:
@@ -610,11 +616,6 @@ def kde_builtin(data, n):
             """ I am using fsolve here rather than MatLab 'fzero' """
             # t_star = fminbound(fixed_point_abs, tol_0, tol, args=(N, I, a2))
             t_star = bound_grad_desc_fixed_point_abs(N, I, a2, tol_0, tol, 1e-6, 1e-6)
-            # old_f = fixed_point_abs(t_star, N, I, a2)
-            # new_f = fixed_point_abs(t_star_new, N, I, a2)
-            # print("OLD t_star = ", t_star, old_f)
-            # print("NEW t_star = ", t_star_new, new_f)
-            # print("DIFFERENCE = ", (old_f - new_f))
             break
         else:
             tol_0 = tol
@@ -637,62 +638,6 @@ def kde_builtin(data, n):
     return density, xmesh, bandwidth
 
 
-def bin_data(data, n):
-    MIN = np.amin(data)
-    MAX = np.amax(data)
-
-    if MIN == MAX:
-        return np.array([1]), np.array([MAX])
-
-    # set up the grid over which the density estimate is computed
-    R = MAX - MIN
-    dx = R / (n - 1)
-    xmesh = MIN + np.arange(0, R+dx, dx)
-    N = np.unique(data).size
-    # bin the data uniformly using the grid defined above
-    """ ADD np.inf as the final bin edge to get MatLab histc like behavior """
-    initial_data = np.histogram(data, bins=np.hstack((xmesh, np.inf)))[0] #/ N
-    # initial_data = initial_data / np.sum(initial_data)
-
-    return initial_data, xmesh
-
-
-
-
-
-
-
-def chi2_statistic(observed, expected):
-    chi2 = np.sum(((observed - expected) ** 2) / expected)
-    return chi2
-
-def multinomial_probability(observed, null_proportions):
-    N = np.sum(observed)
-    first_term = np.math.factorial(N)
-    second_term = np.zeros(null_proportions.shape[0])
-    for n in range(0, observed.shape[0]):
-        first_term /= np.math.factorial(observed[n])
-        second_term[n] = null_proportions[n] ** observed[n]
-    second_term = np.prod(second_term)
-    probability = first_term * second_term
-
-    return probability
-
-def compute_dip_probabilities(observed, null_proportions, n1, p_value):
-
-    for n_o in range(n1, observed.shape[0]):
-        observe_test = np.copy(observed)
-        observed_dip_count = observe_test[n_o]
-        while observed_dip_count >= 0:
-            observe_test[n_o] = observed_dip_count
-            p_value = compute_dip_probabilities(observe_test, null_proportions, n_0 + 1, p_value)
-            prob = multinomial_probability(observe_test, null_proportions)
-            p_value += prob
-            observed_dip_count -= 1
-
-    return p_value
-
-
 """ This helper function determines the optimal cutpoint given a distribution.
     First, it tests to determine whether the histogram has a single peak
     If not, it returns the optimal cut point. """
@@ -701,6 +646,7 @@ def iso_cut(projection, p_value_cut_thresh):
     N = projection.size
     if N <= 2:
         # Don't try any comparison with only two samples since can't split
+        # merge_clusters shouldn't get to this point
         return 1., None
 
     num_bins = np.ceil(np.sqrt(N)).astype(np.int64)
@@ -738,7 +684,6 @@ def iso_cut(projection, p_value_cut_thresh):
 
     if np.all(obs_counts == null_counts):
         return 1., None
-
     if num_points <= 4:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts,
@@ -748,7 +693,6 @@ def iso_cut(projection, p_value_cut_thresh):
         cutpoint = None
         if p_value < p_value_cut_thresh:
             cutpoint = x_axis[np.argmax(null_counts - obs_counts)]
-
             print("Cut in early exact", num_points, N, p_value)
             axes = plt.axes()
             axes.plot(x_axis, null_counts, color='g')
@@ -758,7 +702,6 @@ def iso_cut(projection, p_value_cut_thresh):
             if cutpoint is not None:
                 axes.axvline(cutpoint, color='k')
             plt.show()
-
         return p_value, cutpoint
 
     chi2_left, left_start, left_stop = chi2_best_index(obs_counts[0:peak_density_ind+1],
@@ -784,7 +727,7 @@ def iso_cut(projection, p_value_cut_thresh):
         p_value = m_gof.twosided_exact_test()
         if p_value < p_value_cut_thresh:
             print("EXACT critical cut!")
-    elif critical_num_points <= 16 and critical_num_counts <= 256:
+    elif critical_num_points <= 32:# and critical_num_counts <= 256:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
@@ -793,7 +736,7 @@ def iso_cut(projection, p_value_cut_thresh):
         if p_value < p_value_cut_thresh:
             print("PERM critical cut!")
     else:
-        ks, I, p_value = compute_ks5(obs_counts[critical_range],
+        _, _, p_value = compute_ks5(obs_counts[critical_range],
                                 null_counts[critical_range],
                                 x_axis)
         if p_value < p_value_cut_thresh:
@@ -811,8 +754,6 @@ def iso_cut(projection, p_value_cut_thresh):
         if residual_densities[cutpoint_ind] >= 0:
             print("!!! CUTPOINT ISNT A DIP !!!")
             print("skipping this cut")
-
-
             print(critical_num_points, critical_num_counts, p_value)
             axes = plt.axes()
             axes.plot(x_axis, null_counts, color='g')
@@ -954,10 +895,17 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
         #     p_value_cut_thresh = original_pval / len(minimum_distance_pairs)
         for c1, c2 in minimum_distance_pairs:
             if verbose: print("Comparing ", c1, " with ", c2)
-            merge = merge_test(data, labels, c1, c2)
+            n_c1 = np.count_nonzero(labels == c1)
+            n_c2 = np.count_nonzero(labels == c2)
+            if n_c1 > 1 or n_c2 > 1:
+                merge = merge_test(data, labels, c1, c2)
+            else:
+                # c1 and c2 have one spike each so merge them (algorithm can't
+                # split in this case and they are mutually closest pairs)
+                merge = True
             if merge:
                 # Combine the two clusters together, merging into larger cluster label
-                if np.count_nonzero(labels == c1) >= np.count_nonzero(labels == c2):
+                if n_c1 >= n_c2:
                     labels[labels == c2] = c1
                 else:
                     labels[labels == c1] = c2

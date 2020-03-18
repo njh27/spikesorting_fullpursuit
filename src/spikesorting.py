@@ -94,7 +94,8 @@ def branch_pca_2_0(neuron_labels, clips, curr_chan_inds, p_value_cut_thresh=0.01
                         check_components, max_components, add_peak_valley=add_peak_valley)
         else:
             raise ValueError("Sharpen method must be either 'pca', or 'chan_pca'.")
-        clust_labels = sort.initial_cluster_farthest(scores, median_cluster_size)
+        n_random = np.around(clust_clips.shape[0] / 100)
+        clust_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
         clust_labels = sort.merge_clusters(scores, clust_labels,
                         p_value_cut_thresh=p_value_cut_thresh)
         new_labels = np.unique(clust_labels)
@@ -167,7 +168,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
     new_waveforms = [[] for x in range(0, Probe.num_electrodes)]
     false_positives = [[] for x in range(0, Probe.num_electrodes)]
     false_negatives = [[] for x in range(0, Probe.num_electrodes)]
-    for chan in range(0, Probe.num_electrodes):
+    for chan in range(0,1):#0, Probe.num_electrodes):
         if verbose: print("Working on electrode ", chan)
         median_cluster_size = min(100, int(np.around(crossings[chan].size / 1000)))
         if verbose: print("Getting clips")
@@ -180,7 +181,8 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
                     check_components, max_components, add_peak_valley=add_peak_valley,
                     curr_chan_inds=np.arange(0, curr_chan_inds.size))
-        neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size)
+        n_random = np.around(crossings[chan].size / 100)
+        neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
         neuron_labels = sort.merge_clusters(scores, neuron_labels,
                             split_only = False,
                             p_value_cut_thresh=p_value_cut_thresh)

@@ -122,6 +122,7 @@ def listprod( alist ):
 	else:
 		return reduce(mul, alist)
 
+
 def fact(n):
 	"""Return the factorial."""
 	if n is None:
@@ -133,162 +134,105 @@ def fact(n):
 
 
 def multinomial_log_probability(observed, null_proportions):
+	"""Computes log probability of observed given null proportions using the
+	gamme log function. """
+	N = np.sum(observed)
+	first_term = gammaln(N+1)
+	second_term = np.sum(observed * np.log(null_proportions))
+	third_term = gammaln(observed + 1)
+	log_p = first_term + second_term - np.sum(third_term)
+	return log_p
 
-    N = np.sum(observed)
-    first_term = gammaln(N+1)
-    second_term = np.sum(observed * np.log(null_proportions))
-    third_term = gammaln(observed + 1)
-    log_p = first_term + second_term - np.sum(third_term)
 
-    return log_p
-
-def old_multinomial_probability(obs, probs):
-    return fact(sum(obs))/listprod(list(map(fact, obs))) * listprod([pow(probs[i], obs[i]) for i in range(len(probs))])
+def multinomial_probability(obs, probs):
+	"""Computes probability of obs given null probs using factorials. """
+	return fact(sum(obs))/listprod(list(map(fact, obs))) * listprod([pow(probs[i], obs[i]) for i in range(len(probs))])
 
 
 class MultinomialGOF(object):
 
-    def __init__(self, observed, null_proportions, p_threshold=1.):
-        self.observed = np.around(observed).astype(np.int64)
-        self.null_proportions = null_proportions / np.sum(null_proportions)
-        self.p_threshold = p_threshold
-        self.stop_recursing = False
-        self.p_value = 0.0
-        self.n_cats = observed.shape[0]
-        self.n_counts = np.sum(observed)
-        self.n_factorial = np.math.factorial(self.n_counts)
-        self.__curr_mod_src = None
+	def __init__(self, observed, null_proportions, p_threshold=1.):
+		if np.any(null_proportions == 0):
+			raise ValueError("Cannot have zero expected proportions!")
+		self.observed = np.around(observed).astype(np.int64)
+		self.null_proportions = null_proportions / np.sum(null_proportions)
+		self.p_threshold = p_threshold
+		self.stop_recursing = False
+		self.p_value = 0.0
+		self.n_cats = observed.shape[0]
+		self.n_counts = np.sum(observed)
 
-        if np.any(self.null_proportions == 0):
-            raise ValueError("Cannot have zero expected proportions!")
+	def multinomial_log_probability(self, observed, null_proportions):
+		"""Computes log probability of observed given null proportions using the
+		gamme log function. """
+		first_term = gammaln(self.n_counts+1)
+		second_term = np.sum(observed * np.log(null_proportions))
+		third_term = gammaln(observed + 1)
+		log_p = first_term + second_term - np.sum(third_term)
+		return log_p
 
-    def multinomial_log_probability(self, observed, null_proportions):
-        first_term = gammaln(self.n_counts+1)
-        second_term = np.sum(observed * np.log(null_proportions))
-        third_term = gammaln(observed + 1)
-        log_p = first_term + second_term - np.sum(third_term)
-        return log_p
+	def multinom_cases(self, counts, categories, items):
+		"""Add to the list of cases a new case consisting of the 'counts' list, after
+		distributing 'items' items over 'categories' remaining categories.
+		"""
+		if self.stop_recursing:
+			return
+		if categories == 1:
+			# There's only one category left to be filled, so put all remaining items in it.
+			counts.append(items)
+			# p = multinomial_probability(counts, self.null_proportions)
+			log_p = self.multinomial_log_probability(np.array(counts), self.null_proportions)
+			if log_p <= self.ref_logp:
+				self.p_value += np.exp(log_p)
+				if self.p_value >= self.p_threshold:
+					self.stop_recursing = True
+		elif items == 0:
+			# There are no more items, so put 0 in all remaining categories
+			for n in range(categories):
+				counts.append(0)
+			# p = multinomial_probability(counts, self.null_proportions)
+			log_p = self.multinomial_log_probability(np.array(counts), self.null_proportions)
+			if log_p <= self.ref_logp:
+				self.p_value += np.exp(log_p)
+				if self.p_value >= self.p_threshold:
+					self.stop_recursing = True
+		else:
+			for n in range(items+1):
+				newcounts = copy.copy(counts)
+				newcounts.append(n)
+				self.multinom_cases(newcounts, categories-1, items-n)
 
-    def multinomial_probability(self, obs, probs):
-        return fact(sum(obs))/listprod(list(map(fact, obs))) * listprod([pow(probs[i], obs[i]) for i in range(len(probs))])
+	def all_multinom_cases(self, categories, items):
+		"""Returns a list of all multinomial combinations (each a list) of 'items' items distributed
+		in all possible ways over 'categories' categories."""
+		if categories==0 and items>0:
+			raise MultinomError("Can't distribute %d items over 0 cases." % items)
+		self.multinom_cases([], categories, items)
 
-    def new_sink_set(self, sink_set):
-        """Internal callback routine.
-        """
-        new_case = np.hstack((self.__curr_mod_src, sink_set))
-        self.p_value += self.multinomial_probability(new_case, self.null_proportions)
+	def random_perm_test(self, n_perms=1000):
+		"""Compute probability of observed data given null proportions using
+		a random sampling permutation test from numpy's multinomial random
+		sampling function. """
+		# self.ref_p = multinomial_probability(self.observed, self.null_proportions)
+		self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
+		# p_distribution = np.zeros(n_perms)
+		log_p_distribution = np.zeros(n_perms)
+		new_draws = np.random.multinomial(self.n_counts, self.null_proportions, size=(n_perms))
+		for perm in range(0, n_perms):
+			# p_distribution[perm] = multinomial_probability(new_draws[perm, :], self.null_proportions)
+			log_p_distribution[perm] = self.multinomial_log_probability(new_draws[perm, :], self.null_proportions)
+		# self.p_value = np.count_nonzero(p_distribution <= self.ref_p) / n_perms
+		self.p_value = np.count_nonzero(log_p_distribution <= self.ref_logp) / n_perms
+		return self.p_value
 
-    def redistrib(self, counts, sublist, accumlist):
-        """Create lists of all combinations of 'counts' redistributed over 'sublist',
-        which is a simple list of integers (counts).  Execute 'new_sink_set()'
-        with each combination.
-        """
-        if sublist.shape[0] == 1:
-            newaccum = np.hstack((accumlist, counts + sublist[0]))
-            self.new_sink_set(newaccum)
-        else:
-            for i in range(counts+1):
-                newaccum = np.hstack((accumlist, i + sublist[0]))
-                self.redistrib(counts-i, sublist[1:], newaccum)
-
-    def new_src_set(self, src_set):
-        """Callback routine for find_subset.
-        """
-        self.__curr_mod_src = [self.observed[i] - src_set[i] for i in range(src_set.shape[0])]
-        n_to_move = np.sum(src_set).astype(np.int64)
-        self.redistrib(n_to_move, self.observed[src_set.shape[0]:], [])
-
-    def subset(self, sublist, accumlist):
-        """Find all combinations of elements of 'sublist' (which is a simple list
-        of integers [counts]).  Each combination has a length equal to 'sublist',
-        and zeroes may appear in any position (category) except the last.  Execute
-        'new_src_set()' with each combination.
-        """
-        if len(sublist) == 0:
-            self.new_src_set(accumlist)
-        else:
-            if sublist[0] == 0:
-                newaccum = np.hstack((accumlist, 0))
-                self.subset(sublist[1:], newaccum)
-            else:
-                if sublist.shape[0] == 1:
-                    for i in range(sublist[0]):
-                        newaccum = np.hstack((accumlist, i+1))
-                        self.subset(sublist[1:], newaccum)
-                else:
-                    for i in range(sublist[0]+1):
-                        newaccum = np.hstack((accumlist, i))
-                        self.subset(sublist[1:], newaccum)
-
-    def multinom_cases(self, counts, categories, items):
-        """Add to the list of cases a new case consisting of the 'counts' list, after
-        distributing 'items' items over 'categories' remaining categories.
-        """
-        if self.stop_recursing:
-            return
-        if categories == 1:
-            # There's only one category left to be filled, so put all remaining items in it.
-            counts.append(items)
-            # p = self.multinomial_probability(counts, self.null_proportions)
-            log_p = self.multinomial_log_probability(np.array(counts), self.null_proportions)
-            if log_p <= self.ref_logp:
-                self.p_value += np.exp(log_p)
-                if self.p_value >= self.p_threshold:
-                    self.stop_recursing = True
-        elif items == 0:
-            # There are no more items, so put 0 in all remaining categories
-            for n in range(categories):
-                counts.append(0)
-            # p = self.multinomial_probability(counts, self.null_proportions)
-            log_p = self.multinomial_log_probability(np.array(counts), self.null_proportions)
-            if log_p <= self.ref_logp:
-                self.p_value += np.exp(log_p)
-                if self.p_value >= self.p_threshold:
-                    self.stop_recursing = True
-        else:
-            for n in range(items+1):
-                newcounts = copy.copy(counts)
-                newcounts.append(n)
-                self.multinom_cases(newcounts, categories-1, items-n)
-
-    def all_multinom_cases(self, categories, items):
-        """Returns a list of all multinomial combinations (each a list) of 'items' items distributed
-        in all possible ways over 'categories' categories."""
-        if categories==0 and items>0:
-            raise MultinomError("Can't distribute %d items over 0 cases." % items)
-        self.multinom_cases([], categories, items)
-
-    def random_perm_test(self, n_perms=1000):
-
-        # self.ref_p = self.multinomial_probability(self.observed, self.null_proportions)
-        self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
-        # p_distribution = np.zeros(n_perms)
-        log_p_distribution = np.zeros(n_perms)
-        new_draws = np.random.multinomial(self.n_counts, self.null_proportions, size=(n_perms))
-        for perm in range(0, n_perms):
-            # p_distribution[perm] = self.multinomial_probability(new_draws[perm, :], self.null_proportions)
-            log_p_distribution[perm] = self.multinomial_log_probability(new_draws[perm, :], self.null_proportions)
-        # self.p_value = np.count_nonzero(p_distribution <= self.ref_p) / n_perms
-        self.p_value = np.count_nonzero(log_p_distribution <= self.ref_logp) / n_perms
-        return self.p_value
-
-
-    def onesided_exact_test(self):
-        self.p_value = self.multinomial_probability(self.observed, self.null_proportions)
-        for i in range(self.n_cats - 1):
-            if self.observed[i] > 0:
-                orig_src = self.observed[0:i+1]
-                self.subset(orig_src, np.array([]))
-
-        return self.p_value
-
-    def twosided_exact_test(self):
-
-        # ref_p = self.multinomial_probability(self.observed, self.null_proportions)
-        self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
-        self.stop_recursing = False
-        self.p_value = 0.0
-        self.log_p_value = 0.0
-        self.all_multinom_cases(self.n_cats, self.n_counts)
-
-        return self.p_value
+	def twosided_exact_test(self):
+		"""Compute exact probability of observed data given null proprotions
+		by summing over all possible instances with a probability less than or
+		equal to the probability of the observed data. """
+		# ref_p = multinomial_probability(self.observed, self.null_proportions)
+		self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
+		self.stop_recursing = False
+		self.p_value = 0.0
+		self.log_p_value = 0.0
+		self.all_multinom_cases(self.n_cats, self.n_counts)
+		return self.p_value

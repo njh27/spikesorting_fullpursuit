@@ -330,7 +330,7 @@ def chi2_best_index(observed, expected):
         # print("SET K1 AND K2 TO 1!")
         chi2_stat = np.sum(((K1*observed - K2*expected) ** 2) / (observed + expected))
 
-        if chi2_stat == 0:
+        if chi2_stat < 1e-6:
             if flexible_start:
                 start_ind = index
             continue

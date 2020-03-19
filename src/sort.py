@@ -300,7 +300,9 @@ def compute_ks5(counts_1, counts_2, x_axis):
 
 def chi2_best_index(observed, expected):
     """
-    """
+    Indices are sliceable, and at least 0, 1. They are adjusted to include the
+    point just before and just after the most deviant chi2 window if
+    possible."""
 
     # for start_index = range(0, observed_cp.size):
     # for stop_index = range(start_index + 1, observed_cp.size):
@@ -324,6 +326,8 @@ def chi2_best_index(observed, expected):
         # Can't be both zero since we removed above
         K1 = 1. if obs_sum == 0 else np.sqrt(exp_sum / obs_sum)
         K2 = 1. if exp_sum == 0 else np.sqrt(obs_sum / exp_sum)
+        # K1, K2 = 1, 1 # Useful for testing but not really sorting
+        # print("SET K1 AND K2 TO 1!")
         chi2_stat = np.sum(((K1*observed - K2*expected) ** 2) / (observed + expected))
 
         if chi2_stat == 0:
@@ -335,9 +339,9 @@ def chi2_best_index(observed, expected):
             best_stop = index
             best_start = start_ind
             flexible_start = False
-
+    # Adjust to include indices before and after window of deviations
     best_start = max(best_start - 1, 0)
-    best_stop = min(best_stop+1, observed_cp.size)
+    best_stop = min(best_stop + 1, observed_cp.size)
 
     return best_chi2_stat, best_start, best_stop
 
@@ -637,6 +641,49 @@ def kde_builtin(data, n):
     return density, xmesh, bandwidth
 
 
+def find_optimal_cutpoint(cutpoint_ind, residual_densities, x_axis):
+    """
+    """
+    if cutpoint_ind == 0:
+        first_same_index = 0
+        last_same_index = 0
+        check_ind = 0
+        while residual_densities[check_ind + 1] == residual_densities[cutpoint_ind]:
+            last_same_index = check_ind + 1
+            check_ind += 1
+            if check_ind == residual_densities.shape[0] - 1:
+                break
+    elif cutpoint_ind == residual_densities.shape[0] - 1:
+        first_same_index = residual_densities.shape[0] - 1
+        last_same_index = residual_densities.shape[0] - 1
+        check_ind = residual_densities.shape[0] - 1
+        while residual_densities[check_ind - 1] == residual_densities[cutpoint_ind]:
+            first_same_index = check_ind - 1
+            check_ind -= 1
+            if check_ind == 0:
+                break
+    else:
+        first_same_index = cutpoint_ind
+        check_ind = cutpoint_ind
+        while residual_densities[check_ind - 1] == residual_densities[cutpoint_ind]:
+            first_same_index = check_ind - 1
+            check_ind -= 1
+            if check_ind == 0:
+                break
+        last_same_index = cutpoint_ind
+        check_ind = cutpoint_ind
+        while residual_densities[check_ind + 1] == residual_densities[cutpoint_ind]:
+            last_same_index = check_ind + 1
+            check_ind += 1
+            if check_ind == residual_densities.shape[0] - 1:
+                break
+    cutpoint = x_axis[first_same_index] + (
+                    x_axis[last_same_index] - x_axis[first_same_index])/2
+    if first_same_index != last_same_index:
+        print("Chose between multiple cutpoints!")
+    return cutpoint
+
+
 """ This helper function determines the optimal cutpoint given a distribution.
     First, it tests to determine whether the histogram has a single peak
     If not, it returns the optimal cut point. """
@@ -691,7 +738,8 @@ def iso_cut(projection, p_value_cut_thresh):
         p_value = m_gof.twosided_exact_test()
         cutpoint = None
         if p_value < p_value_cut_thresh:
-            cutpoint = x_axis[np.argmax(null_counts - obs_counts)]
+            cutpoint_ind = np.argmax(null_counts - obs_counts)
+            cutpoint = find_optimal_cutpoint(cutpoint_ind, null_counts - obs_counts, x_axis)
             print("Cut in early exact", num_points, N, p_value)
             axes = plt.axes()
             axes.plot(x_axis, null_counts, color='g')
@@ -708,9 +756,15 @@ def iso_cut(projection, p_value_cut_thresh):
     chi2_right, right_start, right_stop = chi2_best_index(obs_counts[peak_density_ind:][-1::-1],
                                null_counts[peak_density_ind:][-1::-1])
     if chi2_left > chi2_right:
+        # chi2_best_index returns sliceable indices so don't adjust
         critical_range = np.arange(left_start, left_stop)
+        citical_side = 'left'
     else:
-        critical_range = np.arange(len(x_axis) - right_stop, len(x_axis) - right_start)
+        # right side values were computed backward in chi2_best_index so fix it
+        flip_right_start = len(x_axis) - right_stop
+        flip_right_stop = len(x_axis) - right_start
+        critical_range = np.arange(flip_right_start, flip_right_stop)
+        citical_side = 'right'
         if critical_range[0] == peak_density_ind and critical_range[-1] == obs_counts.size - 1:
             # This means all the points are the same so no reason to check p-value
             # Due to if/else statement, this only happens here and not for left above
@@ -726,7 +780,7 @@ def iso_cut(projection, p_value_cut_thresh):
         p_value = m_gof.twosided_exact_test()
         if p_value < p_value_cut_thresh:
             print("EXACT critical cut at p=", p_value,"!")
-    elif True:#critical_num_points <= 32:# and critical_num_counts <= 256:
+    elif True:#critical_num_points <= 32:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
@@ -747,12 +801,20 @@ def iso_cut(projection, p_value_cut_thresh):
         residual_densities = obs_counts - null_counts
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
         residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities[critical_range], np.ones_like(critical_range))
-        cutpoint_ind = np.argmax(residual_densities_fit)
+        if citical_side == 'left':
+            # Ensure we cut closest to center in event of a tie
+            cutpoint_ind = np.argmax(residual_densities_fit[-1::-1])
+            cutpoint_ind = len(critical_range) - cutpoint_ind - 1
+        else:
+            cutpoint_ind = np.argmax(residual_densities_fit)
         cutpoint_ind += critical_range[0]
-        cutpoint = x_axis[cutpoint_ind]
+
+        cutpoint = find_optimal_cutpoint(cutpoint_ind, residual_densities, x_axis)
+
         if residual_densities[cutpoint_ind] >= 0:
             print("!!! CUTPOINT ISNT A DIP !!!")
             print("skipping this cut")
+
             print(critical_num_points, critical_num_counts, p_value)
             axes = plt.axes()
             axes.plot(x_axis, null_counts, color='g')
@@ -765,6 +827,16 @@ def iso_cut(projection, p_value_cut_thresh):
 
             p_value = 1.
             cutpoint = None
+
+    # print("critical side", citical_side, "n points", critical_num_points, "n counts", critical_num_counts, "p-value", p_value)
+    # axes = plt.axes()
+    # axes.plot(x_axis, null_counts, color='g')
+    # axes.plot(x_axis, obs_counts, color='r')
+    # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
+    # axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
+    # if cutpoint is not None:
+    #     axes.axvline(cutpoint, color='k')
+    # plt.show()
 
     return p_value, cutpoint
 

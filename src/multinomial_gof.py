@@ -213,16 +213,19 @@ class MultinomialGOF(object):
 		"""Compute probability of observed data given null proportions using
 		a random sampling permutation test from numpy's multinomial random
 		sampling function. """
-		# self.ref_p = multinomial_probability(self.observed, self.null_proportions)
 		self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
-		# p_distribution = np.zeros(n_perms)
-		log_p_distribution = np.zeros(n_perms)
-		new_draws = np.random.multinomial(self.n_counts, self.null_proportions, size=(n_perms))
+		perm_cutoff = np.ceil(self.p_threshold * n_perms).astype(np.int64)
+		cumulative_ECDF = 0
 		for perm in range(0, n_perms):
-			# p_distribution[perm] = multinomial_probability(new_draws[perm, :], self.null_proportions)
-			log_p_distribution[perm] = self.multinomial_log_probability(new_draws[perm, :], self.null_proportions)
-		# self.p_value = np.count_nonzero(p_distribution <= self.ref_p) / n_perms
-		self.p_value = np.count_nonzero(log_p_distribution <= self.ref_logp) / n_perms
+			perm_logp = self.multinomial_log_probability(
+							np.random.multinomial(self.n_counts,
+								self.null_proportions, size=(1)),
+								self.null_proportions)
+			if perm_logp <= self.ref_logp:
+				cumulative_ECDF += 1
+				if cumulative_ECDF == perm_cutoff:
+					break
+		self.p_value = cumulative_ECDF / n_perms
 		return self.p_value
 
 	def twosided_exact_test(self):

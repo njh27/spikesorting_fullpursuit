@@ -466,25 +466,6 @@ def identify_clusters_to_compare(double[:, ::1] scores, int64_t[::1] labels, lis
   return minimum_distance_pairs
 
 
-# def idct1d(data):
-#   # computes the inverse discrete cosine transform
-#   # Compute weights
-#   weights = data.size * np.exp(1j * np.arange(0, data.size) * np.pi / (2 * data.size))
-#   # Compute x tilde using equation (5.93) in Jain
-#   data = np.real(ifft(weights * data))
-#   # Re-order elements of each column according to equations (5.93) and
-#   # (5.94) in Jain
-#   out = np.zeros(data.size)
-#   out_midslice = int64_t(data.size / 2)
-#   out[0::2] = data[0:out_midslice]
-#   out[1::2] = data[-1:out_midslice-1:-1]
-#   #   Reference:
-#   #      A. K. Jain, "Fundamentals of Digital Image
-#   #      Processing", pp. 150-153.
-#
-#   return out
-
-
 cdef int64_t sign_fun(double x):
   # Returns 1 if x > 0 , -1 if x < 0, and 0 if x == 0
   return <int64_t>(x > 0) - (x < 0)

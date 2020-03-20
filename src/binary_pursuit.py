@@ -318,7 +318,6 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             additional_spike_indices_buffer = cl.Buffer(ctx, mf.WRITE_ONLY, size=4 * total_work_size_pursuit) # TODO: How long should this be ?, NOTE: 4 is sizeof('uint32')
             additional_spike_labels_buffer = cl.Buffer(ctx, mf.WRITE_ONLY, size=4 * total_work_size_pursuit) # TODO: How long should this be ?
             spike_biases_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=spike_biases)
-            # gamma_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gamma)
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
@@ -392,7 +391,6 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
 
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()
-            # gamma_buffer.release()
             spike_biases_buffer.release()
 
             # Read out the adjusted spikes here before releasing

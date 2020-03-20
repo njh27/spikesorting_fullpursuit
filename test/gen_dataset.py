@@ -153,11 +153,13 @@ class TestDataset(object):
     def sort_test_dataset(self, kwargs):
 
         spike_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
-                             'p_value_cut_thresh': 0.1, 'check_components': None,
-                             'max_components': None,
-                             'min_firing_rate': 1, 'do_binary_pursuit': False,
-                             'add_peak_valley': False, 'cleanup_neurons': False,
-                             'verbose': True, 'remove_false_positives': False}
+                              'p_value_cut_thresh': 0.01, 'check_components': None,
+                              'max_components': 10,
+                              'min_firing_rate': 1, 'do_binary_pursuit': False,
+                              'add_peak_valley': False, 'do_ZCA_transform': True,
+                              'do_branch_PCA': True, 'max_gpu_memory': None,
+                              'use_rand_init': True, 'cleanup_neurons': False,
+                              'verbose': True}
         for key in kwargs:
             spike_sort_kwargs[key] = kwargs[key]
 
@@ -169,14 +171,16 @@ class TestDataset(object):
     def sort_test_dataset_parallel(self, kwargs):
 
         spike_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
-                             'filter_band': self.frequency_range,
-                             'p_value_cut_thresh': 0.1, 'check_components': None,
-                             'max_components': None,
-                             'min_firing_rate': 1, 'do_binary_pursuit': False,
-                             'add_peak_valley': False, 'cleanup_neurons': False,
-                             'remove_false_positives': False, 'verbose': True,
-                             'test_flag': True, 'log_dir': None,
-                             'do_ZCA_transform': True}
+                           'filter_band': self.frequency_range,
+                           'p_value_cut_thresh': 0.01, 'check_components': None,
+                           'max_components': 10,
+                           'min_firing_rate': 1, 'do_binary_pursuit': False,
+                           'add_peak_valley': False, 'do_branch_PCA': True,
+                           'max_gpu_memory': None, 'use_rand_init': True,
+                           'cleanup_neurons': False,
+                           'verbose': True,
+                           'test_flag': True, 'log_dir': None,
+                           'do_ZCA_transform': True}
         for key in kwargs:
             spike_sort_kwargs[key] = kwargs[key]
 
@@ -189,21 +193,25 @@ class TestDataset(object):
     def compare_single_vs_parallel(self, kwargs):
 
         single_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
-                              'p_value_cut_thresh': 0.1, 'check_components': None,
-                              'max_components': None,
+                              'p_value_cut_thresh': 0.01, 'check_components': None,
+                              'max_components': 10,
                               'min_firing_rate': 1, 'do_binary_pursuit': False,
                               'add_peak_valley': False, 'do_ZCA_transform': True,
+                              'do_branch_PCA': True, 'max_gpu_memory': None,
+                              'use_rand_init': True,
                               'cleanup_neurons': False,
-                              'verbose': True, 'remove_false_positives': False}
+                              'verbose': True}
         for key in kwargs:
             single_sort_kwargs[key] = kwargs[key]
         par_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
                            'filter_band': self.frequency_range,
-                           'p_value_cut_thresh': 0.1, 'check_components': None,
-                           'max_components': None,
+                           'p_value_cut_thresh': 0.01, 'check_components': None,
+                           'max_components': 10,
                            'min_firing_rate': 1, 'do_binary_pursuit': False,
-                           'add_peak_valley': False, 'cleanup_neurons': False,
-                           'remove_false_positives': False, 'verbose': True,
+                           'add_peak_valley': False, 'do_branch_PCA': True,
+                           'max_gpu_memory': None, 'use_rand_init': True,
+                           'cleanup_neurons': False,
+                           'verbose': True,
                            'test_flag': True, 'log_dir': None,
                            'do_ZCA_transform': True}
         for key in single_sort_kwargs.keys():

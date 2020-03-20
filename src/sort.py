@@ -6,8 +6,7 @@ from spikesorting_python.src import isotonic
 from spikesorting_python.src.c_cython import sort_cython
 
 from spikesorting_python.src import multinomial_gof
-from functools import reduce
-from operator import mul
+from scipy.special import gammaln
 import matplotlib.pyplot as plt
 
 
@@ -270,8 +269,7 @@ def choose_optimal_cutpoint(cutpoint_ind, residual_densities, x_axis):
     # last_same_index = min(last_same_index, residual_densities.shape[0] - 1)
     cutpoint = x_axis[first_same_index] + (
                     x_axis[last_same_index] - x_axis[first_same_index])/2
-    # print("OPTIMAL CUTPOINT SAYS", cutpoint, first_same_index, last_same_index)
-    # print(residual_densities)
+
     return cutpoint
 
 
@@ -330,15 +328,7 @@ def iso_cut(projection, p_value_cut_thresh):
         if p_value < p_value_cut_thresh:
             cutpoint_ind = np.argmax(null_counts - obs_counts)
             cutpoint = choose_optimal_cutpoint(cutpoint_ind, null_counts - obs_counts, x_axis)
-            print("Cut in early exact", num_points, N, p_value)
-            axes = plt.axes()
-            axes.plot(x_axis, null_counts, color='g')
-            axes.plot(x_axis, obs_counts, color='r')
-            # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
-            axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
-            if cutpoint is not None:
-                axes.axvline(cutpoint, color='k')
-            plt.show()
+            print("Early EXACT critical cut at p=", p_value,"!")
         return p_value, cutpoint
 
     sse_left, left_start, left_stop = max_sse_window(obs_counts[0:peak_density_ind+1],
@@ -362,7 +352,13 @@ def iso_cut(projection, p_value_cut_thresh):
 
     critical_num_points = critical_range.shape[0]
     critical_num_counts = np.sum(obs_counts[critical_range])
-    if critical_num_points <= 4 and critical_num_counts <= 16:
+    n_perms = np.int64(np.ceil(1/p_value_cut_thresh) * 100)
+    # Standard equation has -1, gamma function does +1
+    log_combinations = (gammaln(critical_num_counts + critical_num_points - 1 + 1)
+                        - (gammaln(critical_num_counts + 1)
+                        + gammaln(critical_num_points - 1 + 1)))
+    if log_combinations <= np.log(n_perms):# critical_num_points <= 4 and critical_num_counts <= 16:
+        # Fewer than n_perms combinations exist so do exact test
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
@@ -370,20 +366,14 @@ def iso_cut(projection, p_value_cut_thresh):
         p_value = m_gof.twosided_exact_test()
         if p_value < p_value_cut_thresh:
             print("EXACT critical cut at p=", p_value,"!")
-    elif True:#critical_num_points <= 32:
+    else:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
                     p_threshold=p_value_cut_thresh)
-        p_value = m_gof.random_perm_test(n_perms=np.int64(np.ceil(1/p_value_cut_thresh) * 100))
+        p_value = m_gof.random_perm_test(n_perms=n_perms)
         if p_value < p_value_cut_thresh:
             print("PERM critical cut at p=", p_value,"!")
-    else:
-        _, _, p_value = compute_ks5(obs_counts[critical_range],
-                                null_counts[critical_range],
-                                x_axis)
-        if p_value < p_value_cut_thresh:
-            print("KS critical cut at p=", p_value,"!")
 
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None
@@ -405,19 +395,7 @@ def iso_cut(projection, p_value_cut_thresh):
         # of counts so still useful
         cutpoint_ind += critical_range[0]
         if obs_counts[cutpoint_ind] > null_counts[cutpoint_ind]:
-            print("!!! CUTPOINT ISNT A DIP !!!")
-            print("skipping this cut")
-
-            print(critical_num_points, critical_num_counts, p_value)
-            axes = plt.axes()
-            axes.plot(x_axis, null_counts, color='g')
-            axes.plot(x_axis, obs_counts, color='r')
-            axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
-            axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
-            if cutpoint is not None:
-                axes.axvline(cutpoint, color='k')
-            plt.show()
-
+            print("!!! CUTPOINT ISNT A DIP !!!, skipping this cut")
             p_value = 1.
             cutpoint = None
 

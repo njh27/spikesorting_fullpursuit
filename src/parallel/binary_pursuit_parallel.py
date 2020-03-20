@@ -158,7 +158,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                                      * n_neighbor_chans))
         num_seconds_per_chunk = min(num_seconds_per_chunk, np.floor(max_addressable_seconds))
         num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * probe_dict['sampling_rate']))
-        print("Note: Can fit ", num_seconds_per_chunk, "s of data in GPU memory.")
+        print("Note: Can fit ", num_seconds_per_chunk, "s of data in GPU memory.", flush=True)
 
         if num_indices_per_chunk < 4 * template_samples_per_chan:
             raise ValueError("Cannot fit enough data on GPU to run binary pursuit. Decrease neighborhoods and/or clip width.")
@@ -173,8 +173,8 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         # or else systems can timeout and restart GPU during computation
         resid_local_work_size = compute_residual_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
         pursuit_local_work_size = binary_pursuit_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
-        max_enqueue_resid = np.uint32(resid_local_work_size * (device.max_compute_units // (2)))
-        max_enqueue_pursuit = np.uint32(pursuit_local_work_size * (device.max_compute_units // (2)))
+        max_enqueue_resid = np.uint32(resid_local_work_size * (device.max_compute_units))
+        max_enqueue_pursuit = np.uint32(pursuit_local_work_size * (device.max_compute_units))
         max_enqueue_resid = max(resid_local_work_size, resid_local_work_size * (max_enqueue_resid // resid_local_work_size))
         max_enqueue_pursuit = max(pursuit_local_work_size, pursuit_local_work_size * (max_enqueue_pursuit // pursuit_local_work_size))
 
@@ -209,12 +209,12 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         while ((curr_onset) < (probe_dict['n_samples'] - template_samples_per_chan)):
             chunk_onsets.append(curr_onset)
             curr_onset += num_indices_per_chunk - 3 * template_samples_per_chan
-        print("Using ", len(chunk_onsets), " chunks for binary pursuit.")
+        print("Using ", len(chunk_onsets), " chunks for binary pursuit.", flush=True)
 
         # Loop over chunks
         for chunk_number, start_index in enumerate(chunk_onsets):
             stop_index = np.uint32(min(probe_dict['n_samples'], start_index + num_indices_per_chunk))
-            print("Starting chunk number", chunk_number, "from", start_index, "to", stop_index)
+            print("Starting chunk number", chunk_number, "from", start_index, "to", stop_index, flush=True)
             chunk_voltage = np.float32(neighbor_voltage[:, start_index:stop_index])
             # Reshape voltage over channels into a single 1D vector
             chunk_voltage = chunk_voltage.reshape(chunk_voltage.size)
@@ -248,14 +248,16 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
             # card
             total_work_size_resid = np.uint32(resid_local_work_size * np.ceil(num_kernels / resid_local_work_size))
             residual_events = []
-            print("Residual queue info", max_enqueue_resid, total_work_size_resid, resid_local_work_size)
+            print("Residual queue info", max_enqueue_resid, total_work_size_resid, resid_local_work_size, flush=True)
             n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
+            next_wait_event = None
             for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
-                residual_events.append(cl.enqueue_nd_range_kernel(queue,
+                residual_event = cl.enqueue_nd_range_kernel(queue,
                                        compute_residual_kernel,
                                        (n_to_enqueue, ), (resid_local_work_size, ),
                                        global_work_offset=(enqueue_step, ),
-                                       wait_for=None))
+                                       wait_for=next_wait_event)
+                next_wait_event = [residual_event]
 
             # Set up the binary pursuit OpenCL kernel
             # We can process the voltage trace in small blocks (equal to the template width) by minimizing the RMSE
@@ -309,14 +311,13 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
 
             num_kernels = np.ceil(chunk_voltage.shape[0] / templates.shape[1])
             total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(num_kernels / pursuit_local_work_size))
-            print("Pursuit queue info", max_enqueue_pursuit, total_work_size_pursuit, pursuit_local_work_size)
+            print("Pursuit queue info", max_enqueue_pursuit, total_work_size_pursuit, pursuit_local_work_size, flush=True)
 
             # Construct our buffers
             num_additional_spikes_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(1, dtype=np.uint32)) # NOTE: Must be :rw for atomic to work
             additional_spike_indices_buffer = cl.Buffer(ctx, mf.WRITE_ONLY, size=4 * total_work_size_pursuit) # TODO: How long should this be ?, NOTE: 4 is sizeof('uint32')
             additional_spike_labels_buffer = cl.Buffer(ctx, mf.WRITE_ONLY, size=4 * total_work_size_pursuit) # TODO: How long should this be ?
             spike_biases_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=spike_biases)
-            # gamma_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gamma)
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
@@ -343,14 +344,15 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                 pursuit_events = []
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
-                    pursuit_events.append(cl.enqueue_nd_range_kernel(queue,
+                    pursuit_event = cl.enqueue_nd_range_kernel(queue,
                                           binary_pursuit_kernel,
                                           (n_to_enqueue, ), (pursuit_local_work_size, ),
                                           global_work_offset=(enqueue_step, ),
-                                          wait_for=residual_events))
+                                          wait_for=next_wait_event)
+                    next_wait_event = [pursuit_event]
 
                 cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=pursuit_events)
-                print("Added", num_additional_spikes[0], "secret spikes")
+                print("Added", num_additional_spikes[0], "secret spikes", flush=True)
 
                 if (num_additional_spikes[0] == 0):
                     break # Converged, no spikes added in last pass
@@ -376,11 +378,12 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                 residual_events = []
                 n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
                 for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
-                    residual_events.append(cl.enqueue_nd_range_kernel(queue,
+                    residual_event = cl.enqueue_nd_range_kernel(queue,
                                            compute_residual_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),
                                            global_work_offset=(enqueue_step, ),
-                                           wait_for=None)) # Don't need to wait since enqueue copy above already has
+                                           wait_for=next_wait_event)
+                    next_wait_event = [residual_event]
                 # Ensure that num_additional_spikes is equal to zero for the next pass
                 cl.enqueue_copy(queue, num_additional_spikes_buffer, np.zeros(1, dtype=np.uint32), wait_for=None)
                 chunk_total_additional_spikes += num_additional_spikes[0]
@@ -388,13 +391,12 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
 
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()
-            # gamma_buffer.release()
             spike_biases_buffer.release()
 
             # Read out the adjusted spikes here before releasing
             # the residual voltage. Only do this if there are spikes to get clips of
             if (chunk_total_additional_spikes + chunk_crossings.shape[0]) > 0:
-                print("Setting up data for getting adjusted clips")
+                print("Setting up data for getting adjusted clips", flush=True)
                 if chunk_total_additional_spikes == 0:
                     all_chunk_crossings = chunk_crossings
                     all_chunk_labels = chunk_labels
@@ -405,7 +407,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                     all_chunk_crossings = np.hstack((np.hstack(chunk_total_additional_spike_indices), chunk_crossings))
                     all_chunk_labels = np.hstack((np.hstack(chunk_total_additional_spike_labels), chunk_labels))
 
-                print("Found", chunk_total_additional_spikes, "secret spikes this chunk. Getting adjusted clips for", all_chunk_crossings.shape[0], "total spikes this chunk")
+                print("Found", chunk_total_additional_spikes, "secret spikes this chunk. Getting adjusted clips for", all_chunk_crossings.shape[0], "total spikes this chunk", flush=True)
 
                 all_adjusted_clips = np.zeros((chunk_total_additional_spikes + chunk_crossings.shape[0]) * templates.shape[1], dtype=np.float32)
                 all_chunk_crossings_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=all_chunk_crossings)
@@ -428,13 +430,14 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                                             (all_chunk_crossings.shape[0]) / resid_local_work_size))
                 clip_events = []
                 n_to_enqueue = min(total_work_size_clips, max_enqueue_resid)
-                print("Getting adjusted clips")
+                print("Getting adjusted clips", flush=True)
                 for enqueue_step in np.arange(0, total_work_size_clips, max_enqueue_resid, dtype=np.uint32):
-                    clip_events.append(cl.enqueue_nd_range_kernel(queue,
+                    clip_event = cl.enqueue_nd_range_kernel(queue,
                                            get_adjusted_clips_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),
                                            global_work_offset=(enqueue_step, ),
-                                           wait_for=None)) # Don't need to wait since enqueue copy above already has
+                                           wait_for=next_wait_event)
+                    next_wait_event = [clip_event]
                 cl.enqueue_copy(queue, all_adjusted_clips, all_adjusted_clips_buffer, wait_for=clip_events)
                 all_adjusted_clips = np.reshape(all_adjusted_clips, (all_chunk_crossings.shape[0], templates.shape[1]))
 
@@ -469,7 +472,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
     # Realign events with center of spike
     event_indices += clip_init_samples
 
-    print("Found a total of", np.count_nonzero(new_spike_bool), "secret spikes")
+    print("Found a total of", np.count_nonzero(new_spike_bool), "secret spikes", flush=True)
 
     return event_indices, neuron_labels, new_spike_bool, adjusted_clips
 

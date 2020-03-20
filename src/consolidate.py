@@ -222,8 +222,8 @@ spike_indices: The indices (sample number) in the voltage trace of the threshold
  mean_firing_rate: The mean firing rate of the neuron over the entire recording
 peak_valley: The peak valley of the template on the channel from which the neuron arises
 """
-def summarize_neurons(Probe, threshold_crossings, labels, waveforms, thresholds, false_positives,
-        false_negatives, clip_width=[-2e-4, 4e-4], new_waveforms=None, max_components=None):
+def summarize_neurons(Probe, threshold_crossings, labels, waveforms, thresholds,
+        clip_width=[-2e-4, 4e-4], new_waveforms=None, max_components=None):
 
     neuron_summary = []
     for channel in range(0, len(threshold_crossings)):
@@ -236,19 +236,9 @@ def summarize_neurons(Probe, threshold_crossings, labels, waveforms, thresholds,
         for ind, neuron_label in enumerate(np.unique(labels[channel])):
             neuron = {}
             try:
-                if len(false_positives[channel]) > ind:
-                    sort_quality = {'false_positives': false_positives[channel][ind],
-                                    'false_negatives': false_negatives[channel][ind]}
-                else:
-                    sort_quality = {'false_positives': None,
-                                    'false_negatives': None}
                 if max_components is not None:
                     neuron['max_components'] = max_components
-                    # if len(max_components) == 1:
-                    #     neuron['max_components'] = max_components
-                    # else:
-                    #     neuron['max_components'] = max_components[channel]
-                neuron['sort_quality'] = sort_quality
+                neuron['sort_quality'] = None
                 neuron["channel"] = channel
                 neuron['neighbors'] = Probe.get_neighbors(channel)
                 neuron["clip_width"] = clip_width
@@ -265,7 +255,7 @@ def summarize_neurons(Probe, threshold_crossings, labels, waveforms, thresholds,
                     neuron["new_spike_bool"] = new_wave_bool[labels[channel] == neuron_label]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
 
-                neuron["template"] = np.nanmean(neuron['waveforms'], axis=0) # Recompute AFTER ISI removal
+                neuron["template"] = np.nanmean(neuron['waveforms'], axis=0) 
                 last_spike_t = neuron["spike_indices"][-1] / Probe.sampling_rate
                 first_spike_t = neuron["spike_indices"][0] / Probe.sampling_rate
                 if first_spike_t == last_spike_t:
@@ -374,6 +364,44 @@ def align_spikes_on_template(spikes, template, max_samples_window):
         index_shifts[spk] = shift
 
     return aligned_spikes, index_shifts
+
+
+def sharpen_clusters(clips, neuron_labels, curr_chan_inds, p_value_cut_thresh,
+                     merge_only=False, add_peak_valley=False,
+                     check_components=None, max_components=None,
+                     max_iters=np.inf, method='pca'):
+    """
+    """
+    n_labels = np.unique(neuron_labels).size
+    print("Entering sharpen with", n_labels, "different clusters", flush=True)
+    n_iters = 0
+    while (n_labels > 1) and (n_iters < max_iters):
+        if method.lower() == 'projection':
+            scores = preprocessing.compute_template_projection(clips, neuron_labels,
+                        curr_chan_inds, add_peak_valley=add_peak_valley,
+                        max_templates=max_components)
+        elif method.lower() == 'pca':
+            scores = preprocessing.compute_template_pca(clips, neuron_labels,
+                        curr_chan_inds, check_components, max_components,
+                        add_peak_valley=add_peak_valley)
+        elif method.lower() == 'chan_pca':
+            scores = preprocessing.compute_template_pca_by_channel(clips, neuron_labels,
+                        curr_chan_inds, check_components, max_components,
+                        add_peak_valley=add_peak_valley)
+        else:
+            raise ValueError("Sharpen method must be either 'projection', 'pca', or 'chan_pca'.")
+
+        neuron_labels = sort.merge_clusters(scores, neuron_labels,
+                            merge_only=merge_only, split_only=False,
+                            p_value_cut_thresh=p_value_cut_thresh)
+        n_labels_sharpened = np.unique(neuron_labels).size
+        print("Went from", n_labels, "to", n_labels_sharpened, flush=True)
+        if n_labels == n_labels_sharpened:
+            break
+        n_labels = n_labels_sharpened
+        n_iters += 1
+
+    return neuron_labels
 
 
 def merge_test_spikes(spike_list, p_value_cut_thresh=0.05, max_components=20, min_merge_percent=0.99):

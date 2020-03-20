@@ -26,7 +26,7 @@ def get_full_zca_matrix(data, rowvar=True):
     return zca_matrix
 
 
-def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion, n_samples=1e6):
+def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion, n_samples=1e7):
     """
         The ZCA procedure was taken (and reformatted into 2 lines) from:
         https://github.com/zellyn/deeplearning-class-2011/blob/master/ufldl/pca_2d/pca_2d.py
@@ -63,6 +63,8 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
             ij_samples[1, j] = valid_samples.size
         if i < voltage_data.shape[0] - 1:
             print("ZCA channel", i, "is from approximately", np.around(np.nanmean(ij_samples[0, :])), "samples of", np.around(np.nanmean(ij_samples[1, :])), "available points")
+        else:
+            print("ZCA channel", i, "is from approximately", out_samples.size, "samples of", valid_samples.size, "available points")
 
     U, S, _ = linalg.svd(sigma)
     zca_matrix = U @ np.diag(1.0 / np.sqrt(S + 1e-9)) @ U.T

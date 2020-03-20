@@ -55,13 +55,15 @@ def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, 
     current_num_centers = 0
     if labels.size <= median_cluster_size:
         return labels
-    if median_cluster_size <= 1:
+    if median_cluster_size <= 2:
         labels = np.arange(0, labels.size, dtype=np.int64)
         return labels
     centers = np.mean(data, axis=0)
     distances = np.sum((data - centers)**2, axis=1)
 
     if n_random > 0:
+        if n_random >= labels.size:
+            return np.arange(0, labels.size, dtype=np.int64)
         n_random = np.ceil(n_random).astype(np.int64)
         for nl in range(0, n_random):
             rand_ind = np.random.choice(data.shape[0], 1,
@@ -73,6 +75,9 @@ def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, 
             select = temp_distance < distances
             labels[select] = current_num_centers
             distances[select] = temp_distance[select]
+            _, label_counts = np.unique(labels, return_counts=True)
+            if current_num_centers == labels.size:
+                break
     pre_centers = current_num_centers
 
     _, label_counts = np.unique(labels, return_counts=True)
@@ -223,7 +228,7 @@ def max_sse_window(observed, expected):
     return max_sse, best_start, best_stop
 
 
-def find_optimal_cutpoint(cutpoint_ind, residual_densities, x_axis):
+def choose_optimal_cutpoint(cutpoint_ind, residual_densities, x_axis):
     """
     """
     if cutpoint_ind == 0:
@@ -324,7 +329,7 @@ def iso_cut(projection, p_value_cut_thresh):
         cutpoint = None
         if p_value < p_value_cut_thresh:
             cutpoint_ind = np.argmax(null_counts - obs_counts)
-            cutpoint = find_optimal_cutpoint(cutpoint_ind, null_counts - obs_counts, x_axis)
+            cutpoint = choose_optimal_cutpoint(cutpoint_ind, null_counts - obs_counts, x_axis)
             print("Cut in early exact", num_points, N, p_value)
             axes = plt.axes()
             axes.plot(x_axis, null_counts, color='g')
@@ -382,7 +387,7 @@ def iso_cut(projection, p_value_cut_thresh):
 
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None
-    if True:# p_value < p_value_cut_thresh:
+    if p_value < p_value_cut_thresh:
         residual_densities = obs_counts - null_counts
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
         residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities[critical_range], np.ones_like(critical_range))
@@ -392,11 +397,14 @@ def iso_cut(projection, p_value_cut_thresh):
             cutpoint_ind = len(critical_range) - cutpoint_ind - 1
         else:
             cutpoint_ind = np.argmax(residual_densities_fit)
-
-        cutpoint = find_optimal_cutpoint(cutpoint_ind, residual_densities_fit,
+        cutpoint = choose_optimal_cutpoint(cutpoint_ind, residual_densities_fit,
                     x_axis[critical_range])
 
-        if residual_densities_fit[cutpoint_ind] < 0:
+        # Not technically the cutpoint_ind used since choose_optimal_cutpoint
+        # will choose center of repeated indices, but will have the same number
+        # of counts so still useful
+        cutpoint_ind += critical_range[0]
+        if obs_counts[cutpoint_ind] > null_counts[cutpoint_ind]:
             print("!!! CUTPOINT ISNT A DIP !!!")
             print("skipping this cut")
 
@@ -413,20 +421,21 @@ def iso_cut(projection, p_value_cut_thresh):
             p_value = 1.
             cutpoint = None
 
-    print("critical side", citical_side, "n points", critical_num_points, "n counts", critical_num_counts, "p-value", p_value)
-    # print("cutpoint ind", cutpoint_ind, "cutpoint", cutpoint)
-    axes = plt.axes()
-
-    axes.plot(x_axis[critical_range], residual_densities_fit, color='b')
-    # axes.plot(x_axis[critical_range], residual_densities_fit[critical_range], color='k')
-
-    axes.plot(x_axis, null_counts, color='g')
-    axes.plot(x_axis, obs_counts, color='r')
-    axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
-    axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
-    if cutpoint is not None:
-        axes.axvline(cutpoint, color='k')
-    plt.show()
+    # if N > 10000:
+    #     print("critical side", citical_side, "n points", critical_num_points, "n counts", critical_num_counts, "p-value", p_value)
+    #     # print("cutpoint ind", cutpoint_ind, "cutpoint", cutpoint)
+    #     axes = plt.axes()
+    #
+    #     axes.plot(x_axis[critical_range], residual_densities_fit, color='b')
+    #     # axes.plot(x_axis[critical_range], residual_densities_fit[critical_range], color='k')
+    #
+    #     axes.plot(x_axis, null_counts, color='g')
+    #     axes.plot(x_axis, obs_counts, color='r')
+    #     axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
+    #     axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
+    #     if cutpoint is not None:
+    #         axes.axvline(cutpoint, color='k')
+    #     plt.show()
 
     return p_value, cutpoint
 

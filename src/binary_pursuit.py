@@ -126,9 +126,9 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
         # Determine the segment size that we need to use to fit into the
         # memory on this GPU device.
         gpu_memory_size = device.get_info(cl.device_info.GLOBAL_MEM_SIZE) # Total memory size in bytes
-        # Save 25% or 1GB, whichever is less for the operating system to use
+        # Save 50% or 1GB, whichever is less for the operating system to use
         # assuming this is not a headless system.
-        gpu_memory_size = max(gpu_memory_size * 0.75, gpu_memory_size - (1024 * 1024 * 1024))
+        gpu_memory_size = max(gpu_memory_size * 0.5, gpu_memory_size - (1024 * 1024 * 1024))
         if max_gpu_memory is not None:
             gpu_memory_size = min(gpu_memory_size, max_gpu_memory)
         # Windows 10 only allows 80% of the memory on the graphics card to be used,
@@ -167,12 +167,13 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
         binary_pursuit_kernel = prg.binary_pursuit
         get_adjusted_clips_kernel = prg.get_adjusted_clips
 
-        # Conservatively, do not enqueue more than work group size times half compute units
-        # or else systems can timeout and restart GPU during computation
+        # Conservatively, do not enqueue more than work group size times the
+        # compute units divided by the number of different neuron labels
+        # or else systems can timeout and freeze or restart GPU
         resid_local_work_size = compute_residual_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
         pursuit_local_work_size = binary_pursuit_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
-        max_enqueue_resid = np.uint32(resid_local_work_size * (device.max_compute_units // (2)))
-        max_enqueue_pursuit = np.uint32(pursuit_local_work_size * (device.max_compute_units // (2)))
+        max_enqueue_resid = np.uint32(resid_local_work_size * (device.max_compute_units))
+        max_enqueue_pursuit = np.uint32(pursuit_local_work_size * (device.max_compute_units))
         max_enqueue_resid = max(resid_local_work_size, resid_local_work_size * (max_enqueue_resid // resid_local_work_size))
         max_enqueue_pursuit = max(pursuit_local_work_size, pursuit_local_work_size * (max_enqueue_pursuit // pursuit_local_work_size))
 
@@ -249,12 +250,14 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             residual_events = []
             print("Residual queue info", max_enqueue_resid, total_work_size_resid, resid_local_work_size)
             n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
+            next_wait_event = None
             for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
-                residual_events.append(cl.enqueue_nd_range_kernel(queue,
+                residual_event = cl.enqueue_nd_range_kernel(queue,
                                        compute_residual_kernel,
                                        (n_to_enqueue, ), (resid_local_work_size, ),
                                        global_work_offset=(enqueue_step, ),
-                                       wait_for=None))
+                                       wait_for=next_wait_event)
+                next_wait_event = [residual_event]
 
             # Set up the binary pursuit OpenCL kernel
             # We can process the voltage trace in small blocks (equal to the template width) by minimizing the RMSE
@@ -342,11 +345,12 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                 pursuit_events = []
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
-                    pursuit_events.append(cl.enqueue_nd_range_kernel(queue,
+                    pursuit_event = cl.enqueue_nd_range_kernel(queue,
                                           binary_pursuit_kernel,
                                           (n_to_enqueue, ), (pursuit_local_work_size, ),
                                           global_work_offset=(enqueue_step, ),
-                                          wait_for=residual_events))
+                                          wait_for=next_wait_event)
+                    next_wait_event = [pursuit_event]
 
                 cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=pursuit_events)
                 print("Added", num_additional_spikes[0], "secret spikes")
@@ -375,11 +379,12 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                 residual_events = []
                 n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
                 for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
-                    residual_events.append(cl.enqueue_nd_range_kernel(queue,
+                    residual_event = cl.enqueue_nd_range_kernel(queue,
                                            compute_residual_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),
                                            global_work_offset=(enqueue_step, ),
-                                           wait_for=None)) # Don't need to wait since enqueue copy above already has
+                                           wait_for=next_wait_event)
+                    next_wait_event = [residual_event]
                 # Ensure that num_additional_spikes is equal to zero for the next pass
                 cl.enqueue_copy(queue, num_additional_spikes_buffer, np.zeros(1, dtype=np.uint32), wait_for=None)
                 chunk_total_additional_spikes += num_additional_spikes[0]
@@ -429,11 +434,12 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                 n_to_enqueue = min(total_work_size_clips, max_enqueue_resid)
                 print("Getting adjusted clips")
                 for enqueue_step in np.arange(0, total_work_size_clips, max_enqueue_resid, dtype=np.uint32):
-                    clip_events.append(cl.enqueue_nd_range_kernel(queue,
+                    clip_event = cl.enqueue_nd_range_kernel(queue,
                                            get_adjusted_clips_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),
                                            global_work_offset=(enqueue_step, ),
-                                           wait_for=None)) # Don't need to wait since enqueue copy above already has
+                                           wait_for=next_wait_event)
+                    next_wait_event = [clip_event]
                 cl.enqueue_copy(queue, all_adjusted_clips, all_adjusted_clips_buffer, wait_for=clip_events)
                 all_adjusted_clips = np.reshape(all_adjusted_clips, (all_chunk_crossings.shape[0], templates.shape[1]))
 

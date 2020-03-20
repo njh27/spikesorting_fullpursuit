@@ -1,6 +1,6 @@
 cimport numpy as np
 import numpy as np
-from libc.stdint cimport int64_t, int32_t
+from libc.stdint cimport int64_t, int32_t, uint8_t
 from numpy.math cimport INFINITY, NAN
 from numpy import linalg as la
 cimport cython
@@ -145,48 +145,56 @@ def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes
   # Find improvement given by addition of each ordered PC
   cdef np.ndarray[double, ndim=1, mode="c"] vaf = np.zeros(check_comp_ssize_t)
   cdef double *vaf_ptr = &vaf[0]
-  # Start with RESS as total error, i.e. no improvement
+  cdef double PRESS
+  # Start with PRESS as total error, i.e. no improvement
+  spikes_ptr = &spikes[0,0]
+  idx_sp = 0
   for x in range(0, spikes_x):
     for y in range(0, spikes_y):
-      RESS += spikes[x, y] ** 2
-  RESS /= spikes_x * spikes_y
-  if RESS < 1.0e-14:
-    if min_components == 0:
-      return np.array([])
-    else:
-      return np.arange(0, min_components)
+      PRESS += spikes_ptr[idx_sp] ** 2
+      idx_sp += 1
+  PRESS /= spikes_x * spikes_y
+  RESS = np.mean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)
+  vaf_ptr[0] = 1. - RESS / PRESS
 
-  cdef double PRESS = resid_error[comp_order[0]]
+  PRESS = RESS
   cdef Py_ssize_t max_vaf_components
   for comp in range(1, check_comp_ssize_t):
     reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T
     RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
-    vaf_ptr[comp] = 1 - RESS / PRESS
+    vaf_ptr[comp] = 1. - RESS / PRESS
     PRESS = RESS
 
-    # Choose first local maxima as point at which there is decrease in vaf
-    if (vaf_ptr[comp] > vaf_ptr[comp - 1]) and (comp > 2):
-      max_vaf_components = comp # Used as slice so this includes peak
+    # Choose first local maxima
+    if (vaf[comp] < vaf[comp - 1]):
       break
     if comp == max_components:
       # Won't use more than this so break
-      max_vaf_components = comp
       break
 
+  max_vaf_components = comp
+  cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
+  cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]
+  if vaf_ptr[1] < 0:
+    # First PC is worse than the mean
+    iwtm_ptr[0] = True
+    max_vaf_components = 1
+
   # This is to account for slice indexing and edge effects
-  if comp >= check_comp_ssize_t - 1:
+  if max_vaf_components >= check_comp_ssize_t - 1:
     # This implies that we found no maxima before reaching the end of vaf
-    if vaf_ptr[check_comp_ssize_t] > vaf_ptr[check_comp_ssize_t - 1]:
+    if vaf_ptr[check_comp_ssize_t - 1] > vaf_ptr[check_comp_ssize_t - 2]:
       # vaf still increasing so choose last point
       max_vaf_components = check_comp_ssize_t
     else:
       # vaf has become flat so choose second to last point
       max_vaf_components = check_comp_ssize_t - 1
-  if max_vaf_components > max_components:
-      max_vaf_components = max_components
   if max_vaf_components < min_components:
-      max_vaf_components = min_components
-  return comp_order[0:max_vaf_components]
+    max_vaf_components = min_components
+  if max_vaf_components > max_components:
+    max_vaf_components = max_components
+
+  return comp_order[0:max_vaf_components], is_worse_than_mean
 
 
 @cython.boundscheck(False)
@@ -269,48 +277,56 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
   # Find improvement given by addition of each ordered PC
   cdef np.ndarray[double, ndim=1, mode="c"] vaf = np.zeros(check_comp_ssize_t)
   cdef double *vaf_ptr = &vaf[0]
-  # Start with RESS as total error, i.e. no improvement
+  cdef double PRESS
+  # Start with PRESS as total error, i.e. no improvement
+  spikes_ptr = &spikes[0,0]
+  idx_sp = 0
   for x in range(0, spikes_x):
     for y in range(0, spikes_y):
-      RESS += spikes[x, y] ** 2
-  RESS /= spikes_x * spikes_y
-  if RESS < 1.0e-14:
-    if min_components == 0:
-      return np.array([])
-    else:
-      return np.arange(0, min_components)
+      PRESS += spikes_ptr[idx_sp] ** 2
+      idx_sp += 1
+  PRESS /= spikes_x * spikes_y
+  RESS = np.mean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)
+  vaf_ptr[0] = 1. - RESS / PRESS
 
-  cdef double PRESS = resid_error[comp_order[0]]
+  PRESS = RESS
   cdef Py_ssize_t max_vaf_components
   for comp in range(1, check_comp_ssize_t):
     reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T
     RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
-    vaf_ptr[comp] = 1 - RESS / PRESS
+    vaf_ptr[comp] = 1. - RESS / PRESS
     PRESS = RESS
 
-    # Choose first local maxima as point at which there is decrease in vaf
-    if (vaf[comp] > vaf[comp - 1]) and (comp > 2):
-      max_vaf_components = comp # Used as slice so this includes peak
+    # Choose first local maxima
+    if (vaf[comp] < vaf[comp - 1]):
       break
     if comp == max_components:
       # Won't use more than this so break
-      max_vaf_components = comp
       break
 
+  max_vaf_components = comp
+  cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
+  cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]
+  if vaf_ptr[1] < 0:
+    # First PC is worse than the mean
+    iwtm_ptr[0] = True
+    max_vaf_components = 1
+
   # This is to account for slice indexing and edge effects
-  if comp >= check_comp_ssize_t - 1:
+  if max_vaf_components >= check_comp_ssize_t - 1:
     # This implies that we found no maxima before reaching the end of vaf
-    if vaf_ptr[check_comp_ssize_t] > vaf_ptr[check_comp_ssize_t - 1]:
+    if vaf_ptr[check_comp_ssize_t - 1] > vaf_ptr[check_comp_ssize_t - 2]:
       # vaf still increasing so choose last point
       max_vaf_components = check_comp_ssize_t
     else:
       # vaf has become flat so choose second to last point
       max_vaf_components = check_comp_ssize_t - 1
-  if max_vaf_components > max_components:
-    max_vaf_components = max_components
   if max_vaf_components < min_components:
     max_vaf_components = min_components
-  return comp_order[0:max_vaf_components]
+  if max_vaf_components > max_components:
+    max_vaf_components = max_components
+
+  return comp_order[0:max_vaf_components], is_worse_than_mean
 
 
 @cython.boundscheck(False)
@@ -448,25 +464,6 @@ def identify_clusters_to_compare(double[:, ::1] scores, int64_t[::1] labels, lis
       if (min_distance_cluster_view[x] == y) and (min_distance_cluster_view[y] == x):
         minimum_distance_pairs.append([unique_labels_view[x], unique_labels_view[y]])
   return minimum_distance_pairs
-
-
-# def idct1d(data):
-#   # computes the inverse discrete cosine transform
-#   # Compute weights
-#   weights = data.size * np.exp(1j * np.arange(0, data.size) * np.pi / (2 * data.size))
-#   # Compute x tilde using equation (5.93) in Jain
-#   data = np.real(ifft(weights * data))
-#   # Re-order elements of each column according to equations (5.93) and
-#   # (5.94) in Jain
-#   out = np.zeros(data.size)
-#   out_midslice = int64_t(data.size / 2)
-#   out[0::2] = data[0:out_midslice]
-#   out[1::2] = data[-1:out_midslice-1:-1]
-#   #   Reference:
-#   #      A. K. Jain, "Fundamentals of Digital Image
-#   #      Processing", pp. 150-153.
-#
-#   return out
 
 
 cdef int64_t sign_fun(double x):

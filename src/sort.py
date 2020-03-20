@@ -375,7 +375,7 @@ def iso_cut(projection, p_value_cut_thresh):
                     obs_counts[critical_range],
                     densities_unimodal_fit[critical_range],
                     p_threshold=p_value_cut_thresh)
-        p_value = m_gof.random_perm_test(n_perms=10000)
+        p_value = m_gof.random_perm_test(n_perms=np.int64(np.ceil(1/p_value_cut_thresh) * 100))
         if p_value < p_value_cut_thresh:
             print("PERM critical cut at p=", p_value,"!")
     else:

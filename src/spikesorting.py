@@ -224,28 +224,6 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
             curr_num_clusters = np.unique(neuron_labels).size
             if verbose: print("After MULTI BY CHAN BRANCH", curr_num_clusters, "different clusters")
 
-        crossings[chan], units_shifted = check_upward_neurons(clips,
-                                            crossings[chan], neuron_labels,
-                                            curr_chan_inds, clip_width,
-                                            Probe.sampling_rate)
-        if verbose: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
-        if len(units_shifted) > 0:
-            clips, valid_event_indices = segment.get_multichannel_clips(Probe,
-                                            Probe.get_neighbors(chan),
-                                            crossings[chan],
-                                            clip_width=clip_width,
-                                            thresholds=thresholds)
-            crossings[chan] = segment.keep_valid_inds(
-                                [crossings[chan]], valid_event_indices)
-
-        # if verbose: print("Sharpening clips onto templates")
-        # neuron_labels = sharpen_clusters(clips, neuron_labels, curr_chan_inds,
-        #                     p_value_cut_thresh, merge_only=True,
-        #                     add_peak_valley=add_peak_valley,
-        #                     check_components=check_components,
-        #                     max_components=max_components, max_iters=1,
-        #                     method='pca')
-
         # Delete any clusters under min_cluster_size before binary pursuit
         unique_vals, n_unique = np.unique(neuron_labels, return_counts=True)
         if verbose: print("Current smallest cluster has", np.amin(n_unique), "spikes")
@@ -269,6 +247,21 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
             new_waveforms[chan] = np.array([])
             if verbose: print("Done.")
             continue
+
+        # Realign any units that have a template with peak > valley
+        crossings[chan], units_shifted = check_upward_neurons(clips,
+                                            crossings[chan], neuron_labels,
+                                            curr_chan_inds, clip_width,
+                                            Probe.sampling_rate)
+        if verbose: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
+        if len(units_shifted) > 0:
+            clips, valid_event_indices = segment.get_multichannel_clips(Probe,
+                                            Probe.get_neighbors(chan),
+                                            crossings[chan],
+                                            clip_width=clip_width,
+                                            thresholds=thresholds)
+            crossings[chan] = segment.keep_valid_inds(
+                                [crossings[chan]], valid_event_indices)
 
         # if verbose: print("Sharpening clips onto templates")
         # neuron_labels = sharpen_clusters(clips, neuron_labels, curr_chan_inds,

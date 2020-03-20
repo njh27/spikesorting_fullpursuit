@@ -8,7 +8,6 @@ from spikesorting_python.src.c_cython import sort_cython
 from spikesorting_python.src import multinomial_gof
 from functools import reduce
 from operator import mul
-from scipy.stats import chi2, fisher_exact
 import matplotlib.pyplot as plt
 
 
@@ -131,7 +130,7 @@ def reorder_labels(labels):
     return None
 
 
-def chi2_best_index(observed, expected):
+def max_sse_window(observed, expected):
     """
     Compute an approximate KS statistic for Kolmogorov-Smirnov test from binned
     data.
@@ -179,168 +178,49 @@ def chi2_best_index(observed, expected):
     compute_ks4_p_value
 
     Indices are sliceable, and at least 0, 1. They are adjusted to include the
-    point just before and just after the most deviant chi2 window if
+    point just before and just after the most deviant SSE window if
     possible."""
 
-    most_observed = 0
+    max_sse = 0
     best_start = 0
     best_stop = observed.size
-    curr_start = best_start
-    curr_stop = best_stop
     search_start = True
-    search_stop = True
-    obs_slope_at_start = 0
-    obs_slope_at_stop = 0
-    exp_slope_at_start = 0
-    exp_slope_at_stop = 0
+    d_observed = np.diff(observed)
+    d_expected = np.diff(expected)
     check_ind = 0
     while check_ind < observed.size:
         if search_start:
             if check_ind == observed.size - 1:
-                break
-            # if observed[check_ind] != expected[check_ind]:
-                # obs_slope_at_start = np.sign(observed[check_ind+1] - observed[check_ind])
-                # exp_slope_at_start = np.sign(expected[check_ind+1] - expected[check_ind])
-            obs_slope_at_start = (observed[check_ind+1] - observed[check_ind])
-            exp_slope_at_start = (expected[check_ind+1] - expected[check_ind])
-            if obs_slope_at_start != exp_slope_at_start:
-                curr_start = check_ind#max(0, check_ind-1)
+                break # Can't look for start at last index
+            elif check_ind == 0:
+                if observed[check_ind] != expected[check_ind]:
+                    # Will act as an "OR" operator when paired with "if" below
+                    curr_start = check_ind
+                    search_start = False
+            if d_observed[check_ind] != d_expected[check_ind]:
+                curr_start = check_ind
                 search_start = False
-                search_stop = True
-        if search_stop:
+        else:
             if check_ind == observed.size - 1:
+                # Hit last index so end window and check it
                 curr_stop = check_ind+1
-                # curr_observed = np.sum(observed[curr_start:curr_stop])
-                # curr_observed = np.sum(expected[curr_start:curr_stop])
-                curr_observed = np.sum((observed[curr_start:curr_stop] - expected[curr_start:curr_stop]) ** 2)
-                if curr_observed >= most_observed: # Equal allows finding last most point
+                curr_sse = np.sum((observed[curr_start:curr_stop] - expected[curr_start:curr_stop]) ** 2)
+                if curr_sse >= max_sse: # Equal allows finding last most point
                     best_start = curr_start
                     best_stop = curr_stop
-                    most_observed = curr_observed
+                    max_sse = curr_sse
                 break
-            obs_slope_at_stop = (observed[check_ind+1] - observed[check_ind])
-            exp_slope_at_stop = (expected[check_ind+1] - expected[check_ind])
-            if (obs_slope_at_stop == exp_slope_at_stop) and (obs_slope_at_stop != 0):
-            # if observed[check_ind] == expected[check_ind]:
-                # obs_slope_at_stop = np.sign(observed[check_ind+1] - observed[check_ind])
-                # exp_slope_at_stop = np.sign(expected[check_ind+1] - expected[check_ind])
-                # if (obs_slope_at_stop == exp_slope_at_stop) and (obs_slope_at_stop != 0):
+            if (d_observed[check_ind] == d_expected[check_ind]) and (d_observed[check_ind] != 0):
                 curr_stop = min(check_ind + 1, observed.size)
-                # curr_observed = np.sum(observed[curr_start:curr_stop])
-                # curr_observed = np.sum(expected[curr_start:curr_stop])
-                curr_observed = np.sum((observed[curr_start:curr_stop] - expected[curr_start:curr_stop]) ** 2)
-                if curr_observed >= most_observed: # Equal allows finding last most point
+                curr_sse = np.sum((observed[curr_start:curr_stop] - expected[curr_start:curr_stop]) ** 2)
+                if curr_sse >= max_sse: # Equal allows finding last most point
                     best_start = curr_start
                     best_stop = curr_stop
-                    most_observed = curr_observed
+                    max_sse = curr_sse
                 search_start = True
-                search_stop = False
         check_ind += 1
 
-    # Adjust to include indices before and after window of deviations
-    # best_start = max(best_start - 1, 0)
-    # best_stop = min(best_stop + 1, observed.size)
-
-    return most_observed, best_start, best_stop
-
-    # most_observed = 0
-    # best_start = 0
-    # best_stop = observed.size
-    # curr_start = best_start
-    # curr_stop = best_stop
-    # search_start = True
-    # search_stop = True
-    # n_consec_same = 0
-    # check_ind = 0
-    # while check_ind < observed.size:
-    #     if search_start:
-    #         if observed[check_ind] == expected[check_ind]:
-    #             check_ind += 1
-    #             continue
-    #         else:
-    #             curr_start = max(0, check_ind-1)
-    #             search_start = False
-    #             search_stop = True
-    #             check_ind += 1
-    #             continue
-    #     if search_stop:
-    #         if observed[check_ind] == expected[check_ind]:
-    #             n_consec_same += 1
-    #         else:
-    #             n_consec_same = 0
-    #
-    #         if check_ind == observed.size - 1:
-    #             if n_consec_same <= 1:
-    #                 curr_stop = check_ind + 1
-    #             else:
-    #                 curr_stop = check_ind
-    #             # curr_observed = np.sum(observed[curr_start:curr_stop])
-    #             curr_observed = np.sum(expected[curr_start:curr_stop])
-    #             # curr_observed = np.sum((observed[curr_start:curr_stop] - expected[curr_start:curr_stop]) ** 2)
-    #             if curr_observed > most_observed:
-    #                 best_start = curr_start
-    #                 best_stop = curr_stop
-    #                 most_observed = curr_observed
-    #             break
-    #         elif n_consec_same == 2:
-    #             curr_stop = check_ind
-    #             # curr_observed = np.sum(observed[curr_start:curr_stop])
-    #             curr_observed = np.sum(expected[curr_start:curr_stop])
-    #             # curr_observed = np.sum((observed[curr_start:curr_stop] - expected[curr_start:curr_stop]) ** 2)
-    #             if curr_observed > most_observed:
-    #                 best_start = curr_start
-    #                 best_stop = curr_stop
-    #                 most_observed = curr_observed
-    #             n_consec_same = 0
-    #             search_start = True
-    #             search_stop = False
-    #             check_ind -= 1
-    #         else:
-    #             check_ind += 1
-    #
-    # # Adjust to include indices before and after window of deviations
-    # # best_start = max(best_start - 1, 0)
-    # # best_stop = min(best_stop + 1, observed.size)
-    #
-    # return most_observed, best_start, best_stop
-
-    # best_chi2_stat = 0
-    # best_stop = observed.size
-    # start_ind = 0
-    # best_start = 0
-    # flexible_start = True
-    # observed_cp = np.copy(observed)
-    # expected_cp = np.copy(expected)
-    # for index in range(1, observed_cp.size):
-    #     observed = observed_cp[start_ind:index]
-    #     expected = expected_cp[start_ind:index]
-    #     remove_counts = np.logical_and(observed == 0, expected == 0)
-    #     observed = observed[~remove_counts]
-    #     expected = expected[~remove_counts]
-    #
-    #     obs_sum = np.sum(observed)
-    #     exp_sum = np.sum(expected)
-    #     # Can't be both zero since we removed above
-    #     # K1 = 1. if obs_sum == 0 else np.sqrt(exp_sum / obs_sum)
-    #     # K2 = 1. if exp_sum == 0 else np.sqrt(obs_sum / exp_sum)
-    #     K1, K2 = 1, 1 # Useful for testing but not really sorting
-    #     # print("SET K1 AND K2 TO 1!")
-    #     chi2_stat = np.sum(((K1*observed - K2*expected) ** 2) / (observed + expected))
-    #
-    #     if chi2_stat < 1e-6:
-    #         if flexible_start:
-    #             start_ind = index
-    #         continue
-    #     if chi2_stat > best_chi2_stat:
-    #         best_chi2_stat = chi2_stat
-    #         best_stop = index
-    #         best_start = start_ind
-    #         flexible_start = False
-    # # Adjust to include indices before and after window of deviations
-    # best_start = max(best_start - 1, 0)
-    # best_stop = min(best_stop + 1, observed_cp.size)
-    #
-    # return best_chi2_stat, best_start, best_stop
+    return max_sse, best_start, best_stop
 
 
 def find_optimal_cutpoint(cutpoint_ind, residual_densities, x_axis):
@@ -456,16 +336,16 @@ def iso_cut(projection, p_value_cut_thresh):
             plt.show()
         return p_value, cutpoint
 
-    chi2_left, left_start, left_stop = chi2_best_index(obs_counts[0:peak_density_ind+1],
+    sse_left, left_start, left_stop = max_sse_window(obs_counts[0:peak_density_ind+1],
                              null_counts[0:peak_density_ind+1])
-    chi2_right, right_start, right_stop = chi2_best_index(obs_counts[peak_density_ind:][-1::-1],
+    sse_right, right_start, right_stop = max_sse_window(obs_counts[peak_density_ind:][-1::-1],
                                null_counts[peak_density_ind:][-1::-1])
-    if chi2_left > chi2_right:
-        # chi2_best_index returns sliceable indices so don't adjust
+    if sse_left > sse_right:
+        # max_sse_window returns sliceable indices so don't adjust
         critical_range = np.arange(left_start, left_stop)
         citical_side = 'left'
     else:
-        # right side values were computed backward in chi2_best_index so fix it
+        # right side values were computed backward in max_sse_window so fix it
         flip_right_start = len(x_axis) - right_stop
         flip_right_stop = len(x_axis) - right_start
         critical_range = np.arange(flip_right_start, flip_right_stop)
@@ -473,7 +353,6 @@ def iso_cut(projection, p_value_cut_thresh):
         if critical_range[0] == peak_density_ind and critical_range[-1] == obs_counts.size - 1:
             # This means all the points are the same so no reason to check p-value
             # Due to if/else statement, this only happens here and not for left above
-            # print("returned 353", chi2_left, chi2_right)
             return 1., None
 
     critical_num_points = critical_range.shape[0]
@@ -503,7 +382,7 @@ def iso_cut(projection, p_value_cut_thresh):
 
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None
-    if p_value < p_value_cut_thresh:
+    if True:# p_value < p_value_cut_thresh:
         residual_densities = obs_counts - null_counts
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
         residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities[critical_range], np.ones_like(critical_range))
@@ -534,20 +413,20 @@ def iso_cut(projection, p_value_cut_thresh):
             p_value = 1.
             cutpoint = None
 
-    # print("critical side", citical_side, "n points", critical_num_points, "n counts", critical_num_counts, "p-value", p_value)
+    print("critical side", citical_side, "n points", critical_num_points, "n counts", critical_num_counts, "p-value", p_value)
     # print("cutpoint ind", cutpoint_ind, "cutpoint", cutpoint)
-    # axes = plt.axes()
-    #
-    # axes.plot(x_axis[critical_range], residual_densities_fit, color='b')
-    # # axes.plot(x_axis[critical_range], residual_densities_fit[critical_range], color='k')
-    #
-    # axes.plot(x_axis, null_counts, color='g')
-    # axes.plot(x_axis, obs_counts, color='r')
-    # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
-    # axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
-    # if cutpoint is not None:
-    #     axes.axvline(cutpoint, color='k')
-    # plt.show()
+    axes = plt.axes()
+
+    axes.plot(x_axis[critical_range], residual_densities_fit, color='b')
+    # axes.plot(x_axis[critical_range], residual_densities_fit[critical_range], color='k')
+
+    axes.plot(x_axis, null_counts, color='g')
+    axes.plot(x_axis, obs_counts, color='r')
+    axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
+    axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
+    if cutpoint is not None:
+        axes.axvline(cutpoint, color='k')
+    plt.show()
 
     return p_value, cutpoint
 

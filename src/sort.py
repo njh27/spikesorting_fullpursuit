@@ -350,27 +350,18 @@ def iso_cut(projection, p_value_cut_thresh):
             # Due to if/else statement, this only happens here and not for left above
             return 1., None
 
-    critical_num_points = critical_range.shape[0]
-    critical_num_counts = np.sum(obs_counts[critical_range])
+    m_gof = multinomial_gof.MultinomialGOF(
+                obs_counts[critical_range],
+                densities_unimodal_fit[critical_range],
+                p_threshold=p_value_cut_thresh)
+    log_combinations = m_gof.get_log_n_total_combinations()
     n_perms = np.int64(np.ceil(1/p_value_cut_thresh) * 100)
-    # Standard equation has -1, gamma function does +1
-    log_combinations = (gammaln(critical_num_counts + critical_num_points - 1 + 1)
-                        - (gammaln(critical_num_counts + 1)
-                        + gammaln(critical_num_points - 1 + 1)))
-    if log_combinations <= np.log(n_perms):# critical_num_points <= 4 and critical_num_counts <= 16:
+    if log_combinations <= np.log(n_perms):
         # Fewer than n_perms combinations exist so do exact test
-        m_gof = multinomial_gof.MultinomialGOF(
-                    obs_counts[critical_range],
-                    densities_unimodal_fit[critical_range],
-                    p_threshold=p_value_cut_thresh)
         p_value = m_gof.twosided_exact_test()
         if p_value < p_value_cut_thresh:
             print("EXACT critical cut at p=", p_value,"!")
     else:
-        m_gof = multinomial_gof.MultinomialGOF(
-                    obs_counts[critical_range],
-                    densities_unimodal_fit[critical_range],
-                    p_threshold=p_value_cut_thresh)
         p_value = m_gof.random_perm_test(n_perms=n_perms)
         if p_value < p_value_cut_thresh:
             print("PERM critical cut at p=", p_value,"!")

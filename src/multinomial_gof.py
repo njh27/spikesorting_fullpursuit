@@ -115,6 +115,7 @@ from operator import mul
 from scipy.special import gammaln
 
 
+
 def listprod( alist ):
 	"""Return the product of all elements of a list."""
 	if alist == []:
@@ -135,7 +136,7 @@ def fact(n):
 
 def multinomial_log_probability(observed, null_proportions):
 	"""Computes log probability of observed given null proportions using the
-	gamme log function. """
+	gamma log function. """
 	N = np.sum(observed)
 	first_term = gammaln(N+1)
 	second_term = np.sum(observed * np.log(null_proportions))
@@ -147,6 +148,41 @@ def multinomial_log_probability(observed, null_proportions):
 def multinomial_probability(obs, probs):
 	"""Computes probability of obs given null probs using factorials. """
 	return fact(sum(obs))/listprod(list(map(fact, obs))) * listprod([pow(probs[i], obs[i]) for i in range(len(probs))])
+
+
+def multinomial_probability_MPROB(observed, null_proportions):
+	"""Computes the multinomial probability of observed given expected
+	proportions in null_proportions using the MPROB algorithm proposed by
+	Garcia-Perez (1999) 'MPROB: Computation of multinomial probabilities',
+	Behavior Research Methods, Instruments, & Computers. The procedure is
+	intended to minimize the number of computations and their magnitude to
+	minimize probability floating point underflow to machine precision. """
+	y = np.copy(observed)
+	rho = np.copy(null_proportions)
+	y_order = np.argsort(y)[-1::-1]
+	y = y[y_order]
+	rho = rho[y_order]
+
+	p = 1.
+	t = rho[0]
+	i = 1
+	n = 0
+	m = y[0]
+	while i < y.size:
+		l = y[i]
+		for k in range(1, l+1):
+			n += 1
+			if n > y[0]:
+				t = 1
+			p = p * t * rho[i] * (k + m) / k
+		m = m + y[i]
+		i += 1
+
+	if n < y[0]:
+		for k in range(n+1, y[0]+1):
+			p = p * rho[0]
+
+	return p
 
 
 class MultinomialGOF(object):
@@ -161,6 +197,19 @@ class MultinomialGOF(object):
 		self.p_value = 0.0
 		self.n_cats = observed.shape[0]
 		self.n_counts = np.sum(observed)
+
+	def get_log_n_total_combinations(self):
+		"""Returns log of total number of possible combinations. To get actual
+		number use 'exp(get_log_n_total_combinations())', though this number
+		could be too large and fail. """
+		# Standard equation has -1, gamma function does +1
+		log_combinations = (gammaln(self.n_counts + self.n_cats - 1 + 1)
+	                        - (gammaln(self.n_counts + 1)
+	                        + gammaln(self.n_cats - 1 + 1)))
+		if np.isnan(log_combinations) or np.isinf(log_combinations):
+			# Combinations are too large so gammaln failed
+			log_combinations = np.inf
+		return log_combinations
 
 	def multinomial_log_probability(self, observed, null_proportions):
 		"""Computes log probability of observed given null proportions using the
@@ -180,20 +229,18 @@ class MultinomialGOF(object):
 		if categories == 1:
 			# There's only one category left to be filled, so put all remaining items in it.
 			counts.append(items)
-			# p = multinomial_probability(counts, self.null_proportions)
-			log_p = self.multinomial_log_probability(np.array(counts), self.null_proportions)
-			if log_p <= self.ref_logp:
-				self.p_value += np.exp(log_p)
+			p_value = multinomial_probability_MPROB(np.array(counts), self.null_proportions)
+			if p_value <= self.ref_p_value:
+				self.p_value += p_value
 				if self.p_value >= self.p_threshold:
 					self.stop_recursing = True
 		elif items == 0:
 			# There are no more items, so put 0 in all remaining categories
 			for n in range(categories):
 				counts.append(0)
-			# p = multinomial_probability(counts, self.null_proportions)
-			log_p = self.multinomial_log_probability(np.array(counts), self.null_proportions)
-			if log_p <= self.ref_logp:
-				self.p_value += np.exp(log_p)
+			p_value = multinomial_probability_MPROB(np.array(counts), self.null_proportions)
+			if p_value <= self.ref_p_value:
+				self.p_value += p_value
 				if self.p_value >= self.p_threshold:
 					self.stop_recursing = True
 		else:
@@ -232,10 +279,8 @@ class MultinomialGOF(object):
 		"""Compute exact probability of observed data given null proprotions
 		by summing over all possible instances with a probability less than or
 		equal to the probability of the observed data. """
-		# ref_p = multinomial_probability(self.observed, self.null_proportions)
-		self.ref_logp = self.multinomial_log_probability(self.observed, self.null_proportions)
 		self.stop_recursing = False
 		self.p_value = 0.0
-		self.log_p_value = 0.0
+		self.ref_p_value = multinomial_probability_MPROB(self.observed, self.null_proportions)
 		self.all_multinom_cases(self.n_cats, self.n_counts)
 		return self.p_value

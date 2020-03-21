@@ -14,7 +14,7 @@ os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
 
 
 def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
-                   event_indices, neuron_labels, clip_width,
+                   event_indices, neuron_labels, clip_width, thresholds=None,
                    kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
@@ -473,6 +473,11 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
     # adjusted_clips = adjusted_clips[spike_order, :]
     # Realign events with center of spike
     event_indices += clip_init_samples
+
+    if thresholds is not None:
+        for n_chan in range(0, n_neighbor_chans):
+            nt_win = [n_chan*template_samples_per_chan, n_chan*template_samples_per_chan + template_samples_per_chan]
+            adjusted_clips[:, nt_win[0]:nt_win[1]] /= thresholds[n_chan]
 
     print("Found a total of", np.count_nonzero(new_spike_bool), "secret spikes", flush=True)
 

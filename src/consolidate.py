@@ -202,7 +202,7 @@ def compute_SNR(neurons):
     return neurons
 
 
-def remove_duplicate_spikes(event_indices, new_spike_bool):
+def remove_binary_pursuit_duplicates(event_indices, new_spike_bool):
     """
     """
     keep_bool = np.ones(event_indices.size, dtype=np.bool)
@@ -213,22 +213,18 @@ def remove_duplicate_spikes(event_indices, new_spike_bool):
             if new_spike_bool[curr_index] and ~new_spike_bool[next_index]:
                 keep_bool[curr_index] = False
                 curr_index = next_index
-                next_index += 1
             elif ~new_spike_bool[curr_index] and new_spike_bool[next_index]:
                 keep_bool[next_index] = False
-                next_index += 1
             elif new_spike_bool[curr_index] and new_spike_bool[next_index]:
                 # Should only be possible for first index?
                 keep_bool[next_index] = False
-                next_index += 1
             else:
-                # This is two spikes with same index, neither from binary
-                # pursuit. Should be chosen based on templates or some other
-                # means
-                next_index += 1
+                # Two spikes with same index, neither from binary pursuit.
+                #  Should be chosen based on templates or some other means.
+                pass
         else:
             curr_index = next_index
-            next_index += 1
+        next_index += 1
 
     return keep_bool
 
@@ -285,7 +281,7 @@ def summarize_neurons(Probe, threshold_crossings, labels, waveforms, thresholds,
                 if new_waveforms is not None:
                     neuron["new_spike_bool"] = new_wave_bool[labels[channel] == neuron_label]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
-                    keep_bool = remove_duplicate_spikes(neuron["spike_indices"], neuron["new_spike_bool"])
+                    keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"], neuron["new_spike_bool"])
                     neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
                     neuron['waveforms'] = neuron['waveforms'][keep_bool, :]

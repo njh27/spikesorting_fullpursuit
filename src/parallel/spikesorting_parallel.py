@@ -393,13 +393,10 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
                                         [crossings, neuron_labels],
                                         valid_event_indices)
 
-        # Realign spikes based on correlation with current cluster templates before doing binary pursuit
-        crossings, neuron_labels, _ = segment_parallel.align_events_with_template(data_dict, voltage[chan, :], neuron_labels, crossings, clip_width=clip_width)
-        clips, valid_event_indices = segment_parallel.get_multichannel_clips(data_dict, voltage[neighbors, :], crossings, clip_width=clip_width, neighbor_thresholds=data_dict['thresholds'][neighbors])
-        crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
-
         exit_type = "Finished sorting clusters"
+        # Realign spikes based on correlation with current cluster templates before doing binary pursuit
 
+        crossings, neuron_labels, _ = segment_parallel.align_events_with_template(data_dict, voltage[chan, :], neuron_labels, crossings, clip_width=clip_width)
         if do_binary_pursuit:
             if verbose: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
             if verbose: print("Doing binary pursuit", flush=True)
@@ -414,10 +411,12 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
                 crossings, neuron_labels, new_inds, clips = binary_pursuit_parallel.binary_pursuit(
                             data_dict, chan, neighbors, voltage[neighbors, :],
                             crossings, neuron_labels, clip_width,
-                            kernels_path=None,
-                            max_gpu_memory=max_gpu_memory)
+                            thresholds=data_dict['thresholds'][neighbors],
+                            kernels_path=None, max_gpu_memory=max_gpu_memory)
             exit_type = "Finished binary pursuit"
         else:
+            clips, valid_event_indices = segment_parallel.get_multichannel_clips(data_dict, voltage[neighbors, :], crossings, clip_width=clip_width, neighbor_thresholds=data_dict['thresholds'][neighbors])
+            crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
             new_inds = np.zeros(crossings.size, dtype='bool')
 
         if verbose: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)

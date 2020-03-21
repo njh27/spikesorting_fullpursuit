@@ -22,6 +22,22 @@ import numpy as np
 #     compile_path = ''.join(compile_path) + 'src/c_cython/sort_cython.pyx'
 
 
+###################
+# # THIS SHOULD WORK FOR COMPILING C FILE AND NOT NEEDING CYTHON!
+# USE_CYTHON = ...   # command line option, try-import, ...
+#
+# ext = '.pyx' if USE_CYTHON else '.c'
+#
+# extensions = [Extension("sort_cython", ["sort_cython"+ext])]
+#
+# if USE_CYTHON:
+#     extensions = cythonize(extensions, annotate=False, language_level=3)
+# setup(
+#     ext_modules = extensions,
+#     include_dirs = [np.get_include()]
+# )
+
+
 ext  =  [Extension( "sort_cython", sources=['sort_cython.pyx'] )]
 # compile as: $python3.7 setup.py build_ext --inplace
 setup(

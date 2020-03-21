@@ -234,6 +234,12 @@ class TestDataset(object):
                 print("testing key", key)
                 if key == 'template':
                     continue
+                if key == 'new_spike_bool':
+                    if np.all(neur[key] == npar[key]):
+                        print("Neuron {0} {1} SAME".format(n_ind, key))
+                    else:
+                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
+                    continue
                 if key == 'sort_quality':
                     continue
                     # assert neur['sort_quality']['false_positives'] == npar['sort_quality']['false_positives'], "Neuron {0} sort quality false positives differ".format(n_ind)

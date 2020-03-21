@@ -202,6 +202,37 @@ def compute_SNR(neurons):
     return neurons
 
 
+def remove_duplicate_spikes(event_indices, new_spike_bool):
+    """
+    """
+    keep_bool = np.ones(event_indices.size, dtype=np.bool)
+    curr_index = 0
+    next_index = 1
+    while next_index < event_indices.size:
+        if event_indices[next_index] == event_indices[curr_index]:
+            if new_spike_bool[curr_index] and ~new_spike_bool[next_index]:
+                keep_bool[curr_index] = False
+                curr_index = next_index
+                next_index += 1
+            elif ~new_spike_bool[curr_index] and new_spike_bool[next_index]:
+                keep_bool[next_index] = False
+                next_index += 1
+            elif new_spike_bool[curr_index] and new_spike_bool[next_index]:
+                # Should only be possible for first index?
+                keep_bool[next_index] = False
+                next_index += 1
+            else:
+                # This is two spikes with same index, neither from binary
+                # pursuit. Should be chosen based on templates or some other
+                # means
+                next_index += 1
+        else:
+            curr_index = next_index
+            next_index += 1
+
+    return keep_bool
+
+
 """
     summarize_neurons(probe, threshold_crossings, labels)
 
@@ -254,8 +285,12 @@ def summarize_neurons(Probe, threshold_crossings, labels, waveforms, thresholds,
                 if new_waveforms is not None:
                     neuron["new_spike_bool"] = new_wave_bool[labels[channel] == neuron_label]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
+                    keep_bool = remove_duplicate_spikes(neuron["spike_indices"], neuron["new_spike_bool"])
+                    neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                    neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
+                    neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
 
-                neuron["template"] = np.nanmean(neuron['waveforms'], axis=0) 
+                neuron["template"] = np.nanmean(neuron['waveforms'], axis=0)
                 last_spike_t = neuron["spike_indices"][-1] / Probe.sampling_rate
                 first_spike_t = neuron["spike_indices"][0] / Probe.sampling_rate
                 if first_spike_t == last_spike_t:
@@ -282,6 +317,7 @@ def summarize_neurons(Probe, threshold_crossings, labels, waveforms, thresholds,
                 neuron["threshold"] = thresholds[channel]
             else:
                 neuron["threshold"] = None
+
 
     return neuron_summary
 

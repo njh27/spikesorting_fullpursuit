@@ -13,7 +13,7 @@ os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
 
 
 def binary_pursuit(Probe, channel, event_indices, neuron_labels,
-        clip_width, threshold, kernels_path=None, max_gpu_memory=None):
+        clip_width, kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
 
@@ -52,7 +52,8 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
         clip_width, Probe.sampling_rate, channel, Probe.get_neighbors(channel))
     # Remove any spikes within 1 clip width of each other
     event_indices.sort()
-    event_indices, removed_index = remove_overlapping_spikes(event_indices, clip_samples[1]-clip_samples[0])
+    event_indices, removed_index = remove_overlapping_spikes(event_indices,
+                                        clip_samples[1]-clip_samples[0])
     neuron_labels = neuron_labels[~removed_index]
 
     # Get clips NOT THRESHOLD NORMALIZED since raw voltage is not normalized
@@ -61,6 +62,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     # Remove clusters that are overlaps of different spikes
     neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, Probe.sampling_rate, clip_width, 0.75)
     event_indices, neuron_labels, valid_inds = segment.align_events_with_template(Probe, channel, neuron_labels, event_indices, clip_width=clip_width)
+
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
     clips, valid_inds = segment.get_multichannel_clips(Probe, Probe.get_neighbors(channel), event_indices, clip_width=clip_width, thresholds=None)
     event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
@@ -116,7 +118,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
         prg = cl.Program(ctx, kernels)
         prg.build() # David has a bunch of PYOPENCL_BUILD_OPTIONS used here
 
-        # Adjust spike_indices so that they refer to the start of the clip to be
+        # Adjust event_indices so that they refer to the start of the clip to be
         # subtracted.
         clip_init_samples = int(np.abs(chan_win[0]))
         event_indices -= clip_init_samples
@@ -248,7 +250,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             # card
             total_work_size_resid = np.uint32(resid_local_work_size * np.ceil(num_kernels / resid_local_work_size))
             residual_events = []
-            print("Residual queue info", max_enqueue_resid, total_work_size_resid, resid_local_work_size)
+            print("Residual queue info", max_enqueue_resid, total_work_size_resid, resid_local_work_size, flush=True)
             n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
             next_wait_event = None
             for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
@@ -311,7 +313,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
 
             num_kernels = np.ceil(chunk_voltage.shape[0] / templates.shape[1])
             total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(num_kernels / pursuit_local_work_size))
-            print("Pursuit queue info", max_enqueue_pursuit, total_work_size_pursuit, pursuit_local_work_size)
+            print("Pursuit queue info", max_enqueue_pursuit, total_work_size_pursuit, pursuit_local_work_size, flush=True)
 
             # Construct our buffers
             num_additional_spikes_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(1, dtype=np.uint32)) # NOTE: Must be :rw for atomic to work
@@ -352,7 +354,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                     next_wait_event = [pursuit_event]
 
                 cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=pursuit_events)
-                print("Added", num_additional_spikes[0], "secret spikes")
+                print("Added", num_additional_spikes[0], "secret spikes", flush=True)
 
                 if (num_additional_spikes[0] == 0):
                     break # Converged, no spikes added in last pass
@@ -396,7 +398,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             # Read out the adjusted spikes here before releasing
             # the residual voltage. Only do this if there are spikes to get clips of
             if (chunk_total_additional_spikes + chunk_crossings.shape[0]) > 0:
-                print("Setting up data for getting adjusted clips")
+                print("Setting up data for getting adjusted clips", flush=True)
                 if chunk_total_additional_spikes == 0:
                     all_chunk_crossings = chunk_crossings
                     all_chunk_labels = chunk_labels
@@ -407,7 +409,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                     all_chunk_crossings = np.hstack((np.hstack(chunk_total_additional_spike_indices), chunk_crossings))
                     all_chunk_labels = np.hstack((np.hstack(chunk_total_additional_spike_labels), chunk_labels))
 
-                print("Found", chunk_total_additional_spikes, "secret spikes this chunk. Getting adjusted clips for", all_chunk_crossings.shape[0], "total spikes this chunk")
+                print("Found", chunk_total_additional_spikes, "secret spikes this chunk. Getting adjusted clips for", all_chunk_crossings.shape[0], "total spikes this chunk", flush=True)
 
                 all_adjusted_clips = np.zeros((chunk_total_additional_spikes + chunk_crossings.shape[0]) * templates.shape[1], dtype=np.float32)
                 all_chunk_crossings_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=all_chunk_crossings)
@@ -430,7 +432,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                                             (all_chunk_crossings.shape[0]) / resid_local_work_size))
                 clip_events = []
                 n_to_enqueue = min(total_work_size_clips, max_enqueue_resid)
-                print("Getting adjusted clips")
+                print("Getting adjusted clips", flush=True)
                 for enqueue_step in np.arange(0, total_work_size_clips, max_enqueue_resid, dtype=np.uint32):
                     clip_event = cl.enqueue_nd_range_kernel(queue,
                                            get_adjusted_clips_kernel,
@@ -464,15 +466,15 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     neuron_labels = np.int64(np.hstack(secret_spike_labels))
     adjusted_clips = np.float64(np.vstack(adjusted_spike_clips))
     new_spike_bool = np.hstack(secret_spike_bool)
-    spike_order = np.argsort(event_indices)
-    event_indices = event_indices[spike_order]
-    neuron_labels = neuron_labels[spike_order]
-    new_spike_bool = new_spike_bool[spike_order]
-    adjusted_clips = adjusted_clips[spike_order, :]
+    # spike_order = np.argsort(event_indices)
+    # event_indices = event_indices[spike_order]
+    # neuron_labels = neuron_labels[spike_order]
+    # new_spike_bool = new_spike_bool[spike_order]
+    # adjusted_clips = adjusted_clips[spike_order, :]
     # Realign events with center of spike
     event_indices += clip_init_samples
 
-    print("Found a total of", np.count_nonzero(new_spike_bool), "secret spikes")
+    print("Found a total of", np.count_nonzero(new_spike_bool), "secret spikes", flush=True)
 
     return event_indices, neuron_labels, new_spike_bool, adjusted_clips
 

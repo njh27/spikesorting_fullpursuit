@@ -145,9 +145,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
                             p_value_cut_thresh=p_value_cut_thresh)
         curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
         if verbose: print("Currently", curr_num_clusters.size, "different clusters")
-        # neuron_labels = np.zeros(crossings[chan].shape[0], dtype=np.int64)
-        # curr_num_clusters = np.array([0])
-        # n_per_cluster = np.array(neuron_labels.size)
+
         # Single channel branch
         if curr_num_clusters.size > 1 and do_branch_PCA:
             neuron_labels = branch_pca_2_0(neuron_labels, clips[:, curr_chan_inds],
@@ -232,7 +230,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
             # crossings[chan], neuron_labels = segment.keep_valid_inds([crossings[chan], neuron_labels], valid_event_indices)
             crossings[chan], neuron_labels, new_inds, clips = binary_pursuit.binary_pursuit(
                 Probe, chan, crossings[chan], neuron_labels, clip_width,
-                thresholds[chan], kernels_path=None, max_gpu_memory=max_gpu_memory)
+                kernels_path=None, max_gpu_memory=max_gpu_memory)
         else:
             new_inds = np.zeros(crossings[chan].size, dtype=np.bool)
 

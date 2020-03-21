@@ -14,7 +14,7 @@ os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
 
 
 def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
-                   event_indices, neuron_labels, clip_width, threshold,
+                   event_indices, neuron_labels, clip_width,
                    kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
@@ -64,6 +64,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
     # Remove clusters that are overlaps of different spikes
     neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, probe_dict['sampling_rate'], clip_width, 0.75)
     event_indices, neuron_labels, valid_inds = segment_parallel.align_events_with_template(probe_dict, neighbor_voltage[master_channel_index, :], neuron_labels, event_indices, clip_width=clip_width)
+
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
     clips, valid_inds = segment_parallel.get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width=clip_width, neighbor_thresholds=None)
     event_indices, neuron_labels = segment_parallel.keep_valid_inds([event_indices, neuron_labels], valid_inds)
@@ -118,7 +119,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         prg = cl.Program(ctx, kernels)
         prg.build() # David has a bunch of PYOPENCL_BUILD_OPTIONS used here
 
-        # Adjust spike_indices so that they refer to the start of the clip to be
+        # Adjust event_indices so that they refer to the start of the clip to be
         # subtracted.
         clip_init_samples = int(np.abs(chan_win[0]))
         event_indices -= clip_init_samples
@@ -158,7 +159,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                                      * n_neighbor_chans))
         num_seconds_per_chunk = min(num_seconds_per_chunk, np.floor(max_addressable_seconds))
         num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * probe_dict['sampling_rate']))
-        print("Note: Can fit ", num_seconds_per_chunk, "s of data in GPU memory.", flush=True)
+        print("Note: Can fit ", num_seconds_per_chunk, "s of data in GPU memory.")
 
         if num_indices_per_chunk < 4 * template_samples_per_chan:
             raise ValueError("Cannot fit enough data on GPU to run binary pursuit. Decrease neighborhoods and/or clip width.")
@@ -169,8 +170,9 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         binary_pursuit_kernel = prg.binary_pursuit
         get_adjusted_clips_kernel = prg.get_adjusted_clips
 
-        # Conservatively, do not enqueue more than work group size times half compute units
-        # or else systems can timeout and restart GPU during computation
+        # Conservatively, do not enqueue more than work group size times the
+        # compute units divided by the number of different neuron labels
+        # or else systems can timeout and freeze or restart GPU
         resid_local_work_size = compute_residual_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
         pursuit_local_work_size = binary_pursuit_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
         max_enqueue_resid = np.uint32(resid_local_work_size * (device.max_compute_units))
@@ -464,11 +466,11 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
     neuron_labels = np.int64(np.hstack(secret_spike_labels))
     adjusted_clips = np.float64(np.vstack(adjusted_spike_clips))
     new_spike_bool = np.hstack(secret_spike_bool)
-    spike_order = np.argsort(event_indices)
-    event_indices = event_indices[spike_order]
-    neuron_labels = neuron_labels[spike_order]
-    new_spike_bool = new_spike_bool[spike_order]
-    adjusted_clips = adjusted_clips[spike_order, :]
+    # spike_order = np.argsort(event_indices)
+    # event_indices = event_indices[spike_order]
+    # neuron_labels = neuron_labels[spike_order]
+    # new_spike_bool = new_spike_bool[spike_order]
+    # adjusted_clips = adjusted_clips[spike_order, :]
     # Realign events with center of spike
     event_indices += clip_init_samples
 

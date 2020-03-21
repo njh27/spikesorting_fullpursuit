@@ -326,9 +326,7 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
                             p_value_cut_thresh=p_value_cut_thresh)
         curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
         if verbose: print("Currently", curr_num_clusters.size, "different clusters", flush=True)
-        # neuron_labels = np.zeros(crossings.shape[0], dtype=np.int64)
-        # curr_num_clusters = np.array([0])
-        # n_per_cluster = np.array(neuron_labels.size)
+
         # Single channel branch
         if curr_num_clusters.size > 1 and do_branch_PCA:
             neuron_labels = branch_pca_2_0(neuron_labels, clips[:, curr_chan_inds],
@@ -416,7 +414,7 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
                 crossings, neuron_labels, new_inds, clips = binary_pursuit_parallel.binary_pursuit(
                             data_dict, chan, neighbors, voltage[neighbors, :],
                             crossings, neuron_labels, clip_width,
-                            data_dict['thresholds'][chan], kernels_path=None,
+                            kernels_path=None,
                             max_gpu_memory=max_gpu_memory)
             exit_type = "Finished binary pursuit"
         else:
@@ -571,7 +569,6 @@ def spike_sort_parallel(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
             with open('temp_clips' + str(chan) + '.pickle', 'rb') as fp:
                 waveforms[chan] = pickle.load(fp)
             os.remove('temp_clips' + str(chan) + '.pickle')
-            # waveforms[chan] = data_dict['results_dict'][chan][2]
             new_waveforms[chan] = data_dict['results_dict'][chan][2]
 
     # Now that everything has been sorted, condense our representation of the neurons

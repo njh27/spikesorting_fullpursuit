@@ -397,14 +397,11 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
                                 - chan_win[0])] > 0, axis=1))):
                     rollback_t = t
 
-            # Need to update delta_likelihood at these time points
-            new_t = t + chan_win[0] + max_delta_likelihood[max_neuron]
-            dl_update_start_t = t + double_chan_win[1]
-            dl_update_stop_t = dl_update_start_t + (new_t - t)
-            # Move delta_likelihood values we are keeping and find index for placing new values
-            dl_update_start_ind = delta_likelihood.shape[1] - (new_t - t)
-            delta_likelihood[:, 0:dl_update_start_ind] = delta_likelihood[:, (max_delta_likelihood[max_neuron] + chan_win[0]):]
-            t = new_t
+            # Need to update delta_likelihood at max
+            t += max_delta_likelihood[max_neuron]
+            dl_update_start_t = t + chan_win[0]
+            dl_update_stop_t = t + double_chan_win[1]
+            dl_update_start_ind = 0
             continue
         else:
             # Best spike falls within current window, so add it

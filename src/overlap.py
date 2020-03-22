@@ -190,13 +190,12 @@ def find_multichannel_max_neuron(Probe, channel, neighbors, check_time, indices,
     tracked our current location in the spike event indices array instead
     of searching the whole thing every time to find the relevant spikes to
     subtract for computing the residuals. """
-
     samples_per_chan = chan_win[1] - chan_win[0]
     # Window big enough to cover all spikes possibly overlapping with check_time
     min_t = samples_per_chan + int(np.abs(chan_win[0]))
     max_t = samples_per_chan + int(chan_win[1])
     if (Probe.n_samples < (check_time + max_t)) or (check_time < min_t):
-        return None
+        return np.zeros(template_labels.size, dtype=np.float32)
     residual_window = [-1*min_t, max_t]
 
     delta_likelihood = np.zeros(len(templates), dtype=np.float32)
@@ -341,16 +340,16 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
         single_chan_peaks = np.any(single_chan_dl_cross, axis=0)
         if np.any(single_chan_peaks):
             single_chan_likelihood = np.copy(delta_likelihood)
-            for ct in range(0, single_chan_peaks.size):
-                if not single_chan_peaks[ct]:
-                    continue
-                check_time = int(ct + t + chan_win[0])
-                delta_likelihood[:, ct] = find_multichannel_max_neuron(Probe, channel,
-                                    neighbors, check_time, event_indices, neuron_labels,
-                                    multi_templates, template_labels,
-                                    chan_win,
-                                    spike_biases, template_error, new_event_indices,
-                                    new_event_labels)
+            if default_multi_check:
+                for ct in range(0, single_chan_peaks.size):
+                    if not single_chan_peaks[ct]:
+                        continue
+                    check_time = int(ct + t + chan_win[0])
+                    delta_likelihood[:, ct] = find_multichannel_max_neuron(Probe, channel,
+                                        neighbors, check_time, event_indices, neuron_labels,
+                                        multi_templates, template_labels,
+                                        chan_win, spike_biases, template_error,
+                                        new_event_indices, new_event_labels)
             # Enforce AND operation for single and multi
             test_likelihood[:] = 0.
             test_likelihood[single_chan_dl_cross] = delta_likelihood[single_chan_dl_cross]
@@ -434,5 +433,7 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
     secret_spike_bool = np.zeros(event_indices.size, dtype='bool')
     if len(new_event_indices) > 0:
         secret_spike_bool[-len(new_event_indices):] = True
+
+    print("Found a total of", np.count_nonzero(secret_spike_bool), "secret spikes", flush=True)
 
     return event_indices, neuron_labels, secret_spike_bool

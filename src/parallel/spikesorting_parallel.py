@@ -1,7 +1,6 @@
 import pickle
 import os
 import sys
-import signal as sg
 import mkl
 import numpy as np
 import multiprocessing as mp
@@ -15,9 +14,9 @@ from spikesorting_python.src import electrode
 from spikesorting_python.src import preprocessing
 from spikesorting_python.src import consolidate
 from scipy import signal
-import PL2_read
 import time
 from traceback import print_tb
+import warnings
 
 
 
@@ -255,7 +254,7 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
                         check_components=None, max_components=10,
                         min_firing_rate=1,
                         do_binary_pursuit=True, add_peak_valley=False,
-                        do_branch_PCA=True, max_gpu_memory=None,
+                        do_branch_PCA=True, use_GPU=True, max_gpu_memory=None,
                         use_rand_init=True,
                         cleanup_neurons=False, verbose=False, test_flag=False,
                         log_dir=None):
@@ -400,19 +399,25 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
         if do_binary_pursuit:
             if verbose: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
             if verbose: print("Doing binary pursuit", flush=True)
-            # crossings, neuron_labels, new_inds = overlap_parallel.binary_pursuit_secret_spikes(
-            #                 data_dict, chan, neighbors, voltage[neighbors, :],
-            #                 neuron_labels, crossings, data_dict['thresholds'][chan],
-            #                 clip_width)
-            # clips, valid_event_indices = segment_parallel.get_multichannel_clips(data_dict, voltage[neighbors, :], crossings, clip_width=clip_width, neighbor_thresholds=data_dict['thresholds'][neighbors])
-            # crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
-
-            with data_dict['gpu_lock']:
-                crossings, neuron_labels, new_inds, clips = binary_pursuit_parallel.binary_pursuit(
-                            data_dict, chan, neighbors, voltage[neighbors, :],
-                            crossings, neuron_labels, clip_width,
-                            thresholds=data_dict['thresholds'][neighbors],
-                            kernels_path=None, max_gpu_memory=max_gpu_memory)
+            if not use_GPU:
+                use_GPU_message = ("Using CPU binary pursuit to find " \
+                                    "secret spikes. This can be MUCH MUCH " \
+                                    "slower and uses more " \
+                                    "memory than the GPU version.")
+                warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
+                crossings, neuron_labels, new_inds = overlap_parallel.binary_pursuit_secret_spikes(
+                                data_dict, chan, neighbors, voltage[neighbors, :],
+                                neuron_labels, crossings, data_dict['thresholds'][chan],
+                                clip_width)
+                clips, valid_event_indices = segment_parallel.get_multichannel_clips(data_dict, voltage[neighbors, :], crossings, clip_width=clip_width, neighbor_thresholds=data_dict['thresholds'][neighbors])
+                crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
+            else:
+                with data_dict['gpu_lock']:
+                    crossings, neuron_labels, new_inds, clips = binary_pursuit_parallel.binary_pursuit(
+                                data_dict, chan, neighbors, voltage[neighbors, :],
+                                crossings, neuron_labels, clip_width,
+                                thresholds=data_dict['thresholds'][neighbors],
+                                kernels_path=None, max_gpu_memory=max_gpu_memory)
             exit_type = "Finished binary pursuit"
         else:
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(data_dict, voltage[neighbors, :], crossings, clip_width=clip_width, neighbor_thresholds=data_dict['thresholds'][neighbors])
@@ -450,7 +455,8 @@ def spike_sort_parallel(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
                         check_components=None, max_components=10,
                         min_firing_rate=1, do_binary_pursuit=True,
                         add_peak_valley=False, do_branch_PCA=True,
-                        max_gpu_memory=None, use_rand_init=True, cleanup_neurons=False,
+                        use_GPU=True, max_gpu_memory=None, use_rand_init=True,
+                        cleanup_neurons=False,
                         verbose=False, test_flag=False, log_dir=None,
                         do_ZCA_transform=True):
 
@@ -462,6 +468,7 @@ def spike_sort_parallel(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
               'do_binary_pursuit': do_binary_pursuit,
               'add_peak_valley': add_peak_valley,
               'do_branch_PCA': do_branch_PCA,
+              'use_GPU': use_GPU,
               'max_gpu_memory': max_gpu_memory,
               'use_rand_init': use_rand_init,
               'cleanup_neurons': cleanup_neurons,
@@ -641,7 +648,8 @@ if __name__ == '__main__':
                        'max_components': 10,
                        'min_firing_rate': 2, 'do_binary_pursuit': True,
                        'add_peak_valley': False, 'do_branch_PCA': True,
-                       'max_gpu_memory': None, 'use_rand_init': True,
+                       'use_GPU': True, 'max_gpu_memory': None,
+                       'use_rand_init': True,
                        'cleanup_neurons': False,
                        'verbose': True, 'test_flag': False, 'log_dir': log_dir,
                        'do_ZCA_transform': True}
@@ -657,6 +665,7 @@ if __name__ == '__main__':
     if spike_sort_args['cleanup_neurons']:
         print("CLEANUP IS ON WON'T BE ABLE TO TEST !")
 
+    import PL2_read
     pl2_reader = PL2_read.PL2Reader(fname_PL2)
 
     if use_voltage_file is None or not use_voltage_file:

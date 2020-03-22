@@ -5,6 +5,7 @@ from spikesorting_python.src import sort
 from spikesorting_python.src import overlap
 from spikesorting_python.src import binary_pursuit
 from spikesorting_python.src import consolidate
+import warnings
 
 
 
@@ -76,7 +77,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
                max_components=10, min_firing_rate=1,
                do_binary_pursuit=True, add_peak_valley=False,
                do_ZCA_transform=True, do_branch_PCA=True,
-               max_gpu_memory=None, use_rand_init=True,
+               use_GPU=True, max_gpu_memory=None, use_rand_init=True,
                cleanup_neurons=False, verbose=False):
 
     """ Example:
@@ -219,74 +220,22 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
         if do_binary_pursuit:
             if verbose: print("currently", np.unique(neuron_labels).size, "different clusters")
             if verbose: print("Doing binary pursuit")
-
-            cpu_crossings, cpu_neuron_labels, cpu_new_inds = overlap.binary_pursuit_secret_spikes(
-                                    Probe, chan, neuron_labels, crossings[chan],
-                                    thresholds[chan], clip_width)
-            # cpu_clips, valid_event_indices = segment.get_multichannel_clips(Probe, Probe.get_neighbors(chan), cpu_crossings, clip_width=clip_width, thresholds=thresholds)
-            # crossings[chan], neuron_labels = segment.keep_valid_inds([cpu_crossings, cpu_neuron_labels], valid_event_indices)
-            sort.reorder_labels(cpu_neuron_labels)
-            ordering = np.argsort(cpu_crossings)
-            cpu_crossings = cpu_crossings[ordering]
-            cpu_neuron_labels = cpu_neuron_labels[ordering]
-            cpu_new_inds = cpu_new_inds[ordering]
-
-            test_crossings = []
-            test_labels = []
-            test_new_inds = []
-            for n_lab in np.unique(cpu_neuron_labels):
-                select = cpu_neuron_labels == n_lab
-                check_spikes = cpu_crossings[select]
-                check_new_inds = cpu_new_inds[select]
-                keep_bool = consolidate.remove_binary_pursuit_duplicates(check_spikes, check_new_inds)
-                test_crossings.append(check_spikes[keep_bool])
-                test_labels.append(cpu_neuron_labels[select][keep_bool])
-                test_new_inds.append(check_new_inds[keep_bool])
-            cpu_crossings = np.hstack(test_crossings)
-            cpu_neuron_labels = np.hstack(test_labels)
-            cpu_new_inds = np.hstack(test_new_inds)
-            ordering = np.argsort(cpu_crossings)
-            cpu_crossings = cpu_crossings[ordering]
-            cpu_neuron_labels = cpu_neuron_labels[ordering]
-            cpu_new_inds = cpu_new_inds[ordering]
-
-            crossings[chan], neuron_labels, new_inds, clips = binary_pursuit.binary_pursuit(
-                Probe, chan, crossings[chan], neuron_labels, clip_width,
-                thresholds=thresholds, kernels_path=None,
-                max_gpu_memory=max_gpu_memory)
-
-            ordering = np.argsort(crossings[chan])
-            crossings[chan] = crossings[chan][ordering]
-            neuron_labels = neuron_labels[ordering]
-            new_inds = new_inds[ordering]
-
-            test_crossings = []
-            test_labels = []
-            test_new_inds = []
-            for n_lab in np.unique(neuron_labels):
-                select = neuron_labels == n_lab
-                check_spikes = crossings[chan][select]
-                check_new_inds = new_inds[select]
-                keep_bool = consolidate.remove_binary_pursuit_duplicates(check_spikes, check_new_inds)
-                test_crossings.append(check_spikes[keep_bool])
-                test_labels.append(neuron_labels[select][keep_bool])
-                test_new_inds.append(check_new_inds[keep_bool])
-            crossings[chan] = np.hstack(test_crossings)
-            neuron_labels = np.hstack(test_labels)
-            new_inds = np.hstack(test_new_inds)
-            ordering = np.argsort(crossings[chan])
-            crossings[chan] = crossings[chan][ordering]
-            neuron_labels = neuron_labels[ordering]
-            new_inds = new_inds[ordering]
-
-            print("Crossings", cpu_crossings.size, crossings[chan].size, np.count_nonzero(cpu_crossings != crossings[chan]), np.all(cpu_crossings == crossings[chan]))
-            print("Labels", cpu_neuron_labels.size, neuron_labels.size, np.all(cpu_neuron_labels == neuron_labels))
-            print("New inds", cpu_new_inds.size, new_inds.size, np.all(cpu_new_inds == new_inds))
-            print("Found N new", np.count_nonzero(cpu_new_inds), np.count_nonzero(new_inds))
-            # print(cpu_crossings[0:5], cpu_crossings[-5:])
-            # print(crossings[chan][0:5], crossings[chan][-5:])
-            print(cpu_crossings[cpu_crossings != crossings[chan]])
-            print(crossings[chan][cpu_crossings != crossings[chan]])
+            if not use_GPU:
+                use_GPU_message = ("Using CPU binary pursuit to find " \
+                                    "secret spikes. This can be MUCH MUCH " \
+                                    "slower and uses more " \
+                                    "memory than the GPU version.")
+                warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
+                crossings[chan], neuron_labels, new_inds = overlap.binary_pursuit_secret_spikes(
+                                        Probe, chan, neuron_labels, crossings[chan],
+                                        thresholds[chan], clip_width)
+                clips, valid_event_indices = segment.get_multichannel_clips(Probe, Probe.get_neighbors(chan), crossings[chan], clip_width=clip_width, thresholds=thresholds)
+                crossings[chan], neuron_labels = segment.keep_valid_inds([crossings[chan], neuron_labels], valid_event_indices)
+            else:
+                crossings[chan], neuron_labels, new_inds, clips = binary_pursuit.binary_pursuit(
+                    Probe, chan, crossings[chan], neuron_labels, clip_width,
+                    thresholds=thresholds, kernels_path=None,
+                    max_gpu_memory=max_gpu_memory)
         else:
             # Need to get newly aligned clips and new_inds = False
             clips, valid_event_indices = segment.get_multichannel_clips(Probe, Probe.get_neighbors(chan), crossings[chan], clip_width=clip_width, thresholds=thresholds)

@@ -466,11 +466,6 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     neuron_labels = np.int64(np.hstack(secret_spike_labels))
     adjusted_clips = np.float64(np.vstack(adjusted_spike_clips))
     new_spike_bool = np.hstack(secret_spike_bool)
-    # spike_order = np.argsort(event_indices)
-    # event_indices = event_indices[spike_order]
-    # neuron_labels = neuron_labels[spike_order]
-    # new_spike_bool = new_spike_bool[spike_order]
-    # adjusted_clips = adjusted_clips[spike_order, :]
     # Realign events with center of spike
     event_indices += clip_init_samples
 
@@ -482,6 +477,3 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     print("Found a total of", np.count_nonzero(new_spike_bool), "secret spikes", flush=True)
 
     return event_indices, neuron_labels, new_spike_bool, adjusted_clips
-
-# if __name__ == '__main__':
-#     binary_pursuit(np.random.rand(10), np.array([1], dtype=np.uint32), np.array([1], dtype=np.uint32))

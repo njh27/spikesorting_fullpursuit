@@ -182,16 +182,20 @@ def remove_overlapping_spikes(event_indices, max_samples):
     return event_indices, removed_index
 
 
-def find_multichannel_max_neuron(Probe, channel, neighbors, check_time, indices, labels,
-        templates, template_labels, chan_win,
-        spike_biases, template_error, new_indices, new_labels):
-    """ This assumes templates are not normalized and can thus be directly subtracted from voltage. """
+def find_multichannel_max_neuron(Probe, channel, neighbors, check_time, indices,
+        labels, templates, template_labels, chan_win, spike_biases,
+        template_error, new_indices, new_labels):
+    """ This assumes templates are not normalized and can thus be directly
+    subtracted from voltage. This function could be far more efficient if we
+    tracked our current location in the spike event indices array instead
+    of searching the whole thing every time to find the relevant spikes to
+    subtract for computing the residuals. """
 
     samples_per_chan = chan_win[1] - chan_win[0]
     # Window big enough to cover all spikes possibly overlapping with check_time
-    min_t = int(np.abs(chan_win[0]))
-    max_t = int(2 * chan_win[1])
-    if Probe.n_samples < (check_time + max_t) or check_time < min_t:
+    min_t = samples_per_chan + int(np.abs(chan_win[0]))
+    max_t = samples_per_chan + int(chan_win[1])
+    if (Probe.n_samples < (check_time + max_t)) or (check_time < min_t):
         return None
     residual_window = [-1*min_t, max_t]
 
@@ -232,9 +236,10 @@ def find_multichannel_max_neuron(Probe, channel, neighbors, check_time, indices,
 
 
 def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
-        threshold, clip_width, return_adjusted_clips=False):
+        threshold, clip_width):
     """
-        """
+    This function is slow and not efficient in time or memory consumption. The
+    GPU version should be preferred. """
     neighbors = np.array(Probe.get_neighbors(channel)).astype(np.int64)
     # Need to find the indices of the current channel within the multichannel template
     chan_win, clip_width = segment.time_window_to_samples(clip_width, Probe.sampling_rate)
@@ -308,12 +313,12 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
         n += 1
     new_event_indices = []
     new_event_labels = []
-    false_event_ind = []
 
     min_t = int(2 * np.abs(chan_win[0]))
     max_t = int(residual_voltage.size - (4 * chan_win[1]))
     double_chan_win = 2 * np.array(chan_win)
     delta_likelihood = np.zeros((len(templates), double_chan_win[1] - chan_win[0]), dtype=np.float32)
+    test_likelihood = np.zeros_like(delta_likelihood)
 
     dl_update_start_t = min_t + chan_win[0]
     dl_update_stop_t = min_t + double_chan_win[1]
@@ -331,9 +336,11 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
                     + np.dot(x, templates[unit])
                     - spike_biases[unit, chan_neighbor_ind])
 
+        max_neuron = None
         single_chan_dl_cross = delta_likelihood > 0
         single_chan_peaks = np.any(single_chan_dl_cross, axis=0)
         if np.any(single_chan_peaks):
+            single_chan_likelihood = np.copy(delta_likelihood)
             for ct in range(0, single_chan_peaks.size):
                 if not single_chan_peaks[ct]:
                     continue
@@ -345,19 +352,19 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
                                     spike_biases, template_error, new_event_indices,
                                     new_event_labels)
             # Enforce AND operation for single and multi
-            delta_likelihood[~single_chan_dl_cross] = 0
+            test_likelihood[:] = 0.
+            test_likelihood[single_chan_dl_cross] = delta_likelihood[single_chan_dl_cross]
 
-        # Find the neuron with highest delta likelihood, and its time index if greater than 0
-        max_delta_likelihood = np.argmax(delta_likelihood, axis=1)
-        max_neuron_delta_likelihood = -np.inf
-        max_neuron = None
-        inds_to_check = []
-        ind_likelihood = []
-        for ind in range(0, max_delta_likelihood.size):
-            if delta_likelihood[ind, max_delta_likelihood[ind]] > 0:
-                if delta_likelihood[ind, max_delta_likelihood[ind]] > max_neuron_delta_likelihood:
-                    max_neuron_delta_likelihood = delta_likelihood[ind, max_delta_likelihood[ind]]
-                    max_neuron = ind
+            # Find the neuron with highest delta likelihood, and its time index if greater than 0
+            max_delta_likelihood = np.argmax(test_likelihood, axis=1)
+            max_neuron_delta_likelihood = -np.inf
+            inds_to_check = []
+            ind_likelihood = []
+            for ind in range(0, max_delta_likelihood.size):
+                if test_likelihood[ind, max_delta_likelihood[ind]] > 0:
+                    if test_likelihood[ind, max_delta_likelihood[ind]] > max_neuron_delta_likelihood:
+                        max_neuron_delta_likelihood = test_likelihood[ind, max_delta_likelihood[ind]]
+                        max_neuron = ind
 
         if max_neuron is None:
             # highest delta likelihood in this window is <= 0 so move on to next non-overlapping window
@@ -367,31 +374,27 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
             dl_update_start_ind = 0
             continue
 
-        if max_delta_likelihood[max_neuron] >= (chan_win[1] - chan_win[0]):
+        if max_delta_likelihood[max_neuron] > (chan_win[1] - chan_win[0]):
             # Best spike falls beyond current clip so move t there and repeat on new window
             # Remember we have not added a spike/updated residuals at this point so the
             # update time window is NOT the clip width centered on new t
 
             # Need to remember this t in case it is skipped
-            if rollback_t is None and (
-                    np.any(np.any(delta_likelihood[:, 0:(chan_win[1] - chan_win[0])] > 0, axis=1))
-                    ):
-                rollback_t = t
+            if rollback_t is None:
+                if (np.any(np.any(delta_likelihood[:, 0:(chan_win[1]
+                            - chan_win[0])] > 0, axis=1)) or
+                    np.any(np.any(single_chan_likelihood[:, 0:(chan_win[1]
+                                - chan_win[0])] > 0, axis=1))):
+                    rollback_t = t
 
             # Need to update delta_likelihood at these time points
             new_t = t + chan_win[0] + max_delta_likelihood[max_neuron]
             dl_update_start_t = t + double_chan_win[1]
             dl_update_stop_t = dl_update_start_t + (new_t - t)
-
             # Move delta_likelihood values we are keeping and find index for placing new values
             dl_update_start_ind = delta_likelihood.shape[1] - (new_t - t)
             delta_likelihood[:, 0:dl_update_start_ind] = delta_likelihood[:, (max_delta_likelihood[max_neuron] + chan_win[0]):]
-
             t = new_t
-            dl_update_start_t = t + chan_win[0]
-            dl_update_stop_t = t + double_chan_win[1]
-            dl_update_start_ind = 0
-
             continue
         else:
             # Best spike falls within current window, so add it
@@ -399,32 +402,23 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
             residual_voltage[new_event_time+chan_win[0]:new_event_time+chan_win[1]] -= templates[max_neuron]
             new_event_indices.append(new_event_time)
             new_event_labels.append(template_labels[max_neuron])
-            false_event_ind.append(False)
             if rollback_t:
                 # We have now added the spike above, but to get here we previously skipped
                 # a time point that may have a spike and/or dependency on this spike's
-                # addition so move t back to where we skipped before going forward
-                t = rollback_t
+                # addition so move t back before where we skipped, to the furtherst
+                # point back that could have been affected
+                t = rollback_t - chan_win[1]
                 rollback_t = None
                 dl_update_start_t = t + chan_win[0]
                 dl_update_stop_t = t + double_chan_win[1]
                 dl_update_start_ind = 0
-            elif new_event_time < t:
-                # New event was before current t, so move back a bit and recheck the window
-                # centered on this new t before going forward
-                dl_update_start_t = new_event_time + chan_win[0]
-                dl_update_stop_t = new_event_time + chan_win[1]
-                dl_update_start_ind = 0
-                shift = max_delta_likelihood[max_neuron] + chan_win[0] # Must be negative
-                dl_keep_ind = chan_win[1] - chan_win[0] + shift
-                delta_likelihood[:, (chan_win[1] - chan_win[0]):] = delta_likelihood[:, dl_keep_ind:(delta_likelihood.shape[1]+shift)]
-                t = new_event_time
             else:
-                # Otherwise just update the likelihood within the current clip window centered on new event
-                # and recheck the current window t
-                dl_update_start_t = new_event_time + chan_win[0]
-                dl_update_stop_t = new_event_time + chan_win[1]
-                dl_update_start_ind = max_delta_likelihood[max_neuron] + chan_win[0]
+                # Otherwise move back to the minimum time point that could be
+                # affected by the new spike time
+                t = new_event_time - chan_win[1]
+                dl_update_start_t = t + chan_win[0]
+                dl_update_stop_t = t + double_chan_win[1]
+                dl_update_start_ind = 0
         if t < min_t:
             # Move forward regardless and don't look back
             rollback_t = None
@@ -434,11 +428,6 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
             dl_update_stop_t = t + double_chan_win[1]
             dl_update_start_ind = 0
 
-    for fe_ind in reversed(range(0, len(false_event_ind))):
-        if false_event_ind[fe_ind]:
-            del new_event_indices[fe_ind]
-            del new_event_labels[fe_ind]
-
     # Add new found spikes to old ones
     event_indices = np.hstack((event_indices, np.array(new_event_indices, dtype=np.int64)))
     neuron_labels = np.hstack((neuron_labels, new_event_labels))
@@ -446,21 +435,4 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
     if len(new_event_indices) > 0:
         secret_spike_bool[-len(new_event_indices):] = True
 
-    # Put everything in temporal order before output
-    spike_order = np.argsort(event_indices)
-    event_indices = event_indices[spike_order]
-    neuron_labels = neuron_labels[spike_order]
-    secret_spike_bool = secret_spike_bool[spike_order]
-
-    if return_adjusted_clips:
-        # Get adjusted clips at all spike times, taking advantage of residual voltage
-        # currently in memory
-        adjusted_clips = np.empty((event_indices.size, chan_win[1]-chan_win[0]))
-        for l_ind, label in enumerate(template_labels):
-            current_spike_indices = np.where(neuron_labels == label)[0]
-            for spk_event in current_spike_indices:
-                adjusted_clips[spk_event, :] = templates[l_ind] + residual_voltage[event_indices[spk_event]+chan_win[0]:event_indices[spk_event]+chan_win[1]]
-                adjusted_clips[spk_event, :] /= threshold
-        return event_indices, neuron_labels, secret_spike_bool, adjusted_clips
-    else:
-        return event_indices, neuron_labels, secret_spike_bool
+    return event_indices, neuron_labels, secret_spike_bool

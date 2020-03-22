@@ -222,11 +222,29 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
 
             cpu_crossings, cpu_neuron_labels, cpu_new_inds = overlap.binary_pursuit_secret_spikes(
                                     Probe, chan, neuron_labels, crossings[chan],
-                                    thresholds[chan], clip_width,
-                                    return_adjusted_clips=False)
+                                    thresholds[chan], clip_width)
             # cpu_clips, valid_event_indices = segment.get_multichannel_clips(Probe, Probe.get_neighbors(chan), cpu_crossings, clip_width=clip_width, thresholds=thresholds)
             # crossings[chan], neuron_labels = segment.keep_valid_inds([cpu_crossings, cpu_neuron_labels], valid_event_indices)
             sort.reorder_labels(cpu_neuron_labels)
+            ordering = np.argsort(cpu_crossings)
+            cpu_crossings = cpu_crossings[ordering]
+            cpu_neuron_labels = cpu_neuron_labels[ordering]
+            cpu_new_inds = cpu_new_inds[ordering]
+
+            test_crossings = []
+            test_labels = []
+            test_new_inds = []
+            for n_lab in np.unique(cpu_neuron_labels):
+                select = cpu_neuron_labels == n_lab
+                check_spikes = cpu_crossings[select]
+                check_new_inds = cpu_new_inds[select]
+                keep_bool = consolidate.remove_binary_pursuit_duplicates(check_spikes, check_new_inds)
+                test_crossings.append(check_spikes[keep_bool])
+                test_labels.append(cpu_neuron_labels[select][keep_bool])
+                test_new_inds.append(check_new_inds[keep_bool])
+            cpu_crossings = np.hstack(test_crossings)
+            cpu_neuron_labels = np.hstack(test_labels)
+            cpu_new_inds = np.hstack(test_new_inds)
             ordering = np.argsort(cpu_crossings)
             cpu_crossings = cpu_crossings[ordering]
             cpu_neuron_labels = cpu_neuron_labels[ordering]
@@ -241,6 +259,7 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
             crossings[chan] = crossings[chan][ordering]
             neuron_labels = neuron_labels[ordering]
             new_inds = new_inds[ordering]
+
             test_crossings = []
             test_labels = []
             test_new_inds = []
@@ -264,6 +283,8 @@ def spike_sort(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
             print("Labels", cpu_neuron_labels.size, neuron_labels.size, np.all(cpu_neuron_labels == neuron_labels))
             print("New inds", cpu_new_inds.size, new_inds.size, np.all(cpu_new_inds == new_inds))
             print("Found N new", np.count_nonzero(cpu_new_inds), np.count_nonzero(new_inds))
+            # print(cpu_crossings[0:5], cpu_crossings[-5:])
+            # print(crossings[chan][0:5], crossings[chan][-5:])
             print(cpu_crossings[cpu_crossings != crossings[chan]])
             print(crossings[chan][cpu_crossings != crossings[chan]])
         else:

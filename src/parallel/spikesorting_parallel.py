@@ -403,7 +403,7 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
             # crossings, neuron_labels, new_inds = overlap_parallel.binary_pursuit_secret_spikes(
             #                 data_dict, chan, neighbors, voltage[neighbors, :],
             #                 neuron_labels, crossings, data_dict['thresholds'][chan],
-            #                 clip_width, return_adjusted_clips=False)
+            #                 clip_width)
             # clips, valid_event_indices = segment_parallel.get_multichannel_clips(data_dict, voltage[neighbors, :], crossings, clip_width=clip_width, neighbor_thresholds=data_dict['thresholds'][neighbors])
             # crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
 

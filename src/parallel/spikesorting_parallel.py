@@ -20,6 +20,47 @@ import warnings
 
 
 
+def spike_sorting_settings_parallel(**kwargs):
+    settings = {}
+
+    settings['sigma'] = 4.0 # Threshold based on  noise level
+    settings['verbose'] = False
+    settings['test_flag'] = False # Indicates a test run of parallel code that does NOT spawn multiple processes
+    settings['log_dir'] = None # Directory where output logs will be saved as text files
+    # settings['verbose_merge'] = False
+    # settings['threshold_type'] = "absolute"
+    # settings['sharpen'] = True
+    settings['clip_width'] = [-6e-4, 10e-4]# Width of clip in seconds
+    # settings['compute_noise'] = False # Estimate noise per cluster
+    # settings['remove_false_positives'] = True # Remove false positives? Requires compute_noise = true
+    settings['do_branch_PCA'] = True # Use branch pca method to split clusters
+    # settings['preprocess'] = True
+    settings['filter_band'] = (300, 6000)
+    # settings['compute_lfp'] = False
+    # settings['lfp_filter'] = (25, 500)
+    settings['do_ZCA_transform'] = True
+    settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
+    settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
+    settings['check_components'] = None # Number of PCs to check. None means all
+    settings['max_components'] = 10 # Max number to use, of those checked
+    settings['min_firing_rate'] = 1. # Neurons that first less than this threshold (spk/s) are removed
+    settings['p_value_cut_thresh'] = 0.05
+    settings['do_binary_pursuit'] = True
+    settings['use_GPU'] = True # Force algorithms to run on the CPU rather than the GPU
+    settings['max_gpu_memory'] = None # Use as much memory as possible
+    settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
+    settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
+    settings['cleanup_neurons'] = False # Remove garbage at the end
+    # settings['random_seed'] = None # The random seed to use (or nothing, if unspecified)
+
+    for k in kwargs.keys():
+        if k not in settings:
+            raise TypeError("Unknown parameter key {0}.".format(k))
+        settings[k] = kwargs[k]
+
+    return settings
+
+
 def init_load_voltage():
     mkl.set_num_threads(1)
 
@@ -136,12 +177,14 @@ def get_thresholds_and_work_order(shared_voltage, Probe, sigma):
     return thresholds, work_order, crossings_per_s
 
 
-def single_thresholds_and_order(Probe, sigma):
-
-    thresholds = np.empty((Probe.num_electrodes))
-    crossings_per_s = np.empty((Probe.num_electrodes))
-    for chan in range(0, Probe.num_electrodes):
-        abs_voltage = np.abs(Probe.get_voltage(chan))
+def single_thresholds_and_order(voltage, sigma):
+    if voltage.ndim == 1:
+        voltage = np.expand_dims(voltage, 0)
+    num_electrodes = voltage.shape[0]
+    thresholds = np.empty((num_electrodes, ))
+    crossings_per_s = np.empty((num_electrodes, ))
+    for chan in range(0, num_electrodes):
+        abs_voltage = np.abs(voltage[chan, :])
         thresholds[chan] = np.nanmedian(abs_voltage) / 0.6745
         crossings_per_s[chan] = np.count_nonzero(abs_voltage > thresholds[chan])
     thresholds *= sigma
@@ -253,7 +296,8 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
                         clip_width=[-6e-4, 10e-4], p_value_cut_thresh=0.01,
                         check_components=None, max_components=10,
                         min_firing_rate=1,
-                        do_binary_pursuit=True, add_peak_valley=False,
+                        do_binary_pursuit=True, segment_duration=None,
+                        segment_overlap=None, add_peak_valley=False,
                         do_branch_PCA=True, use_GPU=True, max_gpu_memory=None,
                         use_rand_init=True,
                         cleanup_neurons=False, verbose=False, test_flag=False,
@@ -389,8 +433,7 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
                                             crossings, clip_width=clip_width,
                                             neighbor_thresholds=data_dict['thresholds'][neighbors])
             crossings, neuron_labels = segment_parallel.keep_valid_inds(
-                                        [crossings, neuron_labels],
-                                        valid_event_indices)
+                    [crossings, neuron_labels], valid_event_indices)
 
         exit_type = "Finished sorting clusters"
         # Realign spikes based on correlation with current cluster templates before doing binary pursuit
@@ -426,6 +469,8 @@ def spike_sort_one_chan(data_dict, use_cpus, chan, neighbors, sigma=4.5,
 
         if verbose: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
         if verbose: print("Done sorting", flush=True)
+        # Adjust crossings for segment overlap
+        crossings += seg_dict['index_window'][0]
         # Map labels starting at zero and put labels in order
         sort.reorder_labels(neuron_labels)
         if verbose: print("Successfully completed channel ", str(chan), flush=True)
@@ -450,38 +495,59 @@ def init_data_dict(X, X_shape, init_dict=None):
     return
 
 
-def spike_sort_parallel(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
-                        filter_band=(300, 6000), p_value_cut_thresh=0.01,
-                        check_components=None, max_components=10,
-                        min_firing_rate=1, do_binary_pursuit=True,
-                        add_peak_valley=False, do_branch_PCA=True,
-                        use_GPU=True, max_gpu_memory=None, use_rand_init=True,
-                        cleanup_neurons=False,
-                        verbose=False, test_flag=False, log_dir=None,
-                        do_ZCA_transform=True):
+def spike_sort_parallel(Probe, **kwargs):
+    """
+    See 'spike_sorting_settings_parallel' above for a list of allowable kwargs.
 
-    kwargs = {'sigma': sigma, 'clip_width': clip_width,
-              'p_value_cut_thresh': p_value_cut_thresh,
-              'check_components': check_components,
-              'max_components': max_components,
-              'min_firing_rate': min_firing_rate,
-              'do_binary_pursuit': do_binary_pursuit,
-              'add_peak_valley': add_peak_valley,
-              'do_branch_PCA': do_branch_PCA,
-              'use_GPU': use_GPU,
-              'max_gpu_memory': max_gpu_memory,
-              'use_rand_init': use_rand_init,
-              'cleanup_neurons': cleanup_neurons,
-              'verbose': verbose, 'test_flag': test_flag, 'log_dir': log_dir}
+    See also:
+    Documentation in spikesorting 'spike_sort()'
+    """
+    # sigma=4.5, clip_width=[-6e-4, 10e-4],
+    #                     filter_band=(300, 6000), p_value_cut_thresh=0.01,
+    #                     check_components=None, max_components=10,
+    #                     min_firing_rate=1, do_binary_pursuit=True,
+    #                     segment_duration=None, segment_overlap=None,
+    #                     add_peak_valley=False, do_branch_PCA=True,
+    #                     use_GPU=True, max_gpu_memory=None, use_rand_init=True,
+    #                     cleanup_neurons=False,
+    #                     verbose=False, test_flag=False, log_dir=None,
+    #                     do_ZCA_transform=True):
+
     init_dict = {'num_electrodes': Probe.num_electrodes, 'sampling_rate': Probe.sampling_rate,
                  'n_samples': Probe.n_samples, 'results_dict': mp.Manager().dict(),
                  'completed_chans': mp.Manager().list(), 'exits_dict': mp.Manager().dict(),
                  'gpu_lock': mp.Lock(), 'filter_band': filter_band}
+    # Get our settings
+    settings = spike_sorting_settings_parallel(**kwargs)
+
+    if settings['segment_duration'] is None or settings['segment_duration'] == np.inf:
+        settings['segment_overlap'] = 0
+        settings['segment_duration'] = Probe.n_samples
+    else:
+        if settings['segment_overlap'] is None:
+            # If segment is specified with no overlap, use minimal overlap that
+            # will not miss spikes on the edges
+            clip_samples = segment.time_window_to_samples(settings['clip_width'], Probe.sampling_rate)[0]
+            settings['segment_overlap'] = int(3 * (clip_samples[1] - clip_samples[0]))
+        else:
+            settings['segment_overlap'] = int(np.ceil(settings['segment_overlap'] * Probe.sampling_rate))
+        settings['segment_duration'] = int(np.floor(settings['segment_duration'] * Probe.sampling_rate))
+    segment_onsets = []
+    segment_offsets = []
+    curr_onset = 0
+    while (curr_onset < Probe.n_samples):
+        segment_onsets.append(curr_onset)
+        segment_offsets.append(min(curr_onset + settings['segment_duration'], Probe.n_samples))
+        curr_onset += settings['segment_duration'] - settings['segment_overlap']
+    print("Using ", len(segment_onsets), "segments per channel for sorting.")
 
     print("Allocating and copying voltage")
-    X = mp.RawArray('d', Probe.voltage.size)
-    X_np = np.frombuffer(X).reshape(Probe.voltage.shape)
-    np.copyto(X_np, Probe.voltage)
+    X = mp.RawArray('d', Probe.voltage.size) # Allocate voltage buffer
+    X_np = np.frombuffer(X).reshape(Probe.voltage.shape) # Create numpy view
+    np.copyto(X_np, Probe.voltage) # Copy input voltage to voltage buffer
+
+    segment_ID_dicts = []
+    # for x in range(0, len(segment_onsets)):
     if do_ZCA_transform:
         print("Doing ZCA transform")
         thresholds, _, _ = single_thresholds_and_order(Probe, sigma)
@@ -579,22 +645,23 @@ def spike_sort_parallel(Probe, sigma=4.5, clip_width=[-6e-4, 10e-4],
 
     # Now that everything has been sorted, condense our representation of the neurons
     if verbose: print("Summarizing neurons")
-    neurons = consolidate.summarize_neurons(Probe, crossings, labels, waveforms, thresholds, clip_width=clip_width, new_waveforms=new_waveforms, max_components=max_components)
+    neurons = consolidate.summarize_neurons(Probe, crossings, labels,
+                waveforms, new_waveforms=new_waveforms)
 
-    if verbose: print("Ordering neurons and finding peak valleys")
-    neurons = consolidate.recompute_template_wave_properties(neurons)
-    neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
-
-    # Consolidate neurons across channels
-    if cleanup_neurons:
-        if verbose: print("Removing noise units")
-        neurons = consolidate.remove_noise_neurons(neurons)
-        if verbose: print("Combining same neurons in neighborhood")
-        neurons = consolidate.combine_stolen_spikes(neurons, max_offset_samples=20, p_value_combine=.05, p_value_cut_thresh=p_value_cut_thresh, max_components=max_components)
-        neurons = consolidate.combine_neighborhood_neurons(neurons, overlap_time=5e-4, overlap_threshold=5, max_offset_samples=10, p_value_cut_thresh=p_value_cut_thresh, max_components=max_components)
-        neurons = consolidate.recompute_template_wave_properties(neurons)
-        neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
-        neurons = consolidate.remove_across_channel_duplicate_neurons(neurons, overlap_time=5e-4, overlap_threshold=5)
+    # if verbose: print("Ordering neurons and finding peak valleys")
+    # neurons = consolidate.recompute_template_wave_properties(neurons)
+    # neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
+    #
+    # # Consolidate neurons across channels
+    # if cleanup_neurons:
+    #     if verbose: print("Removing noise units")
+    #     neurons = consolidate.remove_noise_neurons(neurons)
+    #     if verbose: print("Combining same neurons in neighborhood")
+    #     neurons = consolidate.combine_stolen_spikes(neurons, max_offset_samples=20, p_value_combine=.05, p_value_cut_thresh=p_value_cut_thresh, max_components=max_components)
+    #     neurons = consolidate.combine_neighborhood_neurons(neurons, overlap_time=5e-4, overlap_threshold=5, max_offset_samples=10, p_value_cut_thresh=p_value_cut_thresh, max_components=max_components)
+    #     neurons = consolidate.recompute_template_wave_properties(neurons)
+    #     neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
+    #     neurons = consolidate.remove_across_channel_duplicate_neurons(neurons, overlap_time=5e-4, overlap_threshold=5)
 
     if verbose: print("Done.")
 
@@ -647,6 +714,8 @@ if __name__ == '__main__':
                        'p_value_cut_thresh': 0.001, 'check_components': None,
                        'max_components': 10,
                        'min_firing_rate': 2, 'do_binary_pursuit': True,
+                       'segment_duration': None,
+                       'segment_overlap': None,
                        'add_peak_valley': False, 'do_branch_PCA': True,
                        'use_GPU': True, 'max_gpu_memory': None,
                        'use_rand_init': True,

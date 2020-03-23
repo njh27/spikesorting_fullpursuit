@@ -12,10 +12,13 @@ Determines the per-electrode threshold necessary for the detection of spikes.
 This function returns a vector of thresholds (one for each channel). These
 represent the absolute value of the threshold.
 """
-def median_threshold(Probe, sigma=5):
-    thresholds = np.empty((Probe.num_electrodes))
-    for chan in range(0, Probe.num_electrodes):
-        abs_voltage = np.abs(Probe.get_voltage(chan))
+def median_threshold(voltage, sigma):
+    if voltage.ndim == 1:
+        voltage = np.expand_dims(voltage, 0)
+    num_electrodes = voltage.shape[0]
+    thresholds = np.empty((num_electrodes, ))
+    for chan in range(0, num_electrodes):
+        abs_voltage = np.abs(voltage[chan, :])
         thresholds[chan] = np.nanmedian(abs_voltage) / 0.6745
     thresholds *= sigma
 

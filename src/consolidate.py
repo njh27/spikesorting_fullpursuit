@@ -249,8 +249,8 @@ spike_indices: The indices (sample number) in the voltage trace of the threshold
  mean_firing_rate: The mean firing rate of the neuron over the entire recording
 peak_valley: The peak valley of the template on the channel from which the neuron arises
 """
-def summarize_neurons(Probe, threshold_crossings, labels, waveforms, thresholds,
-        clip_width=[-2e-4, 4e-4], new_waveforms=None, max_components=None):
+def summarize_neurons(Probe, threshold_crossings, labels, waveforms,
+                        new_waveforms=None):
 
     neuron_summary = []
     for channel in range(0, len(threshold_crossings)):
@@ -263,12 +263,9 @@ def summarize_neurons(Probe, threshold_crossings, labels, waveforms, thresholds,
         for ind, neuron_label in enumerate(np.unique(labels[channel])):
             neuron = {}
             try:
-                if max_components is not None:
-                    neuron['max_components'] = max_components
                 neuron['sort_quality'] = None
                 neuron["channel"] = channel
                 neuron['neighbors'] = Probe.get_neighbors(channel)
-                neuron["clip_width"] = clip_width
                 neuron['sampling_rate'] = Probe.sampling_rate
                 neuron['filter_band'] = Probe.filter_band
                 neuron["spike_indices"] = threshold_crossings[channel][labels[channel] == neuron_label]
@@ -302,18 +299,12 @@ def summarize_neurons(Probe, threshold_crossings, labels, waveforms, thresholds,
                 if new_waveforms is not None:
                     neuron["new_spike_bool"] = new_wave_bool
                 neuron["channel"] = channel
-                neuron["clip_width"] = clip_width
                 neuron["all_spike_indices"] = threshold_crossings[channel]
                 neuron['all_labels'] = labels[channel]
                 neuron['sampling_rate'] = Probe.sampling_rate
                 neuron['filter_band'] = Probe.filter_band
                 neuron['all_waveforms'] = waveforms[channel]
             neuron_summary.append(neuron)
-            if len(thresholds) == len(threshold_crossings):
-                neuron["threshold"] = thresholds[channel]
-            else:
-                neuron["threshold"] = None
-
 
     return neuron_summary
 

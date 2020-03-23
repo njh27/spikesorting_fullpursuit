@@ -90,12 +90,6 @@ class AbstractProbe(object):
         if high_cutoff < self.filter_band[1]:
             self.filter_band[1] = high_cutoff
 
-    # def zca_transform(self):
-    #     zca_matrix = preprocessing.get_noise_sampled_zca_matrix(self.voltage)
-    #     zca_data = np.empty((self.num_electrodes, self.n_samples), dtype='float64', order='C')
-    #     zca_data = np.matmul(zca_matrix, self.voltage, out=zca_data)
-    #     self.voltage = zca_data
-
 
 class SProbe16by2(AbstractProbe):
 

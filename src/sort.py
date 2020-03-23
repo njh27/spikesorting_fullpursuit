@@ -328,7 +328,7 @@ def iso_cut(projection, p_value_cut_thresh):
         if p_value < p_value_cut_thresh:
             cutpoint_ind = np.argmax(null_counts - obs_counts)
             cutpoint = choose_optimal_cutpoint(cutpoint_ind, null_counts - obs_counts, x_axis)
-            print("Early EXACT critical cut at p=", p_value,"!")
+            # print("Early EXACT critical cut at p=", p_value,"!")
         return p_value, cutpoint
 
     sse_left, left_start, left_stop = max_sse_window(obs_counts[0:peak_density_ind+1],
@@ -359,12 +359,8 @@ def iso_cut(projection, p_value_cut_thresh):
     if log_combinations <= np.log(n_perms):
         # Fewer than n_perms combinations exist so do exact test
         p_value = m_gof.twosided_exact_test()
-        if p_value < p_value_cut_thresh:
-            print("EXACT critical cut at p=", p_value,"!")
     else:
         p_value = m_gof.random_perm_test(n_perms=n_perms)
-        if p_value < p_value_cut_thresh:
-            print("PERM critical cut at p=", p_value,"!")
 
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None

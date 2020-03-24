@@ -221,6 +221,9 @@ class TestDataset(object):
         for key in single_sort_kwargs.keys():
             par_sort_kwargs[key] = single_sort_kwargs[key]
 
+        # Enforce test_flag else this will almost surely fail
+        par_sort_kwargs['test_flag'] = True
+
         self.random_state = np.random.get_state()
         first_state = self.random_state
         np.random.set_state(first_state)

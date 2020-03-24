@@ -1,6 +1,6 @@
 import numpy as np
 from spikesorting_python.src import segment
-from spikesorting_python.src import sort
+from spikesorting_python.src.sort import merge_clusters
 from spikesorting_python.src import preprocessing
 from scipy import stats
 from scipy.optimize import nnls, lsq_linear
@@ -202,6 +202,80 @@ def compute_SNR(neurons):
     return neurons
 
 
+def organize_sort_data(sort_data, work_items, n_chans=None):
+    """Takes the output of the spike sorting algorithms and organizes is by
+    channel in segment order.
+    Parameters
+    ----------
+    sort_data: list
+        Each element contains the 4 outputs of spike_sort_segment, split up by
+        individual channels into 'work_items' (or spike_sort_parallel output)
+        "crossings, labels, waveforms, new_waveforms", in this order, for a
+        single segment and a single channel of sorted data.
+        len(sort_data) = number segments * channels == len(work_items)
+    work_items: list
+        Each list element contains the dictionary of information pertaining to
+        the corresponding element in sort_data.
+    n_chans: int
+        Total number of channels sorted. If None this number is inferred as
+        the maximum channel found in work_items['channel'] + 1.
+    Returns
+    -------
+    organized_data : list
+        A list of the original elements of sort_data and organzied such that
+        each list index corresponds to a channel number, and within each channel
+        sublist data are in ordered by segment number as indicated in work_items.
+    organized_items : list
+        Same as for organized data but for the elements of work_items.
+    """
+    if n_chans is None:
+        # Compute n_chans from input data
+        n_chans = 0
+        for x in work_items:
+            n_chans = x['channel'] if x['channel'] > n_chans else n_chans
+        n_chans += 1 # Account for zero indexing
+    organized_data = [[] for x in range(0, n_chans)]
+    organized_items = [[] for x in range(0, n_chans)]
+    for chan in range(0, n_chans):
+        chan_items, chan_data = zip(*[[x, y] for x, y in sorted(
+                                    zip(work_items, sort_data), key=lambda pair:
+                                    pair[0]['segment_dict']['seg_number'])
+                                    if x['channel'] == chan])
+        organized_data[chan].extend(chan_data)
+        organized_items[chan].extend(chan_items)
+
+    return organized_data, organized_items
+
+
+def stitch_segments(organized_data, organized_items):
+
+    n_chans = len(organized_data)
+    ##################
+    # Dumbest possible stitching that doesn't account for duplicate labels or
+    # care if it makese sense to combine labels
+    crossings = [[] for x in range(0, n_chans)]
+    labels = [[] for x in range(0, n_chans)]
+    waveforms = [[] for x in range(0, n_chans)]
+    new_waveforms = [[] for x in range(0, n_chans)]
+    for chan in range(0, n_chans):
+        seg_crossings = []
+        seg_labels = []
+        seg_waveforms = []
+        seg_new = []
+        for seg in range(0, len(organized_data[chan])):
+            seg_crossings.append(organized_data[chan][seg][0])
+            seg_labels.append(organized_data[chan][seg][1])
+            seg_waveforms.append(organized_data[chan][seg][2])
+            seg_new.append(organized_data[chan][seg][3])
+
+        crossings[chan] = np.hstack(seg_crossings)
+        labels[chan] = np.hstack(seg_labels)
+        waveforms[chan] = np.vstack(seg_waveforms)
+        new_waveforms[chan] = np.hstack(seg_new)
+
+    return crossings, labels, waveforms, new_waveforms
+
+
 def remove_binary_pursuit_duplicates(event_indices, new_spike_bool):
     """
     """
@@ -233,7 +307,8 @@ def remove_binary_pursuit_duplicates(event_indices, new_spike_bool):
     summarize_neurons(probe, threshold_crossings, labels)
 
 Return a summarized version of the threshold_crossings, labels, etc. for a given
-set of neurons. This function returns a list of dictionarys (with symbol look-ups)
+set of crossings, neuron labels, and waveforms organized by channel.
+This function returns a list of dictionarys (with symbol look-ups)
 with all essential information about the recording session and sorting.
 The dictionary contains:
 channel: The channel on which the neuron was recorded
@@ -414,7 +489,7 @@ def sharpen_clusters(clips, neuron_labels, curr_chan_inds, p_value_cut_thresh,
         else:
             raise ValueError("Sharpen method must be either 'projection', 'pca', or 'chan_pca'.")
 
-        neuron_labels = sort.merge_clusters(scores, neuron_labels,
+        neuron_labels = merge_clusters(scores, neuron_labels,
                             merge_only=merge_only, split_only=False,
                             p_value_cut_thresh=p_value_cut_thresh)
         n_labels_sharpened = np.unique(neuron_labels).size
@@ -462,7 +537,7 @@ def merge_test_spikes(spike_list, p_value_cut_thresh=0.05, max_components=20, mi
 
     scores = preprocessing.compute_pca_by_channel(clips, np.arange(0, clips.shape[1]), max_components, add_peak_valley=False)
     sharpen = True if n_original.size == 2 and (np.amax(n_original) > 100 * np.amin(n_original)) else False
-    neuron_labels = sort.merge_clusters(clips, neuron_labels, merge_only=False, p_value_cut_thresh=p_value_cut_thresh, min_cluster_size=1)
+    neuron_labels = merge_clusters(clips, neuron_labels, merge_only=False, p_value_cut_thresh=p_value_cut_thresh, min_cluster_size=1)
 
     n_after = np.empty(len(spike_list))
     for n in range(0, len(spike_list)):
@@ -1356,7 +1431,7 @@ def combine_stolen_spikes(neuron_summary, max_offset_samples=3, overlap_time=5e-
                 sharp_labels = np.copy(original_labels)
                 scores = preprocessing.compute_pca_by_channel(clips[:, curr_chan_inds], np.arange(0, curr_chan_inds.size), max_components, add_peak_valley=True)
                 # Below merges labels into the larger cluster, so assumption here is that stolen spikes are less numerous
-                sharp_labels = sort.merge_clusters(scores, sharp_labels, p_value_cut_thresh=p_value_cut_thresh, min_cluster_size=1)
+                sharp_labels = merge_clusters(scores, sharp_labels, p_value_cut_thresh=p_value_cut_thresh, min_cluster_size=1)
 
                 # Determine if a merge happened and to which neuron
                 unique_originals = np.unique(original_labels)

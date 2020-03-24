@@ -344,23 +344,12 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
                     if not single_chan_peaks[ct]:
                         continue
                     check_time = int(ct + t + chan_win[0])
-                    try:
-                        delta_likelihood[:, ct] = find_multichannel_max_neuron(probe_dict,
-                                            neighbors, neighbor_voltage, check_time,
-                                            event_indices, neuron_labels,
-                                            multi_templates, template_labels,
-                                            chan_win, spike_biases, template_error,
-                                            new_event_indices, new_event_labels)
-                    except:
-                        out = find_multichannel_max_neuron(probe_dict,
-                                            neighbors, neighbor_voltage, check_time,
-                                            event_indices, neuron_labels,
-                                            multi_templates, template_labels,
-                                            chan_win, spike_biases, template_error,
-                                            new_event_indices, new_event_labels)
-                        print(delta_likelihood.shape, t)
-                        print(out)
-                        raise
+                    delta_likelihood[:, ct] = find_multichannel_max_neuron(probe_dict,
+                                        neighbors, neighbor_voltage, check_time,
+                                        event_indices, neuron_labels,
+                                        multi_templates, template_labels,
+                                        chan_win, spike_biases, template_error,
+                                        new_event_indices, new_event_labels)
             # Enforce AND operation for single and multi
             test_likelihood[:] = 0.
             test_likelihood[single_chan_dl_cross] = delta_likelihood[single_chan_dl_cross]

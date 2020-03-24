@@ -156,6 +156,7 @@ def spike_sort_segment(Probe, seg_dict, settings):
                                 add_peak_valley=settings['add_peak_valley'],
                                 check_components=settings['check_components'],
                                 max_components=settings['max_components'],
+                                use_rand_init=settings['use_rand_init'],
                                 method='pca')
             curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
             if settings['verbose']: print("After SINGLE BRANCH", curr_num_clusters.size, "different clusters")
@@ -167,6 +168,7 @@ def spike_sort_segment(Probe, seg_dict, settings):
                                 add_peak_valley=settings['add_peak_valley'],
                                 check_components=settings['check_components'],
                                 max_components=settings['max_components'],
+                                use_rand_init=settings['use_rand_init'],
                                 method='pca')
             curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
             if settings['verbose']: print("After MULTI BRANCH", curr_num_clusters.size, "different clusters")
@@ -178,6 +180,7 @@ def spike_sort_segment(Probe, seg_dict, settings):
                                 add_peak_valley=settings['add_peak_valley'],
                                 check_components=settings['check_components'],
                                 max_components=settings['max_components'],
+                                use_rand_init=settings['use_rand_init'],
                                 method='chan_pca')
             curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
             if settings['verbose']: print("After MULTI BY CHAN BRANCH", curr_num_clusters.size, "different clusters")
@@ -222,11 +225,6 @@ def spike_sort_segment(Probe, seg_dict, settings):
             if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters")
             if settings['verbose']: print("Doing binary pursuit")
             if not settings['use_GPU']:
-                use_GPU_message = ("Using CPU binary pursuit to find " \
-                                    "secret spikes. This can be MUCH MUCH " \
-                                    "slower and uses more " \
-                                    "memory than the GPU version.")
-                warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
                 crossings[chan], neuron_labels, new_inds = overlap.binary_pursuit_secret_spikes(
                                         Probe, chan, neuron_labels, crossings[chan],
                                         seg_dict['thresholds'][chan], settings['clip_width'])
@@ -244,7 +242,7 @@ def spike_sort_segment(Probe, seg_dict, settings):
             new_inds = np.zeros(crossings[chan].size, dtype=np.bool)
 
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters")
-        # Adjust crossings for segment overlap
+        # Adjust crossings for segment start time
         crossings[chan] += seg_dict['index_window'][0]
         # Map labels starting at zero
         sort.reorder_labels(neuron_labels)
@@ -284,6 +282,13 @@ def spike_sort(Probe, **kwargs):
     """
     # Get our settings
     settings = spike_sorting_settings(**kwargs)
+    if not settings['use_GPU'] and settings['do_binary_pursuit']:
+        use_GPU_message = ("Using CPU binary pursuit to find " \
+                            "secret spikes. This can be MUCH MUCH " \
+                            "slower and uses more " \
+                            "memory than the GPU version. Returned \
+                            clips will NOT be adjusted.")
+        warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
 
     if settings['segment_duration'] is None or settings['segment_duration'] == np.inf:
         settings['segment_overlap'] = 0
@@ -306,48 +311,53 @@ def spike_sort(Probe, **kwargs):
         curr_onset += settings['segment_duration'] - settings['segment_overlap']
     print("Using ", len(segment_onsets), "segments per channel for sorting.")
 
-    all_neurons = []
-    segment_ID_dicts = []
     segProbe = copy(Probe) # shallow copy
+    if settings['do_ZCA_transform']: zca_cushion = \
+                    (2 * np.ceil(np.amax(np.abs(settings['clip_width'])) \
+                     * Probe.sampling_rate)).astype(np.int64)
+    sort_data = []
+    work_items = []
+    w_ID = 0
     for x in range(0, len(segment_onsets)):
         if settings['verbose']: print("Starting segment number", x+1, "of", len(segment_onsets))
-        if settings['verbose']: print("Finding thresholds")
         # Need to copy or else ZCA transforms will duplicate in overlapping
-        # time segments. Slice over channels should keep same shape
+        # time segments. Slice over num_electrodes should keep same shape
         segProbe.voltage = np.copy(Probe.voltage[0:Probe.num_electrodes,
                                    segment_onsets[x]:segment_offsets[x]])
         segProbe.n_samples = segment_offsets[x] - segment_onsets[x]
         seg_dict = {}
+        seg_dict['n_samples'] = segment_offsets[x] - segment_onsets[x]
         seg_dict['seg_number'] = x
         seg_dict['index_window'] = [segment_onsets[x], segment_offsets[x]]
-        seg_dict['thresholds'] = segment.median_threshold(segProbe.voltage, settings['sigma'])
+        seg_dict['overlap'] = settings['segment_overlap']
         if settings['do_ZCA_transform']:
             if settings['verbose']: print("Doing ZCA transform")
-            zca_cushion = (2 * np.ceil(np.amax(np.abs(settings['clip_width'])) * segProbe.sampling_rate)).astype(np.int64)
-            zca_matrix = preprocessing.get_noise_sampled_zca_matrix(
-                            segProbe.voltage, seg_dict['thresholds'], settings['sigma'], zca_cushion,
-                            n_samples=1e7)
-            segProbe.voltage = zca_matrix @ segProbe.voltage
-            if settings['verbose']: print("Finding ZCA'ed thresholds")
             seg_dict['thresholds'] = segment.median_threshold(segProbe.voltage, settings['sigma'])
-
-
-
+            zca_matrix = preprocessing.get_noise_sampled_zca_matrix(
+                            segProbe.voltage, seg_dict['thresholds'],
+                            settings['sigma'], zca_cushion, n_samples=1e7)
+            segProbe.voltage = zca_matrix @ segProbe.voltage
+        seg_dict['thresholds'] = segment.median_threshold(segProbe.voltage, settings['sigma'])
         crossings, labels, waveforms, new_waveforms = spike_sort_segment(segProbe, seg_dict, settings)
-        segment_ID_dicts.append(seg_dict)
+        for chan in range(0, Probe.num_electrodes):
+            sort_data.append([crossings[chan], labels[chan], waveforms[chan],
+                              new_waveforms[chan]])
+            work_items.append({'channel': chan,
+                               'segment_dict': seg_dict, 'ID': w_ID})
+            w_ID += 1
 
-        ######################################
-        # !SHOULD BE IN OUTER LOOP WHEN DONE!
-        # Now that everything has been sorted, condense our representation of the neurons
-        if settings['verbose']: print("Summarizing neurons")
-        neurons = consolidate.summarize_neurons(Probe, crossings, labels,
-                    waveforms, new_waveforms=new_waveforms)
 
-        # if settings['verbose']: print("Ordering neurons and finding peak valleys")
-        # neurons = consolidate.recompute_template_wave_properties(neurons)
-        # neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
-        all_neurons.extend(neurons)
-    neurons = all_neurons
+    sort_data, work_items = consolidate.organize_sort_data(sort_data, work_items, n_chans=Probe.num_electrodes)
+    crossings, labels, waveforms, new_waveforms = consolidate.stitch_segments(sort_data, work_items)
+    # Now that everything has been sorted, condense our representation of the
+    # neurons by first combining data for each channel
+    if settings['verbose']: print("Summarizing neurons")
+    neurons = consolidate.summarize_neurons(Probe, crossings, labels,
+                waveforms, new_waveforms=new_waveforms)
+
+    # if settings['verbose']: print("Ordering neurons and finding peak valleys")
+    # neurons = consolidate.recompute_template_wave_properties(neurons)
+    # neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
     # # Consolidate neurons across channels
     # if settings['cleanup_neurons']:
     #     if settings['verbose']: print("Removing noise units")

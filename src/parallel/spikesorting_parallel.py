@@ -192,17 +192,12 @@ def single_thresholds_and_samples(voltage, sigma):
     return thresholds, samples_over_thresh
 
 
-def allocate_cpus_by_chan(samples_over_thresh):
+def allocate_cpus_by_chan(samples_over_thresh, cpu_queue):
     """ Assign CPUs/threads according to number of threshold crossings,
     THIS IS EXTREMELY APPROXIMATE since it counts time points
     above threshold, and each spike will have more than one of these.
     Sort time also depends on number of units and other factors but this
     is a decent starting point without any other information available. """
-
-    n_cpus = psutil.cpu_count(logical=True)
-    cpu_queue = mp.Manager().Queue(n_cpus)
-    for cpu in range(n_cpus):
-        cpu_queue.put(cpu)
     cpu_alloc = []
     median_crossings = np.median(samples_over_thresh)
     for magnitude in samples_over_thresh:
@@ -461,11 +456,13 @@ def spike_sort_one_item(data_dict, use_cpus, work_item, neighbors, settings):
                 crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
             else:
                 with data_dict['gpu_lock']:
+                    print("CHECKING OUT GPU LOCK")
                     crossings, neuron_labels, new_inds, clips = binary_pursuit_parallel.binary_pursuit(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 crossings, neuron_labels, settings['clip_width'],
                                 thresholds=item_dict['thresholds'][neighbors],
                                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
+                print("RETURNED OUT GPU LOCK")
             exit_type = "Finished binary pursuit"
         else:
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'], neighbor_thresholds=item_dict['thresholds'][neighbors])
@@ -506,6 +503,7 @@ def spike_sort_parallel(Probe, **kwargs):
     """
     # Get our settings
     settings = spike_sorting_settings_parallel(**kwargs)
+    manager = mp.Manager()
     if not settings['use_GPU'] and settings['do_binary_pursuit']:
         use_GPU_message = ("Using CPU binary pursuit to find " \
                             "secret spikes. This can be MUCH MUCH " \
@@ -514,9 +512,9 @@ def spike_sort_parallel(Probe, **kwargs):
                             "clips will NOT be adjusted.")
         warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
     init_dict = {'num_electrodes': Probe.num_electrodes, 'sampling_rate': Probe.sampling_rate,
-                 'results_dict': mp.Manager().dict(),
-                 'completed_items': mp.Manager().list(), 'exits_dict': mp.Manager().dict(),
-                 'gpu_lock': mp.Manager().Lock(), 'filter_band': settings['filter_band']}
+                 'results_dict': manager.dict(),
+                 'completed_items': manager.list(), 'exits_dict': manager.dict(),
+                 'gpu_lock': manager.Lock(), 'filter_band': settings['filter_band']}
 
     if (settings['segment_duration'] is None) or (settings['segment_duration'] == np.inf) \
         or (settings['segment_duration'] * Probe.sampling_rate >= Probe.n_samples):
@@ -592,14 +590,20 @@ def spike_sort_parallel(Probe, **kwargs):
         samples_over_thresh, work_items = zip(*[[x, y] for x, y in reversed(
                                             sorted(zip(samples_over_thresh,
                                             work_items), key=lambda pair: pair[0]))])
+
+    n_cpus = psutil.cpu_count(logical=True)
+    cpu_queue = manager.Queue(n_cpus)
+    for cpu in range(n_cpus):
+        cpu_queue.put(cpu)
     # cpu_alloc returned in order of samples_over_thresh/work_items
-    cpu_queue, cpu_alloc = allocate_cpus_by_chan(samples_over_thresh)
+    cpu_queue, cpu_alloc = allocate_cpus_by_chan(samples_over_thresh, cpu_queue)
     init_dict['cpu_queue'] = cpu_queue
-    completed_items_queue = mp.Manager().Queue(len(work_items))
+    completed_items_queue = manager.Queue(len(work_items))
     init_dict['completed_items_queue'] = completed_items_queue
     for x in range(0, len(work_items)):
         # Initializing keys for each result seems to prevent broken pipe errors
         init_dict['results_dict'][x] = None
+        init_dict['exits_dict'][x] = None
 
     # Call init function to ensure data_dict is globally available before passing
     # it into each process

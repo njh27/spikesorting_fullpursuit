@@ -1,4 +1,3 @@
-import pyopencl as cl
 import numpy as np
 import os
 import platform as sys_platform
@@ -9,7 +8,7 @@ from spikesorting_python.src import segment
 from spikesorting_python.src.parallel import segment_parallel
 from spikesorting_python.src.overlap import reassign_simultaneous_spiking_clusters, get_zero_phase_kernel, remove_overlapping_spikes
 from scipy.signal import fftconvolve
-os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
+
 
 
 
@@ -49,6 +48,14 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         be converted to 1x(M*N) vector where the first N points refer to the first template.
 
     """
+    ############################################################################
+    # Must reserve all references to pyopencl to be inside this function.
+    # Otherwise importing by main calling function (spikesorting_parallel)
+    # instantiates pyopencl in the host process and blocks the children
+    import pyopencl as cl
+    os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
+    ############################################################################
+
     chan_win, clip_width = segment_parallel.time_window_to_samples(clip_width, probe_dict['sampling_rate'])
     _, master_channel_index, clip_samples, template_samples_per_chan, curr_chan_inds = segment.get_windows_and_indices(
         clip_width, probe_dict['sampling_rate'], channel, neighbors)

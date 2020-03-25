@@ -286,11 +286,12 @@ def spike_sort(Probe, **kwargs):
         use_GPU_message = ("Using CPU binary pursuit to find " \
                             "secret spikes. This can be MUCH MUCH " \
                             "slower and uses more " \
-                            "memory than the GPU version. Returned \
-                            clips will NOT be adjusted.")
+                            "memory than the GPU version. Returned " \
+                            "clips will NOT be adjusted.")
         warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
 
-    if settings['segment_duration'] is None or settings['segment_duration'] == np.inf:
+    if (settings['segment_duration'] is None) or (settings['segment_duration'] == np.inf) \
+        or (settings['segment_duration'] * Probe.sampling_rate >= Probe.n_samples):
         settings['segment_overlap'] = 0
         settings['segment_duration'] = Probe.n_samples
     else:
@@ -302,12 +303,18 @@ def spike_sort(Probe, **kwargs):
         else:
             settings['segment_overlap'] = int(np.ceil(settings['segment_overlap'] * Probe.sampling_rate))
         settings['segment_duration'] = int(np.floor(settings['segment_duration'] * Probe.sampling_rate))
+
     segment_onsets = []
     segment_offsets = []
     curr_onset = 0
     while (curr_onset < Probe.n_samples):
         segment_onsets.append(curr_onset)
         segment_offsets.append(min(curr_onset + settings['segment_duration'], Probe.n_samples))
+        if (segment_offsets[-1] - segment_onsets[-1]) < 0.5 * settings['segment_duration']:
+            print("Last segment is less than half segment duration. Combining it with previous segment.")
+            del segment_offsets[-1], segment_onsets[-1]
+            segment_offsets[-1] = Probe.n_samples
+            break
         curr_onset += settings['segment_duration'] - settings['segment_overlap']
     print("Using ", len(segment_onsets), "segments per channel for sorting.")
 
@@ -317,13 +324,16 @@ def spike_sort(Probe, **kwargs):
                          * Probe.sampling_rate)).astype(np.int64)
         zca_seg_voltages = []
         for x in range(0, len(segment_onsets)):
-            seg_volts = np.copy(Probe.voltage[0:Probe.num_electrodes,
-                                       segment_onsets[x]:segment_offsets[x]])
+            # Need to copy or else ZCA transforms will duplicate in overlapping
+            # time segments. Copy happens during matrix multiplication
+            # Slice over num_electrodes should keep same shape
+            seg_volts = Probe.voltage[0:Probe.num_electrodes,
+                                       segment_onsets[x]:segment_offsets[x]]
             seg_thresholds = segment.median_threshold(seg_volts, settings['sigma'])
             zca_matrix = preprocessing.get_noise_sampled_zca_matrix(
                             seg_volts, seg_thresholds,
                             settings['sigma'], zca_cushion, n_samples=1e7)
-            seg_volts = zca_matrix @ seg_volts
+            seg_volts = zca_matrix @ seg_volts # @ makes new copy
             zca_seg_voltages.append(seg_volts)
 
     segProbe = copy(Probe) # shallow copy
@@ -332,8 +342,6 @@ def spike_sort(Probe, **kwargs):
     w_ID = 0
     for x in range(0, len(segment_onsets)):
         if settings['verbose']: print("Starting segment number", x+1, "of", len(segment_onsets))
-        # Need to copy or else ZCA transforms will duplicate in overlapping
-        # time segments. Slice over num_electrodes should keep same shape
         if settings['do_ZCA_transform']:
             segProbe.voltage = zca_seg_voltages[x]
         else:

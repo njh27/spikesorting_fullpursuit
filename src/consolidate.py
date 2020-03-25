@@ -44,7 +44,7 @@ def reorder_neurons_by_raw_peak_valley(neuron_summary):
     ordered_peak_valley = np.empty(len(neuron_summary))
     for n in range(0, len(neuron_summary)):
         ordered_peak_valley[n] = neuron_summary[n]['peak_valley']
-    neuron_summary = [neuron_summary[x] for x in reversed(np.argsort(ordered_peak_valley))]
+    neuron_summary = [neuron_summary[x] for x in reversed(np.argsort(ordered_peak_valley, kind='stable'))]
 
     return neuron_summary
 
@@ -346,8 +346,10 @@ def summarize_neurons(Probe, threshold_crossings, labels, waveforms,
                 neuron["spike_indices"] = threshold_crossings[channel][labels[channel] == neuron_label]
                 neuron['waveforms'] = waveforms[channel][labels[channel] == neuron_label, :]
 
-                # Ensure spike times are ordered
-                spike_order = np.argsort(neuron["spike_indices"])
+                # Ensure spike times are ordered. Must use 'stable' sort for
+                # output to be repeatable because overlapping segments and
+                # binary pursuit can return slightly different dupliate spikes
+                spike_order = np.argsort(neuron["spike_indices"], kind='stable')
                 neuron["spike_indices"] = neuron["spike_indices"][spike_order]
                 neuron['waveforms'] = neuron['waveforms'][spike_order, :]
                 if new_waveforms is not None:

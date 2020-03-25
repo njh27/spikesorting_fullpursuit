@@ -95,9 +95,8 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
             # slice at -2 if parallel folder is same level as kernels folder
             kernels_path = [x + '/' for x in kernels_path[0:-2]]
             kernels_path = ''.join(kernels_path) + 'kernels/binary_pursuit.cl'
-    fp = open(kernels_path, 'r')
-    kernels = fp.read()
-    fp.close()
+    with open(kernels_path, 'r') as fp:
+        kernels = fp.read()
 
     # Search for a platform with a GPU device, and pick GPU with most global memory
     platforms = cl.get_platforms()

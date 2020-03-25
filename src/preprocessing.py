@@ -220,7 +220,7 @@ def compute_pca(clips, check_components, max_components, add_peak_valley=False,
         use_components, _ = sort_cython.optimal_reconstruction_pca_order(clips, check_components, max_components)
     else:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(clips, check_components, max_components)
-    print("Automatic component detection chose", use_components, "PCA components.", flush=True)
+    # print("Automatic component detection chose", use_components, "PCA components.", flush=True)
     scores = pca_scores(clips, use_components, pcs_as_index=True)
     if add_peak_valley:
         peak_valley = (np.amax(clips[:, curr_chan_inds], axis=1) - np.amin(clips[:, curr_chan_inds], axis=1)).reshape(clips.shape[0], -1)
@@ -237,7 +237,7 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
     # Do current channel first
     # use_components, _ = optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
     use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
-    print("Automatic component detection (get by channel) chose", use_components, "PCA components.", flush=True)
+    # print("Automatic component detection (get by channel) chose", use_components, "PCA components.", flush=True)
     scores = pca_scores(clips[:, curr_chan_inds], use_components, pcs_as_index=True)
     if add_peak_valley:
         peak_valley = (np.amax(clips[:, curr_chan_inds], axis=1) - np.amin(clips[:, curr_chan_inds], axis=1)).reshape(clips.shape[0], -1)
@@ -256,11 +256,11 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
         # use_components, is_worse_than_mean = optimal_reconstruction_pca_order(clips[:, ch_inds], check_components, max_components)
         use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order_F(clips[:, ch_inds], check_components, max_components)
         if is_worse_than_mean:
-            print("Automatic component detection (get by channel) chose !NO! PCA components.", flush=True)
+            # print("Automatic component detection (get by channel) chose !NO! PCA components.", flush=True)
             continue
         # if use_components.size > n_curr_max:
         #     use_components = use_components[0:n_curr_max]
-        print("Automatic component detection (get by channel) chose", use_components, "PCA components.", flush=True)
+        # print("Automatic component detection (get by channel) chose", use_components, "PCA components.", flush=True)
         scores = pca_scores(clips[:, ch_inds], use_components, pcs_as_index=True)
         pcs_by_chan.append(scores)
 
@@ -369,7 +369,7 @@ def compute_template_pca(clips, labels, curr_chan_inds, check_components, max_co
 
     # use_components, _ = optimal_reconstruction_pca_order(templates, check_components, max_components)
     use_components, _ = sort_cython.optimal_reconstruction_pca_order(templates, check_components, max_components)
-    print("Automatic component detection (FULL TEMPLATES) chose", use_components, "PCA components.")
+    # print("Automatic component detection (FULL TEMPLATES) chose", use_components, "PCA components.")
     _, score_mat = pca_scores(templates, use_components, pcs_as_index=True, return_V=True)
     scores = clips @ score_mat
     if add_peak_valley:
@@ -395,7 +395,7 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_compone
     # Do current channel first
     # use_components, _ = optimal_reconstruction_pca_order(templates[:, curr_chan_inds], check_components, max_components)
     use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(templates[:, curr_chan_inds], check_components, max_components)
-    print("Automatic component detection (TEMPLATES by channel) chose", use_components, "PCA components.")
+    # print("Automatic component detection (TEMPLATES by channel) chose", use_components, "PCA components.")
     _, score_mat = pca_scores(templates[:, curr_chan_inds], use_components, pcs_as_index=True, return_V=True)
     scores = clips[:, curr_chan_inds] @ score_mat
     if add_peak_valley:
@@ -414,11 +414,11 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_compone
         # use_components, is_worse_than_mean = optimal_reconstruction_pca_order(templates[:, ch_inds], check_components, max_components)
         use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order_F(templates[:, ch_inds], check_components, max_components)
         if is_worse_than_mean:
-            print("Automatic component detection (TEMPLATES by channel) chose !NO! PCA components.", flush=True)
+            # print("Automatic component detection (TEMPLATES by channel) chose !NO! PCA components.", flush=True)
             continue
         # if use_components.size > n_curr_max:
         #     use_components = use_components[0:n_curr_max]
-        print("Automatic component detection (TEMPLATES by channel) chose", use_components, "PCA components.")
+        # print("Automatic component detection (TEMPLATES by channel) chose", use_components, "PCA components.")
         _, score_mat = pca_scores(templates[:, ch_inds], use_components, pcs_as_index=True, return_V=True)
         scores = clips[:, ch_inds] @ score_mat
         pcs_by_chan.append(scores)

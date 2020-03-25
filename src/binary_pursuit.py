@@ -94,9 +94,8 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             # slice at -1 if this function at same level as kernels folder
             kernels_path = [x + '/' for x in kernels_path[0:-1]]
             kernels_path = ''.join(kernels_path) + 'kernels/binary_pursuit.cl'
-    fp = open(kernels_path, 'r')
-    kernels = fp.read()
-    fp.close()
+    with open(kernels_path, 'r') as fp:
+        kernels = fp.read()
 
     # Search for a platform with a GPU device, and pick GPU with most global memory
     platforms = cl.get_platforms()
@@ -470,8 +469,8 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     event_indices += clip_init_samples
 
     if thresholds is not None:
-        for n_chan in range(0, n_neighbor_chans):
-            nt_win = [n_chan*template_samples_per_chan, n_chan*template_samples_per_chan + template_samples_per_chan]
+        for n_ind, n_chan in enumerate(neighbors):
+            nt_win = [n_ind*template_samples_per_chan, n_ind*template_samples_per_chan + template_samples_per_chan]
             adjusted_clips[:, nt_win[0]:nt_win[1]] /= thresholds[n_chan]
 
     print("Found a total of", np.count_nonzero(new_spike_bool), "secret spikes", flush=True)

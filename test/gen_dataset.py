@@ -243,7 +243,7 @@ class TestDataset(object):
                     continue
                 if key == 'new_spike_bool':
                     if np.all(neur[key] == npar[key]):
-                        print("Neuron {0} {1} SAME".format(n_ind, key))
+                        print("Neuron {0} {1} same".format(n_ind, key))
                     else:
                         print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
                     continue
@@ -252,11 +252,77 @@ class TestDataset(object):
                     # assert neur['sort_quality']['false_positives'] == npar['sort_quality']['false_positives'], "Neuron {0} sort quality false positives differ".format(n_ind)
                     # assert neur['sort_quality']['false_positives'] == npar['sort_quality']['false_positives'], "Neuron {0} sort quality false positives differ".format(n_ind)
                 elif key == 'waveforms':
-                    # assert np.all(np.abs(np.sum(neur[key] - npar[key], axis=1)) < 1e-6), "Neuron {0} waveforms differ".format(n_ind)
-                    assert np.allclose(neur[key], npar[key], equal_nan=True), "Neuron {0} waveforms differ".format(n_ind)
+                    # assert np.allclose(neur[key], npar[key], equal_nan=True), "Neuron {0} waveforms differ".format(n_ind)
+                    if np.allclose(neur[key], npar[key], equal_nan=True):
+                        print("Neuron {0} {1} same".format(n_ind, key))
+                    else:
+                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
                 else:
-                    assert np.all(neur[key] == npar[key]), "Neuron {0} {1} differ".format(n_ind, key)
-                    # assert np.allclose(neur[key], npar[key], equal_nan=True), "Neuron {0} {1} differ".format(n_ind, key)
+                    # assert np.all(neur[key] == npar[key]), "Neuron {0} {1} differ".format(n_ind, key)
+                    if np.all(neur[key] == npar[key]):
+                        print("Neuron {0} {1} same".format(n_ind, key))
+                    else:
+                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
             n_ind += 1
 
         return neurons, neurons_parallel
+
+
+    def compare_single_vs_single(self, kwargs):
+        """Compare back to back runs of single spike sorter with the same random
+        seed. """
+        single_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
+                              'p_value_cut_thresh': 0.01, 'check_components': None,
+                              'max_components': 10,
+                              'min_firing_rate': 1, 'do_binary_pursuit': False,
+                              'add_peak_valley': False, 'do_ZCA_transform': True,
+                              'do_branch_PCA': True, 'use_GPU': True,
+                              'max_gpu_memory': None,
+                              'use_rand_init': True,
+                              'cleanup_neurons': False,
+                              'verbose': True}
+        for key in kwargs:
+            single_sort_kwargs[key] = kwargs[key]
+
+        self.random_state = np.random.get_state()
+        first_state = self.random_state
+        np.random.set_state(first_state)
+        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
+        neurons_1 = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
+
+        np.random.set_state(first_state)
+        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
+        neurons_2 = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
+        self.random_state = first_state
+
+        n_ind = 0
+        for n1, n2 in zip(neurons_1, neurons_2):
+            for key in n1.keys():
+                print("testing key", key)
+                if key == 'template':
+                    continue
+                if key == 'new_spike_bool':
+                    if np.all(n1[key] == n2[key]):
+                        print("Neuron {0} {1} same".format(n_ind, key))
+                    else:
+                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
+                    continue
+                if key == 'sort_quality':
+                    continue
+                    # assert n1['sort_quality']['false_positives'] == n2['sort_quality']['false_positives'], "Neuron {0} sort quality false positives differ".format(n_ind)
+                    # assert n1['sort_quality']['false_positives'] == n2['sort_quality']['false_positives'], "Neuron {0} sort quality false positives differ".format(n_ind)
+                elif key == 'waveforms':
+                    # assert np.allclose(n1[key], n2[key], equal_nan=True), "Neuron {0} waveforms differ".format(n_ind)
+                    if np.allclose(n1[key], n2[key], equal_nan=True):
+                        print("Neuron {0} {1} same".format(n_ind, key))
+                    else:
+                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
+                else:
+                    # assert np.all(n1[key] == n2[key]), "Neuron {0} {1} differ".format(n_ind, key)
+                    if np.all(n1[key] == n2[key]):
+                        print("Neuron {0} {1} same".format(n_ind, key))
+                    else:
+                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
+            n_ind += 1
+
+        return neurons_1, neurons_2

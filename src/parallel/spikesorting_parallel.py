@@ -332,8 +332,8 @@ def spike_sort_one_item(data_dict, use_cpus, work_item, neighbors, settings):
         if settings['test_flag']:
             mkl.set_num_threads(8)
         else:
-            # mkl.set_num_threads(len(use_cpus))
-            mkl.set_num_threads(8)
+            mkl.set_num_threads(len(use_cpus))
+            # mkl.set_num_threads(8)
 
         # Get the all the needed info for this work item
         # Functions that get this dictionary only ever use these items since
@@ -510,15 +510,16 @@ def spike_sort_parallel(Probe, **kwargs):
         use_GPU_message = ("Using CPU binary pursuit to find " \
                             "secret spikes. This can be MUCH MUCH " \
                             "slower and uses more " \
-                            "memory than the GPU version. Returned \
-                            clips will NOT be adjusted.")
+                            "memory than the GPU version. Returned " \
+                            "clips will NOT be adjusted.")
         warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
     init_dict = {'num_electrodes': Probe.num_electrodes, 'sampling_rate': Probe.sampling_rate,
                  'results_dict': mp.Manager().dict(),
                  'completed_items': mp.Manager().list(), 'exits_dict': mp.Manager().dict(),
                  'gpu_lock': mp.Manager().Lock(), 'filter_band': settings['filter_band']}
 
-    if settings['segment_duration'] is None or settings['segment_duration'] == np.inf:
+    if (settings['segment_duration'] is None) or (settings['segment_duration'] == np.inf) \
+        or (settings['segment_duration'] * Probe.sampling_rate >= Probe.n_samples):
         settings['segment_overlap'] = 0
         settings['segment_duration'] = Probe.n_samples
     else:
@@ -536,6 +537,11 @@ def spike_sort_parallel(Probe, **kwargs):
     while (curr_onset < Probe.n_samples):
         segment_onsets.append(curr_onset)
         segment_offsets.append(min(curr_onset + settings['segment_duration'], Probe.n_samples))
+        if (segment_offsets[-1] - segment_onsets[-1]) < 0.5 * settings['segment_duration']:
+            print("Last segment is less than half segment duration. Combining it with previous segment.")
+            del segment_offsets[-1], segment_onsets[-1]
+            segment_offsets[-1] = Probe.n_samples
+            break
         curr_onset += settings['segment_duration'] - settings['segment_overlap']
     print("Using ", len(segment_onsets), "segments per channel for sorting.")
 
@@ -548,6 +554,8 @@ def spike_sort_parallel(Probe, **kwargs):
     chan_neighbors = []
     for x in range(0, len(segment_onsets)):
         if settings['verbose']: print("Finding voltage and thresholds for segment", x+1, "of", len(segment_onsets))
+        # Need to copy or else ZCA transforms will duplicate in overlapping
+        # time segments. Copy happens during matrix multiplication
         # Slice over num_electrodes should keep same shape
         seg_voltage = Probe.voltage[0:Probe.num_electrodes,
                                    segment_onsets[x]:segment_offsets[x]]
@@ -562,7 +570,7 @@ def spike_sort_parallel(Probe, **kwargs):
             zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                             seg_dict['thresholds'], settings['sigma'],
                             zca_cushion, n_samples=1e7)
-            seg_voltage = zca_matrix @ seg_voltage # @ makes new copy from Probe.voltage
+            seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
         seg_dict['thresholds'], seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
         samples_over_thresh.extend(seg_over_thresh)
         # Allocate shared voltage buffer. List is appended in SEGMENT ORDER
@@ -589,6 +597,9 @@ def spike_sort_parallel(Probe, **kwargs):
     init_dict['cpu_queue'] = cpu_queue
     completed_items_queue = mp.Manager().Queue(len(work_items))
     init_dict['completed_items_queue'] = completed_items_queue
+    for x in range(0, len(work_items)):
+        # Initializing keys for each result seems to prevent broken pipe errors
+        init_dict['results_dict'][x] = None
 
     # Call init function to ensure data_dict is globally available before passing
     # it into each process
@@ -605,7 +616,7 @@ def spike_sort_parallel(Probe, **kwargs):
         n_complete = len(data_dict['completed_items']) # Do once to avoid race
         if n_complete > completed_items_index:
             for ci in range(completed_items_index, n_complete):
-                print("Completed item from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['segment_dict']['seg_number']+1)
+                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID'], "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['segment_dict']['seg_number']+1)
                 print("Exited with status: ", data_dict['exits_dict'][data_dict['completed_items'][ci]])
                 completed_items_index += 1
                 if not settings['test_flag']:
@@ -616,7 +627,7 @@ def spike_sort_parallel(Probe, **kwargs):
                     del processes[done_index]
 
         if not settings['test_flag']:
-            print("Starting item {0}/{1} on CPUs {2}".format(wi_ind+1, len(work_items), use_cpus))
+            print("Starting item {0}/{1} on CPUs {2}".format(wi_ind, len(work_items)-1, use_cpus))
             time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
             proc = mp.Process(target=spike_sort_one_item,
                               args=(data_dict, use_cpus, w_item,
@@ -625,7 +636,7 @@ def spike_sort_parallel(Probe, **kwargs):
             processes.append(proc)
             proc_item_index.append(wi_ind)
         else:
-            print("Doing one process on item {0}/{1}".format(wi_ind+1, len(work_items)))
+            print("Doing one process on item {0}/{1}".format(wi_ind, len(work_items)-1))
             spike_sort_one_item(data_dict, use_cpus, w_item, chan_neighbors[w_item['channel']], settings)
             print("finished sort one item")
 
@@ -641,8 +652,7 @@ def spike_sort_parallel(Probe, **kwargs):
                 # This item was already finished above so just clearing out
                 # completed_items_queue
                 continue
-            # print("Completed item from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['segment_dict']['seg_number']+1)
-            print("Completed item ", finished_item)
+            print("Completed item", finished_item, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['segment_dict']['seg_number']+1)
             print("Exited with status: ", data_dict['exits_dict'][finished_item])
             completed_items_index += 1
 

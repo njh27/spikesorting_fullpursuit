@@ -311,10 +311,22 @@ def spike_sort(Probe, **kwargs):
         curr_onset += settings['segment_duration'] - settings['segment_overlap']
     print("Using ", len(segment_onsets), "segments per channel for sorting.")
 
+    if settings['do_ZCA_transform']:
+        if settings['verbose']: print("Doing ZCA transform")
+        zca_cushion = (2 * np.ceil(np.amax(np.abs(settings['clip_width'])) \
+                         * Probe.sampling_rate)).astype(np.int64)
+        zca_seg_voltages = []
+        for x in range(0, len(segment_onsets)):
+            seg_volts = np.copy(Probe.voltage[0:Probe.num_electrodes,
+                                       segment_onsets[x]:segment_offsets[x]])
+            seg_thresholds = segment.median_threshold(seg_volts, settings['sigma'])
+            zca_matrix = preprocessing.get_noise_sampled_zca_matrix(
+                            seg_volts, seg_thresholds,
+                            settings['sigma'], zca_cushion, n_samples=1e7)
+            seg_volts = zca_matrix @ seg_volts
+            zca_seg_voltages.append(seg_volts)
+
     segProbe = copy(Probe) # shallow copy
-    if settings['do_ZCA_transform']: zca_cushion = \
-                    (2 * np.ceil(np.amax(np.abs(settings['clip_width'])) \
-                     * Probe.sampling_rate)).astype(np.int64)
     sort_data = []
     work_items = []
     w_ID = 0
@@ -322,21 +334,17 @@ def spike_sort(Probe, **kwargs):
         if settings['verbose']: print("Starting segment number", x+1, "of", len(segment_onsets))
         # Need to copy or else ZCA transforms will duplicate in overlapping
         # time segments. Slice over num_electrodes should keep same shape
-        segProbe.voltage = np.copy(Probe.voltage[0:Probe.num_electrodes,
-                                   segment_onsets[x]:segment_offsets[x]])
+        if settings['do_ZCA_transform']:
+            segProbe.voltage = zca_seg_voltages[x]
+        else:
+            segProbe.voltage = Probe.voltage[0:Probe.num_electrodes,
+                                       segment_onsets[x]:segment_offsets[x]]
         segProbe.n_samples = segment_offsets[x] - segment_onsets[x]
         seg_dict = {}
         seg_dict['n_samples'] = segment_offsets[x] - segment_onsets[x]
         seg_dict['seg_number'] = x
         seg_dict['index_window'] = [segment_onsets[x], segment_offsets[x]]
         seg_dict['overlap'] = settings['segment_overlap']
-        if settings['do_ZCA_transform']:
-            if settings['verbose']: print("Doing ZCA transform")
-            seg_dict['thresholds'] = segment.median_threshold(segProbe.voltage, settings['sigma'])
-            zca_matrix = preprocessing.get_noise_sampled_zca_matrix(
-                            segProbe.voltage, seg_dict['thresholds'],
-                            settings['sigma'], zca_cushion, n_samples=1e7)
-            segProbe.voltage = zca_matrix @ segProbe.voltage
         seg_dict['thresholds'] = segment.median_threshold(segProbe.voltage, settings['sigma'])
         crossings, labels, waveforms, new_waveforms = spike_sort_segment(segProbe, seg_dict, settings)
         for chan in range(0, Probe.num_electrodes):
@@ -346,7 +354,7 @@ def spike_sort(Probe, **kwargs):
                                'segment_dict': seg_dict, 'ID': w_ID})
             w_ID += 1
 
-
+    # return sort_data, work_items
     sort_data, work_items = consolidate.organize_sort_data(sort_data, work_items, n_chans=Probe.num_electrodes)
     crossings, labels, waveforms, new_waveforms = consolidate.stitch_segments(sort_data, work_items)
     # Now that everything has been sorted, condense our representation of the

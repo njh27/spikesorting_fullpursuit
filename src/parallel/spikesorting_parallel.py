@@ -332,7 +332,8 @@ def spike_sort_one_item(data_dict, use_cpus, work_item, neighbors, settings):
         if settings['test_flag']:
             mkl.set_num_threads(8)
         else:
-            mkl.set_num_threads(len(use_cpus))
+            # mkl.set_num_threads(len(use_cpus))
+            mkl.set_num_threads(8)
 
         # Get the all the needed info for this work item
         # Functions that get this dictionary only ever use these items since
@@ -513,9 +514,9 @@ def spike_sort_parallel(Probe, **kwargs):
                             clips will NOT be adjusted.")
         warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
     init_dict = {'num_electrodes': Probe.num_electrodes, 'sampling_rate': Probe.sampling_rate,
-                 'n_samples': Probe.n_samples, 'results_dict': mp.Manager().dict(),
+                 'results_dict': mp.Manager().dict(),
                  'completed_items': mp.Manager().list(), 'exits_dict': mp.Manager().dict(),
-                 'gpu_lock': mp.Lock(), 'filter_band': settings['filter_band']}
+                 'gpu_lock': mp.Manager().Lock(), 'filter_band': settings['filter_band']}
 
     if settings['segment_duration'] is None or settings['segment_duration'] == np.inf:
         settings['segment_overlap'] = 0
@@ -524,7 +525,7 @@ def spike_sort_parallel(Probe, **kwargs):
         if settings['segment_overlap'] is None:
             # If segment is specified with no overlap, use minimal overlap that
             # will not miss spikes on the edges
-            clip_samples = segment.time_window_to_samples(settings['clip_width'], Probe.sampling_rate)[0]
+            clip_samples = segment_parallel.time_window_to_samples(settings['clip_width'], Probe.sampling_rate)[0]
             settings['segment_overlap'] = int(3 * (clip_samples[1] - clip_samples[0]))
         else:
             settings['segment_overlap'] = int(np.ceil(settings['segment_overlap'] * Probe.sampling_rate))
@@ -640,6 +641,7 @@ def spike_sort_parallel(Probe, **kwargs):
                 # This item was already finished above so just clearing out
                 # completed_items_queue
                 continue
+            # print("Completed item from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['segment_dict']['seg_number']+1)
             print("Completed item ", finished_item)
             print("Exited with status: ", data_dict['exits_dict'][finished_item])
             completed_items_index += 1
@@ -656,18 +658,20 @@ def spike_sort_parallel(Probe, **kwargs):
                 waveforms = pickle.load(fp)
             os.remove('temp_clips' + str(w_item['ID']) + '.pickle')
             # Append list of crossings, labels, waveforms, new_waveforms
-            if type(data_dict['results_dict'][w_item['ID']][0]) == np.ndarray:
-                if data_dict['results_dict'][w_item['ID']][0].size > 0:
-                    # Adjust crossings for segment start time
-                    data_dict['results_dict'][w_item['ID']][0] += w_item['segment_dict']['index_window'][0]
             sort_data.append([data_dict['results_dict'][w_item['ID']][0],
                               data_dict['results_dict'][w_item['ID']][1],
                               waveforms,
                               data_dict['results_dict'][w_item['ID']][2]])
+            # I am not sure why, but this has to be added here. It does not work
+            # when done above directly on the global data_dict elements
+            if type(sort_data[-1][0]) == np.ndarray:
+                if sort_data[-1][0].size > 0:
+                    # Adjust crossings for segment start time
+                    sort_data[-1][0] += w_item['segment_dict']['index_window'][0]
         else:
             # This work item found nothing (or raised an exception)
             sort_data.append([[], [], [], []])
-
+    # return sort_data, work_items
     # Now that everything has been sorted, condense our representation of the neurons
     sort_data, work_items = consolidate.organize_sort_data(sort_data, work_items, n_chans=Probe.num_electrodes)
     crossings, labels, waveforms, new_waveforms = consolidate.stitch_segments(sort_data, work_items)

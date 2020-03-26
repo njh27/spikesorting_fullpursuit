@@ -2,6 +2,7 @@ import numpy as np
 from spikesorting_python.src import segment
 from spikesorting_python.src.sort import merge_clusters
 from spikesorting_python.src import preprocessing
+from spikesorting_python.src.c_cython import sort_cython
 from scipy import stats
 from scipy.optimize import nnls, lsq_linear
 import copy
@@ -109,8 +110,8 @@ def find_ISI_spikes_to_keep(neuron, min_ISI):
     while next_index < neuron['spike_indices'].size:
         if neuron['spike_indices'][next_index] - neuron['spike_indices'][curr_index] < min_samples:
             projections = neuron['waveforms'][curr_index:next_index+1, :] @ template_norm
-            if projections[0] > projections[1]:
-                # current spike is better
+            if projections[0] >= projections[1]:
+                # current spike is better or equal
                 keep_bool[next_index] = False
                 next_index += 1
             else:
@@ -185,97 +186,6 @@ def remove_ISI_violations(neurons, min_ISI=None):
     return neurons
 
 
-def compute_SNR(neurons):
-    """ Compute SNR for each neuron following the method of Kelly et al. 2007:
-        "Comparison of Recordings from Microelectrode Arrays and Single
-         Electrodes in the Visual Cortex "
-        """
-
-    for neuron in neurons:
-        curr_chan_inds = segment.get_windows_and_indices(neuron['clip_width'],
-                neuron['sampling_rate'], neuron['channel'], neuron['neighbors'])[4]
-        epsilon = neuron['waveforms'][:, curr_chan_inds] - neuron['template'][curr_chan_inds][None, :]
-        std_epsilon = np.nanstd(epsilon)
-        neuron['sort_quality']['SNR'] = ((np.nanmax(neuron['template'][curr_chan_inds])
-                - np.nanmin(neuron['template'][curr_chan_inds])) / (3 * std_epsilon))
-
-    return neurons
-
-
-def organize_sort_data(sort_data, work_items, n_chans=None):
-    """Takes the output of the spike sorting algorithms and organizes is by
-    channel in segment order.
-    Parameters
-    ----------
-    sort_data: list
-        Each element contains the 4 outputs of spike_sort_segment, split up by
-        individual channels into 'work_items' (or spike_sort_parallel output)
-        "crossings, labels, waveforms, new_waveforms", in this order, for a
-        single segment and a single channel of sorted data.
-        len(sort_data) = number segments * channels == len(work_items)
-    work_items: list
-        Each list element contains the dictionary of information pertaining to
-        the corresponding element in sort_data.
-    n_chans: int
-        Total number of channels sorted. If None this number is inferred as
-        the maximum channel found in work_items['channel'] + 1.
-    Returns
-    -------
-    organized_data : list
-        A list of the original elements of sort_data and organzied such that
-        each list index corresponds to a channel number, and within each channel
-        sublist data are in ordered by segment number as indicated in work_items.
-    organized_items : list
-        Same as for organized data but for the elements of work_items.
-    """
-    if n_chans is None:
-        # Compute n_chans from input data
-        n_chans = 0
-        for x in work_items:
-            n_chans = x['channel'] if x['channel'] > n_chans else n_chans
-        n_chans += 1 # Account for zero indexing
-    organized_data = [[] for x in range(0, n_chans)]
-    organized_items = [[] for x in range(0, n_chans)]
-    for chan in range(0, n_chans):
-        chan_items, chan_data = zip(*[[x, y] for x, y in sorted(
-                                    zip(work_items, sort_data), key=lambda pair:
-                                    pair[0]['segment_dict']['seg_number'])
-                                    if x['channel'] == chan])
-        organized_data[chan].extend(chan_data)
-        organized_items[chan].extend(chan_items)
-
-    return organized_data, organized_items
-
-
-def stitch_segments(organized_data, organized_items):
-
-    n_chans = len(organized_data)
-    ##################
-    # Dumbest possible stitching that doesn't account for duplicate labels or
-    # care if it makese sense to combine labels
-    crossings = [[] for x in range(0, n_chans)]
-    labels = [[] for x in range(0, n_chans)]
-    waveforms = [[] for x in range(0, n_chans)]
-    new_waveforms = [[] for x in range(0, n_chans)]
-    for chan in range(0, n_chans):
-        seg_crossings = []
-        seg_labels = []
-        seg_waveforms = []
-        seg_new = []
-        for seg in range(0, len(organized_data[chan])):
-            seg_crossings.append(organized_data[chan][seg][0])
-            seg_labels.append(organized_data[chan][seg][1])
-            seg_waveforms.append(organized_data[chan][seg][2])
-            seg_new.append(organized_data[chan][seg][3])
-
-        crossings[chan] = np.hstack(seg_crossings)
-        labels[chan] = np.hstack(seg_labels)
-        waveforms[chan] = np.vstack(seg_waveforms)
-        new_waveforms[chan] = np.hstack(seg_new)
-
-    return crossings, labels, waveforms, new_waveforms
-
-
 def remove_binary_pursuit_duplicates(event_indices, new_spike_bool):
     """
     """
@@ -303,87 +213,332 @@ def remove_binary_pursuit_duplicates(event_indices, new_spike_bool):
     return keep_bool
 
 
-"""
-    summarize_neurons(probe, threshold_crossings, labels)
+def remove_spike_event_duplicates(event_indices, clips, unit_template):
+    """
+    """
+    keep_bool = np.ones(event_indices.size, dtype=np.bool)
+    template_norm = unit_template / np.linalg.norm(unit_template)
+    curr_index = 0
+    next_index = 1
+    while next_index < event_indices.size:
+        if event_indices[next_index] == event_indices[curr_index]:
+            projections = clips[curr_index:next_index+1, :] @ template_norm
+            if projections[0] >= projections[1]:
+                # current spike is better or equal
+                keep_bool[next_index] = False
+                next_index += 1
+            else:
+                # next spike is better
+                keep_bool[curr_index] = False
+                curr_index = next_index
+                next_index += 1
+        else:
+            curr_index = next_index
+            next_index += 1
 
-Return a summarized version of the threshold_crossings, labels, etc. for a given
-set of crossings, neuron labels, and waveforms organized by channel.
-This function returns a list of dictionarys (with symbol look-ups)
-with all essential information about the recording session and sorting.
-The dictionary contains:
-channel: The channel on which the neuron was recorded
-neighbors: The neighborhood of the channel on which the neuron was recorded
-clip_width: The clip width used for sorting the neuron
-sampling_rate: The sampling rate of the recording
-filter_band: The filter band used to filter the data before sorting
-spike_indices: The indices (sample number) in the voltage trace of the threshold crossings
- waveforms: The waveform clips across the entire neighborhood for the sorted neuron
- template: The template for the neuron as the nanmean of all waveforms.
- new_spike_bool: A logical index into waveforms/spike_indices of added secret spikes
-    (only if the index 'new_waveforms' is input)
- mean_firing_rate: The mean firing rate of the neuron over the entire recording
-peak_valley: The peak valley of the template on the channel from which the neuron arises
-"""
-def summarize_neurons(Probe, threshold_crossings, labels, waveforms,
-                        new_waveforms=None):
+    return keep_bool
 
-    neuron_summary = []
-    for channel in range(0, len(threshold_crossings)):
-        if len(threshold_crossings[channel]) == 0:
-            print("Channel ", channel, " has no spikes and was skipped in summary!")
-            continue
-        if new_waveforms is not None:
-            new_wave_bool = np.zeros(threshold_crossings[channel].size, dtype='bool')
-            new_wave_bool[new_waveforms[channel]] = True
-        for ind, neuron_label in enumerate(np.unique(labels[channel])):
-            neuron = {}
-            try:
-                neuron['sort_quality'] = None
-                neuron["channel"] = channel
-                neuron['neighbors'] = Probe.get_neighbors(channel)
-                neuron['sampling_rate'] = Probe.sampling_rate
-                neuron['filter_band'] = Probe.filter_band
-                neuron["spike_indices"] = threshold_crossings[channel][labels[channel] == neuron_label]
-                neuron['waveforms'] = waveforms[channel][labels[channel] == neuron_label, :]
 
-                # Ensure spike times are ordered. Must use 'stable' sort for
-                # output to be repeatable because overlapping segments and
-                # binary pursuit can return slightly different dupliate spikes
-                spike_order = np.argsort(neuron["spike_indices"], kind='stable')
-                neuron["spike_indices"] = neuron["spike_indices"][spike_order]
-                neuron['waveforms'] = neuron['waveforms'][spike_order, :]
-                if new_waveforms is not None:
+def compute_SNR(neurons):
+    """ Compute SNR for each neuron following the method of Kelly et al. 2007:
+        "Comparison of Recordings from Microelectrode Arrays and Single
+         Electrodes in the Visual Cortex "
+        """
+
+    for neuron in neurons:
+        curr_chan_inds = segment.get_windows_and_indices(neuron['clip_width'],
+                neuron['sampling_rate'], neuron['channel'], neuron['neighbors'])[4]
+        epsilon = neuron['waveforms'][:, curr_chan_inds] - neuron['template'][curr_chan_inds][None, :]
+        std_epsilon = np.nanstd(epsilon)
+        neuron['sort_quality']['SNR'] = ((np.nanmax(neuron['template'][curr_chan_inds])
+                - np.nanmin(neuron['template'][curr_chan_inds])) / (3 * std_epsilon))
+
+    return neurons
+
+
+class WorkItemSummary(object):
+    """
+    """
+    def __init__(self, sort_data, work_items, settings, n_chans=None,
+                 curr_chan_inds=None):
+        self.sort_data = sort_data
+        self.work_items = work_items
+        self.settings = settings
+        self.curr_chan_inds = curr_chan_inds
+        if n_chans is None:
+            # Compute n_chans from input data
+            self.n_chans = 0
+            for x in work_items:
+                self.n_chans = x['channel'] if x['channel'] > n_chans else self.n_chans
+            self.n_chans += 1 # Account for zero indexing
+        else:
+            self.n_chans = n_chans
+        self.organize_sort_data()
+
+    def organize_sort_data(self):
+        """Takes the output of the spike sorting algorithms and organizes is by
+        channel in segment order.
+        Parameters
+        ----------
+        sort_data: list
+            Each element contains the 4 outputs of spike_sort_segment, split up by
+            individual channels into 'work_items' (or spike_sort_parallel output)
+            "crossings, labels, waveforms, new_waveforms", in this order, for a
+            single segment and a single channel of sorted data.
+            len(sort_data) = number segments * channels == len(work_items)
+        work_items: list
+            Each list element contains the dictionary of information pertaining to
+            the corresponding element in sort_data.
+        n_chans: int
+            Total number of channels sorted. If None this number is inferred as
+            the maximum channel found in work_items['channel'] + 1.
+        Returns
+        -------
+        organized_data : list
+            A list of the original elements of sort_data and organzied such that
+            each list index corresponds to a channel number, and within each channel
+            sublist data are in ordered by segment number as indicated in work_items.
+        organized_items : list
+            Same as for organized data but for the elements of work_items.
+        """
+        organized_data = [[] for x in range(0, self.n_chans)]
+        organized_items = [[] for x in range(0, self.n_chans)]
+        for chan in range(0, self.n_chans):
+            chan_items, chan_data = zip(*[[x, y] for x, y in sorted(
+                                        zip(self.work_items, self.sort_data), key=lambda pair:
+                                        pair[0]['seg_number'])
+                                        if x['channel'] == chan])
+            organized_data[chan].extend(chan_data)
+            organized_items[chan].extend(chan_items)
+        self.sort_data = organized_data
+        self.work_items = organized_items
+        print("IT WOULD BE SUPER NICE IF UNITS/LABLES WERE FURTHER ORDERED BY THE SNR OF THEIR UNIT...")
+
+    def merge_test_two_units(self, clips_1, clips_2, p_cut, split_only=False, merge_only=False):
+        # Keep larger number of clips named as clips 1 since merge merges into
+        # the largest cluster
+        # swapped_clips = False
+        # if clips_1.shape[0] < clips_2.shape[0]:
+        #     clips_1, clips_2 = clips_2, clips_1
+        #     swapped_clips = True
+        clips = np.vstack((clips_1, clips_2))
+        neuron_labels = np.ones(clips.shape[0], dtype=np.int64)
+        neuron_labels[clips_1.shape[0]:] = 2
+        scores = preprocessing.compute_pca(clips,
+                    self.settings['check_components'],
+                    self.settings['max_components'],
+                    add_peak_valley=self.settings['add_peak_valley'],
+                    curr_chan_inds=self.curr_chan_inds)
+        neuron_labels = merge_clusters(scores, neuron_labels,
+                            split_only=split_only, merge_only=merge_only,
+                            p_value_cut_thresh=p_cut)
+        if (1 in neuron_labels) and (2 in neuron_labels):
+            clips_merged = False # Data split
+        else:
+            clips_merged = True
+        neuron_labels_1 = neuron_labels[0:clips_1.shape[0]]
+        neuron_labels_2 = neuron_labels[clips_1.shape[0]:]
+        return clips_merged, neuron_labels_1, neuron_labels_2
+
+    def stitch_segments(self):
+        """
+        """
+        crossings = [[] for x in range(0, self.n_chans)]
+        labels = [[] for x in range(0, self.n_chans)]
+        waveforms = [[] for x in range(0, self.n_chans)]
+        new_waveforms = [[] for x in range(0, self.n_chans)]
+        for chan in range(0, self.n_chans):
+            seg_crossings = []
+            seg_labels = []
+            seg_waveforms = []
+            seg_new = []
+            # Need to make and track a new labeling with numbers that extend
+            # beyond a single segment
+            # Start with the current labeling scheme, which is assumed to be
+            # ordered from 0-N
+            chan_labels_by_seg = []
+            chan_labels_by_seg.append(np.copy(self.sort_data[chan][0][1]))
+            unique_real_labels = np.unique(chan_labels_by_seg[0])
+            real_labels = unique_real_labels.tolist()
+            next_real_label = max(real_labels) + 1
+            base_seg = -1 # in case we don't enter loop
+            for base_seg in range(0, len(self.sort_data[chan])-1):
+                # Get clips for current, base segement, and next segment
+                unique_fake_labels = np.unique(self.sort_data[chan][base_seg+1][1])
+                unique_fake_labels += next_real_label # Keep these out of range of the real labels
+                next_label_workspace = np.copy(self.sort_data[chan][base_seg+1][1])
+                next_label_workspace += next_real_label
+                fake_labels = unique_fake_labels.tolist()
+                next_fake_label = np.amax(fake_labels) + 1
+
+
+                # Pairwise compare neurons found in next segment with those in base
+                # for base_label in np.unique(self.sort_data[chan][base_seg][1]):
+                #     base_select = self.sort_data[chan][base_seg][1] == base_label
+                #     clips_1 = self.sort_data[chan][base_seg][2][base_select, :]
+                #     for next_label in unique_fake_labels:
+                #         next_select = self.sort_data[chan][base_seg+1][1] == next_label
+                #         clips_2 = self.sort_data[chan][base_seg+1][2][next_select, :]
+                #         _, labels_1, labels_2 = self.merge_test_two_units(
+                #                 clips_1, clips_2, self.settings['p_value_cut_thresh'], split_only=True)
+                #         if 2 in labels_1:
+                #             # Neuron in base seg split so assign as new unit
+                #             chan_labels_by_seg[base_seg][base_select][labels_1 == 2] = next_real_label
+                #             real_labels.append(next_real_label)
+                #             next_real_label += 1
+                #               next_fake_label += 1 # Keepf ake labels out of range of real labels
+                #               fake_labels = [x+1 for x in fake_labels]
+                #         if 1 in labels_2:
+                #             # Neuron in next seg split so assign it to the base
+                #             # seg label that it split into
+                #             next_label_workspace[next_select][labels_2 == 1] = next_fake_label
+                #             fake_labels.append(next_fake_label)
+                #             next_fake_label += 1
+
+                # Find templates for all current units
+                base_templates, base_labels = segment.calculate_templates(
+                                        self.sort_data[chan][base_seg][2],
+                                        chan_labels_by_seg[base_seg])
+                next_templates, next_labels = segment.calculate_templates(
+                                        self.sort_data[chan][base_seg+1][2],
+                                        next_label_workspace)
+                # Find all pairs of templates that are mutually each other's
+                # closest
+                minimum_distance_pairs = sort_cython.identify_clusters_to_compare(
+                                np.vstack(base_templates + next_templates),
+                                np.hstack((base_labels, next_labels)), [])
+
+                leftover_labels = [x for x in fake_labels]
+                for c1, c2 in minimum_distance_pairs:
+                    if ((c1 in real_labels) and (c2 in fake_labels)) or ((c2 in real_labels) and (c1 in fake_labels)):
+                        # Require one from each segment to compare
+                        c1_select = chan_labels_by_seg[base_seg] == c1
+                        clips_1 = self.sort_data[chan][base_seg][2][c1_select, :]
+                        c2_select = next_label_workspace == c2
+                        clips_2 = self.sort_data[chan][base_seg+1][2][c2_select, :]
+                        is_merged, _, _ = self.merge_test_two_units(
+                                clips_1, clips_2, self.settings['p_value_cut_thresh'], merge_only=True)
+                        if is_merged:
+                            # Update next segment label data with same labels used in base_seg
+                            self.sort_data[chan][base_seg+1][1][c2_select] = c1
+                            leftover_labels.remove(c2)
+                        # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
+                    else:
+                        print("min distance pair is from the SAME SEGMENT!. Skipping this comparison?")
+
+                for ll in leftover_labels:
+                    print("LEFTOVER LABEL", ll, "being added as", next_real_label)
+                    ll_select = next_label_workspace == ll
+                    self.sort_data[chan][base_seg+1][1][ll_select] = next_real_label
+                    next_real_label += 1
+
+                # This is work template for next segment
+                chan_labels_by_seg.append(np.copy(self.sort_data[chan][base_seg+1][1]))
+
+                seg_crossings.append(self.sort_data[chan][base_seg][0])
+                # seg_labels.append(self.sort_data[chan][base_seg][1])
+                seg_waveforms.append(self.sort_data[chan][base_seg][2])
+                seg_new.append(self.sort_data[chan][base_seg][3])
+
+            # Nothing else we can match for the last segment so just add it, if it exists
+            if len(self.sort_data[chan]) > 0:
+                seg_crossings.append(self.sort_data[chan][base_seg+1][0])
+                # seg_labels.append(self.sort_data[chan][base_seg+1][1])
+                seg_waveforms.append(self.sort_data[chan][base_seg+1][2])
+                seg_new.append(self.sort_data[chan][base_seg+1][3])
+
+            crossings[chan] = np.hstack(seg_crossings)
+            labels[chan] = np.hstack(chan_labels_by_seg)
+            waveforms[chan] = np.vstack(seg_waveforms)
+            new_waveforms[chan] = np.hstack(seg_new)
+        self.stitched_data = [crossings, labels, waveforms, new_waveforms]
+
+    def summarize_neurons(self, sorter_info=None):
+        """
+            summarize_neurons(probe, threshold_crossings, labels)
+
+        Return a summarized version of the threshold_crossings, labels, etc. for a given
+        set of crossings, neuron labels, and waveforms organized by channel.
+        This function returns a list of dictionarys (with symbol look-ups)
+        with all essential information about the recording session and sorting.
+        The dictionary contains:
+        channel: The channel on which the neuron was recorded
+        neighbors: The neighborhood of the channel on which the neuron was recorded
+        clip_width: The clip width used for sorting the neuron
+        sampling_rate: The sampling rate of the recording
+        filter_band: The filter band used to filter the data before sorting
+        spike_indices: The indices (sample number) in the voltage trace of the threshold crossings
+         waveforms: The waveform clips across the entire neighborhood for the sorted neuron
+         template: The template for the neuron as the mean of all waveforms.
+         new_spike_bool: A logical index into waveforms/spike_indices of added secret spikes
+            (only if the index 'new_waveforms' is input)
+         mean_firing_rate: The mean firing rate of the neuron over the entire recording
+        peak_valley: The peak valley of the template on the channel from which the neuron arises
+        """
+        crossings, labels, waveforms, new_waveforms = self.stitched_data
+        neuron_summary = []
+        for channel in range(0, len(crossings)):
+            if len(crossings[channel]) == 0:
+                print("Channel ", channel, " has no spikes and was skipped in summary!")
+                continue
+            if new_waveforms is not None:
+                new_wave_bool = np.zeros(crossings[channel].size, dtype='bool')
+                new_wave_bool[new_waveforms[channel]] = True
+            for ind, neuron_label in enumerate(np.unique(labels[channel])):
+                neuron = {}
+                if sorter_info is not None:
+                    for key in sorter_info:
+                        neuron[key] = sorter_info[key]
+                    # neuron['sampling_rate'] = Probe.sampling_rate
+                    # neuron['filter_band'] = Probe.filter_band
+                try:
+                    neuron['sort_quality'] = None
+                    neuron["channel"] = channel
+                    # neuron['neighbors'] = Probe.get_neighbors(channel)
+
+                    neuron["spike_indices"] = crossings[channel][labels[channel] == neuron_label]
+                    neuron['waveforms'] = waveforms[channel][labels[channel] == neuron_label, :]
+
+                    # Ensure spike times are ordered. Must use 'stable' sort for
+                    # output to be repeatable because overlapping segments and
+                    # binary pursuit can return slightly different dupliate spikes
+                    spike_order = np.argsort(neuron["spike_indices"], kind='stable')
+                    neuron["spike_indices"] = neuron["spike_indices"][spike_order]
+                    neuron['waveforms'] = neuron['waveforms'][spike_order, :]
+                    
                     neuron["new_spike_bool"] = new_wave_bool[labels[channel] == neuron_label]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
+                    # Remove duplicates found in binary pursuit
                     keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"], neuron["new_spike_bool"])
                     neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
                     neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
 
-                neuron["template"] = np.nanmean(neuron['waveforms'], axis=0)
-                last_spike_t = neuron["spike_indices"][-1] / Probe.sampling_rate
-                first_spike_t = neuron["spike_indices"][0] / Probe.sampling_rate
-                if first_spike_t == last_spike_t:
-                    neuron["mean_firing_rate"] = 0
-                else:
-                    neuron["mean_firing_rate"] = neuron["spike_indices"].shape[0] / (last_spike_t - first_spike_t)
-                samples_per_chan = int(neuron['template'].size / neuron['neighbors'].size)
-                main_start = np.where(neuron['neighbors'] == neuron['channel'])[0][0]
-                main_template = neuron['template'][main_start*samples_per_chan:main_start*samples_per_chan + samples_per_chan]
-                neuron["peak_valley"] = np.amax(main_template) - np.amin(main_template)
-            except:
-                print("!!! NEURON {0} ON CHANNEL {1} HAD AN ERROR SUMMARIZING !!!".format(neuron_label, channel))
-                if new_waveforms is not None:
-                    neuron["new_spike_bool"] = new_wave_bool
-                neuron["channel"] = channel
-                neuron["all_spike_indices"] = threshold_crossings[channel]
-                neuron['all_labels'] = labels[channel]
-                neuron['sampling_rate'] = Probe.sampling_rate
-                neuron['filter_band'] = Probe.filter_band
-                neuron['all_waveforms'] = waveforms[channel]
-            neuron_summary.append(neuron)
+                    # Remove any identical index duplicates (either from error or
+                    # from combining overlapping segments), preferentially keeping
+                    # the waveform best aligned to the template
+                    neuron["template"] = np.mean(neuron['waveforms'], axis=0)
+                    keep_bool = remove_spike_event_duplicates(neuron["spike_indices"], neuron['waveforms'], neuron["template"])
+                    neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                    neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
+                    neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
 
-    return neuron_summary
+                    neuron["template"] = np.mean(neuron['waveforms'], axis=0)
+                    # samples_per_chan = int(neuron['template'].size / neuron['neighbors'].size)
+                    # main_start = np.where(neuron['neighbors'] == neuron['channel'])[0][0]
+                    # main_template = neuron['template'][main_start*samples_per_chan:main_start*samples_per_chan + samples_per_chan]
+                    # neuron["peak_valley"] = np.amax(main_template) - np.amin(main_template)
+                except:
+                    print("!!! NEURON {0} ON CHANNEL {1} HAD AN ERROR SUMMARIZING !!!".format(neuron_label, channel))
+                    if new_waveforms is not None:
+                        neuron["new_spike_bool"] = new_wave_bool
+                    neuron["channel"] = channel
+                    neuron["all_spike_indices"] = crossings[channel]
+                    neuron['all_labels'] = labels[channel]
+                    neuron['all_waveforms'] = waveforms[channel]
+                neuron_summary.append(neuron)
+
+        return neuron_summary
 
 
 def remove_noise_neurons(neuron_summary, max_false_positive_percent=0.05, max_false_negative_percent=0.55):

@@ -283,7 +283,7 @@ def branch_pca_2_0(neuron_labels, clips, curr_chan_inds, p_value_cut_thresh=0.01
     return neuron_labels_copy
 
 
-def spike_sort_one_item(data_dict, use_cpus, work_item, neighbors, settings):
+def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
     """
     do_ZCA_transform, filter_band is not used here but prevents errors from passing kwargs.
     """
@@ -314,11 +314,11 @@ def spike_sort_one_item(data_dict, use_cpus, work_item, neighbors, settings):
                 if sys.platform == 'win32':
                     sys.stdout = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + ".out", "w")
                     sys.stderr = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
-                    print_process_info('spike_sort_one_item on channel' + str(work_item['ID']))
+                    print_process_info('spike_sort_item_parallel on channel' + str(work_item['ID']))
                 else:
                     sys.stdout = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + ".out", "w")
                     sys.stderr = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
-                    print_process_info('spike_sort_one_item on channel' + str(work_item['ID']))
+                    print_process_info('spike_sort_item_parallel on channel' + str(work_item['ID']))
 
         # Setup threads and affinity based on use_cpus if not on mac OS
         if 'win32' == sys.platform:
@@ -334,12 +334,13 @@ def spike_sort_one_item(data_dict, use_cpus, work_item, neighbors, settings):
         # Functions that get this dictionary only ever use these items since
         # we separately extract the voltage and the neighbors
         item_dict = {'sampling_rate': data_dict['sampling_rate'],
-                     'n_samples': work_item['segment_dict']['n_samples'],
-                     'thresholds': work_item['segment_dict']['thresholds']}
+                     'n_samples': work_item['n_samples'],
+                     'thresholds': work_item['thresholds']}
         chan = work_item['channel']
-        seg_volts_buffer = data_dict['segment_voltages'][work_item['segment_dict']['seg_number']][0]
-        seg_volts_shape = data_dict['segment_voltages'][work_item['segment_dict']['seg_number']][1]
+        seg_volts_buffer = data_dict['segment_voltages'][work_item['seg_number']][0]
+        seg_volts_shape = data_dict['segment_voltages'][work_item['seg_number']][1]
         voltage = np.frombuffer(seg_volts_buffer).reshape(seg_volts_shape)
+        neighbors = work_item['neighbors']
 
         skip = np.amax(np.abs(settings['clip_width'])) / 2
         align_window = [skip, skip]
@@ -450,19 +451,17 @@ def spike_sort_one_item(data_dict, use_cpus, work_item, neighbors, settings):
             if not settings['use_GPU']:
                 crossings, neuron_labels, new_inds = overlap_parallel.binary_pursuit_secret_spikes(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
-                                neuron_labels, crossings, item_dict['thresholds'][chan],
+                                neuron_labels, crossings,
                                 settings['clip_width'])
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'], neighbor_thresholds=item_dict['thresholds'][neighbors])
                 crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
             else:
                 with data_dict['gpu_lock']:
-                    print("CHECKING OUT GPU LOCK")
                     crossings, neuron_labels, new_inds, clips = binary_pursuit_parallel.binary_pursuit(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 crossings, neuron_labels, settings['clip_width'],
                                 thresholds=item_dict['thresholds'][neighbors],
                                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
-                print("RETURNED OUT GPU LOCK")
             exit_type = "Finished binary pursuit"
         else:
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'], neighbor_thresholds=item_dict['thresholds'][neighbors])
@@ -546,6 +545,8 @@ def spike_sort_parallel(Probe, **kwargs):
     if settings['do_ZCA_transform']: zca_cushion = \
                     (2 * np.ceil(np.amax(np.abs(settings['clip_width'])) \
                      * Probe.sampling_rate)).astype(np.int64)
+
+    # Build the sorting work items
     init_dict['segment_voltages'] = []
     samples_over_thresh = []
     work_items = []
@@ -557,29 +558,31 @@ def spike_sort_parallel(Probe, **kwargs):
         # Slice over num_electrodes should keep same shape
         seg_voltage = Probe.voltage[0:Probe.num_electrodes,
                                    segment_onsets[x]:segment_offsets[x]]
-        seg_dict = {}
-        seg_dict['n_samples'] = segment_offsets[x] - segment_onsets[x]
-        seg_dict['seg_number'] = x
-        seg_dict['index_window'] = [segment_onsets[x], segment_offsets[x]]
-        seg_dict['overlap'] = settings['segment_overlap']
         if settings['do_ZCA_transform']:
             if settings['verbose']: print("Doing ZCA transform")
-            seg_dict['thresholds'], _ = single_thresholds_and_samples(seg_voltage, settings['sigma'])
+            thresholds, _ = single_thresholds_and_samples(seg_voltage, settings['sigma'])
             zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
-                            seg_dict['thresholds'], settings['sigma'],
+                            thresholds, settings['sigma'],
                             zca_cushion, n_samples=1e7)
             seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
-        seg_dict['thresholds'], seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
+        thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
         samples_over_thresh.extend(seg_over_thresh)
         # Allocate shared voltage buffer. List is appended in SEGMENT ORDER
         init_dict['segment_voltages'].append([mp.RawArray('d', seg_voltage.size), seg_voltage.shape])
         np_view = np.frombuffer(init_dict['segment_voltages'][x][0]).reshape(seg_voltage.shape) # Create numpy view
         np.copyto(np_view, seg_voltage) # Copy segment voltage to voltage buffer
         for chan in range(0, Probe.num_electrodes):
-            work_items.append({'channel': chan, 'segment_dict': seg_dict})
             # Ensure we just get neighbors once in case its complicated
             if x == 0:
                 chan_neighbors.append(Probe.get_neighbors(chan))
+            work_items.append({'channel': chan,
+                               'neighbors': chan_neighbors[chan],
+                               'n_samples': segment_offsets[x] - segment_onsets[x],
+                               'seg_number': x,
+                               'index_window': [segment_onsets[x], segment_offsets[x]],
+                               'overlap': settings['segment_overlap'],
+                               'thresholds': thresholds,
+                               })
 
     if not settings['test_flag']:
         if settings['log_dir'] is None:
@@ -612,6 +615,7 @@ def spike_sort_parallel(Probe, **kwargs):
     proc_item_index = []
     completed_items_index = 0
     print("Starting sorting pool")
+    # Put the work items through the sorter
     for wi_ind, w_item in enumerate(work_items):
         w_item['ID'] = wi_ind # Assign ID number in order of deployment
         # With timeout=None, this will block until sufficient cpus are available
@@ -620,7 +624,7 @@ def spike_sort_parallel(Probe, **kwargs):
         n_complete = len(data_dict['completed_items']) # Do once to avoid race
         if n_complete > completed_items_index:
             for ci in range(completed_items_index, n_complete):
-                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID'], "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['segment_dict']['seg_number']+1)
+                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID'], "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['seg_number']+1)
                 print("Exited with status: ", data_dict['exits_dict'][data_dict['completed_items'][ci]])
                 completed_items_index += 1
                 if not settings['test_flag']:
@@ -633,15 +637,14 @@ def spike_sort_parallel(Probe, **kwargs):
         if not settings['test_flag']:
             print("Starting item {0}/{1} on CPUs {2}".format(wi_ind, len(work_items)-1, use_cpus))
             time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
-            proc = mp.Process(target=spike_sort_one_item,
-                              args=(data_dict, use_cpus, w_item,
-                              chan_neighbors[w_item['channel']], settings))
+            proc = mp.Process(target=spike_sort_item_parallel,
+                              args=(data_dict, use_cpus, w_item, settings))
             proc.start()
             processes.append(proc)
             proc_item_index.append(wi_ind)
         else:
             print("Doing one process on item {0}/{1}".format(wi_ind, len(work_items)-1))
-            spike_sort_one_item(data_dict, use_cpus, w_item, chan_neighbors[w_item['channel']], settings)
+            spike_sort_item_parallel(data_dict, use_cpus, w_item, settings)
             print("finished sort one item")
 
     if not settings['test_flag']:
@@ -656,7 +659,7 @@ def spike_sort_parallel(Probe, **kwargs):
                 # This item was already finished above so just clearing out
                 # completed_items_queue
                 continue
-            print("Completed item", finished_item, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['segment_dict']['seg_number']+1)
+            print("Completed item", finished_item, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['seg_number']+1)
             print("Exited with status: ", data_dict['exits_dict'][finished_item])
             completed_items_index += 1
 
@@ -681,17 +684,20 @@ def spike_sort_parallel(Probe, **kwargs):
             if type(sort_data[-1][0]) == np.ndarray:
                 if sort_data[-1][0].size > 0:
                     # Adjust crossings for segment start time
-                    sort_data[-1][0] += w_item['segment_dict']['index_window'][0]
+                    sort_data[-1][0] += w_item['index_window'][0]
         else:
             # This work item found nothing (or raised an exception)
             sort_data.append([[], [], [], []])
-    # return sort_data, work_items
+
     # Now that everything has been sorted, condense our representation of the neurons
-    sort_data, work_items = consolidate.organize_sort_data(sort_data, work_items, n_chans=Probe.num_electrodes)
-    crossings, labels, waveforms, new_waveforms = consolidate.stitch_segments(sort_data, work_items)
-    if settings['verbose']: print("Summarizing neurons")
-    neurons = consolidate.summarize_neurons(Probe, crossings, labels,
-                waveforms, new_waveforms=new_waveforms)
+    work_summary = consolidate.WorkItemSummary(sort_data, work_items, settings, n_chans=Probe.num_electrodes)
+    work_summary.stitch_segments()
+    neurons = work_summary.summarize_neurons(sorter_info=None)
+    # sort_data, work_items = consolidate.organize_sort_data(sort_data, work_items, n_chans=Probe.num_electrodes)
+    # crossings, labels, waveforms, new_waveforms = consolidate.stitch_segments(sort_data, work_items)
+    # if settings['verbose']: print("Summarizing neurons")
+    # neurons = consolidate.summarize_neurons(Probe, crossings, labels,
+    #             waveforms, new_waveforms=new_waveforms)
 
     # if settings['verbose']: print("Ordering neurons and finding peak valleys")
     # neurons = consolidate.recompute_template_wave_properties(neurons)

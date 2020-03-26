@@ -235,7 +235,7 @@ def find_multichannel_max_neuron(probe_dict, neighbors, neighbor_voltage,
 
 
 def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
-        neighbor_voltage, neuron_labels, event_indices, threshold, clip_width):
+        neighbor_voltage, neuron_labels, event_indices, clip_width):
     """
     This function is slow and not efficient in time or memory consumption. The
     GPU version should be preferred. """

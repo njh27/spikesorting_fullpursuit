@@ -11,10 +11,10 @@ def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0.33e
     skip_indices = max(int(round(skip * probe_dict['sampling_rate'])), 1) - 1
     # Working with ABSOLUTE voltage here
     voltage = np.abs(chan_voltage)
-    first_thresh_index = np.zeros(voltage.shape[0], dtype='bool')
+    first_thresh_index = np.zeros(voltage.shape[0], dtype=np.bool)
     # Find points above threshold where preceeding sample was below threshold (excludes first point)
     first_thresh_index[1:] = np.logical_and(voltage[1:] > threshold, voltage[0:-1] <= threshold)
-    events= np.nonzero(first_thresh_index)[0]
+    events = np.nonzero(first_thresh_index)[0]
 
     # Realign event times on min or max in align_window
     window = time_window_to_samples(align_window, probe_dict['sampling_rate'])[0]
@@ -37,7 +37,7 @@ def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0.33e
             events[evt] = start + min_index
 
     # Remove events that follow preceeding valid event by less than skip_indices samples
-    bad_index = np.zeros(events.shape[0], dtype='bool')
+    bad_index = np.zeros(events.shape[0], dtype=np.bool)
     last_n = 0
     for n in range(1, events.shape[0]):
         if events[n] - events[last_n] < skip_indices:

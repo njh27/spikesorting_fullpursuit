@@ -38,34 +38,45 @@ inside the exterior vector contains the indices of the threshold crossings for a
 given channel. The length of this vector corresponds to the number of spike
 events detected on that channel.
 """
-def identify_threshold_crossings(Probe, thresholds, skip=0.33e-3, align_window=[-4e-4, 4e-4]):
-
-    thresholds = np.array(thresholds)
-    if Probe.num_electrodes != thresholds.size:
-        raise ValueError("Thresholds are invalid - expected length ", Probe.num_electrodes)
+def identify_threshold_crossings(Probe, chan, threshold, skip=0.33e-3, align_window=[-4e-4, 4e-4]):
 
     skip_indices = max(int(round(skip * Probe.sampling_rate)), 1) - 1
-    events = [[] for x in range(0, Probe.num_electrodes)]
-    for chan in range(0, Probe.num_electrodes):
-        # Working with ABSOLUTE voltage mostly
-        voltage = np.abs(Probe.get_voltage(chan))
-        first_thresh_index = np.zeros(voltage.shape[0], dtype='bool')
-        # Find points above threshold where preceeding sample was below threshold (excludes first point)
-        first_thresh_index[1:] = np.logical_and(voltage[1:] > thresholds[chan], voltage[0:-1] <= thresholds[chan])
-        events[chan] = np.nonzero(first_thresh_index)[0]
+    # Working with ABSOLUTE voltage here
+    voltage = np.abs(Probe.get_voltage(chan))
+    first_thresh_index = np.zeros(voltage.shape[0], dtype=np.bool)
+    # Find points above threshold where preceeding sample was below threshold (excludes first point)
+    first_thresh_index[1:] = np.logical_and(voltage[1:] > threshold, voltage[0:-1] <= threshold)
+    events = np.nonzero(first_thresh_index)[0]
 
-        # Realign event times on min or max in align_window
-        events[chan] = align_events(Probe, chan, events[chan], align_window)
+    # Realign event times on min or max in align_window
+    window = time_window_to_samples(align_window, Probe.sampling_rate)[0]
+    for evt in range(0, events.size):
+        start = max(0, events[evt] + window[0]) # Start maximally at 0 or event plus window
+        stop = min(Probe.n_samples - 1, events[evt] + window[1])# Stop minmally at event plus window or last index
+        window_clip = Probe.voltage[chan, start:stop]
+        max_index = np.argmax(window_clip) # Gets FIRST max in window
+        max_value = window_clip[max_index]
+        min_index = np.argmin(window_clip)
+        min_value = window_clip[min_index]
+        if max_value > -2 * min_value:
+            # Max value is huge compared to min value, use max index
+            events[evt] = start + max_index
+        elif min_value < -2 * max_value:
+            # Min value is huge (negative) compared to max, use min index
+            events[evt] = start + min_index
+        else:
+            # Arbitrarily choose the negative going peak
+            events[evt] = start + min_index
 
-        # Remove events that follow preceeding valid event by less than skip_indices samples
-        bad_index = np.zeros(events[chan].shape[0], dtype='bool')
-        last_n = 0
-        for n in range(1, events[chan].shape[0]):
-            if events[chan][n] - events[chan][last_n] < skip_indices:
-                bad_index[n] = True
-            else:
-                last_n = n
-        events[chan] = events[chan][~bad_index]
+    # Remove events that follow preceeding valid event by less than skip_indices samples
+    bad_index = np.zeros(events.shape[0], dtype=np.bool)
+    last_n = 0
+    for n in range(1, events.shape[0]):
+        if events[n] - events[last_n] < skip_indices:
+            bad_index[n] = True
+        else:
+            last_n = n
+    events = events[~bad_index]
 
     return events
 

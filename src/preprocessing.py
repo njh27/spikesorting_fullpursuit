@@ -215,6 +215,8 @@ def optimal_reconstruction_pca_order(spikes, check_components=None,
 
 def compute_pca(clips, check_components, max_components, add_peak_valley=False,
                 curr_chan_inds=None):
+    if add_peak_valley and curr_chan_inds is None:
+        raise ValueError("Must supply indices for the main channel if using peak valley")
     # use_components1, _ = optimal_reconstruction_pca_order(clips, check_components, max_components)
     if clips.flags['C_CONTIGUOUS']:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order(clips, check_components, max_components)
@@ -233,6 +235,8 @@ def compute_pca(clips, check_components, max_components, add_peak_valley=False,
 
 def compute_pca_by_channel(clips, curr_chan_inds, check_components,
                            max_components, add_peak_valley=False):
+    if add_peak_valley and curr_chan_inds is None:
+        raise ValueError("Must supply indices for the main channel if using peak valley")
     pcs_by_chan = []
     # Do current channel first
     # use_components, _ = optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
@@ -334,7 +338,8 @@ def minimal_redundancy_template_order(spikes, templates, max_templates=None, fir
 def compute_template_projection(clips, labels, curr_chan_inds, add_peak_valley=False, max_templates=None):
     """
     """
-
+    if add_peak_valley and curr_chan_inds is None:
+        raise ValueError("Must supply indices for the main channel if using peak valley")
     # Compute the weights using projection onto each neurons' template
     unique_labels, u_counts = np.unique(labels, return_counts=True)
     if max_templates is None:
@@ -358,6 +363,8 @@ def compute_template_projection(clips, labels, curr_chan_inds, add_peak_valley=F
 
 
 def compute_template_pca(clips, labels, curr_chan_inds, check_components, max_components, add_peak_valley=False):
+    if add_peak_valley and curr_chan_inds is None:
+        raise ValueError("Must supply indices for the main channel if using peak valley")
     # Compute the weights using the PCA for neuron templates
     unique_labels, u_counts = np.unique(labels, return_counts=True)
     if unique_labels.size == 1:
@@ -382,6 +389,8 @@ def compute_template_pca(clips, labels, curr_chan_inds, check_components, max_co
 
 
 def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_components, max_components, add_peak_valley=False):
+    if add_peak_valley and curr_chan_inds is None:
+        raise ValueError("Must supply indices for the main channel if using peak valley")
     # Compute the weights using the PCA for neuron templates
     unique_labels, u_counts = np.unique(labels, return_counts=True)
     if unique_labels.size == 1:

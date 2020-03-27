@@ -116,12 +116,16 @@ def spike_sort_item(Probe, work_item, settings):
     """
     """
     chan = work_item['channel']
-    if settings['verbose']: print("Working on item", work_item['ID'], "on electrode ", chan, "segment", work_item['seg_number'])
+    if settings['verbose']: print("Working on item", work_item['ID'], "on electrode", chan, "segment", work_item['seg_number'])
 
     skip = np.amax(np.abs(settings['clip_width'])) / 2
     align_window = [skip, skip]
     if settings['verbose']: print("Identifying threshold crossings")
     crossings = segment.identify_threshold_crossings(Probe, chan, work_item['thresholds'][chan], skip=skip, align_window=align_window)
+    if crossings.size == 0:
+        if settings['verbose']: print("No crossings over threshold.")
+        if settings['verbose']: print("Done.")
+        return [], [], [], []
     min_cluster_size = (np.floor(settings['min_firing_rate'] * Probe.n_samples / Probe.sampling_rate)).astype(np.int64)
     if min_cluster_size < 1:
         min_cluster_size = 1
@@ -135,15 +139,19 @@ def spike_sort_item(Probe, work_item, settings):
 
     if settings['verbose']: print("Start initial clustering and merge")
     # Do initial single channel sort
-    scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
-                settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
-                curr_chan_inds=np.arange(0, curr_chan_inds.size))
-    n_random = max(100, np.around(crossings.size / 100)) if settings['use_rand_init'] else 0
-    neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
-    neuron_labels = sort.merge_clusters(scores, neuron_labels,
-                        split_only = False,
-                        p_value_cut_thresh=settings['p_value_cut_thresh'])
-    curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
+    if crossings.size > 1:
+        scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
+                    settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
+                    curr_chan_inds=np.arange(0, curr_chan_inds.size))
+        n_random = max(100, np.around(crossings.size / 100)) if settings['use_rand_init'] else 0
+        neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
+        neuron_labels = sort.merge_clusters(scores, neuron_labels,
+                            split_only = False,
+                            p_value_cut_thresh=settings['p_value_cut_thresh'])
+        curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
+    else:
+        neuron_labels = np.zeros(1, dtype=np.int64)
+        curr_num_clusters = np.zeros(1, dtype=np.int64)
     if settings['verbose']: print("Currently", curr_num_clusters.size, "different clusters")
 
     # Single channel branch

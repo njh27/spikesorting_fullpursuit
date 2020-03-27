@@ -282,6 +282,8 @@ def spike_sort(Probe, **kwargs):
                             "clips will NOT be adjusted.")
         warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
 
+    # Convert segment duration and overlaps to indices from their values input
+    # in seconds and adjust as needed
     if (settings['segment_duration'] is None) or (settings['segment_duration'] == np.inf) \
         or (settings['segment_duration'] * Probe.sampling_rate >= Probe.n_samples):
         settings['segment_overlap'] = 0
@@ -294,7 +296,20 @@ def spike_sort(Probe, **kwargs):
             settings['segment_overlap'] = int(3 * (clip_samples[1] - clip_samples[0]))
         else:
             settings['segment_overlap'] = int(np.ceil(settings['segment_overlap'] * Probe.sampling_rate))
+        input_duration_seconds = settings['segment_duration']
         settings['segment_duration'] = int(np.floor(settings['segment_duration'] * Probe.sampling_rate))
+        if settings['segment_overlap'] >= settings['segment_duration']:
+            raise ValueError("Segment overlap must be <= segment duration.")
+        # Minimum number of segments at current segment duration and overlap
+        # needed to cover all samples
+        n_segs = np.ceil((Probe.n_samples - settings['segment_duration'])
+                          / (settings['segment_duration'] - settings['segment_overlap']))
+        n_segs -= 1 # Adjustment makes us find the next multiple >= current duration
+        # Modify segment duration to next larger multiple of recording duration
+        # given fixed, unaltered input overlap duration
+        settings['segment_duration'] = int(np.ceil((Probe.n_samples
+                        + n_segs * settings['segment_overlap']) / (n_segs + 1)))
+        print("Input segment duration was rounded from", input_duration_seconds, "up to", settings['segment_duration']/Probe.sampling_rate, "seconds to make segments equal length.")
 
     segment_onsets = []
     segment_offsets = []
@@ -302,10 +317,7 @@ def spike_sort(Probe, **kwargs):
     while (curr_onset < Probe.n_samples):
         segment_onsets.append(curr_onset)
         segment_offsets.append(min(curr_onset + settings['segment_duration'], Probe.n_samples))
-        if (segment_offsets[-1] - segment_onsets[-1]) < 0.5 * settings['segment_duration']:
-            print("Last segment is less than half segment duration. Combining it with previous segment.")
-            del segment_offsets[-1], segment_onsets[-1]
-            segment_offsets[-1] = Probe.n_samples
+        if segment_offsets[-1] == Probe.n_samples:
             break
         curr_onset += settings['segment_duration'] - settings['segment_overlap']
     print("Using ", len(segment_onsets), "segments per channel for sorting.")
@@ -358,32 +370,7 @@ def spike_sort(Probe, **kwargs):
         crossings, labels, waveforms, new_waveforms = spike_sort_item(segProbe, w_item, settings)
         sort_data.append([crossings, labels, waveforms, new_waveforms, w_item['ID']])
 
-    return sort_data, work_items
-
-    work_summary = consolidate.WorkItemSummary(sort_data, work_items, settings, n_chans=Probe.num_electrodes)
-    work_summary.stitch_segments()
-    neurons = work_summary.summarize_neurons(sorter_info=None)
-    # sort_data, work_items = consolidate.organize_sort_data(sort_data, work_items, n_chans=Probe.num_electrodes)
-    # crossings, labels, waveforms, new_waveforms = consolidate.stitch_segments(sort_data, work_items)
-    # # Now that everything has been sorted, condense our representation of the
-    # # neurons by first combining data for each channel
-    # if settings['verbose']: print("Summarizing neurons")
-    # neurons = consolidate.summarize_neurons(Probe, crossings, labels,
-    #             waveforms, new_waveforms=new_waveforms)
-
-    # if settings['verbose']: print("Ordering neurons and finding peak valleys")
-    # neurons = consolidate.recompute_template_wave_properties(neurons)
-    # neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
-    # # Consolidate neurons across channels
-    # if settings['cleanup_neurons']:
-    #     if settings['verbose']: print("Removing noise units")
-    #     neurons = consolidate.remove_noise_neurons(neurons)
-    #     if settings['verbose']: print("Combining same neurons in neighborhood")
-    #     neurons = consolidate.combine_stolen_spikes(neurons, max_offset_samples=20, p_value_combine=.05, p_value_cut_thresh=p_value_cut_thresh, max_components=max_components)
-    #     neurons = consolidate.combine_neighborhood_neurons(neurons, overlap_time=5e-4, overlap_threshold=5, max_offset_samples=10, p_value_cut_thresh=p_value_cut_thresh, max_components=max_components)
-    #     neurons = consolidate.recompute_template_wave_properties(neurons)
-    #     neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
-    #     neurons = consolidate.remove_across_channel_duplicate_neurons(neurons, overlap_time=5e-4, overlap_threshold=5)
+    sorter_info = {}
 
     if settings['verbose']: print("Done.")
     print("YOU WANT THIS TO SAVE THINGS LIKE THE SIGMA VALUE USED, AND THE MEDIAN DEVIATION (FOR COMPUTING SNR) AND REALLY ALL PARAMETERS")
@@ -391,4 +378,8 @@ def spike_sort(Probe, **kwargs):
     print("David did this by just passing the input kwgs into a settings dictionary for the output")
     print("Also I need to make sure that all ints are np.int64 so this is compatible with windows compiled sort_cython, including in the segment files etc...")
     print("Also need to delete the load file functionality in electrode.py since it only assumes .npy file")
-    return neurons
+    return sort_data, work_items, sorter_info
+
+    work_summary = consolidate.WorkItemSummary(sort_data, work_items, settings, n_chans=Probe.num_electrodes)
+    work_summary.stitch_segments()
+    neurons = work_summary.summarize_neurons(sorter_info=None)

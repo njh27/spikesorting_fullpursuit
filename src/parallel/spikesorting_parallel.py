@@ -515,6 +515,8 @@ def spike_sort_parallel(Probe, **kwargs):
                  'completed_items': manager.list(), 'exits_dict': manager.dict(),
                  'gpu_lock': manager.Lock(), 'filter_band': settings['filter_band']}
 
+    # Convert segment duration and overlaps to indices from their values input
+    # in seconds and adjust as needed
     if (settings['segment_duration'] is None) or (settings['segment_duration'] == np.inf) \
         or (settings['segment_duration'] * Probe.sampling_rate >= Probe.n_samples):
         settings['segment_overlap'] = 0
@@ -523,21 +525,32 @@ def spike_sort_parallel(Probe, **kwargs):
         if settings['segment_overlap'] is None:
             # If segment is specified with no overlap, use minimal overlap that
             # will not miss spikes on the edges
-            clip_samples = segment_parallel.time_window_to_samples(settings['clip_width'], Probe.sampling_rate)[0]
+            clip_samples = segment.time_window_to_samples(settings['clip_width'], Probe.sampling_rate)[0]
             settings['segment_overlap'] = int(3 * (clip_samples[1] - clip_samples[0]))
         else:
             settings['segment_overlap'] = int(np.ceil(settings['segment_overlap'] * Probe.sampling_rate))
+        input_duration_seconds = settings['segment_duration']
         settings['segment_duration'] = int(np.floor(settings['segment_duration'] * Probe.sampling_rate))
+        if settings['segment_overlap'] >= settings['segment_duration']:
+            raise ValueError("Segment overlap must be <= segment duration.")
+        # Minimum number of segments at current segment duration and overlap
+        # needed to cover all samples
+        n_segs = np.ceil((Probe.n_samples - settings['segment_duration'])
+                          / (settings['segment_duration'] - settings['segment_overlap']))
+        n_segs -= 1 # Adjustment makes us find the next multiple >= current duration
+        # Modify segment duration to next larger multiple of recording duration
+        # given fixed, unaltered input overlap duration
+        settings['segment_duration'] = int(np.ceil((Probe.n_samples
+                        + n_segs * settings['segment_overlap']) / (n_segs + 1)))
+        print("Input segment duration was rounded from", input_duration_seconds, "up to", settings['segment_duration']/Probe.sampling_rate, "seconds to make segments equal length.")
+
     segment_onsets = []
     segment_offsets = []
     curr_onset = 0
     while (curr_onset < Probe.n_samples):
         segment_onsets.append(curr_onset)
         segment_offsets.append(min(curr_onset + settings['segment_duration'], Probe.n_samples))
-        if (segment_offsets[-1] - segment_onsets[-1]) < 0.5 * settings['segment_duration']:
-            print("Last segment is less than half segment duration. Combining it with previous segment.")
-            del segment_offsets[-1], segment_onsets[-1]
-            segment_offsets[-1] = Probe.n_samples
+        if segment_offsets[-1] == Probe.n_samples:
             break
         curr_onset += settings['segment_duration'] - settings['segment_overlap']
     print("Using ", len(segment_onsets), "segments per channel for sorting.")

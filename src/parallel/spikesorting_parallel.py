@@ -678,7 +678,8 @@ def spike_sort_parallel(Probe, **kwargs):
             sort_data.append([data_dict['results_dict'][w_item['ID']][0],
                               data_dict['results_dict'][w_item['ID']][1],
                               waveforms,
-                              data_dict['results_dict'][w_item['ID']][2]])
+                              data_dict['results_dict'][w_item['ID']][2]],
+                              w_item['ID'])
             # I am not sure why, but this has to be added here. It does not work
             # when done above directly on the global data_dict elements
             if type(sort_data[-1][0]) == np.ndarray:
@@ -687,7 +688,7 @@ def spike_sort_parallel(Probe, **kwargs):
                     sort_data[-1][0] += w_item['index_window'][0]
         else:
             # This work item found nothing (or raised an exception)
-            sort_data.append([[], [], [], []])
+            sort_data.append([[], [], [], [], w_item['ID']])
 
     # Now that everything has been sorted, condense our representation of the neurons
     work_summary = consolidate.WorkItemSummary(sort_data, work_items, settings, n_chans=Probe.num_electrodes)

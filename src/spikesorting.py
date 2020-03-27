@@ -117,7 +117,7 @@ def spike_sort_item(Probe, work_item, settings):
     """
     chan = work_item['channel']
     if settings['verbose']: print("Working on item", work_item['ID'], "on electrode ", chan)
-    
+
     skip = np.amax(np.abs(settings['clip_width'])) / 2
     align_window = [skip, skip]
     if settings['verbose']: print("Identifying threshold crossings")
@@ -356,7 +356,9 @@ def spike_sort(Probe, **kwargs):
         segProbe.voltage = segment_voltages[w_item['seg_number']]
         w_item['ID'] = wi_ind # Assign ID number in order of deployment
         crossings, labels, waveforms, new_waveforms = spike_sort_item(segProbe, w_item, settings)
-        sort_data.append([crossings, labels, waveforms, new_waveforms])
+        sort_data.append([crossings, labels, waveforms, new_waveforms, w_item['ID']])
+
+    return sort_data, work_items
 
     work_summary = consolidate.WorkItemSummary(sort_data, work_items, settings, n_chans=Probe.num_electrodes)
     work_summary.stitch_segments()

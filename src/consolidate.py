@@ -258,9 +258,17 @@ def compute_SNR(neurons):
 
 class WorkItemSummary(object):
     """
+    settings = {'max_components': 10,
+           'check_components': None,
+           'add_peak_valley': False,
+           'p_value_cut_thresh': 0.01}
     """
     def __init__(self, sort_data, work_items, settings, n_chans=None,
                  curr_chan_inds=None):
+        # Make sure sort_data and work items are ordered one to one
+        # by ordering their IDs
+        sort_data.sort(key=lambda x: x[4])
+        work_items.sort(key=lambda x: x['ID'])
         self.sort_data = sort_data
         self.work_items = work_items
         self.settings = settings
@@ -281,7 +289,8 @@ class WorkItemSummary(object):
         Parameters
         ----------
         sort_data: list
-            Each element contains the 4 outputs of spike_sort_segment, split up by
+            Each element contains a list of the 4 outputs of spike_sort_segment,
+            and the ID of the work item that created it, split up by
             individual channels into 'work_items' (or spike_sort_parallel output)
             "crossings, labels, waveforms, new_waveforms", in this order, for a
             single segment and a single channel of sorted data.
@@ -294,11 +303,12 @@ class WorkItemSummary(object):
             the maximum channel found in work_items['channel'] + 1.
         Returns
         -------
-        organized_data : list
+        Returns None but reassigns class attributes as follows:
+        self.sort_data : sort_data list of dictionaries
             A list of the original elements of sort_data and organzied such that
             each list index corresponds to a channel number, and within each channel
             sublist data are in ordered by segment number as indicated in work_items.
-        organized_items : list
+        self.work_items : work_items list of dictionaries
             Same as for organized data but for the elements of work_items.
         """
         organized_data = [[] for x in range(0, self.n_chans)]
@@ -312,146 +322,187 @@ class WorkItemSummary(object):
             organized_items[chan].extend(chan_items)
         self.sort_data = organized_data
         self.work_items = organized_items
-        print("IT WOULD BE SUPER NICE IF UNITS/LABLES WERE FURTHER ORDERED BY THE SNR OF THEIR UNIT...")
 
-    def merge_test_two_units(self, clips_1, clips_2, p_cut, split_only=False, merge_only=False):
-        # Keep larger number of clips named as clips 1 since merge merges into
-        # the largest cluster
-        # swapped_clips = False
-        # if clips_1.shape[0] < clips_2.shape[0]:
-        #     clips_1, clips_2 = clips_2, clips_1
-        #     swapped_clips = True
+    def get_sort_data_by_chan(self):
+        """ Returns all sorter data concatenated by channel across all segments,
+        thus removing the concept of segment-wise sorting and giving all data
+        by channel. """
+        crossings, labels, waveforms, new_waveforms = [], [], [], []
+        for chan in range(0, self.n_chans):
+            seg_crossings, seg_labels, seg_waveforms, seg_new = [], [], [], []
+            for seg in range(0, len(self.sort_data[chan])):
+                seg_crossings.append(self.sort_data[chan][seg][0])
+                seg_labels.append(self.sort_data[chan][seg][1])
+                seg_waveforms.append(self.sort_data[chan][seg][2])
+                seg_new.append(self.sort_data[chan][seg][3])
+            crossings.append(np.hstack(seg_crossings))
+            labels.append(np.hstack(seg_labels))
+            waveforms.append(np.vstack(seg_waveforms))
+            new_waveforms.append(np.hstack(seg_new))
+        return crossings, labels, waveforms, new_waveforms
+
+    def merge_test_two_units(self, clips_1, clips_2, p_cut, method='pca',
+                             split_only=False, merge_only=False):
         clips = np.vstack((clips_1, clips_2))
         neuron_labels = np.ones(clips.shape[0], dtype=np.int64)
         neuron_labels[clips_1.shape[0]:] = 2
-        scores = preprocessing.compute_pca(clips,
-                    self.settings['check_components'],
-                    self.settings['max_components'],
-                    add_peak_valley=self.settings['add_peak_valley'],
-                    curr_chan_inds=self.curr_chan_inds)
+        if method.lower() == 'pca':
+            scores = preprocessing.compute_pca(clips,
+                        self.settings['check_components'],
+                        self.settings['max_components'],
+                        add_peak_valley=self.settings['add_peak_valley'],
+                        curr_chan_inds=self.curr_chan_inds)
+        elif method.lower() == 'projection':
+            t1 = np.mean(clips_1, axis=0)
+            t2 = np.mean(clips_2, axis=0)
+            scores = clips @ np.vstack((t1, t2)).T
+        else:
+            raise ValueError("Unknown method", method, "for scores. Must use 'pca' or 'projection'.")
         neuron_labels = merge_clusters(scores, neuron_labels,
                             split_only=split_only, merge_only=merge_only,
                             p_value_cut_thresh=p_cut)
-        if (1 in neuron_labels) and (2 in neuron_labels):
-            clips_merged = False # Data split
-        else:
+        if np.all(neuron_labels == 1) or np.all(neuron_labels == 2):
             clips_merged = True
+        else:
+            clips_merged = False
         neuron_labels_1 = neuron_labels[0:clips_1.shape[0]]
         neuron_labels_2 = neuron_labels[clips_1.shape[0]:]
         return clips_merged, neuron_labels_1, neuron_labels_2
 
     def stitch_segments(self):
         """
+        Returns
+        -------
+        Returns None but reassigns class attributes as follows:
+        self.sort_data[1] : np.int64
+            Reassigns the labels across segments within each channel so that
+            they have the same meaning.
         """
-        crossings = [[] for x in range(0, self.n_chans)]
-        labels = [[] for x in range(0, self.n_chans)]
-        waveforms = [[] for x in range(0, self.n_chans)]
-        new_waveforms = [[] for x in range(0, self.n_chans)]
+        # Stitch each channel separately
         for chan in range(0, self.n_chans):
-            seg_crossings = []
-            seg_labels = []
-            seg_waveforms = []
-            seg_new = []
-            # Need to make and track a new labeling with numbers that extend
-            # beyond a single segment
-            # Start with the current labeling scheme, which is assumed to be
-            # ordered from 0-N
-            chan_labels_by_seg = []
-            chan_labels_by_seg.append(np.copy(self.sort_data[chan][0][1]))
-            unique_real_labels = np.unique(chan_labels_by_seg[0])
-            real_labels = unique_real_labels.tolist()
+            if len(self.sort_data[chan]) < 1:
+                # No segments on this channel
+                continue
+            # Start with the current labeling scheme in first segment,
+            # which is assumed to be ordered from 0-N (as output by sorter)
+            real_labels = np.unique(self.sort_data[chan][0][1]).tolist()
             next_real_label = max(real_labels) + 1
-            base_seg = -1 # in case we don't enter loop
-            for base_seg in range(0, len(self.sort_data[chan])-1):
-                # Get clips for current, base segement, and next segment
-                unique_fake_labels = np.unique(self.sort_data[chan][base_seg+1][1])
-                unique_fake_labels += next_real_label # Keep these out of range of the real labels
-                next_label_workspace = np.copy(self.sort_data[chan][base_seg+1][1])
+            # Go through each segment as the "current segment" and set the labels
+            # in the next segment according to the scheme in current
+            for curr_seg in range(0, len(self.sort_data[chan])-1):
+                # Make 'fake_labels' for next segment that do not overlap with
+                # the current segment and make a work space for the next
+                # segment labels so we can compare curr and next without
+                # losing track of original labels
+                next_seg = curr_seg + 1
+                fake_labels = np.copy(np.unique(self.sort_data[chan][next_seg][1]))
+                fake_labels += next_real_label # Keep these out of range of the real labels
+                fake_labels = fake_labels.tolist()
+                next_label_workspace = np.copy(self.sort_data[chan][next_seg][1])
                 next_label_workspace += next_real_label
-                fake_labels = unique_fake_labels.tolist()
-                next_fake_label = np.amax(fake_labels) + 1
 
-
-                # Pairwise compare neurons found in next segment with those in base
-                # for base_label in np.unique(self.sort_data[chan][base_seg][1]):
-                #     base_select = self.sort_data[chan][base_seg][1] == base_label
-                #     clips_1 = self.sort_data[chan][base_seg][2][base_select, :]
-                #     for next_label in unique_fake_labels:
-                #         next_select = self.sort_data[chan][base_seg+1][1] == next_label
-                #         clips_2 = self.sort_data[chan][base_seg+1][2][next_select, :]
-                #         _, labels_1, labels_2 = self.merge_test_two_units(
-                #                 clips_1, clips_2, self.settings['p_value_cut_thresh'], split_only=True)
-                #         if 2 in labels_1:
-                #             # Neuron in base seg split so assign as new unit
-                #             chan_labels_by_seg[base_seg][base_select][labels_1 == 2] = next_real_label
-                #             real_labels.append(next_real_label)
-                #             next_real_label += 1
-                #               next_fake_label += 1 # Keepf ake labels out of range of real labels
-                #               fake_labels = [x+1 for x in fake_labels]
-                #         if 1 in labels_2:
-                #             # Neuron in next seg split so assign it to the base
-                #             # seg label that it split into
-                #             next_label_workspace[next_select][labels_2 == 1] = next_fake_label
-                #             fake_labels.append(next_fake_label)
-                #             next_fake_label += 1
-
-                # Find templates for all current units
-                base_templates, base_labels = segment.calculate_templates(
-                                        self.sort_data[chan][base_seg][2],
-                                        chan_labels_by_seg[base_seg])
+                # Find templates for units in each segment
+                curr_templates, curr_labels = segment.calculate_templates(
+                                        self.sort_data[chan][curr_seg][2],
+                                        self.sort_data[chan][curr_seg][1])
                 next_templates, next_labels = segment.calculate_templates(
-                                        self.sort_data[chan][base_seg+1][2],
+                                        self.sort_data[chan][next_seg][2],
                                         next_label_workspace)
-                # Find all pairs of templates that are mutually each other's
-                # closest
+                # Find all pairs of templates that are mutually closest
                 minimum_distance_pairs = sort_cython.identify_clusters_to_compare(
-                                np.vstack(base_templates + next_templates),
-                                np.hstack((base_labels, next_labels)), [])
+                                np.vstack(curr_templates + next_templates),
+                                np.hstack((curr_labels, next_labels)), [])
 
+                # Merge test all mutually closest clusters and track any labels
+                # in the next segment (fake_labels) that do not find a match.
+                # These are assigned a new real label.
                 leftover_labels = [x for x in fake_labels]
                 for c1, c2 in minimum_distance_pairs:
-                    if ((c1 in real_labels) and (c2 in fake_labels)) or ((c2 in real_labels) and (c1 in fake_labels)):
-                        # Require one from each segment to compare
-                        c1_select = chan_labels_by_seg[base_seg] == c1
-                        clips_1 = self.sort_data[chan][base_seg][2][c1_select, :]
-                        c2_select = next_label_workspace == c2
-                        clips_2 = self.sort_data[chan][base_seg+1][2][c2_select, :]
-                        is_merged, _, _ = self.merge_test_two_units(
-                                clips_1, clips_2, self.settings['p_value_cut_thresh'], merge_only=True)
-                        if is_merged:
-                            # Update next segment label data with same labels used in base_seg
-                            self.sort_data[chan][base_seg+1][1][c2_select] = c1
-                            leftover_labels.remove(c2)
-                        # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
+                    if (c1 in real_labels) and (c2 in fake_labels):
+                        r_l = c1
+                        f_l = c2
+                    elif (c2 in real_labels) and (c1 in fake_labels):
+                        r_l = c2
+                        f_l = c1
                     else:
+                        # Require one from each segment to compare
                         print("min distance pair is from the SAME SEGMENT!. Skipping this comparison?")
+                        continue
+                    # Choose current seg clips based on real labels
+                    real_select = self.sort_data[chan][curr_seg][1] == r_l
+                    clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
+                    # Choose next seg clips based on original fake label workspace
+                    fake_select = next_label_workspace == f_l
+                    clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
+                    is_merged, _, _ = self.merge_test_two_units(
+                            clips_1, clips_2, self.settings['p_value_cut_thresh'],
+                            method='projection', merge_only=True)
+                    if is_merged:
+                        # Update actual next segment label data with same labels
+                        # used in curr_seg
+                        self.sort_data[chan][next_seg][1][fake_select] = r_l
+                        leftover_labels.remove(c2)
+                    # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
 
+                # Assign units in next segment that do not match any in the
+                # current segment a new real label
                 for ll in leftover_labels:
-                    print("LEFTOVER LABEL", ll, "being added as", next_real_label)
                     ll_select = next_label_workspace == ll
-                    self.sort_data[chan][base_seg+1][1][ll_select] = next_real_label
+                    self.sort_data[chan][next_seg][1][ll_select] = next_real_label
+                    real_labels.append(next_real_label)
                     next_real_label += 1
 
-                # This is work template for next segment
-                chan_labels_by_seg.append(np.copy(self.sort_data[chan][base_seg+1][1]))
+                # Make sure newly stitched segment labels are separate from
+                # their nearest template match. This should help in instances
+                # where one of the stitched units is mixed in one segment, but
+                # in the other segment the units are separable (due to, for
+                # instance, drift). This can help maintain segment continuity if
+                # a unit exists in both segments but only has enough spikes/
+                # separation to be sorted in one of the segments.
+                # Do this by considering curr and next seg combined
+                # NOTE: This could also be done by considering ALL previous
+                # segments combined or once at the end over all data combined
+                joint_clips = np.vstack((self.sort_data[chan][curr_seg][2],
+                                         self.sort_data[chan][next_seg][2]))
+                joint_labels = np.hstack((self.sort_data[chan][curr_seg][1],
+                                          self.sort_data[chan][next_seg][1]))
+                joint_templates, temp_labels = segment.calculate_templates(
+                                        joint_clips, joint_labels)
+                # Find all pairs of templates that are mutually closest
+                minimum_distance_pairs = sort_cython.identify_clusters_to_compare(
+                                np.vstack(joint_templates), temp_labels, [])
 
-                seg_crossings.append(self.sort_data[chan][base_seg][0])
-                # seg_labels.append(self.sort_data[chan][base_seg][1])
-                seg_waveforms.append(self.sort_data[chan][base_seg][2])
-                seg_new.append(self.sort_data[chan][base_seg][3])
-
-            # Nothing else we can match for the last segment so just add it, if it exists
-            if len(self.sort_data[chan]) > 0:
-                seg_crossings.append(self.sort_data[chan][base_seg+1][0])
-                # seg_labels.append(self.sort_data[chan][base_seg+1][1])
-                seg_waveforms.append(self.sort_data[chan][base_seg+1][2])
-                seg_new.append(self.sort_data[chan][base_seg+1][3])
-
-            crossings[chan] = np.hstack(seg_crossings)
-            labels[chan] = np.hstack(chan_labels_by_seg)
-            waveforms[chan] = np.vstack(seg_waveforms)
-            new_waveforms[chan] = np.hstack(seg_new)
-        self.stitched_data = [crossings, labels, waveforms, new_waveforms]
+                tmp_reassign = np.zeros_like(joint_labels)
+                # Perform a split only between all minimum distance pairs
+                for c1, c2 in minimum_distance_pairs:
+                    c1_select = joint_labels == c1
+                    clips_1 = joint_clips[c1_select, :]
+                    c2_select = joint_labels == c2
+                    clips_2 = joint_clips[c2_select, :]
+                    ismerged, labels_1, labels_2 = self.merge_test_two_units(
+                            clips_1, clips_2, self.settings['p_value_cut_thresh'],
+                            method='projection', split_only=True)
+                    if ismerged: # This should never happen with split_only but
+                        continue # in the event that is changed, it's here
+                    if 2 in labels_1:
+                        # Reassign spikes in c1 that split into c2
+                        # The merge test was done on joint clips and labels, so
+                        # we have to figure out where their indices all came from
+                        tmp_reassign[:] = 0
+                        tmp_reassign[c1_select] = labels_1
+                        # Do reassignment for both current and next segments
+                        reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 2
+                        self.sort_data[chan][curr_seg][1][reassign_index] = c2
+                        reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 2
+                        self.sort_data[chan][next_seg][1][reassign_index] = c2
+                    if 1 in labels_2:
+                        # Reassign spikes in c2 that split into c1
+                        tmp_reassign[:] = 0
+                        tmp_reassign[c2_select] = labels_2
+                        reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 1
+                        self.sort_data[chan][curr_seg][1][reassign_index] = c1
+                        reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 1
+                        self.sort_data[chan][next_seg][1][reassign_index] = c1
 
     def summarize_neurons(self, sorter_info=None):
         """
@@ -475,7 +526,9 @@ class WorkItemSummary(object):
          mean_firing_rate: The mean firing rate of the neuron over the entire recording
         peak_valley: The peak valley of the template on the channel from which the neuron arises
         """
-        crossings, labels, waveforms, new_waveforms = self.stitched_data
+        # To the sort data segments into our conventional sorter items by
+        # channel independent of segment/work item
+        crossings, labels, waveforms, new_waveforms = self.get_sort_data_by_chan()
         neuron_summary = []
         for channel in range(0, len(crossings)):
             if len(crossings[channel]) == 0:
@@ -505,7 +558,7 @@ class WorkItemSummary(object):
                     spike_order = np.argsort(neuron["spike_indices"], kind='stable')
                     neuron["spike_indices"] = neuron["spike_indices"][spike_order]
                     neuron['waveforms'] = neuron['waveforms'][spike_order, :]
-                    
+
                     neuron["new_spike_bool"] = new_wave_bool[labels[channel] == neuron_label]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
                     # Remove duplicates found in binary pursuit

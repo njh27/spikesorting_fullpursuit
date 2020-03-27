@@ -4,6 +4,7 @@ from scipy import stats
 from spikesorting_python.src import electrode
 from spikesorting_python.src import spikesorting
 from spikesorting_python.src.parallel import spikesorting_parallel
+import matplotlib.pyplot as plt
 
 
 
@@ -131,12 +132,32 @@ class TestDataset(object):
                 voltage_array[chan, :] += signal.fftconvolve(spiketrain, convolve_kernel, mode='same')
         self.voltage_array = voltage_array
 
+    def drift_template_preview(self, template_inds, drift_funs, index):
+        if len(template_inds) != len(drift_funs):
+            raise ValueError("Input templates and drift functions must all be the same length!")
+        if len(drift_funs[0](0)) != self.num_channels:
+            raise ValueError("Input drift functions must return a scaling factor for each channel. Expected {0} scaling factors, got {1}.".format(self.num_channels, len(drift_funs[0](0))))
+        preview_templates = [np.empty((0, self.neuron_templates.shape[1])) for neur in range(0, len(template_inds))]
+        for neuron in range(0, len(template_inds)):
+            chan_scaling_factors = drift_funs[neuron](index)
+            for chan in range(0, self.num_channels):
+                preview_templates[neuron] = np.vstack((preview_templates[neuron],
+                    chan_scaling_factors[chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude))
+        w_color = ['r', 'b', 'g']
+        for n in range(0, len(preview_templates)):
+            use_color = w_color.pop(0)
+            _ = plt.plot(preview_templates[n].flatten(), color=use_color)
+        ag = plt.gcf()
+        ag.set_size_inches(15, 12)
+        plt.show()
+        return
+
     def gen_test_dataset_with_drift(self, firing_rates, template_inds, drift_funs,
                 refractory_wins=1.5e-3, scaled_spike_thresh=None):
         """drift_funs must be a LIST of functions.
         """
         if len(firing_rates) != len(template_inds) or len(firing_rates) != len(drift_funs):
-            raise ValueError("Input rates, templates, and scaling factors must all be the same length!")
+            raise ValueError("Input rates, templates, and drift functions must all be the same length!")
         if len(drift_funs[0](0)) != self.num_channels:
             raise ValueError("Input drift functions must return a scaling factor for each channel. Expected {0} scaling factors, got {1}.".format(self.num_channels, len(drift_funs[0](0))))
 
@@ -148,10 +169,15 @@ class TestDataset(object):
             refractory_wins = np.repeat(refractory_wins, len(firing_rates))
         # Reset neuron actual IDs for each neuron
         self.actual_IDs = [[] for neur in range(0, len(firing_rates))]
-        self.actual_templates = self.neuron_templates
+        self.actual_templates = [np.empty((0, self.neuron_templates.shape[1])) for neur in range(0, len(firing_rates))]
         half_temp_width = (self.neuron_templates.shape[1] // 2)
         voltage_array = self.gen_noise_voltage_array()
         for neuron in range(0, len(firing_rates)):
+            # Store templates used, use scaling at time zero
+            chan_scaling_factors = drift_funs[neuron](0)
+            for chan in range(0, self.num_channels):
+                self.actual_templates[neuron] = np.vstack((self.actual_templates[neuron],
+                    chan_scaling_factors[chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude))
             # Generate one spike train for each neuron
             spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
             spiketrain[0:half_temp_width+2] = False # Ensure spike times will not overlap beginning

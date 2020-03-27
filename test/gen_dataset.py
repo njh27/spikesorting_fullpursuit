@@ -193,6 +193,7 @@ class TestDataset(object):
                     # Apply spike train to every channel this neuron is present on
                     scaled_template = chan_scaling_factors[chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude
                     voltage_array[chan, spk_ind:(spk_ind+self.neuron_templates.shape[1])] += scaled_template
+            print("Removing", np.count_nonzero(remove_IDs), "neuron", neuron, "spikes for scale factors less than", scaled_spike_thresh)
             self.actual_IDs[neuron] = self.actual_IDs[neuron][~remove_IDs]
             self.actual_IDs[neuron] += half_temp_width # Re-center the spike times
         self.voltage_array = voltage_array

@@ -116,7 +116,7 @@ def spike_sort_item(Probe, work_item, settings):
     """
     """
     chan = work_item['channel']
-    if settings['verbose']: print("Working on item", work_item['ID'], "on electrode ", chan)
+    if settings['verbose']: print("Working on item", work_item['ID'], "on electrode ", chan, "segment", work_item['seg_number'])
 
     skip = np.amax(np.abs(settings['clip_width'])) / 2
     align_window = [skip, skip]

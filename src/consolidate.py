@@ -333,12 +333,16 @@ class WorkItemSummary(object):
             for seg in range(0, len(self.sort_data[chan])):
                 seg_crossings.append(self.sort_data[chan][seg][0])
                 seg_labels.append(self.sort_data[chan][seg][1])
-                seg_waveforms.append(self.sort_data[chan][seg][2])
+                # Waveforms is 2D so can't stack with empty
+                if len(self.sort_data[chan][seg][2]) > 0:
+                    seg_waveforms.append(self.sort_data[chan][seg][2])
                 seg_new.append(self.sort_data[chan][seg][3])
-            crossings.append(np.hstack(seg_crossings))
-            labels.append(np.hstack(seg_labels))
-            waveforms.append(np.vstack(seg_waveforms))
-            new_waveforms.append(np.hstack(seg_new))
+            # stacking with [] casts as float, so ensure maintained types
+            crossings.append(np.hstack(seg_crossings).astype(np.int64))
+            labels.append(np.hstack(seg_labels).astype(np.int64))
+            waveforms.append(np.vstack(seg_waveforms).astype(np.float64))
+            new_waveforms.append(np.hstack(seg_new).astype(np.bool))
+
         return crossings, labels, waveforms, new_waveforms
 
     def merge_test_two_units(self, clips_1, clips_2, p_cut, method='pca',
@@ -385,11 +389,22 @@ class WorkItemSummary(object):
                 continue
             # Start with the current labeling scheme in first segment,
             # which is assumed to be ordered from 0-N (as output by sorter)
-            real_labels = np.unique(self.sort_data[chan][0][1]).tolist()
-            next_real_label = max(real_labels) + 1
+            # Find first segment with labels and start there
+            start_seg = 0
+            while start_seg < len(self.sort_data[chan]):
+                real_labels = np.unique(self.sort_data[chan][start_seg][1]).tolist()
+                next_real_label = max(real_labels) + 1
+                if len(real_labels) > 0:
+                    break
+                start_seg += 1
+            next_seg_is_new = False
+
             # Go through each segment as the "current segment" and set the labels
             # in the next segment according to the scheme in current
-            for curr_seg in range(0, len(self.sort_data[chan])-1):
+            for curr_seg in range(start_seg, len(self.sort_data[chan])-1):
+                if len(self.sort_data[chan][curr_seg][1]) == 0:
+                    # curr_seg is now failed next seg of last iteration
+                    continue
                 # Make 'fake_labels' for next segment that do not overlap with
                 # the current segment and make a work space for the next
                 # segment labels so we can compare curr and next without
@@ -400,7 +415,19 @@ class WorkItemSummary(object):
                 fake_labels = fake_labels.tolist()
                 next_label_workspace = np.copy(self.sort_data[chan][next_seg][1])
                 next_label_workspace += next_real_label
-
+                if len(fake_labels) == 0:
+                    # No units sorted in this segment so start fresh next segment
+                    next_seg_is_new = True
+                    continue
+                if next_seg_is_new:
+                    # Map all units in this segment to new real labels
+                    self.sort_data[chan][curr_seg][1] += next_real_label
+                    for nl in fake_labels:
+                        # fake_labels are in fact the new real labels we are adding
+                        real_labels.append(nl)
+                        next_real_label += 1
+                    next_seg_is_new = False
+                    continue
                 # Find templates for units in each segment
                 curr_templates, curr_labels = segment.calculate_templates(
                                         self.sort_data[chan][curr_seg][2],
@@ -426,7 +453,7 @@ class WorkItemSummary(object):
                         f_l = c1
                     else:
                         # Require one from each segment to compare
-                        print("min distance pair is from the SAME SEGMENT!. Skipping this comparison?")
+                        print("min distance pair channel", chan, "segment", curr_seg, "is from the SAME SEGMENT!. Skipping this comparison?")
                         continue
                     # Choose current seg clips based on real labels
                     real_select = self.sort_data[chan][curr_seg][1] == r_l
@@ -503,6 +530,11 @@ class WorkItemSummary(object):
                         self.sort_data[chan][curr_seg][1][reassign_index] = c1
                         reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 1
                         self.sort_data[chan][next_seg][1][reassign_index] = c1
+                # It is possible to leave loop without checking last seg in the
+                # event it is a new seg
+                if next_seg_is_new and len(self.sort_data[chan][-1]) > 0:
+                    # Map all units in this segment to new real labels
+                    self.sort_data[chan][-1][1] += next_real_label
 
     def summarize_neurons(self, sorter_info=None):
         """
@@ -534,9 +566,6 @@ class WorkItemSummary(object):
             if len(crossings[channel]) == 0:
                 print("Channel ", channel, " has no spikes and was skipped in summary!")
                 continue
-            if new_waveforms is not None:
-                new_wave_bool = np.zeros(crossings[channel].size, dtype='bool')
-                new_wave_bool[new_waveforms[channel]] = True
             for ind, neuron_label in enumerate(np.unique(labels[channel])):
                 neuron = {}
                 if sorter_info is not None:
@@ -559,7 +588,7 @@ class WorkItemSummary(object):
                     neuron["spike_indices"] = neuron["spike_indices"][spike_order]
                     neuron['waveforms'] = neuron['waveforms'][spike_order, :]
 
-                    neuron["new_spike_bool"] = new_wave_bool[labels[channel] == neuron_label]
+                    neuron["new_spike_bool"] = new_waveforms[channel][labels[channel] == neuron_label]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
                     # Remove duplicates found in binary pursuit
                     keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"], neuron["new_spike_bool"])
@@ -583,12 +612,12 @@ class WorkItemSummary(object):
                     # neuron["peak_valley"] = np.amax(main_template) - np.amin(main_template)
                 except:
                     print("!!! NEURON {0} ON CHANNEL {1} HAD AN ERROR SUMMARIZING !!!".format(neuron_label, channel))
-                    if new_waveforms is not None:
-                        neuron["new_spike_bool"] = new_wave_bool
+                    neuron["new_spike_bool"] = new_waveforms[channel]
                     neuron["channel"] = channel
                     neuron["all_spike_indices"] = crossings[channel]
                     neuron['all_labels'] = labels[channel]
                     neuron['all_waveforms'] = waveforms[channel]
+                    raise
                 neuron_summary.append(neuron)
 
         return neuron_summary

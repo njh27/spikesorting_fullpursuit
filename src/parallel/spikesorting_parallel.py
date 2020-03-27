@@ -648,7 +648,7 @@ def spike_sort_parallel(Probe, **kwargs):
                     del processes[done_index]
 
         if not settings['test_flag']:
-            print("Starting item {0}/{1} on CPUs {2}".format(wi_ind, len(work_items)-1, use_cpus))
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4]}".format(wi_ind, len(work_items)-1, use_cpus, w_item['channel'], w_item['seg_number']))
             time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
             proc = mp.Process(target=spike_sort_item_parallel,
                               args=(data_dict, use_cpus, w_item, settings))
@@ -656,7 +656,7 @@ def spike_sort_parallel(Probe, **kwargs):
             processes.append(proc)
             proc_item_index.append(wi_ind)
         else:
-            print("Doing one process on item {0}/{1}".format(wi_ind, len(work_items)-1))
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4]}".format(wi_ind, len(work_items)-1, use_cpus, w_item['channel'], w_item['seg_number']))
             spike_sort_item_parallel(data_dict, use_cpus, w_item, settings)
             print("finished sort one item")
 

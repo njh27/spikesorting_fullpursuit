@@ -213,6 +213,10 @@ def allocate_cpus_by_chan(samples_over_thresh, cpu_queue):
     return cpu_queue, cpu_alloc
 
 
+class NoSpikesError(Exception):
+    pass
+
+
 def print_process_info(title):
     print(title, flush=True)
     print('module name:', __name__, flush=True)
@@ -350,7 +354,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             exit_type = "No crossings over threshold."
             if settings['verbose']: print("Done.", flush=True)
             # Raise error to force exit and wrap_up()
-            raise RuntimeError("No crossings over threshold.")
+            raise NoSpikesError
         min_cluster_size = (np.floor(settings['min_firing_rate'] * item_dict['n_samples'] / item_dict['sampling_rate'])).astype(np.int64)
         if min_cluster_size < 1:
             min_cluster_size = 1
@@ -434,7 +438,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             exit_type = "No clusters over min_firing_rate."
             if settings['verbose']: print("Done.", flush=True)
             # Raise error to force exit and wrap_up()
-            raise RuntimeError("No clusters over min_firing_rate.")
+            raise NoSpikesError
 
         # Realign any units that have a template with peak > valley
         crossings, units_shifted = check_upward_neurons(clips, crossings,
@@ -481,6 +485,10 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if settings['verbose']: print("Done sorting", flush=True)
         # Map labels starting at zero and put labels in order
         sort.reorder_labels(neuron_labels)
+        if settings['verbose']: print("Successfully completed item ", str(work_item['ID']), flush=True)
+        exit_type = "Success"
+    except NoSpikesError:
+        if settings['verbose']: print("No spikes to sort.")
         if settings['verbose']: print("Successfully completed item ", str(work_item['ID']), flush=True)
         exit_type = "Success"
     except Exception as err:
@@ -612,9 +620,10 @@ def spike_sort_parallel(Probe, **kwargs):
         # Sort  work_items and samples_over_thresh by descending order of
         # samples over threshold. If testing we do not do this to keep
         # random numbers consistent with single channel sorter
-        samples_over_thresh, work_items = zip(*[[x, y] for x, y in reversed(
+        # Zip only returns tuple, so map it to a list
+        samples_over_thresh, work_items = map(list, zip(*[[x, y] for x, y in reversed(
                                             sorted(zip(samples_over_thresh,
-                                            work_items), key=lambda pair: pair[0]))])
+                                            work_items), key=lambda pair: pair[0]))]))
 
     n_cpus = psutil.cpu_count(logical=True)
     cpu_queue = manager.Queue(n_cpus)
@@ -657,7 +666,7 @@ def spike_sort_parallel(Probe, **kwargs):
                     del processes[done_index]
 
         if not settings['test_flag']:
-            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4]}".format(wi_ind, len(work_items)-1, use_cpus, w_item['channel'], w_item['seg_number']))
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind, len(work_items)-1, use_cpus, w_item['channel'], w_item['seg_number']))
             time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
             proc = mp.Process(target=spike_sort_item_parallel,
                               args=(data_dict, use_cpus, w_item, settings))
@@ -665,7 +674,7 @@ def spike_sort_parallel(Probe, **kwargs):
             processes.append(proc)
             proc_item_index.append(wi_ind)
         else:
-            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4]}".format(wi_ind, len(work_items)-1, use_cpus, w_item['channel'], w_item['seg_number']))
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind, len(work_items)-1, use_cpus, w_item['channel'], w_item['seg_number']))
             spike_sort_item_parallel(data_dict, use_cpus, w_item, settings)
             print("finished sort one item")
 
@@ -700,8 +709,8 @@ def spike_sort_parallel(Probe, **kwargs):
             sort_data.append([data_dict['results_dict'][w_item['ID']][0],
                               data_dict['results_dict'][w_item['ID']][1],
                               waveforms,
-                              data_dict['results_dict'][w_item['ID']][2]],
-                              w_item['ID'])
+                              data_dict['results_dict'][w_item['ID']][2],
+                              w_item['ID']])
             # I am not sure why, but this has to be added here. It does not work
             # when done above directly on the global data_dict elements
             if type(sort_data[-1][0]) == np.ndarray:
@@ -711,33 +720,15 @@ def spike_sort_parallel(Probe, **kwargs):
         else:
             # This work item found nothing (or raised an exception)
             sort_data.append([[], [], [], [], w_item['ID']])
+    sorter_info = {}
+
+    if settings['verbose']: print("Done.")
+    return sort_data, work_items, sorter_info
 
     # Now that everything has been sorted, condense our representation of the neurons
     work_summary = consolidate.WorkItemSummary(sort_data, work_items, settings, n_chans=Probe.num_electrodes)
     work_summary.stitch_segments()
     neurons = work_summary.summarize_neurons(sorter_info=None)
-    # sort_data, work_items = consolidate.organize_sort_data(sort_data, work_items, n_chans=Probe.num_electrodes)
-    # crossings, labels, waveforms, new_waveforms = consolidate.stitch_segments(sort_data, work_items)
-    # if settings['verbose']: print("Summarizing neurons")
-    # neurons = consolidate.summarize_neurons(Probe, crossings, labels,
-    #             waveforms, new_waveforms=new_waveforms)
-
-    # if settings['verbose']: print("Ordering neurons and finding peak valleys")
-    # neurons = consolidate.recompute_template_wave_properties(neurons)
-    # neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
-    #
-    # # Consolidate neurons across channels
-    # if settings['cleanup_neurons']:
-    #     if settings['verbose']: print("Removing noise units")
-    #     neurons = consolidate.remove_noise_neurons(neurons)
-    #     if settings['verbose']: print("Combining same neurons in neighborhood")
-    #     neurons = consolidate.combine_stolen_spikes(neurons, max_offset_samples=20, p_value_combine=.05, p_value_cut_thresh=settings['p_value_cut_thresh'], max_components=settings['max_components'])
-    #     neurons = consolidate.combine_neighborhood_neurons(neurons, overlap_time=5e-4, overlap_threshold=5, max_offset_samples=10, p_value_cut_thresh=settings['p_value_cut_thresh'], max_components=settings['max_components'])
-    #     neurons = consolidate.recompute_template_wave_properties(neurons)
-    #     neurons = consolidate.reorder_neurons_by_raw_peak_valley(neurons)
-    #     neurons = consolidate.remove_across_channel_duplicate_neurons(neurons, overlap_time=5e-4, overlap_threshold=5)
-
-    if settings['verbose']: print("Done.")
 
     return neurons
 

@@ -4,6 +4,7 @@ from scipy import stats
 from spikesorting_python.src import electrode
 from spikesorting_python.src import spikesorting
 from spikesorting_python.src.parallel import spikesorting_parallel
+from spikesorting_python.src import consolidate
 import matplotlib.pyplot as plt
 
 
@@ -281,10 +282,18 @@ class TestDataset(object):
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
         neurons = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
 
+        work_summary = consolidate.WorkItemSummary(neurons[0], neurons[1], single_sort_kwargs, n_chans=self.Probe.num_electrodes)
+        work_summary.stitch_segments()
+        neurons = work_summary.summarize_neurons(sorter_info=None)
+
         np.random.set_state(first_state)
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
         neurons_parallel = spikesorting_parallel.spike_sort_parallel(self.Probe, **par_sort_kwargs)
         self.random_state = first_state
+
+        work_summary = consolidate.WorkItemSummary(neurons_parallel[0], neurons_parallel[1], single_sort_kwargs, n_chans=self.Probe.num_electrodes)
+        work_summary.stitch_segments()
+        neurons_parallel = work_summary.summarize_neurons(sorter_info=None)
 
         n_ind = 0
         for neur, npar in zip(neurons, neurons_parallel):

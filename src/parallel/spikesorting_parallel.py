@@ -1,6 +1,7 @@
 import pickle
 import os
 import sys
+from shutil import rmtree
 import mkl
 import numpy as np
 import multiprocessing as mp
@@ -315,14 +316,14 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 #     time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
                 # os.makedirs(settings['log_dir'])
             else:
+                # Move stdout to the log_dir file
                 if sys.platform == 'win32':
                     sys.stdout = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + ".out", "w")
                     sys.stderr = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
-                    print_process_info('spike_sort_item_parallel on channel' + str(work_item['ID']))
                 else:
                     sys.stdout = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + ".out", "w")
                     sys.stderr = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
-                    print_process_info('spike_sort_item_parallel on channel' + str(work_item['ID']))
+                print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']))
 
         # Setup threads and affinity based on use_cpus if not on mac OS
         if 'win32' == sys.platform:
@@ -332,7 +333,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             mkl.set_num_threads(8)
         else:
             mkl.set_num_threads(len(use_cpus))
-            # mkl.set_num_threads(8)
 
         # Get the all the needed info for this work item
         # Functions that get this dictionary only ever use these items since
@@ -352,7 +352,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings = segment_parallel.identify_threshold_crossings(voltage[chan, :], item_dict, item_dict['thresholds'][chan], skip=skip, align_window=align_window)
         if crossings.size == 0:
             exit_type = "No crossings over threshold."
-            if settings['verbose']: print("Done.", flush=True)
             # Raise error to force exit and wrap_up()
             raise NoSpikesError
         min_cluster_size = (np.floor(settings['min_firing_rate'] * item_dict['n_samples'] / item_dict['sampling_rate'])).astype(np.int64)
@@ -436,7 +435,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
 
         if neuron_labels.size == 0:
             exit_type = "No clusters over min_firing_rate."
-            if settings['verbose']: print("Done.", flush=True)
             # Raise error to force exit and wrap_up()
             raise NoSpikesError
 
@@ -482,7 +480,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             new_inds = np.zeros(crossings.size, dtype='bool')
 
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
-        if settings['verbose']: print("Done sorting", flush=True)
         # Map labels starting at zero and put labels in order
         sort.reorder_labels(neuron_labels)
         if settings['verbose']: print("Successfully completed item ", str(work_item['ID']), flush=True)
@@ -531,6 +528,11 @@ def spike_sort_parallel(Probe, **kwargs):
                  'results_dict': manager.dict(),
                  'completed_items': manager.list(), 'exits_dict': manager.dict(),
                  'gpu_lock': manager.Lock(), 'filter_band': settings['filter_band']}
+    if settings['log_dir'] is not None:
+        if os.path.exists(settings['log_dir']):
+            rmtree(settings['log_dir'])
+            time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
+        os.makedirs(settings['log_dir'])
 
     # Convert segment duration and overlaps to indices from their values input
     # in seconds and adjust as needed

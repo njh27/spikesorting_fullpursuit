@@ -54,7 +54,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     import pyopencl as cl
     os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
     ############################################################################
-    
+
     chan_win, clip_width = segment.time_window_to_samples(clip_width, Probe.sampling_rate)
     _, master_channel_index, clip_samples, template_samples_per_chan, curr_chan_inds = segment.get_windows_and_indices(
         clip_width, Probe.sampling_rate, channel, Probe.get_neighbors(channel))
@@ -257,7 +257,6 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             # card
             total_work_size_resid = np.uint32(resid_local_work_size * np.ceil(num_kernels / resid_local_work_size))
             residual_events = []
-            print("Residual queue info", max_enqueue_resid, total_work_size_resid, resid_local_work_size, flush=True)
             n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
             next_wait_event = None
             for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
@@ -320,7 +319,6 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
 
             num_kernels = np.ceil(chunk_voltage.shape[0] / templates.shape[1])
             total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(num_kernels / pursuit_local_work_size))
-            print("Pursuit queue info", max_enqueue_pursuit, total_work_size_pursuit, pursuit_local_work_size, flush=True)
 
             # Construct our buffers
             num_additional_spikes_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(1, dtype=np.uint32)) # NOTE: Must be :rw for atomic to work
@@ -361,7 +359,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                     next_wait_event = [pursuit_event]
 
                 cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=pursuit_events)
-                print("Added", num_additional_spikes[0], "secret spikes", flush=True)
+                # print("Added", num_additional_spikes[0], "secret spikes", flush=True)
 
                 if (num_additional_spikes[0] == 0):
                     break # Converged, no spikes added in last pass
@@ -405,7 +403,6 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             # Read out the adjusted spikes here before releasing
             # the residual voltage. Only do this if there are spikes to get clips of
             if (chunk_total_additional_spikes + chunk_crossings.shape[0]) > 0:
-                print("Setting up data for getting adjusted clips", flush=True)
                 if chunk_total_additional_spikes == 0:
                     all_chunk_crossings = chunk_crossings
                     all_chunk_labels = chunk_labels

@@ -189,7 +189,7 @@ class TestDataset(object):
                 chan_scaling_factors = drift_funs[neuron](spk_ind)
                 if np.all(chan_scaling_factors < scaled_spike_thresh):
                     remove_IDs[i] = True
-                    continue
+                    # continue
                 for chan in range(0, self.num_channels):
                     # Apply spike train to every channel this neuron is present on
                     scaled_template = chan_scaling_factors[chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude

@@ -294,7 +294,7 @@ def fraction_mua(neuron, absolute_refractory_period=1e-3):
     return violation_rate / mean_rate
 
 
-def delete_mua_neurons(neurons, max_mua_ratio=0.1, absolute_refractory_period=1e-3):
+def delete_mua_neurons(neurons, max_mua_ratio=0.05, absolute_refractory_period=1e-3):
     for n_ind, n in enumerate(neurons):
         mua_ratio = fraction_mua(n, absolute_refractory_period)
         print(n_ind, mua_ratio, np.count_nonzero(np.diff(n['spike_indices']) <= 1))
@@ -312,8 +312,8 @@ class WorkItemSummary(object):
                 }
     """
     def __init__(self, sort_data, work_items, settings, sorter_info,
-                 duplicate_tol_inds=1, absolute_refractory_period=1e-3,
-                 max_mua_ratio=0.1, curr_chan_inds=None):
+                 duplicate_tol_inds=1, absolute_refractory_period=10e-4,
+                 max_mua_ratio=0.05, curr_chan_inds=None):
         # Make sure sort_data and work items are ordered one to one
         # by ordering their IDs
         sort_data.sort(key=lambda x: x[4])
@@ -339,6 +339,8 @@ class WorkItemSummary(object):
         dupliate spikes that become sorted in different orders. """
         for chan in range(0, self.n_chans):
             for seg in range(0, len(self.sort_data[chan])):
+                if len(self.sort_data[chan][seg][0]) == 0:
+                    continue # No spikes in this segment
                 spike_order = np.argsort(self.sort_data[chan][seg][0], kind='stable')
                 self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][spike_order]
                 self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][spike_order]

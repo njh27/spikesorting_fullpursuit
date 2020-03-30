@@ -294,7 +294,7 @@ def fraction_mua(neuron, absolute_refractory_period=1e-3):
     return violation_rate / mean_rate
 
 
-def delete_mua_neurons(neurons, max_mua_ratio=0.5, absolute_refractory_period=1e-3):
+def delete_mua_neurons(neurons, max_mua_ratio=0.1, absolute_refractory_period=1e-3):
     for n_ind, n in enumerate(neurons):
         mua_ratio = fraction_mua(n, absolute_refractory_period)
         print(n_ind, mua_ratio, np.count_nonzero(np.diff(n['spike_indices']) <= 1))
@@ -309,10 +309,11 @@ class WorkItemSummary(object):
                 'check_components': None,
                 'add_peak_valley': False,
                 'p_value_cut_thresh': 0.01,
-                'duplicate_tol_inds': 1}
+                }
     """
     def __init__(self, sort_data, work_items, settings, sorter_info,
-                 curr_chan_inds=None):
+                 duplicate_tol_inds=1, absolute_refractory_period=1e-3,
+                 max_mua_ratio=0.1, curr_chan_inds=None):
         # Make sure sort_data and work items are ordered one to one
         # by ordering their IDs
         sort_data.sort(key=lambda x: x[4])
@@ -323,6 +324,9 @@ class WorkItemSummary(object):
         self.sorter_info = sorter_info
         self.curr_chan_inds = curr_chan_inds
         self.n_chans = self.sorter_info['n_channels']
+        self.duplicate_tol_inds = duplicate_tol_inds
+        self.absolute_refractory_period = absolute_refractory_period
+        self.max_mua_ratio = max_mua_ratio
         # Organize sort_data to be arranged by channel and segment.
         self.organize_sort_data()
         # Put all segment data in temporal order
@@ -389,7 +393,7 @@ class WorkItemSummary(object):
         snr = (self.settings['sigma'] / 4.) * range
         return snr
 
-    def get_isi_violation_rate(self, chan, seg, label, absolute_refractory_period=1e-3):
+    def get_isi_violation_rate(self, chan, seg, label):
         """ Compute the spiking activity that occurs during the ISI violation
         period, absolute_refractory_period, relative to the total number of
         spikes within the given segment, 'seg' and unit label 'label'. """
@@ -401,10 +405,10 @@ class WorkItemSummary(object):
         index_isi = np.diff(unit_spikes)
         num_isi_violations = np.count_nonzero(
             index_isi / self.sorter_info['sampling_rate']
-            < absolute_refractory_period)
-        n_duplicates = np.count_nonzero(index_isi <= self.settings['duplicate_tol_inds'])
+            < self.absolute_refractory_period)
+        n_duplicates = np.count_nonzero(index_isi <= self.duplicate_tol_inds)
         num_isi_violations -= n_duplicates
-        isi_violation_rate = num_isi_violations * (1.0 / absolute_refractory_period)\
+        isi_violation_rate = num_isi_violations * (1.0 / self.absolute_refractory_period)\
                                 / (np.count_nonzero(select_unit) - n_duplicates)
         return isi_violation_rate
 
@@ -421,24 +425,24 @@ class WorkItemSummary(object):
                     / (self.sort_data[chan][seg][0][last_index] - self.sort_data[chan][seg][0][first_index])
         return mean_rate
 
-    def get_fraction_mua(self, chan, seg, label, absolute_refractory_period=1e-3):
+    def get_fraction_mua(self, chan, seg, label):
         """ Estimate the fraction of noise/multi-unit activity (MUA) using analysis
         of ISI violations. We do this by looking at the spiking activity that
         occurs during the ISI violation period. """
-        isi_violation_rate = self.get_isi_violation_rate(chan, seg, label, absolute_refractory_period)
+        isi_violation_rate = self.get_isi_violation_rate(chan, seg, label)
         mean_rate = self.get_mean_firing_rate(chan, seg, label)
         if mean_rate == 0.:
             return 0.
         else:
             return isi_violation_rate / mean_rate
 
-    def delete_mua_units(self, max_mua_ratio=0.5, absolute_refractory_period=1e-3):
+    def delete_mua_units(self):
         for chan in range(0, self.n_chans):
             for seg in range(0, len(self.sort_data[chan])):
                 for l in np.unique(self.sort_data[chan][seg][1]):
-                    mua_ratio = self.get_fraction_mua(chan, seg, l, absolute_refractory_period)
+                    mua_ratio = self.get_fraction_mua(chan, seg, l)
                     print(mua_ratio, chan, seg)
-                    if mua_ratio > max_mua_ratio:
+                    if mua_ratio > self.max_mua_ratio:
                         keep_indices = self.sort_data[chan][seg][1] != l
                         self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][keep_indices]
                         self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][keep_indices]
@@ -520,7 +524,8 @@ class WorkItemSummary(object):
                 next_label_workspace = np.copy(self.sort_data[chan][next_seg][1])
                 next_label_workspace += next_real_label
                 if len(fake_labels) == 0:
-                    # No units sorted in this segment so start fresh next segment
+                    # No units sorted in NEXT segment so start fresh next segment
+                    print("skipping seg", next_seg, "on chan", chan, "with no units")
                     next_seg_is_new = True
                     continue
                 if next_seg_is_new:
@@ -530,6 +535,7 @@ class WorkItemSummary(object):
                         # fake_labels are in fact the new real labels we are adding
                         real_labels.append(nl)
                         next_real_label += 1
+                        print("Added new seg label", nl, "for seg", curr_seg, "on chan", chan)
                     next_seg_is_new = False
                     continue
                 # Find templates for units in each segment
@@ -557,7 +563,11 @@ class WorkItemSummary(object):
                         f_l = c1
                     else:
                         # Require one from each segment to compare
-                        print("min distance pair channel", chan, "segment", curr_seg, "is from the SAME SEGMENT!. Skipping this comparison?")
+                        # In this condition units that were split from each
+                        # other within a segment are actually closer to each
+                        # other than they are to anything in the other segment.
+                        # This suggests we should not merge these as one of
+                        # them is likely garbage.
                         continue
                     # Choose current seg clips based on real labels
                     real_select = self.sort_data[chan][curr_seg][1] == r_l
@@ -634,11 +644,46 @@ class WorkItemSummary(object):
                         self.sort_data[chan][curr_seg][1][reassign_index] = c1
                         reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 1
                         self.sort_data[chan][next_seg][1][reassign_index] = c1
+
+                # Finally, check if the above split was unable to salvage any
+                # mixtures in the current segment. If it wasn't, delete that
+                # unit from the current segment and relabel any units in the
+                # next segment that matched with it
+                for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
+                    mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                    if mua_ratio > self.max_mua_ratio:
+                        # print(mua_ratio, chan, curr_seg)
+                        # Remove this unit from current segment
+                        keep_indices = self.sort_data[chan][curr_seg][1] != curr_l
+                        self.sort_data[chan][curr_seg][0] = self.sort_data[chan][curr_seg][0][keep_indices]
+                        self.sort_data[chan][curr_seg][1] = self.sort_data[chan][curr_seg][1][keep_indices]
+                        self.sort_data[chan][curr_seg][2] = self.sort_data[chan][curr_seg][2][keep_indices, :]
+                        self.sort_data[chan][curr_seg][3] = self.sort_data[chan][curr_seg][3][keep_indices]
+                        # Assign any units in next segment that stitched to this
+                        # bad one a new label.
+                        self.sort_data[chan][next_seg][1][self.sort_data[chan][next_seg][1] == curr_l] = \
+                                next_real_label
+                        next_real_label += 1
+
                 # It is possible to leave loop without checking last seg in the
                 # event it is a new seg
                 if next_seg_is_new and len(self.sort_data[chan][-1]) > 0:
                     # Map all units in this segment to new real labels
                     self.sort_data[chan][-1][1] += next_real_label
+                # Check for MUA in the last segment as we did for the others
+                curr_seg = len(self.sort_data[chan]) - 1
+                if curr_seg < 0:
+                    continue
+                for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
+                    mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                    # print(mua_ratio, chan, curr_seg)
+                    if mua_ratio > self.max_mua_ratio:
+                        # Remove this unit from current segment
+                        keep_indices = self.sort_data[chan][curr_seg][1] != curr_l
+                        self.sort_data[chan][curr_seg][0] = self.sort_data[chan][curr_seg][0][keep_indices]
+                        self.sort_data[chan][curr_seg][1] = self.sort_data[chan][curr_seg][1][keep_indices]
+                        self.sort_data[chan][curr_seg][2] = self.sort_data[chan][curr_seg][2][keep_indices, :]
+                        self.sort_data[chan][curr_seg][3] = self.sort_data[chan][curr_seg][3][keep_indices]
 
     def get_sort_data_by_chan(self):
         """ Returns all sorter data concatenated by channel across all segments,
@@ -719,7 +764,7 @@ class WorkItemSummary(object):
                     # Remove duplicates found in binary pursuit
                     keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"],
                                     neuron["new_spike_bool"],
-                                    tol_inds=self.settings['duplicate_tol_inds'])
+                                    tol_inds=self.duplicate_tol_inds)
                     neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
                     neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
@@ -730,7 +775,7 @@ class WorkItemSummary(object):
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
                     keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
                                     neuron['waveforms'], neuron["template"],
-                                    tol_inds=self.settings['duplicate_tol_inds'])
+                                    tol_inds=self.duplicate_tol_inds)
                     neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
                     neuron['waveforms'] = neuron['waveforms'][keep_bool, :]

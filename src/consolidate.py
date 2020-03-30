@@ -327,6 +327,7 @@ class WorkItemSummary(object):
         self.duplicate_tol_inds = duplicate_tol_inds
         self.absolute_refractory_period = absolute_refractory_period
         self.max_mua_ratio = max_mua_ratio
+        self.is_stitched = False # Repeated stitching can change results so track
         # Organize sort_data to be arranged by channel and segment.
         self.organize_sort_data()
         # Put all segment data in temporal order
@@ -489,6 +490,11 @@ class WorkItemSummary(object):
             Reassigns the labels across segments within each channel so that
             they have the same meaning.
         """
+        if self.is_stitched:
+            print("Neurons are already stitched. Repeated stitching can change results.")
+            print("Skipped stitching")
+            return
+        self.is_stitched = True
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
             if len(self.sort_data[chan]) < 1:
@@ -579,7 +585,7 @@ class WorkItemSummary(object):
                     clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.settings['p_value_cut_thresh'],
-                            method='projection', merge_only=True)
+                            method='pca', merge_only=True)
                     if is_merged:
                         # Update actual next segment label data with same labels
                         # used in curr_seg
@@ -624,7 +630,7 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.settings['p_value_cut_thresh'],
-                            method='projection', split_only=True)
+                            method='pca', split_only=True)
                     if ismerged: # This should never happen with split_only but
                         continue # in the event that is changed, it's here
                     if 2 in labels_1:
@@ -704,7 +710,10 @@ class WorkItemSummary(object):
             # stacking with [] casts as float, so ensure maintained types
             crossings.append(np.hstack(seg_crossings).astype(np.int64))
             labels.append(np.hstack(seg_labels).astype(np.int64))
-            waveforms.append(np.vstack(seg_waveforms).astype(np.float64))
+            if len(seg_waveforms) > 0:
+                waveforms.append(np.vstack(seg_waveforms).astype(np.float64))
+            else:
+                waveforms.append([])
             new_waveforms.append(np.hstack(seg_new).astype(np.bool))
         return crossings, labels, waveforms, new_waveforms
 

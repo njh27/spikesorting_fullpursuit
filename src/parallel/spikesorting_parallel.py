@@ -1,6 +1,7 @@
 import pickle
 import os
 import sys
+sys.path.append(os.getcwd())
 from shutil import rmtree
 import mkl
 import numpy as np
@@ -63,6 +64,17 @@ def spike_sorting_settings_parallel(**kwargs):
     return settings
 
 
+def init_pool_dict(volt_array, volt_shape, init_dict=None):
+    global pool_dict
+    pool_dict = {}
+    pool_dict['share_voltage'] = volt_array
+    pool_dict['share_voltage_shape'] = volt_shape
+    if init_dict is not None:
+        for k in init_dict.keys():
+            pool_dict[k] = init_dict[k]
+    return
+
+
 def init_load_voltage():
     mkl.set_num_threads(1)
 
@@ -91,7 +103,7 @@ def load_voltage_parallel(PL2Reader, read_source):
 def filter_one_chan(chan, b_filt, a_filt):
 
     mkl.set_num_threads(2)
-    voltage = np.frombuffer(data_dict['share_voltage']).reshape(data_dict['share_voltage_shape'])
+    voltage = np.frombuffer(pool_dict['share_voltage']).reshape(pool_dict['share_voltage_shape'])
     filt_voltage = signal.filtfilt(b_filt, a_filt, voltage[chan, :], padlen=None)
     return filt_voltage
 
@@ -107,7 +119,7 @@ def filter_parallel(Probe, low_cutoff=300, high_cutoff=6000):
     b_filt, a_filt = signal.butter(1, [low_cutoff, high_cutoff], btype='band')
     print("Performing voltage filtering")
     filt_results = []
-    with mp.Pool(processes=psutil.cpu_count(logical=False), initializer=init_data_dict, initargs=(filt_X, Probe.voltage.shape)) as pool:
+    with mp.Pool(processes=psutil.cpu_count(logical=False), initializer=init_pool_dict, initargs=(filt_X, Probe.voltage.shape)) as pool:
         try:
             for chan in range(0, Probe.num_electrodes):
                 filt_results.append(pool.apply_async(filter_one_chan, args=(chan, b_filt, a_filt)))
@@ -122,9 +134,9 @@ def filter_parallel(Probe, low_cutoff=300, high_cutoff=6000):
 def zca_one_chan(chan):
 
     mkl.set_num_threads(1)
-    voltage = np.frombuffer(data_dict['share_voltage']).reshape(data_dict['share_voltage_shape'])
-    zca_data = np.matmul(data_dict['zca_matrix'][chan, :], voltage)
-    result_voltage = np.frombuffer(data_dict['result_voltage']).reshape(data_dict['share_voltage_shape'])
+    voltage = np.frombuffer(pool_dict['share_voltage']).reshape(pool_dict['share_voltage_shape'])
+    zca_data = np.matmul(pool_dict['zca_matrix'][chan, :], voltage)
+    result_voltage = np.frombuffer(pool_dict['result_voltage']).reshape(pool_dict['share_voltage_shape'])
     np.copyto(result_voltage[chan, :], zca_data)
     return None
 
@@ -132,7 +144,7 @@ def zca_one_chan(chan):
 def zca_parallel(shared_voltage, result_voltage, Probe, zca_matrix):
     init_dict = {'zca_matrix': zca_matrix, 'result_voltage': result_voltage}
     zca_results = []
-    with mp.Pool(processes=psutil.cpu_count(logical=True), initializer=init_data_dict, initargs=(shared_voltage, Probe.voltage.shape, init_dict)) as pool:
+    with mp.Pool(processes=psutil.cpu_count(logical=True), initializer=init_pool_dict, initargs=(shared_voltage, Probe.voltage.shape, init_dict)) as pool:
         try:
             for chan in range(0, Probe.num_electrodes):
                 zca_results.append(pool.apply_async(zca_one_chan, args=(chan,)))
@@ -149,7 +161,7 @@ def zca_parallel(shared_voltage, result_voltage, Probe, zca_matrix):
 def thresh_and_size_one_chan(chan, sigma):
 
     mkl.set_num_threads(1)
-    voltage = np.frombuffer(data_dict['share_voltage']).reshape(data_dict['share_voltage_shape'])
+    voltage = np.frombuffer(pool_dict['share_voltage']).reshape(pool_dict['share_voltage_shape'])
     abs_voltage = np.abs(voltage[chan, :])
     threshold = np.nanmedian(abs_voltage) / 0.6745
     threshold *= sigma
@@ -160,7 +172,7 @@ def thresh_and_size_one_chan(chan, sigma):
 
 def get_thresholds_and_work_order(shared_voltage, Probe, sigma):
     order_results = []
-    with mp.Pool(processes=psutil.cpu_count(logical=True), initializer=init_data_dict, initargs=(shared_voltage, Probe.voltage.shape)) as pool:
+    with mp.Pool(processes=psutil.cpu_count(logical=True), initializer=init_pool_dict, initargs=(shared_voltage, Probe.voltage.shape)) as pool:
         try:
             for chan in range(0, Probe.num_electrodes):
                 order_results.append(pool.apply_async(thresh_and_size_one_chan, args=(chan, sigma)))
@@ -674,7 +686,7 @@ def spike_sort_parallel(Probe, **kwargs):
                     del processes[done_index]
 
         if not settings['test_flag']:
-            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind, len(work_items)-1, use_cpus, w_item['channel'], w_item['seg_number']))
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
             time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
             proc = mp.Process(target=spike_sort_item_parallel,
                               args=(data_dict, use_cpus, w_item, settings))
@@ -682,7 +694,7 @@ def spike_sort_parallel(Probe, **kwargs):
             processes.append(proc)
             proc_item_index.append(wi_ind)
         else:
-            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind, len(work_items)-1, use_cpus, w_item['channel'], w_item['seg_number']))
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
             spike_sort_item_parallel(data_dict, use_cpus, w_item, settings)
             print("finished sort one item")
 
@@ -767,10 +779,10 @@ if __name__ == '__main__':
     if not '.pickle' in save_fname[-7:]:
         save_fname = save_fname + '.pickle'
     log_dir = save_fname[0:-7] + '_std_logs'
-    if os.path.exists(log_dir):
-        rmtree(log_dir)
-        time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
-    os.makedirs(log_dir)
+    # if os.path.exists(log_dir):
+    #     rmtree(log_dir)
+    #     time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
+    # os.makedirs(log_dir)
     print("Sorting data from PL2 file: ", fname_PL2)
     print("Output neurons will be saved as: ", save_fname)
 
@@ -783,10 +795,9 @@ if __name__ == '__main__':
     clusters. With high thresholds you will want binary pursuit enable to find
     the remaining missed spikes.
     """
-
-    spike_sort_args = {'sigma': 4.5,
+    spike_sort_args = {'sigma': 4.,
                        'clip_width': [-6e-4, 8e-4], 'filter_band': (300, 6000),
-                       'p_value_cut_thresh': 0.001, 'check_components': None,
+                       'p_value_cut_thresh': 0.01, 'check_components': None,
                        'max_components': 10,
                        'min_firing_rate': 2, 'do_binary_pursuit': True,
                        'segment_duration': None,
@@ -794,12 +805,14 @@ if __name__ == '__main__':
                        'add_peak_valley': False, 'do_branch_PCA': True,
                        'use_GPU': True, 'max_gpu_memory': None,
                        'use_rand_init': True,
+                       'segment_duration': 120,
+                       'segment_overlap': 60,
                        'cleanup_neurons': False,
                        'verbose': True, 'test_flag': False, 'log_dir': log_dir,
                        'do_ZCA_transform': True}
 
-    use_voltage_file = 'C:\\Users\\plexon\\Documents\\Python Scripts\\voltage_49_1min'
-    # use_voltage_file = None
+    # use_voltage_file = 'C:\\Users\\plexon\\Documents\\Python Scripts\\voltage_49_1min'
+    use_voltage_file = None
 
     if use_voltage_file is None:
         spike_sort_args['do_ZCA_transform'] = True
@@ -808,7 +821,7 @@ if __name__ == '__main__':
 
     if spike_sort_args['cleanup_neurons']:
         print("CLEANUP IS ON WON'T BE ABLE TO TEST !")
-
+    sys.path.append('c:\\users\\plexon\\documents\\python scripts')
     import PL2_read
     pl2_reader = PL2_read.PL2Reader(fname_PL2)
 
@@ -817,9 +830,9 @@ if __name__ == '__main__':
             print("!!! WARNING !!!: ZCA transform is OFF but data is being loaded from PL2 file.")
         print("Reading voltage from file")
         raw_voltage = load_voltage_parallel(pl2_reader, 'SPKC')
-        # t_t_start = int(40000 * 60 * 25)
-        # t_t_stop =  int(40000 * 60 * 35)
-        SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=raw_voltage) #[:, t_t_start:t_t_stop])
+        t_t_start = int(40000 * 60 * 0)
+        t_t_stop =  int(40000 * 60 * 5)
+        SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=raw_voltage[:, t_t_start:t_t_stop])
     else:
         with open(use_voltage_file, 'rb') as fp:
             voltage_array = pickle.load(fp)
@@ -832,6 +845,6 @@ if __name__ == '__main__':
     print("Start sorting")
     neurons = spike_sort_parallel(SProbe, **spike_sort_args)
 
-    print("Saving neurons file")
+    print("Saving neurons file as", save_fname)
     with open(save_fname, 'wb') as fp:
         pickle.dump(neurons, fp, protocol=-1)

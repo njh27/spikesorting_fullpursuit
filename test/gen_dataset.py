@@ -183,7 +183,7 @@ class TestDataset(object):
             spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
             spiketrain[0:half_temp_width+2] = False # Ensure spike times will not overlap beginning
             spiketrain[-(half_temp_width+2):] = False # or overlap end
-            self.actual_IDs[neuron] = np.where(spiketrain)[0] - half_temp_width
+            self.actual_IDs[neuron] = np.nonzero(spiketrain)[0] - half_temp_width
             remove_IDs = np.zeros(self.actual_IDs[neuron].size, dtype=np.bool)
             for i, spk_ind in enumerate(self.actual_IDs[neuron]):
                 chan_scaling_factors = drift_funs[neuron](spk_ind)

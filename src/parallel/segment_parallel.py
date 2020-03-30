@@ -145,7 +145,7 @@ def get_windows_and_indices(clip_width, sampling_rate, channel, neighbors):
         are formatted and provides window indices and clip indices. """
 
     curr_chan_win, clip_width = time_window_to_samples(clip_width, sampling_rate)
-    chan_neighbor_ind = np.where(neighbors == channel)[0][0]
+    chan_neighbor_ind = next((idx[0] for idx, val in np.ndenumerate(neighbors) if val == channel), None)
     samples_per_chan = curr_chan_win[1] - curr_chan_win[0]
     curr_chan_inds = np.arange(samples_per_chan * chan_neighbor_ind, samples_per_chan * chan_neighbor_ind + samples_per_chan, 1)
 

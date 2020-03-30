@@ -59,8 +59,8 @@ def find_overlapping_spike_bool(spikes1, spikes2, max_samples=20, except_equal=F
         spike in the pair of overlapping spikes is flagged as True in the output
         overlapping_spike_bool. """
 
-    spikes1.sort()
-    spikes2.sort()
+    # spikes1.sort()
+    # spikes2.sort()
     max_samples = np.ceil(max_samples).astype('int')
     overlapping_spike_bool = np.zeros(spikes2.size, dtype='bool')
     spike_1_index = 0
@@ -186,14 +186,14 @@ def remove_ISI_violations(neurons, min_ISI=None):
     return neurons
 
 
-def remove_binary_pursuit_duplicates(event_indices, new_spike_bool):
+def remove_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds=1):
     """
     """
     keep_bool = np.ones(event_indices.size, dtype=np.bool)
     curr_index = 0
     next_index = 1
     while next_index < event_indices.size:
-        if event_indices[next_index] == event_indices[curr_index]:
+        if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
             if new_spike_bool[curr_index] and ~new_spike_bool[next_index]:
                 keep_bool[curr_index] = False
                 curr_index = next_index
@@ -213,7 +213,7 @@ def remove_binary_pursuit_duplicates(event_indices, new_spike_bool):
     return keep_bool
 
 
-def remove_spike_event_duplicates(event_indices, clips, unit_template):
+def remove_spike_event_duplicates(event_indices, clips, unit_template, tol_inds=1):
     """
     """
     keep_bool = np.ones(event_indices.size, dtype=np.bool)
@@ -221,7 +221,7 @@ def remove_spike_event_duplicates(event_indices, clips, unit_template):
     curr_index = 0
     next_index = 1
     while next_index < event_indices.size:
-        if event_indices[next_index] == event_indices[curr_index]:
+        if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
             projections = clips[curr_index:next_index+1, :] @ template_norm
             if projections[0] >= projections[1]:
                 # current spike is better or equal
@@ -256,14 +256,62 @@ def compute_SNR(neurons):
     return neurons
 
 
+def snr(template, background_noise_std):
+    """ Return SNR relative to 3 * background_noise_std. """
+    range = np.amax(template) - np.amin(template)
+    return range / (3 * background_noise_std)
+
+
+def isi_violation_rate(neuron, absolute_refractory_period=1e-3):
+    """ Compute the spiking activity that occurs during the ISI violation
+    period, absolute_refractory_period, relative to the total number of
+    spikes. """
+    if neuron['spike_indices'].size < 2:
+        raise ValueError("Neuron has less than 2 spikes, can't compute ISIs.")
+    index_isi = np.diff(neuron['spike_indices'])
+    num_isi_violations = np.count_nonzero(index_isi / neuron['sampling_rate']
+                                          < absolute_refractory_period)
+    isi_violation_rate = num_isi_violations * (1.0 / absolute_refractory_period)\
+                            / neuron['spike_indices'].size
+    return isi_violation_rate
+
+
+def mean_firing_rate(neuron):
+    """ Compute mean firing rate for the input channel, segment, and label. """
+    if neuron['spike_indices'].size < 2:
+        raise ValueError("Neuron has less than 2 spikes, can't compute mean firing rate.")
+    mean_rate = neuron['sampling_rate'] * neuron['spike_indices'].size\
+                / (neuron['spike_indices'][-1] - neuron['spike_indices'][0])
+    return mean_rate
+
+
+def fraction_mua(neuron, absolute_refractory_period=1e-3):
+    """ Estimate the fraction of noise/multi-unit activity (MUA) using analysis
+    of ISI violations. We do this by looking at the spiking activity that
+    occurs during the ISI violation period. """
+    violation_rate = isi_violation_rate(neuron, absolute_refractory_period)
+    mean_rate = mean_firing_rate(neuron)
+    return violation_rate / mean_rate
+
+
+def delete_mua_neurons(neurons, max_mua_ratio=0.5, absolute_refractory_period=1e-3):
+    for n_ind, n in enumerate(neurons):
+        mua_ratio = fraction_mua(n, absolute_refractory_period)
+        print(n_ind, mua_ratio, np.count_nonzero(np.diff(n['spike_indices']) <= 1))
+        if mua_ratio > max_mua_ratio:
+            pass
+
+
 class WorkItemSummary(object):
     """
-    settings = {'max_components': 10,
-           'check_components': None,
-           'add_peak_valley': False,
-           'p_value_cut_thresh': 0.01}
+    settings = {'sigma': 4.,
+                'max_components': 10,
+                'check_components': None,
+                'add_peak_valley': False,
+                'p_value_cut_thresh': 0.01,
+                'duplicate_tol_inds': 1}
     """
-    def __init__(self, sort_data, work_items, settings, n_chans=None,
+    def __init__(self, sort_data, work_items, settings, sorter_info,
                  curr_chan_inds=None):
         # Make sure sort_data and work items are ordered one to one
         # by ordering their IDs
@@ -272,16 +320,26 @@ class WorkItemSummary(object):
         self.sort_data = sort_data
         self.work_items = work_items
         self.settings = settings
+        self.sorter_info = sorter_info
         self.curr_chan_inds = curr_chan_inds
-        if n_chans is None:
-            # Compute n_chans from input data
-            self.n_chans = 0
-            for x in work_items:
-                self.n_chans = x['channel'] if x['channel'] > n_chans else self.n_chans
-            self.n_chans += 1 # Account for zero indexing
-        else:
-            self.n_chans = n_chans
+        self.n_chans = self.sorter_info['n_channels']
+        # Organize sort_data to be arranged by channel and segment.
         self.organize_sort_data()
+        # Put all segment data in temporal order
+        self.temporal_order_sort_data()
+
+    def temporal_order_sort_data(self):
+        """ Places all data within each segment in temporal order according to
+        the spike event times. Use 'stable' sort for output to be repeatable
+        because overlapping segments and binary pursuit can return identical
+        dupliate spikes that become sorted in different orders. """
+        for chan in range(0, self.n_chans):
+            for seg in range(0, len(self.sort_data[chan])):
+                spike_order = np.argsort(self.sort_data[chan][seg][0], kind='stable')
+                self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][spike_order]
+                self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][spike_order]
+                self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][spike_order, :]
+                self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][spike_order]
 
     def organize_sort_data(self):
         """Takes the output of the spike sorting algorithms and organizes is by
@@ -323,27 +381,70 @@ class WorkItemSummary(object):
         self.sort_data = organized_data
         self.work_items = organized_items
 
-    def get_sort_data_by_chan(self):
-        """ Returns all sorter data concatenated by channel across all segments,
-        thus removing the concept of segment-wise sorting and giving all data
-        by channel. """
-        crossings, labels, waveforms, new_waveforms = [], [], [], []
-        for chan in range(0, self.n_chans):
-            seg_crossings, seg_labels, seg_waveforms, seg_new = [], [], [], []
-            for seg in range(0, len(self.sort_data[chan])):
-                seg_crossings.append(self.sort_data[chan][seg][0])
-                seg_labels.append(self.sort_data[chan][seg][1])
-                # Waveforms is 2D so can't stack with empty
-                if len(self.sort_data[chan][seg][2]) > 0:
-                    seg_waveforms.append(self.sort_data[chan][seg][2])
-                seg_new.append(self.sort_data[chan][seg][3])
-            # stacking with [] casts as float, so ensure maintained types
-            crossings.append(np.hstack(seg_crossings).astype(np.int64))
-            labels.append(np.hstack(seg_labels).astype(np.int64))
-            waveforms.append(np.vstack(seg_waveforms).astype(np.float64))
-            new_waveforms.append(np.hstack(seg_new).astype(np.bool))
+    def snr_norm(self, template):
+        """ This formula computes SNR relative to 3 STD of noise given that
+        clips/templates have already been normalized to (divided by) the actual
+        computed threshold value during sorting. """
+        range = np.amax(template) - np.amin(template)
+        snr = (self.settings['sigma'] / 4.) * range
+        return snr
 
-        return crossings, labels, waveforms, new_waveforms
+    def get_isi_violation_rate(self, chan, seg, label, absolute_refractory_period=1e-3):
+        """ Compute the spiking activity that occurs during the ISI violation
+        period, absolute_refractory_period, relative to the total number of
+        spikes within the given segment, 'seg' and unit label 'label'. """
+        select_unit = self.sort_data[chan][seg][1] == label
+        if ~np.any(select_unit):
+            # There are no spikes that match this label
+            raise ValueError("There are no spikes for label", label, ".")
+        unit_spikes = self.sort_data[chan][seg][0][select_unit]
+        index_isi = np.diff(unit_spikes)
+        num_isi_violations = np.count_nonzero(
+            index_isi / self.sorter_info['sampling_rate']
+            < absolute_refractory_period)
+        n_duplicates = np.count_nonzero(index_isi <= self.settings['duplicate_tol_inds'])
+        num_isi_violations -= n_duplicates
+        isi_violation_rate = num_isi_violations * (1.0 / absolute_refractory_period)\
+                                / (np.count_nonzero(select_unit) - n_duplicates)
+        return isi_violation_rate
+
+    def get_mean_firing_rate(self, chan, seg, label):
+        """ Compute mean firing rate for the input channel, segment, and label. """
+        select_unit = self.sort_data[chan][seg][1] == label
+        # unit_spikes = self.sort_data[chan][seg][0][select_unit]
+        first_index = next((idx[0] for idx, val in np.ndenumerate(select_unit) if val), [None])
+        if first_index is None:
+            # There are no spikes that match this label
+            raise ValueError("There are no spikes for label", label, ".")
+        last_index = next((select_unit.shape[0] - idx[0] - 1 for idx, val in np.ndenumerate(select_unit[::-1]) if val), None)
+        mean_rate = self.sorter_info['sampling_rate'] * np.count_nonzero(select_unit)\
+                    / (self.sort_data[chan][seg][0][last_index] - self.sort_data[chan][seg][0][first_index])
+        return mean_rate
+
+    def get_fraction_mua(self, chan, seg, label, absolute_refractory_period=1e-3):
+        """ Estimate the fraction of noise/multi-unit activity (MUA) using analysis
+        of ISI violations. We do this by looking at the spiking activity that
+        occurs during the ISI violation period. """
+        isi_violation_rate = self.get_isi_violation_rate(chan, seg, label, absolute_refractory_period)
+        mean_rate = self.get_mean_firing_rate(chan, seg, label)
+        if mean_rate == 0.:
+            return 0.
+        else:
+            return isi_violation_rate / mean_rate
+
+    def delete_mua_units(self, max_mua_ratio=0.5, absolute_refractory_period=1e-3):
+        for chan in range(0, self.n_chans):
+            for seg in range(0, len(self.sort_data[chan])):
+                for l in np.unique(self.sort_data[chan][seg][1]):
+                    mua_ratio = self.get_fraction_mua(chan, seg, l, absolute_refractory_period)
+                    print(mua_ratio, chan, seg)
+                    if mua_ratio > max_mua_ratio:
+                        keep_indices = self.sort_data[chan][seg][1] != l
+                        self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][keep_indices]
+                        self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][keep_indices]
+                        self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][keep_indices, :]
+                        self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][keep_indices]
+
 
     def merge_test_two_units(self, clips_1, clips_2, p_cut, method='pca',
                              split_only=False, merge_only=False):
@@ -392,6 +493,9 @@ class WorkItemSummary(object):
             # Find first segment with labels and start there
             start_seg = 0
             while start_seg < len(self.sort_data[chan]):
+                if len(self.sort_data[chan][start_seg][1]) == 0:
+                    start_seg += 1
+                    continue
                 real_labels = np.unique(self.sort_data[chan][start_seg][1]).tolist()
                 next_real_label = max(real_labels) + 1
                 if len(real_labels) > 0:
@@ -536,6 +640,27 @@ class WorkItemSummary(object):
                     # Map all units in this segment to new real labels
                     self.sort_data[chan][-1][1] += next_real_label
 
+    def get_sort_data_by_chan(self):
+        """ Returns all sorter data concatenated by channel across all segments,
+        thus removing the concept of segment-wise sorting and giving all data
+        by channel. """
+        crossings, labels, waveforms, new_waveforms = [], [], [], []
+        for chan in range(0, self.n_chans):
+            seg_crossings, seg_labels, seg_waveforms, seg_new = [], [], [], []
+            for seg in range(0, len(self.sort_data[chan])):
+                seg_crossings.append(self.sort_data[chan][seg][0])
+                seg_labels.append(self.sort_data[chan][seg][1])
+                # Waveforms is 2D so can't stack with empty
+                if len(self.sort_data[chan][seg][2]) > 0:
+                    seg_waveforms.append(self.sort_data[chan][seg][2])
+                seg_new.append(self.sort_data[chan][seg][3])
+            # stacking with [] casts as float, so ensure maintained types
+            crossings.append(np.hstack(seg_crossings).astype(np.int64))
+            labels.append(np.hstack(seg_labels).astype(np.int64))
+            waveforms.append(np.vstack(seg_waveforms).astype(np.float64))
+            new_waveforms.append(np.hstack(seg_new).astype(np.bool))
+        return crossings, labels, waveforms, new_waveforms
+
     def summarize_neurons(self, sorter_info=None):
         """
             summarize_neurons(probe, threshold_crossings, labels)
@@ -571,7 +696,7 @@ class WorkItemSummary(object):
                 if sorter_info is not None:
                     for key in sorter_info:
                         neuron[key] = sorter_info[key]
-                    # neuron['sampling_rate'] = Probe.sampling_rate
+                    neuron['sampling_rate'] = self.sorter_info['sampling_rate']
                     # neuron['filter_band'] = Probe.filter_band
                 try:
                     neuron['sort_quality'] = None
@@ -580,18 +705,21 @@ class WorkItemSummary(object):
 
                     neuron["spike_indices"] = crossings[channel][labels[channel] == neuron_label]
                     neuron['waveforms'] = waveforms[channel][labels[channel] == neuron_label, :]
+                    neuron["new_spike_bool"] = new_waveforms[channel][labels[channel] == neuron_label]
 
+                    # NOTE: This still needs to be done even though segments
+                    # were ordered because of overlap!
                     # Ensure spike times are ordered. Must use 'stable' sort for
                     # output to be repeatable because overlapping segments and
                     # binary pursuit can return slightly different dupliate spikes
                     spike_order = np.argsort(neuron["spike_indices"], kind='stable')
                     neuron["spike_indices"] = neuron["spike_indices"][spike_order]
                     neuron['waveforms'] = neuron['waveforms'][spike_order, :]
-
-                    neuron["new_spike_bool"] = new_waveforms[channel][labels[channel] == neuron_label]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
                     # Remove duplicates found in binary pursuit
-                    keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"], neuron["new_spike_bool"])
+                    keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"],
+                                    neuron["new_spike_bool"],
+                                    tol_inds=self.settings['duplicate_tol_inds'])
                     neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
                     neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
@@ -600,12 +728,15 @@ class WorkItemSummary(object):
                     # from combining overlapping segments), preferentially keeping
                     # the waveform best aligned to the template
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
-                    keep_bool = remove_spike_event_duplicates(neuron["spike_indices"], neuron['waveforms'], neuron["template"])
+                    keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
+                                    neuron['waveforms'], neuron["template"],
+                                    tol_inds=self.settings['duplicate_tol_inds'])
                     neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
                     neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
 
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
+                    neuron["snr"] = self.snr_norm(neuron["template"])
                     # samples_per_chan = int(neuron['template'].size / neuron['neighbors'].size)
                     # main_start = np.where(neuron['neighbors'] == neuron['channel'])[0][0]
                     # main_template = neuron['template'][main_start*samples_per_chan:main_start*samples_per_chan + samples_per_chan]
@@ -619,7 +750,6 @@ class WorkItemSummary(object):
                     neuron['all_waveforms'] = waveforms[channel]
                     raise
                 neuron_summary.append(neuron)
-
         return neuron_summary
 
 

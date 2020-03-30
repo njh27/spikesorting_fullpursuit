@@ -338,6 +338,7 @@ def spike_sort(Probe, **kwargs):
     segment_voltages = []
     work_items = []
     chan_neighbors = []
+    chan_neighbor_inds = []
     for x in range(0, len(segment_onsets)):
         if settings['verbose']: print("Finding voltage and thresholds for segment", x+1, "of", len(segment_onsets))
         # Need to copy or else ZCA transforms will duplicate in overlapping
@@ -358,8 +359,13 @@ def spike_sort(Probe, **kwargs):
             # Ensure we just get neighbors once in case its complicated
             if x == 0:
                 chan_neighbors.append(Probe.get_neighbors(chan))
+                cn_ind = next((idx[0] for idx, val in np.ndenumerate(chan_neighbors[chan]) if val == chan), None)
+                if cn_ind is None:
+                    raise ValueError("Probe get_neighbors(chan) function must return a neighborhood that includes the channel 'chan'.")
+                chan_neighbor_inds.append(cn_ind)
             work_items.append({'channel': chan,
                                'neighbors': chan_neighbors[chan],
+                               'chan_neighbor_ind': chan_neighbor_inds[chan],
                                'n_samples': segment_offsets[x] - segment_onsets[x],
                                'seg_number': x,
                                'index_window': [segment_onsets[x], segment_offsets[x]],
@@ -378,7 +384,9 @@ def spike_sort(Probe, **kwargs):
         crossings, labels, waveforms, new_waveforms = spike_sort_item(segProbe, w_item, settings)
         sort_data.append([crossings, labels, waveforms, new_waveforms, w_item['ID']])
 
-    sorter_info = {}
+    sorter_info = {'n_samples': Probe.n_samples,
+                   'n_channels': Probe.num_electrodes,
+                   'sampling_rate': Probe.sampling_rate}
 
     if settings['verbose']: print("Done.")
     print("YOU WANT THIS TO SAVE THINGS LIKE THE SIGMA VALUE USED, AND THE MEDIAN DEVIATION (FOR COMPUTING SNR) AND REALLY ALL PARAMETERS")

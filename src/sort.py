@@ -487,11 +487,7 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                     labels[select_less] = c2
             if np.count_nonzero(labels == c1) == 0 or np.count_nonzero(labels == c2) == 0:
                 # Our optimal split forced a merge
-                # print("!!! THERE WAS AN OPTIMAL SPLIT MERGE !!!!!!!!!!")
-                if split_only:
-                    return False
-                else:
-                    return True
+                return True
             return False
 
     # START ACTUAL OUTER FUNCTION

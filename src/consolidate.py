@@ -464,6 +464,11 @@ class WorkItemSummary(object):
                         self.settings['max_components'],
                         add_peak_valley=self.settings['add_peak_valley'],
                         curr_chan_inds=self.curr_chan_inds)
+        elif method.lower() == 'template_pca':
+            scores = preprocessing.compute_template_pca(clips, neuron_labels,
+                        self.curr_chan_inds, self.settings['check_components'],
+                        self.settings['max_components'],
+                        add_peak_valley=self.settings['add_peak_valley'])
         elif method.lower() == 'projection':
             t1 = np.mean(clips_1, axis=0)
             t2 = np.mean(clips_2, axis=0)
@@ -585,7 +590,7 @@ class WorkItemSummary(object):
                     clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.settings['p_value_cut_thresh'],
-                            method='pca', merge_only=True)
+                            method='template_pca', merge_only=True)
                     if is_merged:
                         # Update actual next segment label data with same labels
                         # used in curr_seg
@@ -630,9 +635,9 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.settings['p_value_cut_thresh'],
-                            method='pca', split_only=True)
-                    if ismerged: # This should never happen with split_only but
-                        continue # in the event that is changed, it's here
+                            method='template_pca', split_only=True)
+                    if ismerged: # This can happen if the split cutpoint forces
+                        continue # a merge so check and skip
                     if 2 in labels_1:
                         # Reassign spikes in c1 that split into c2
                         # The merge test was done on joint clips and labels, so
@@ -641,17 +646,56 @@ class WorkItemSummary(object):
                         tmp_reassign[c1_select] = labels_1
                         # Do reassignment for both current and next segments
                         reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 2
+                        original_curr_2 = self.sort_data[chan][curr_seg][1][reassign_index]
                         self.sort_data[chan][curr_seg][1][reassign_index] = c2
+                        # print("line 657", self.sort_data[chan][curr_seg][1].shape, reassign_index.shape, np.count_nonzero(reassign_index), original_curr_2.shape)
                         reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 2
+                        original_next_2 = self.sort_data[chan][next_seg][1][reassign_index]
                         self.sort_data[chan][next_seg][1][reassign_index] = c2
+                        # print("line 661", self.sort_data[chan][next_seg][1].shape, reassign_index.shape, np.count_nonzero(reassign_index), original_next_2.shape)
                     if 1 in labels_2:
                         # Reassign spikes in c2 that split into c1
                         tmp_reassign[:] = 0
                         tmp_reassign[c2_select] = labels_2
                         reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 1
+                        original_curr_1 = self.sort_data[chan][curr_seg][1][reassign_index]
                         self.sort_data[chan][curr_seg][1][reassign_index] = c1
                         reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 1
+                        original_next_1 = self.sort_data[chan][next_seg][1][reassign_index]
                         self.sort_data[chan][next_seg][1][reassign_index] = c1
+
+                    # Check if split was a good idea and undo it if not. Basically,
+                    # if a mixture is left behind after the split, we probably
+                    # do not want to reassign labels on the basis of the comparison
+                    # with the MUA mixture, so undo the steps above. Otherwise,
+                    # either there were no mixtures or the split removed them
+                    # so we carry on.
+                    undo_split = False
+                    for curr_l in [c1, c2]:
+                        if curr_l not in self.sort_data[chan][curr_seg][1]:
+                            # Split probably worked at removing mixture so unit
+                            # is not longer present in this segment
+                            break
+                        mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                        if mua_ratio > self.max_mua_ratio:
+                            undo_split = True
+                            break
+                    if undo_split:
+                        # Reassign back to values before split
+                        if 2 in labels_1:
+                            tmp_reassign[:] = 0
+                            tmp_reassign[c1_select] = labels_1
+                            reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 2
+                            self.sort_data[chan][curr_seg][1][reassign_index] = original_curr_2
+                            reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 2
+                            self.sort_data[chan][next_seg][1][reassign_index] = original_next_2
+                        if 1 in labels_2:
+                            tmp_reassign[:] = 0
+                            tmp_reassign[c2_select] = labels_2
+                            reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 1
+                            self.sort_data[chan][curr_seg][1][reassign_index] = original_curr_1
+                            reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 1
+                            self.sort_data[chan][next_seg][1][reassign_index] = original_next_1
 
                 # Finally, check if the above split was unable to salvage any
                 # mixtures in the current segment. If it wasn't, delete that

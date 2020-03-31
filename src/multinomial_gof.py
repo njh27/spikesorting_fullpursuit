@@ -188,6 +188,9 @@ def multinomial_probability_MPROB(observed, null_proportions):
 class MultinomialGOF(object):
 
 	def __init__(self, observed, null_proportions, p_threshold=1.):
+		"""
+		Note null_proportions will be corrected to sum to 1. and thus need only
+		represent the relative null proportions. """
 		if np.any(null_proportions == 0):
 			raise ValueError("Cannot have zero expected proportions!")
 		self.observed = np.around(observed).astype(np.int64)

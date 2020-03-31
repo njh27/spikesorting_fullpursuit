@@ -8,6 +8,8 @@ from spikesorting_python.src.c_cython import sort_cython
 from spikesorting_python.src import multinomial_gof
 from scipy.special import gammaln
 import matplotlib.pyplot as plt
+import plot
+
 
 
 def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, n_random=0):
@@ -386,21 +388,19 @@ def iso_cut(projection, p_value_cut_thresh):
             p_value = 1.
             cutpoint = None
 
-    # if N > 10000:
-    #     print("critical side", citical_side, "n points", critical_num_points, "n counts", critical_num_counts, "p-value", p_value)
-    #     # print("cutpoint ind", cutpoint_ind, "cutpoint", cutpoint)
-    #     axes = plt.axes()
-    #
-    #     axes.plot(x_axis[critical_range], residual_densities_fit, color='b')
-    #     # axes.plot(x_axis[critical_range], residual_densities_fit[critical_range], color='k')
-    #
-    #     axes.plot(x_axis, null_counts, color='g')
-    #     axes.plot(x_axis, obs_counts, color='r')
-    #     axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
-    #     axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
-    #     if cutpoint is not None:
-    #         axes.axvline(cutpoint, color='k')
-    #     plt.show()
+    # fig = plt.figure()
+    # axes = plt.axes()
+    # axes.plot(x_axis[critical_range], residual_densities_fit, color='b')
+    # axes.plot(x_axis, null_counts, color='g')
+    # axes.plot(x_axis, obs_counts, color='r')
+    # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
+    # axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
+    # if cutpoint is not None:
+    #     axes.axvline(cutpoint, color='k')
+    # plt.show()
+    # # plot.pretty(fig=fig)
+    # # plot_fname = 'isocut_fits'
+    # # plot.save_figure_composer("/Users/{0}/OneDrive - Duke University/Sync/{1}.fyp".format(dirname_here, plot_fname), fig)
 
     return p_value, cutpoint
 
@@ -486,7 +486,8 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                     labels[select_greater] = c1
                     labels[select_less] = c2
             if np.count_nonzero(labels == c1) == 0 or np.count_nonzero(labels == c2) == 0:
-                # Our optimal split forced a merge
+                # Our optimal split forced a merge. This can happen even with
+                # 'split_only' set to True.
                 return True
             return False
 

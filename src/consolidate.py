@@ -502,8 +502,8 @@ class WorkItemSummary(object):
         self.is_stitched = True
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
-            if len(self.sort_data[chan]) < 1:
-                # No segments on this channel
+            if len(self.sort_data[chan]) <= 1:
+                # Need at least 2 segments to stitch
                 continue
             # Start with the current labeling scheme in first segment,
             # which is assumed to be ordered from 0-N (as output by sorter)
@@ -519,6 +519,9 @@ class WorkItemSummary(object):
                     break
                 start_seg += 1
             next_seg_is_new = False
+            if start_seg >= len(self.sort_data[chan])-1:
+                # Need at least 2 remaining segments to stitch
+                continue
 
             # Go through each segment as the "current segment" and set the labels
             # in the next segment according to the scheme in current
@@ -538,7 +541,6 @@ class WorkItemSummary(object):
                 next_label_workspace += next_real_label
                 if len(fake_labels) == 0:
                     # No units sorted in NEXT segment so start fresh next segment
-                    print("skipping seg", next_seg, "on chan", chan, "with no units")
                     next_seg_is_new = True
                     continue
                 if next_seg_is_new:
@@ -548,7 +550,6 @@ class WorkItemSummary(object):
                         # fake_labels are in fact the new real labels we are adding
                         real_labels.append(nl)
                         next_real_label += 1
-                        print("Added new seg label", nl, "for seg", curr_seg, "on chan", chan)
                     next_seg_is_new = False
                     continue
                 # Find templates for units in each segment
@@ -590,7 +591,7 @@ class WorkItemSummary(object):
                     clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.settings['p_value_cut_thresh'],
-                            method='template_pca', merge_only=True)
+                            method='projection', merge_only=True)
                     if is_merged:
                         # Update actual next segment label data with same labels
                         # used in curr_seg
@@ -635,7 +636,7 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.settings['p_value_cut_thresh'],
-                            method='template_pca', split_only=True)
+                            method='projection', split_only=True)
                     if ismerged: # This can happen if the split cutpoint forces
                         continue # a merge so check and skip
                     if 2 in labels_1:
@@ -648,11 +649,9 @@ class WorkItemSummary(object):
                         reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 2
                         original_curr_2 = self.sort_data[chan][curr_seg][1][reassign_index]
                         self.sort_data[chan][curr_seg][1][reassign_index] = c2
-                        # print("line 657", self.sort_data[chan][curr_seg][1].shape, reassign_index.shape, np.count_nonzero(reassign_index), original_curr_2.shape)
                         reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 2
                         original_next_2 = self.sort_data[chan][next_seg][1][reassign_index]
                         self.sort_data[chan][next_seg][1][reassign_index] = c2
-                        # print("line 661", self.sort_data[chan][next_seg][1].shape, reassign_index.shape, np.count_nonzero(reassign_index), original_next_2.shape)
                     if 1 in labels_2:
                         # Reassign spikes in c2 that split into c1
                         tmp_reassign[:] = 0
@@ -704,7 +703,6 @@ class WorkItemSummary(object):
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                     mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                     if mua_ratio > self.max_mua_ratio:
-                        # print(mua_ratio, chan, curr_seg)
                         # Remove this unit from current segment
                         keep_indices = self.sort_data[chan][curr_seg][1] != curr_l
                         self.sort_data[chan][curr_seg][0] = self.sort_data[chan][curr_seg][0][keep_indices]
@@ -728,7 +726,6 @@ class WorkItemSummary(object):
                     continue
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                     mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
-                    # print(mua_ratio, chan, curr_seg)
                     if mua_ratio > self.max_mua_ratio:
                         # Remove this unit from current segment
                         keep_indices = self.sort_data[chan][curr_seg][1] != curr_l

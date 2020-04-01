@@ -396,6 +396,14 @@ class WorkItemSummary(object):
         snr = (self.settings['sigma'] / 4.) * range
         return snr
 
+    def delete_label(self, chan, seg, label):
+        """ Remove this unit corresponding to label from current segment. """
+        keep_indices = self.sort_data[chan][seg][1] != label
+        self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][keep_indices]
+        self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][keep_indices]
+        self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][keep_indices, :]
+        self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][keep_indices]
+
     def get_isi_violation_rate(self, chan, seg, label):
         """ Compute the spiking activity that occurs during the ISI violation
         period, absolute_refractory_period, relative to the total number of
@@ -446,12 +454,7 @@ class WorkItemSummary(object):
                     mua_ratio = self.get_fraction_mua(chan, seg, l)
                     print(mua_ratio, chan, seg)
                     if mua_ratio > self.max_mua_ratio:
-                        keep_indices = self.sort_data[chan][seg][1] != l
-                        self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][keep_indices]
-                        self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][keep_indices]
-                        self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][keep_indices, :]
-                        self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][keep_indices]
-
+                        self.delete_label(chan, seg, l)
 
     def merge_test_two_units(self, clips_1, clips_2, p_cut, method='pca',
                              split_only=False, merge_only=False):
@@ -704,11 +707,7 @@ class WorkItemSummary(object):
                     mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                     if mua_ratio > self.max_mua_ratio:
                         # Remove this unit from current segment
-                        keep_indices = self.sort_data[chan][curr_seg][1] != curr_l
-                        self.sort_data[chan][curr_seg][0] = self.sort_data[chan][curr_seg][0][keep_indices]
-                        self.sort_data[chan][curr_seg][1] = self.sort_data[chan][curr_seg][1][keep_indices]
-                        self.sort_data[chan][curr_seg][2] = self.sort_data[chan][curr_seg][2][keep_indices, :]
-                        self.sort_data[chan][curr_seg][3] = self.sort_data[chan][curr_seg][3][keep_indices]
+                        self.delete_label(chan, curr_seg, curr_l)
                         # Assign any units in next segment that stitched to this
                         # bad one a new label.
                         self.sort_data[chan][next_seg][1][self.sort_data[chan][next_seg][1] == curr_l] = \
@@ -727,12 +726,7 @@ class WorkItemSummary(object):
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                     mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                     if mua_ratio > self.max_mua_ratio:
-                        # Remove this unit from current segment
-                        keep_indices = self.sort_data[chan][curr_seg][1] != curr_l
-                        self.sort_data[chan][curr_seg][0] = self.sort_data[chan][curr_seg][0][keep_indices]
-                        self.sort_data[chan][curr_seg][1] = self.sort_data[chan][curr_seg][1][keep_indices]
-                        self.sort_data[chan][curr_seg][2] = self.sort_data[chan][curr_seg][2][keep_indices, :]
-                        self.sort_data[chan][curr_seg][3] = self.sort_data[chan][curr_seg][3][keep_indices]
+                        self.delete_label(chan, curr_seg, curr_l)
 
     def get_sort_data_by_chan(self):
         """ Returns all sorter data concatenated by channel across all segments,

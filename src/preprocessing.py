@@ -26,7 +26,7 @@ def get_full_zca_matrix(data, rowvar=True):
     return zca_matrix
 
 
-def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion, n_samples=1e7):
+def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion, n_samples=1e6):
     """
         The ZCA procedure was taken (and reformatted into 2 lines) from:
         https://github.com/zellyn/deeplearning-class-2011/blob/master/ufldl/pca_2d/pca_2d.py

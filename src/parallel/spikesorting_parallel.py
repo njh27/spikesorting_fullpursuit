@@ -608,7 +608,7 @@ def spike_sort_parallel(Probe, **kwargs):
             thresholds, _ = single_thresholds_and_samples(seg_voltage, settings['sigma'])
             zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                             thresholds, settings['sigma'],
-                            zca_cushion, n_samples=1e7)
+                            zca_cushion, n_samples=1e6)
             seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
         thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
         samples_over_thresh.extend(seg_over_thresh)

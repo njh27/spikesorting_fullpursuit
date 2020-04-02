@@ -740,17 +740,18 @@ def spike_sort_parallel(Probe, **kwargs):
         else:
             # This work item found nothing (or raised an exception)
             sort_data.append([[], [], [], [], w_item['ID']])
-    sorter_info = {'n_samples': Probe.n_samples,
-                   'n_channels': Probe.num_electrodes,
-                   'sampling_rate': Probe.sampling_rate}
+    sort_info = settings
+    sort_info.update({'n_samples': Probe.n_samples,
+                        'n_channels': Probe.num_electrodes,
+                        'sampling_rate': Probe.sampling_rate})
 
     if settings['verbose']: print("Done.")
-    return sort_data, work_items, sorter_info
+    return sort_data, work_items, sort_info
 
     # Now that everything has been sorted, condense our representation of the neurons
     work_summary = consolidate.WorkItemSummary(sort_data, work_items, settings, n_chans=Probe.num_electrodes)
     work_summary.stitch_segments()
-    neurons = work_summary.summarize_neurons(sorter_info=None)
+    neurons = work_summary.summarize_neurons(sort_info=None)
 
     return neurons
 

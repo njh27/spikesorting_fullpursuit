@@ -384,9 +384,10 @@ def spike_sort(Probe, **kwargs):
         crossings, labels, waveforms, new_waveforms = spike_sort_item(segProbe, w_item, settings)
         sort_data.append([crossings, labels, waveforms, new_waveforms, w_item['ID']])
 
-    sorter_info = {'n_samples': Probe.n_samples,
-                   'n_channels': Probe.num_electrodes,
-                   'sampling_rate': Probe.sampling_rate}
+    sort_info = settings
+    sort_info.update({'n_samples': Probe.n_samples,
+                        'n_channels': Probe.num_electrodes,
+                        'sampling_rate': Probe.sampling_rate})
 
     if settings['verbose']: print("Done.")
     print("YOU WANT THIS TO SAVE THINGS LIKE THE SIGMA VALUE USED, AND THE MEDIAN DEVIATION (FOR COMPUTING SNR) AND REALLY ALL PARAMETERS")
@@ -394,8 +395,8 @@ def spike_sort(Probe, **kwargs):
     print("David did this by just passing the input kwgs into a settings dictionary for the output")
     print("Also I need to make sure that all ints are np.int64 so this is compatible with windows compiled sort_cython, including in the segment files etc...")
     print("Also need to delete the load file functionality in electrode.py since it only assumes .npy file")
-    return sort_data, work_items, sorter_info
+    return sort_data, work_items, sort_info
 
     work_summary = consolidate.WorkItemSummary(sort_data, work_items, settings, n_chans=Probe.num_electrodes)
     work_summary.stitch_segments()
-    neurons = work_summary.summarize_neurons(sorter_info=None)
+    neurons = work_summary.summarize_neurons(sort_info=None)

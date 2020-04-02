@@ -8,19 +8,6 @@ from scipy.optimize import nnls, lsq_linear
 import copy
 
 
-"""
-    compute_waves_and_template(spikes, labels, label)
-
-Find all waveforms for a list of spikes given a label. The average
-template is the mean template across all samples.
-"""
-def compute_waves_and_template(Probe, channel, indices, clip_width=[-2e-4, 4e-4]):
-    spike_clips, valid_event_indices = segment.get_singlechannel_clips(Probe, channel, indices, clip_width=clip_width)
-    if np.sum(valid_event_indices) != spike_clips.shape[0]:
-        raise ValueError("Number of spike clips does not match number of valid event indices")
-
-    return np.nanmean(spike_clips, axis=0), spike_clips
-
 
 def recompute_template_wave_properties(neuron_summary):
 
@@ -244,7 +231,6 @@ def compute_SNR(neurons):
         "Comparison of Recordings from Microelectrode Arrays and Single
          Electrodes in the Visual Cortex "
         """
-
     for neuron in neurons:
         curr_chan_inds = segment.get_windows_and_indices(neuron['clip_width'],
                 neuron['sampling_rate'], neuron['channel'], neuron['neighbors'])[4]
@@ -256,62 +242,10 @@ def compute_SNR(neurons):
     return neurons
 
 
-def snr(template, background_noise_std):
-    """ Return SNR relative to 3 * background_noise_std. """
-    range = np.amax(template) - np.amin(template)
-    return range / (3 * background_noise_std)
-
-
-def isi_violation_rate(neuron, absolute_refractory_period=1e-3):
-    """ Compute the spiking activity that occurs during the ISI violation
-    period, absolute_refractory_period, relative to the total number of
-    spikes. """
-    if neuron['spike_indices'].size < 2:
-        raise ValueError("Neuron has less than 2 spikes, can't compute ISIs.")
-    index_isi = np.diff(neuron['spike_indices'])
-    num_isi_violations = np.count_nonzero(index_isi / neuron['sampling_rate']
-                                          < absolute_refractory_period)
-    isi_violation_rate = num_isi_violations * (1.0 / absolute_refractory_period)\
-                            / neuron['spike_indices'].size
-    return isi_violation_rate
-
-
-def mean_firing_rate(neuron):
-    """ Compute mean firing rate for the input channel, segment, and label. """
-    if neuron['spike_indices'].size < 2:
-        raise ValueError("Neuron has less than 2 spikes, can't compute mean firing rate.")
-    mean_rate = neuron['sampling_rate'] * neuron['spike_indices'].size\
-                / (neuron['spike_indices'][-1] - neuron['spike_indices'][0])
-    return mean_rate
-
-
-def fraction_mua(neuron, absolute_refractory_period=1e-3):
-    """ Estimate the fraction of noise/multi-unit activity (MUA) using analysis
-    of ISI violations. We do this by looking at the spiking activity that
-    occurs during the ISI violation period. """
-    violation_rate = isi_violation_rate(neuron, absolute_refractory_period)
-    mean_rate = mean_firing_rate(neuron)
-    return violation_rate / mean_rate
-
-
-def delete_mua_neurons(neurons, max_mua_ratio=0.05, absolute_refractory_period=1e-3):
-    for n_ind, n in enumerate(neurons):
-        mua_ratio = fraction_mua(n, absolute_refractory_period)
-        print(n_ind, mua_ratio, np.count_nonzero(np.diff(n['spike_indices']) <= 1))
-        if mua_ratio > max_mua_ratio:
-            pass
-
-
 class WorkItemSummary(object):
     """
-    settings = {'sigma': 4.,
-                'max_components': 10,
-                'check_components': None,
-                'add_peak_valley': False,
-                'p_value_cut_thresh': 0.01,
-                }
     """
-    def __init__(self, sort_data, work_items, settings, sorter_info,
+    def __init__(self, sort_data, work_items, sort_info,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
                  max_mua_ratio=0.05, curr_chan_inds=None):
         # Make sure sort_data and work items are ordered one to one
@@ -320,10 +254,10 @@ class WorkItemSummary(object):
         work_items.sort(key=lambda x: x['ID'])
         self.sort_data = sort_data
         self.work_items = work_items
-        self.settings = settings
-        self.sorter_info = sorter_info
+        self.sort_info = sort_info
+        self.sort_info = sort_info
         self.curr_chan_inds = curr_chan_inds
-        self.n_chans = self.sorter_info['n_channels']
+        self.n_chans = self.sort_info['n_channels']
         self.duplicate_tol_inds = duplicate_tol_inds
         self.absolute_refractory_period = absolute_refractory_period
         self.max_mua_ratio = max_mua_ratio
@@ -393,7 +327,7 @@ class WorkItemSummary(object):
         clips/templates have already been normalized to (divided by) the actual
         computed threshold value during sorting. """
         range = np.amax(template) - np.amin(template)
-        snr = (self.settings['sigma'] / 4.) * range
+        snr = (self.sort_info['sigma'] / 4.) * range
         return snr
 
     def delete_label(self, chan, seg, label):
@@ -415,24 +349,27 @@ class WorkItemSummary(object):
         unit_spikes = self.sort_data[chan][seg][0][select_unit]
         index_isi = np.diff(unit_spikes)
         num_isi_violations = np.count_nonzero(
-            index_isi / self.sorter_info['sampling_rate']
+            index_isi / self.sort_info['sampling_rate']
             < self.absolute_refractory_period)
         n_duplicates = np.count_nonzero(index_isi <= self.duplicate_tol_inds)
+        # Remove duplicate spikes from this computation and adjust the number
+        # of spikes and time window accordingly
         num_isi_violations -= n_duplicates
-        isi_violation_rate = num_isi_violations * (1.0 / self.absolute_refractory_period)\
-                                / (np.count_nonzero(select_unit) - n_duplicates)
+        refractory_adjustment = self.duplicate_tol_inds / self.sort_info['sampling_rate']
+        isi_violation_rate = num_isi_violations \
+                             * (1.0 / (self.absolute_refractory_period - refractory_adjustment))\
+                             / (np.count_nonzero(select_unit) - n_duplicates)
         return isi_violation_rate
 
     def get_mean_firing_rate(self, chan, seg, label):
         """ Compute mean firing rate for the input channel, segment, and label. """
         select_unit = self.sort_data[chan][seg][1] == label
-        # unit_spikes = self.sort_data[chan][seg][0][select_unit]
         first_index = next((idx[0] for idx, val in np.ndenumerate(select_unit) if val), [None])
         if first_index is None:
             # There are no spikes that match this label
             raise ValueError("There are no spikes for label", label, ".")
         last_index = next((select_unit.shape[0] - idx[0] - 1 for idx, val in np.ndenumerate(select_unit[::-1]) if val), None)
-        mean_rate = self.sorter_info['sampling_rate'] * np.count_nonzero(select_unit)\
+        mean_rate = self.sort_info['sampling_rate'] * np.count_nonzero(select_unit)\
                     / (self.sort_data[chan][seg][0][last_index] - self.sort_data[chan][seg][0][first_index])
         return mean_rate
 
@@ -463,15 +400,15 @@ class WorkItemSummary(object):
         neuron_labels[clips_1.shape[0]:] = 2
         if method.lower() == 'pca':
             scores = preprocessing.compute_pca(clips,
-                        self.settings['check_components'],
-                        self.settings['max_components'],
-                        add_peak_valley=self.settings['add_peak_valley'],
+                        self.sort_info['check_components'],
+                        self.sort_info['max_components'],
+                        add_peak_valley=self.sort_info['add_peak_valley'],
                         curr_chan_inds=self.curr_chan_inds)
         elif method.lower() == 'template_pca':
             scores = preprocessing.compute_template_pca(clips, neuron_labels,
-                        self.curr_chan_inds, self.settings['check_components'],
-                        self.settings['max_components'],
-                        add_peak_valley=self.settings['add_peak_valley'])
+                        self.curr_chan_inds, self.sort_info['check_components'],
+                        self.sort_info['max_components'],
+                        add_peak_valley=self.sort_info['add_peak_valley'])
         elif method.lower() == 'projection':
             t1 = np.mean(clips_1, axis=0)
             t2 = np.mean(clips_2, axis=0)
@@ -593,7 +530,7 @@ class WorkItemSummary(object):
                     fake_select = next_label_workspace == f_l
                     clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
                     is_merged, _, _ = self.merge_test_two_units(
-                            clips_1, clips_2, self.settings['p_value_cut_thresh'],
+                            clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                             method='projection', merge_only=True)
                     if is_merged:
                         # Update actual next segment label data with same labels
@@ -638,7 +575,7 @@ class WorkItemSummary(object):
                     c2_select = joint_labels == c2
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
-                            clips_1, clips_2, self.settings['p_value_cut_thresh'],
+                            clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                             method='projection', split_only=True)
                     if ismerged: # This can happen if the split cutpoint forces
                         continue # a merge so check and skip
@@ -752,7 +689,7 @@ class WorkItemSummary(object):
             new_waveforms.append(np.hstack(seg_new).astype(np.bool))
         return crossings, labels, waveforms, new_waveforms
 
-    def summarize_neurons(self, sorter_info=None):
+    def summarize_neurons(self):
         """
             summarize_neurons(probe, threshold_crossings, labels)
 
@@ -784,15 +721,17 @@ class WorkItemSummary(object):
                 continue
             for ind, neuron_label in enumerate(np.unique(labels[channel])):
                 neuron = {}
-                if sorter_info is not None:
-                    for key in sorter_info:
-                        neuron[key] = sorter_info[key]
-                    neuron['sampling_rate'] = self.sorter_info['sampling_rate']
-                    # neuron['filter_band'] = Probe.filter_band
                 try:
+                    neuron['sort_info'] = self.sort_info
                     neuron['sort_quality'] = None
                     neuron["channel"] = channel
-                    # neuron['neighbors'] = Probe.get_neighbors(channel)
+                    # Work items are sorted by channel so just grab neighborhood
+                    # for the first segment
+                    neuron['neighbors'] = self.work_items[channel][0]['neighbors']
+                    neuron['chan_neighbor_ind'] = self.work_items[channel][0]['chan_neighbor_ind']
+                    # These thresholds are not quite right since they differ
+                    # for each segment...
+                    neuron['thresholds'] = self.work_items[channel][0]['thresholds']
 
                     neuron["spike_indices"] = crossings[channel][labels[channel] == neuron_label]
                     neuron['waveforms'] = waveforms[channel][labels[channel] == neuron_label, :]
@@ -827,7 +766,7 @@ class WorkItemSummary(object):
                     neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
 
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
-                    neuron["snr"] = self.snr_norm(neuron["template"])
+                    # neuron["snr"] = self.snr_norm(neuron["template"])
                     # samples_per_chan = int(neuron['template'].size / neuron['neighbors'].size)
                     # main_start = np.where(neuron['neighbors'] == neuron['channel'])[0][0]
                     # main_template = neuron['template'][main_start*samples_per_chan:main_start*samples_per_chan + samples_per_chan]
@@ -842,6 +781,67 @@ class WorkItemSummary(object):
                     raise
                 neuron_summary.append(neuron)
         return neuron_summary
+
+
+class NeuronSummary(object):
+    """
+    """
+    def __init__(self, neurons,
+                 duplicate_tol_inds=1, absolute_refractory_period=10e-4,
+                 max_mua_ratio=0.05, curr_chan_inds=None):
+        self.neurons = neurons
+        self.duplicate_tol_inds = duplicate_tol_inds
+        self.absolute_refractory_period = absolute_refractory_period
+        self.max_mua_ratio = max_mua_ratio
+
+    def snr(self):
+        """ Return SNR relative to 3 * background_noise_std. """
+        range = np.amax(self.neurons['template']) - np.amin(self.neurons['template'])
+        background_noise_std = self.neurons['thresholds'][self.neurons['chan_neighbor_ind']] / sigma
+        return range / (3 * background_noise_std)
+
+    def isi_violation_rate(self, neur):
+        """ Compute the spiking activity that occurs during the ISI violation
+        period, absolute_refractory_period, relative to the total number of
+        spikes for neuron number 'neur'. """
+        if self.neurons[neur]['spike_indices'].shape[0] < 2:
+            raise ValueError("Neuron has less than 2 spikes, can't compute ISIs.")
+        index_isi = np.diff(self.neurons[neur]['spike_indices'])
+        num_isi_violations = np.count_nonzero(index_isi / self.neurons[neur]['sort_info']['sampling_rate']
+                                              < self.absolute_refractory_period)
+        n_duplicates = np.count_nonzero(index_isi <= self.duplicate_tol_inds)
+        # Remove duplicate spikes from this computation and adjust the number
+        # of spikes and time window accordingly
+        num_isi_violations -= n_duplicates
+        refractory_adjustment = self.duplicate_tol_inds / self.neurons[neur]['sort_info']['sampling_rate']
+        isi_violation_rate = num_isi_violations \
+                             * (1.0 / (self.absolute_refractory_period - refractory_adjustment))\
+                             / (self.neurons[neur]['spike_indices'].shape[0] - n_duplicates)
+        return isi_violation_rate
+
+    def mean_firing_rate(self, neur):
+        """ Compute mean firing rate for the input neuron 'neur'. """
+        if self.neurons[neur]['spike_indices'].shape[0] < 2:
+            raise ValueError("Neuron has less than 2 spikes, can't compute mean firing rate.")
+        mean_rate = self.neurons[neur]['sort_info']['sampling_rate'] \
+                    * self.neurons[neur]['spike_indices'].shape[0] \
+                    / (self.neurons[neur]['spike_indices'][-1] - self.neurons[neur]['spike_indices'][0])
+        return mean_rate
+
+    def fraction_mua(self, neur):
+        """ Estimate the fraction of noise/multi-unit activity (MUA) using analysis
+        of ISI violations. We do this by looking at the spiking activity that
+        occurs during the ISI violation period. """
+        violation_rate = self.isi_violation_rate(neur)
+        mean_rate = self.mean_firing_rate(neur)
+        return violation_rate / mean_rate
+
+    def delete_mua_neurons(self):
+        for n_ind, n in enumerate(self.neurons):
+            mua_ratio = self.fraction_mua(n_ind)
+            print(n_ind, mua_ratio)
+            if mua_ratio > self.max_mua_ratio:
+                pass
 
 
 def remove_noise_neurons(neuron_summary, max_false_positive_percent=0.05, max_false_negative_percent=0.55):

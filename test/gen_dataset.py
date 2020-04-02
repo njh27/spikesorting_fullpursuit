@@ -217,9 +217,9 @@ class TestDataset(object):
             spike_sort_kwargs[key] = kwargs[key]
 
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        neurons = spikesorting.spike_sort(self.Probe, **spike_sort_kwargs)
+        sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **spike_sort_kwargs)
 
-        return neurons
+        return sort_data, work_items, sort_info
 
     def sort_test_dataset_parallel(self, kwargs):
 
@@ -239,9 +239,9 @@ class TestDataset(object):
             spike_sort_kwargs[key] = kwargs[key]
 
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        neurons = spikesorting_parallel.spike_sort_parallel(self.Probe, **spike_sort_kwargs)
+        sort_data, work_items, sort_info = spikesorting_parallel.spike_sort_parallel(self.Probe, **spike_sort_kwargs)
 
-        return neurons
+        return sort_data, work_items, sort_info
 
 
     def compare_single_vs_parallel(self, kwargs):
@@ -275,12 +275,12 @@ class TestDataset(object):
 
         # Enforce test_flag else this will almost surely fail
         par_sort_kwargs['test_flag'] = True
-
+        raise RuntimeError('Need to change to consolidate summary output!')
         self.random_state = np.random.get_state()
         first_state = self.random_state
         np.random.set_state(first_state)
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        neurons = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
+        sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
 
         work_summary = consolidate.WorkItemSummary(neurons[0], neurons[1], single_sort_kwargs, n_chans=self.Probe.num_electrodes)
         work_summary.stitch_segments()
@@ -288,7 +288,7 @@ class TestDataset(object):
 
         np.random.set_state(first_state)
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        neurons_parallel = spikesorting_parallel.spike_sort_parallel(self.Probe, **par_sort_kwargs)
+        sort_data, work_items, sort_info = spikesorting_parallel.spike_sort_parallel(self.Probe, **par_sort_kwargs)
         self.random_state = first_state
 
         work_summary = consolidate.WorkItemSummary(neurons_parallel[0], neurons_parallel[1], single_sort_kwargs, n_chans=self.Probe.num_electrodes)

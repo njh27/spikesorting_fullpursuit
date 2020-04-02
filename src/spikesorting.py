@@ -154,6 +154,25 @@ def spike_sort_item(Probe, work_item, settings):
         curr_num_clusters = np.zeros(1, dtype=np.int64)
     if settings['verbose']: print("Currently", curr_num_clusters.size, "different clusters")
 
+    # Realign spikes based on correlation with current cluster templates before branching
+    crossings, neuron_labels, _ = segment.align_events_with_template(Probe, chan, neuron_labels, crossings, clip_width=settings['clip_width'])
+    clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'], thresholds=work_item['thresholds'])
+    crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
+    # Realign any units that have a template with peak > valley
+    crossings, units_shifted = check_upward_neurons(clips,
+                                        crossings, neuron_labels,
+                                        curr_chan_inds, settings['clip_width'],
+                                        Probe.sampling_rate)
+    if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
+    if len(units_shifted) > 0:
+        clips, valid_event_indices = segment.get_multichannel_clips(Probe,
+                                        work_item['neighbors'],
+                                        crossings,
+                                        clip_width=settings['clip_width'],
+                                        thresholds=work_item['thresholds'])
+        crossings, neuron_labels = segment.keep_valid_inds(
+                [crossings, neuron_labels], valid_event_indices)
+
     # Single channel branch
     if curr_num_clusters.size > 1 and settings['do_branch_PCA']:
         neuron_labels = branch_pca_2_0(neuron_labels, clips[:, curr_chan_inds],
@@ -396,7 +415,3 @@ def spike_sort(Probe, **kwargs):
     print("Also I need to make sure that all ints are np.int64 so this is compatible with windows compiled sort_cython, including in the segment files etc...")
     print("Also need to delete the load file functionality in electrode.py since it only assumes .npy file")
     return sort_data, work_items, sort_info
-
-    work_summary = consolidate.WorkItemSummary(sort_data, work_items, settings, n_chans=Probe.num_electrodes)
-    work_summary.stitch_segments()
-    neurons = work_summary.summarize_neurons(sort_info=None)

@@ -4,11 +4,8 @@ from scipy.fftpack import dct, idct, fft, ifft
 from scipy.optimize import fsolve, fminbound
 from spikesorting_python.src import isotonic
 from spikesorting_python.src.c_cython import sort_cython
-
 from spikesorting_python.src import multinomial_gof
-from scipy.special import gammaln
 import matplotlib.pyplot as plt
-import plot
 
 
 

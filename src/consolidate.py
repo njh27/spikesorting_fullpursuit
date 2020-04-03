@@ -6,6 +6,7 @@ from spikesorting_python.src.c_cython import sort_cython
 from scipy import stats
 from scipy.optimize import nnls, lsq_linear
 import copy
+import warnings
 
 
 
@@ -248,12 +249,8 @@ class WorkItemSummary(object):
     def __init__(self, sort_data, work_items, sort_info,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
                  max_mua_ratio=0.05, curr_chan_inds=None):
-        # Make sure sort_data and work items are ordered one to one
-        # by ordering their IDs
-        sort_data.sort(key=lambda x: x[4])
-        work_items.sort(key=lambda x: x['ID'])
-        self.sort_data = sort_data
-        self.work_items = work_items
+
+        self.check_input_data(sort_data, work_items)
         self.sort_info = sort_info
         self.sort_info = sort_info
         self.curr_chan_inds = curr_chan_inds
@@ -266,6 +263,43 @@ class WorkItemSummary(object):
         self.organize_sort_data()
         # Put all segment data in temporal order
         self.temporal_order_sort_data()
+
+    def check_input_data(self, sort_data, work_items):
+        """ Quick check to see if everything looks right with sort_data and
+        work_items before proceeding. """
+        if len(sort_data) != len(work_items):
+            raise ValueError("Sort data and work items must be lists of the same length")
+        # Make sure sort_data and work items are ordered one to one
+        # by ordering their IDs
+        sort_data.sort(key=lambda x: x[4])
+        work_items.sort(key=lambda x: x['ID'])
+        for s_data, w_item in zip(sort_data, work_items):
+            if len(s_data) != 5:
+                raise ValueError("sort_data for item", s_data[4], "is not the right size")
+            if s_data[4] != w_item['ID']:
+                raise ValueError("Could not match work order of sort data and work items. First failure on sort_data", s_data[4], "work item ID", w_item['ID'])
+            empty_count = 0
+            n_spikes = len(s_data[0])
+            for di in range(0, 4):
+                if len(s_data[di]) == 0:
+                    empty_count += 1
+                else:
+                    if s_data[di].shape[0] != n_spikes:
+                        raise ValueError("Every data element of sort_data list must indicate the same number of spikes. Element", w_item['ID'], "does not.")
+            if empty_count > 0:
+                # Require that if any data element is empty, all are empty (this
+                # is how they should be coming out of sorter)
+                for di in range(0, 4):
+                    s_data[di] = []
+                if empty_count != 4:
+                    sort_data_message = ("One element of sort data, but not " \
+                                        "all, indicated no spikes for work " \
+                                        "item {0} on channel {1}, segment " \
+                                        "{2}. All data for this item are " \
+                                        "being removed.".format(w_item['ID'], w_item['channel'], w_item['seg_number']))
+                    warnings.warn(sort_data_message, RuntimeWarning, stacklevel=2)
+        self.sort_data = sort_data
+        self.work_items = work_items
 
     def temporal_order_sort_data(self):
         """ Places all data within each segment in temporal order according to

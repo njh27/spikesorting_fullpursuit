@@ -365,6 +365,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if crossings.size == 0:
             exit_type = "No crossings over threshold."
             # Raise error to force exit and wrap_up()
+            crossings, neuron_labels, clips, new_inds = [], [], [], []
             raise NoSpikesError
         min_cluster_size = (np.floor(settings['min_firing_rate'] * item_dict['n_samples'] / item_dict['sampling_rate'])).astype(np.int64)
         if min_cluster_size < 1:
@@ -466,6 +467,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if neuron_labels.size == 0:
             exit_type = "No clusters over min_firing_rate."
             # Raise error to force exit and wrap_up()
+            crossings, neuron_labels, clips, new_inds = [], [], [], []
             raise NoSpikesError
 
         # Realign any units that have a template with peak > valley

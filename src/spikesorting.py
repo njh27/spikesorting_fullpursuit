@@ -81,7 +81,7 @@ def branch_pca_2_0(neuron_labels, clips, curr_chan_inds, p_value_cut_thresh=0.01
         clust_clips = clips[curr_clust_bool, :]
         if clust_clips.ndim == 1:
             clust_clips = np.expand_dims(clust_clips, 0)
-        if clust_clips.shape[0] == 1:
+        if clust_clips.shape[0] <= 1:
             # Only one spike so don't try to sort
             continue
         median_cluster_size = min(100, int(np.around(clust_clips.shape[0] / 1000)))

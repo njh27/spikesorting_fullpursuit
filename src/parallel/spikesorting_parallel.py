@@ -269,7 +269,7 @@ def branch_pca_2_0(neuron_labels, clips, curr_chan_inds, p_value_cut_thresh=0.01
         clust_clips = clips[curr_clust_bool, :]
         if clust_clips.ndim == 1:
             clust_clips = np.expand_dims(clust_clips, 0)
-        if clust_clips.shape[0] == 1:
+        if clust_clips.shape[0] <= 1:
             # Only one spike so don't try to sort
             continue
         median_cluster_size = min(100, int(np.around(clust_clips.shape[0] / 1000)))
@@ -693,7 +693,7 @@ def spike_sort_parallel(Probe, **kwargs):
         n_complete = len(data_dict['completed_items']) # Do once to avoid race
         if n_complete > completed_items_index:
             for ci in range(completed_items_index, n_complete):
-                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID'], "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['seg_number']+1)
+                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID']+1, "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['seg_number'])
                 print("Exited with status: ", data_dict['exits_dict'][data_dict['completed_items'][ci]])
                 completed_items_index += 1
                 if not settings['test_flag']:
@@ -728,7 +728,7 @@ def spike_sort_parallel(Probe, **kwargs):
                 # This item was already finished above so just clearing out
                 # completed_items_queue
                 continue
-            print("Completed item", finished_item, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['seg_number']+1)
+            print("Completed item", finished_item+1, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['seg_number'])
             print("Exited with status: ", data_dict['exits_dict'][finished_item])
             completed_items_index += 1
 

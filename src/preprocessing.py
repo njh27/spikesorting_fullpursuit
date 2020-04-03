@@ -90,7 +90,7 @@ def pca_scores(spikes, compute_pcs=None, pcs_as_index=True, return_V=False, retu
 
     if spikes.ndim != 2:
         raise ValueError("Input 'spikes' must be a 2 dimensional array to compute PCA")
-    if spikes.shape[0] == 1:
+    if spikes.shape[0] <= 1:
         raise ValueError("Must input more than 1 spike to compute PCA")
     if compute_pcs is None:
         compute_pcs = spikes.shape[1]
@@ -113,12 +113,10 @@ def pca_scores(spikes, compute_pcs=None, pcs_as_index=True, return_V=False, retu
         E, V = E[key], V[:, key]
         U = np.matmul(spike_copy, V)
     else:
-        # No variance, all PCs are equal! Set to 0
-        if compute_pcs is None:
-            compute_pcs = spikes.shape[1]
-        U = np.array(np.nan) #np.zeros((spikes.shape[0], compute_pcs))
-        V = np.array(np.nan) #np.zeros((spikes.shape[1], compute_pcs))
-        E = np.array(np.nan) #np.ones(compute_pcs)
+        # No variance, all PCs are equal! Set to None(s)
+        U = None
+        V = None
+        E = None
 
     if return_V and return_E:
         return U, V, E
@@ -148,13 +146,13 @@ def optimal_reconstruction_pca_order(spikes, check_components=None,
         check_components = spikes.shape[1]
     max_components = np.amin([max_components, spikes.shape[1]])
     check_components = np.amin([check_components, spikes.shape[1]])
-    if (max_components <= 1) or (check_components <= 1):
-        # Only choosing from among the first PC so just return index to first PC
-        return np.array([0])
 
     # Get residual sum of squared error for each PC separately
     resid_error = np.zeros(check_components)
     _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)
+    if components is None:
+        # Couldn't compute PCs
+        return np.zeros(1, dtype=np.int64), True
     for comp in range(0, check_components):
         reconstruction = (spikes @ components[:, comp][:, None]) @ components[:, comp][:, None].T
         RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
@@ -224,6 +222,10 @@ def compute_pca(clips, check_components, max_components, add_peak_valley=False,
         use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(clips, check_components, max_components)
     # print("Automatic component detection chose", use_components, "PCA components.", flush=True)
     scores = pca_scores(clips, use_components, pcs_as_index=True)
+    if scores is None:
+        # Usually means all clips were the same or there was <= 1, so PCs can't
+        # be computed. Just return everything as the same score
+        return np.zeros((clips.shape[0], 1))
     if add_peak_valley:
         peak_valley = (np.amax(clips[:, curr_chan_inds], axis=1) - np.amin(clips[:, curr_chan_inds], axis=1)).reshape(clips.shape[0], -1)
         peak_valley /= np.amax(np.abs(peak_valley)) # Normalized from -1 to 1
@@ -240,9 +242,16 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
     pcs_by_chan = []
     # Do current channel first
     # use_components, _ = optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
-    use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
+    if clips.flags['C_CONTIGUOUS']:
+        use_components, _ = sort_cython.optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components)
+    else:
+        use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(clips[:, curr_chan_inds], check_components, max_components)
     # print("Automatic component detection (get by channel) chose", use_components, "PCA components.", flush=True)
     scores = pca_scores(clips[:, curr_chan_inds], use_components, pcs_as_index=True)
+    if scores is None:
+        # Usually means all clips were the same or there was <= 1, so PCs can't
+        # be computed. Just return everything as the same score
+        return np.zeros((clips.shape[0], 1))
     if add_peak_valley:
         peak_valley = (np.amax(clips[:, curr_chan_inds], axis=1) - np.amin(clips[:, curr_chan_inds], axis=1)).reshape(clips.shape[0], -1)
         peak_valley /= np.amax(np.abs(peak_valley)) # Normalized from -1 to 1
@@ -258,7 +267,10 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
             continue
         ch_inds = np.arange(ch*samples_per_chan, (ch+1)*samples_per_chan)
         # use_components, is_worse_than_mean = optimal_reconstruction_pca_order(clips[:, ch_inds], check_components, max_components)
-        use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order_F(clips[:, ch_inds], check_components, max_components)
+        if clips.flags['C_CONTIGUOUS']:
+            use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order(clips[:, ch_inds], check_components, max_components)
+        else:
+            use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order_F(clips[:, ch_inds], check_components, max_components)
         if is_worse_than_mean:
             # print("Automatic component detection (get by channel) chose !NO! PCA components.", flush=True)
             continue
@@ -375,9 +387,16 @@ def compute_template_pca(clips, labels, curr_chan_inds, check_components, max_co
         templates[ind, :] = np.mean(clips[labels == l, :], axis=0) * np.sqrt(u_counts[ind] / labels.size)
 
     # use_components, _ = optimal_reconstruction_pca_order(templates, check_components, max_components)
-    use_components, _ = sort_cython.optimal_reconstruction_pca_order(templates, check_components, max_components)
+    if templates.flags['C_CONTIGUOUS']:
+        use_components, _ = sort_cython.optimal_reconstruction_pca_order(templates, check_components, max_components)
+    else:
+        use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(templates, check_components, max_components)
     # print("Automatic component detection (FULL TEMPLATES) chose", use_components, "PCA components.")
     _, score_mat = pca_scores(templates, use_components, pcs_as_index=True, return_V=True)
+    if score_mat is None:
+        # Usually means all clips were the same or there was <= 1, so PCs can't
+        # be computed. Just return everything as the same score
+        return np.zeros((clips.shape[0], 1))
     scores = clips @ score_mat
     if add_peak_valley:
         peak_valley = (np.amax(clips[:, curr_chan_inds], axis=1) - np.amin(clips[:, curr_chan_inds], axis=1)).reshape(clips.shape[0], -1)
@@ -403,9 +422,16 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_compone
     pcs_by_chan = []
     # Do current channel first
     # use_components, _ = optimal_reconstruction_pca_order(templates[:, curr_chan_inds], check_components, max_components)
-    use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(templates[:, curr_chan_inds], check_components, max_components)
+    if templates.flags['C_CONTIGUOUS']:
+        use_components, _ = sort_cython.optimal_reconstruction_pca_order(templates[:, curr_chan_inds], check_components, max_components)
+    else:
+        use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(templates[:, curr_chan_inds], check_components, max_components)
     # print("Automatic component detection (TEMPLATES by channel) chose", use_components, "PCA components.")
     _, score_mat = pca_scores(templates[:, curr_chan_inds], use_components, pcs_as_index=True, return_V=True)
+    if score_mat is None:
+        # Usually means all clips were the same or there was <= 1, so PCs can't
+        # be computed. Just return everything as the same score
+        return np.zeros((clips.shape[0], 1))
     scores = clips[:, curr_chan_inds] @ score_mat
     if add_peak_valley:
         peak_valley = (np.amax(clips[:, curr_chan_inds], axis=1) - np.amin(clips[:, curr_chan_inds], axis=1)).reshape(clips.shape[0], -1)
@@ -421,7 +447,10 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_compone
             continue
         ch_inds = np.arange(ch*samples_per_chan, (ch+1)*samples_per_chan)
         # use_components, is_worse_than_mean = optimal_reconstruction_pca_order(templates[:, ch_inds], check_components, max_components)
-        use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order_F(templates[:, ch_inds], check_components, max_components)
+        if templates.flags['C_CONTIGUOUS']:
+            use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order(templates[:, ch_inds], check_components, max_components)
+        else:
+            use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order_F(templates[:, ch_inds], check_components, max_components)
         if is_worse_than_mean:
             # print("Automatic component detection (TEMPLATES by channel) chose !NO! PCA components.", flush=True)
             continue

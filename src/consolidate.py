@@ -531,7 +531,7 @@ class WorkItemSummary(object):
                     clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='projection', merge_only=True)
+                            method='template_pca', merge_only=True)
                     if is_merged:
                         # Update actual next segment label data with same labels
                         # used in curr_seg
@@ -576,7 +576,7 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='projection', split_only=True)
+                            method='template_pca', split_only=True)
                     if ismerged: # This can happen if the split cutpoint forces
                         continue # a merge so check and skip
                     if 2 in labels_1:
@@ -665,6 +665,53 @@ class WorkItemSummary(object):
                     if mua_ratio > self.max_mua_ratio:
                         self.delete_label(chan, curr_seg, curr_l)
 
+    def summarize_neurons_by_seg(self):
+        """
+        """
+        self.neuron_summary_by_seg = [[] for x in range(0, self.n_chans)]
+        for chan in range(0, self.n_chans):
+            for seg in range(0, len(self.sort_data[chan])):
+                self.neuron_summary_by_seg[chan].append([])
+                for ind, neuron_label in enumerate(np.unique(self.sort_data[chan][seg][1])):
+                    neuron = {}
+                    select_label = self.sort_data[chan][seg][1] == neuron_label
+                    neuron["spike_indices"] = self.sort_data[chan][seg][0][select_label]
+                    neuron['waveforms'] = self.sort_data[chan][seg][2][select_label, :]
+                    neuron["new_spike_bool"] = self.sort_data[chan][seg][3][select_label]
+
+                    # NOTE: This still needs to be done even though segments
+                    # were ordered because of overlap!
+                    # Ensure spike times are ordered. Must use 'stable' sort for
+                    # output to be repeatable because overlapping segments and
+                    # binary pursuit can return slightly different dupliate spikes
+                    spike_order = np.argsort(neuron["spike_indices"], kind='stable')
+                    neuron["spike_indices"] = neuron["spike_indices"][spike_order]
+                    neuron['waveforms'] = neuron['waveforms'][spike_order, :]
+                    neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
+                    # Remove duplicates found in binary pursuit
+                    keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"],
+                                    neuron["new_spike_bool"],
+                                    tol_inds=self.duplicate_tol_inds)
+                    neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                    neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
+                    neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
+
+                    # Remove any identical index duplicates (either from error or
+                    # from combining overlapping segments), preferentially keeping
+                    # the waveform best aligned to the template
+                    neuron["template"] = np.mean(neuron['waveforms'], axis=0)
+                    keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
+                                    neuron['waveforms'], neuron["template"],
+                                    tol_inds=self.duplicate_tol_inds)
+                    neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                    neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
+                    neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
+
+                    # Recompute template and store output
+                    neuron["template"] = np.mean(neuron['waveforms'], axis=0)
+                    neuron["snr"] = self.snr_norm(neuron["template"])
+                    self.neuron_summary_by_seg[chan][seg].append(neuron)
+
     def get_sort_data_by_chan(self):
         """ Returns all sorter data concatenated by channel across all segments,
         thus removing the concept of segment-wise sorting and giving all data
@@ -713,6 +760,7 @@ class WorkItemSummary(object):
         """
         # To the sort data segments into our conventional sorter items by
         # channel independent of segment/work item
+        print("THIS SHOUD RETURN AN SNR FOR EVERY SEGEMENT OF A GIVEN NEURON. THIS COULD BE VERY USEFUL LATER IF COMBINING OVER CHANNELS...")
         crossings, labels, waveforms, new_waveforms = self.get_sort_data_by_chan()
         neuron_summary = []
         for channel in range(0, len(crossings)):

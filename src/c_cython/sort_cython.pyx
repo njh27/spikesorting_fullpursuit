@@ -27,7 +27,7 @@ def pca_scores(spikes, compute_pcs=None, pcs_as_index=True, return_V=False, retu
   """
   if spikes.ndim != 2:
       raise ValueError("Input 'spikes' must be a 2 dimensional array to compute PCA")
-  if spikes.shape[0] == 1:
+  if spikes.shape[0] <= 1:
       raise ValueError("Must input more than 1 spike to compute PCA")
   if compute_pcs is None:
       compute_pcs = spikes.shape[1]
@@ -50,12 +50,10 @@ def pca_scores(spikes, compute_pcs=None, pcs_as_index=True, return_V=False, retu
       E, V = E[key], V[:, key]
       U = np.matmul(spike_copy, V)
   else:
-      # No variance, all PCs are equal! Set to 0
-      if compute_pcs is None:
-          compute_pcs = spikes.shape[1]
-      U = np.array(np.nan) #np.zeros((spikes.shape[0], compute_pcs))
-      V = np.array(np.nan) #np.zeros((spikes.shape[1], compute_pcs))
-      E = np.array(np.nan) #np.ones(compute_pcs)
+      # No variance, all PCs are equal! Return None(s)
+      U = None
+      V = None
+      E = None
 
   if return_V and return_E:
       return U, V, E
@@ -95,9 +93,6 @@ def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes
     check_components = spikes_y
   max_components = np.amin([max_components, spikes_y])
   check_components = np.amin([check_components, spikes_y])
-  if (max_components <= 1) or (check_components <= 1):
-    # Only choosing from among the first PC so just return index to first PC
-    return np.array([0])
   check_comp_ssize_t = <Py_ssize_t>check_components
 
   # Get residual sum of squared error for each PC separately
@@ -105,6 +100,9 @@ def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes
   cdef double *resid_error_ptr = &resid_error[0]
   cdef np.ndarray[double, ndim=2, mode="fortran"] components
   _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)
+  if components is None:
+    # Couldn't compute PCs
+    return np.zeros(1, dtype=np.int64), True
   cdef double *components_ptr = &components[0, 0]
   cdef double *reconstruction_ptr
 
@@ -225,9 +223,6 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
     check_components = spikes_y
   max_components = np.amin([max_components, spikes_y])
   check_components = np.amin([check_components, spikes_y])
-  if (max_components <= 1) or (check_components <= 1):
-    # Only choosing from among the first PC so just return index to first PC
-    return np.array([0])
   check_comp_ssize_t = <Py_ssize_t>check_components
 
   # Get residual sum of squared error for each PC separately
@@ -235,6 +230,9 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
   cdef double *resid_error_ptr = &resid_error[0]
   cdef np.ndarray[double, ndim=2, mode="fortran"] components
   _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)
+  if components is None:
+    # Couldn't compute PCs
+    return np.zeros(1, dtype=np.int64), True
   cdef double *components_ptr = &components[0, 0]
   cdef double *reconstruction_ptr
 

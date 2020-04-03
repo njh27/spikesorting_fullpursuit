@@ -45,7 +45,7 @@ def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, 
     """
     if data.ndim <= 1 or data.size == 1:
         # Only 1 spike so return 1 label!
-        return np.array([0], dtype=np.int64)
+        return np.zeros(1, dtype=np.int64)
 
     # Begin with a single cluster (all data belong to the same cluster)
     labels = np.zeros((data.shape[0]), dtype=np.int64)
@@ -58,6 +58,9 @@ def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, 
         return labels
     centers = np.mean(data, axis=0)
     distances = np.sum((data - centers)**2, axis=1)
+    if np.all(np.all(distances == 0, axis=1), axis=0):
+        # All scores are the same, so return all same label
+        return labels
 
     if n_random > 0:
         if n_random >= labels.size:

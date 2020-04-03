@@ -242,7 +242,9 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
     pcs_by_chan = []
     # Do current channel first
     # use_components, _ = optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
-    if clips.flags['C_CONTIGUOUS']:
+    # NOTE: Slicing SWITCHES C and F ordering so check!
+    is_c_contiguous = clips[:, curr_chan_inds].flags['C_CONTIGUOUS']
+    if is_c_contiguous:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components)
     else:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(clips[:, curr_chan_inds], check_components, max_components)
@@ -267,7 +269,7 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
             continue
         ch_inds = np.arange(ch*samples_per_chan, (ch+1)*samples_per_chan)
         # use_components, is_worse_than_mean = optimal_reconstruction_pca_order(clips[:, ch_inds], check_components, max_components)
-        if clips.flags['C_CONTIGUOUS']:
+        if is_c_contiguous:
             use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order(clips[:, ch_inds], check_components, max_components)
         else:
             use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order_F(clips[:, ch_inds], check_components, max_components)
@@ -422,7 +424,8 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_compone
     pcs_by_chan = []
     # Do current channel first
     # use_components, _ = optimal_reconstruction_pca_order(templates[:, curr_chan_inds], check_components, max_components)
-    if templates.flags['C_CONTIGUOUS']:
+    is_c_contiguous = templates[:, curr_chan_inds].flags['C_CONTIGUOUS']
+    if is_c_contiguous:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order(templates[:, curr_chan_inds], check_components, max_components)
     else:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(templates[:, curr_chan_inds], check_components, max_components)
@@ -447,7 +450,7 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_compone
             continue
         ch_inds = np.arange(ch*samples_per_chan, (ch+1)*samples_per_chan)
         # use_components, is_worse_than_mean = optimal_reconstruction_pca_order(templates[:, ch_inds], check_components, max_components)
-        if templates.flags['C_CONTIGUOUS']:
+        if is_c_contiguous:
             use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order(templates[:, ch_inds], check_components, max_components)
         else:
             use_components, is_worse_than_mean = sort_cython.optimal_reconstruction_pca_order_F(templates[:, ch_inds], check_components, max_components)

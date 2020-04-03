@@ -58,7 +58,7 @@ def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, 
         return labels
     centers = np.mean(data, axis=0)
     distances = np.sum((data - centers)**2, axis=1)
-    if np.all(np.all(distances == 0, axis=1), axis=0):
+    if np.all(np.all(distances == 0)):
         # All scores are the same, so return all same label
         return labels
 

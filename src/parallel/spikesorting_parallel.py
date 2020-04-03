@@ -330,11 +330,11 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             else:
                 # Move stdout to the log_dir file
                 if sys.platform == 'win32':
-                    sys.stdout = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + ".out", "w")
-                    sys.stderr = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
+                    sys.stdout = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']+1) + ".out", "w")
+                    sys.stderr = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']+1) + "_errors.out", "w")
                 else:
-                    sys.stdout = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + ".out", "w")
-                    sys.stderr = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
+                    sys.stdout = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']+1) + ".out", "w")
+                    sys.stderr = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']+1) + "_errors.out", "w")
                 print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']))
 
         # Setup threads and affinity based on use_cpus if not on mac OS

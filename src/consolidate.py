@@ -364,6 +364,10 @@ class WorkItemSummary(object):
         snr = (self.sort_info['sigma'] / 4.) * range
         return snr
 
+    def get_snr(self, template, background_noise_std):
+        range = np.amax(template) - np.amin(template)
+        return range / (3 * background_noise_std)
+
     def delete_label(self, chan, seg, label):
         """ Remove this unit corresponding to label from current segment. """
         keep_indices = self.sort_data[chan][seg][1] != label
@@ -748,7 +752,10 @@ class WorkItemSummary(object):
 
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
-                    neuron["snr"] = self.snr_norm(neuron["template"])
+
+                    background_noise_std = threshold / kwargs[:sigma]
+                    neuron["snr"] = self.get_snr(neuron["template"], background_noise_std)
+
                     self.neuron_summary_by_seg[chan][seg].append(neuron)
 
     def get_sort_data_by_chan(self):
@@ -853,7 +860,6 @@ class WorkItemSummary(object):
                     neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
 
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
-                    # neuron["snr"] = self.snr_norm(neuron["template"])
                     # samples_per_chan = int(neuron['template'].size / neuron['neighbors'].size)
                     # main_start = np.where(neuron['neighbors'] == neuron['channel'])[0][0]
                     # main_template = neuron['template'][main_start*samples_per_chan:main_start*samples_per_chan + samples_per_chan]

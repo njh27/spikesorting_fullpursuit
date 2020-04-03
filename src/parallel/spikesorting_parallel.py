@@ -761,8 +761,11 @@ def spike_sort_parallel(Probe, **kwargs):
             # This work item found nothing (or raised an exception)
             sort_data.append([[], [], [], [], w_item['ID']])
     sort_info = settings
+    curr_chan_win, _ = segment.time_window_to_samples(
+                                    settings['clip_width'], Probe.sampling_rate)
     sort_info.update({'n_samples': Probe.n_samples,
                         'n_channels': Probe.num_electrodes,
+                        'n_samples_per_chan': curr_chan_win[1] - curr_chan_win[0],
                         'sampling_rate': Probe.sampling_rate})
 
     if settings['verbose']: print("Done.")

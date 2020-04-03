@@ -301,21 +301,6 @@ class WorkItemSummary(object):
         self.sort_data = sort_data
         self.work_items = work_items
 
-    def temporal_order_sort_data(self):
-        """ Places all data within each segment in temporal order according to
-        the spike event times. Use 'stable' sort for output to be repeatable
-        because overlapping segments and binary pursuit can return identical
-        dupliate spikes that become sorted in different orders. """
-        for chan in range(0, self.n_chans):
-            for seg in range(0, len(self.sort_data[chan])):
-                if len(self.sort_data[chan][seg][0]) == 0:
-                    continue # No spikes in this segment
-                spike_order = np.argsort(self.sort_data[chan][seg][0], kind='stable')
-                self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][spike_order]
-                self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][spike_order]
-                self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][spike_order, :]
-                self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][spike_order]
-
     def organize_sort_data(self):
         """Takes the output of the spike sorting algorithms and organizes is by
         channel in segment order.
@@ -355,6 +340,21 @@ class WorkItemSummary(object):
             organized_items[chan].extend(chan_items)
         self.sort_data = organized_data
         self.work_items = organized_items
+
+    def temporal_order_sort_data(self):
+        """ Places all data within each segment in temporal order according to
+        the spike event times. Use 'stable' sort for output to be repeatable
+        because overlapping segments and binary pursuit can return identical
+        dupliate spikes that become sorted in different orders. """
+        for chan in range(0, self.n_chans):
+            for seg in range(0, len(self.sort_data[chan])):
+                if len(self.sort_data[chan][seg][0]) == 0:
+                    continue # No spikes in this segment
+                spike_order = np.argsort(self.sort_data[chan][seg][0], kind='stable')
+                self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][spike_order]
+                self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][spike_order]
+                self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][spike_order, :]
+                self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][spike_order]
 
     def snr_norm(self, template):
         """ This formula computes SNR relative to 3 STD of noise given that
@@ -476,6 +476,7 @@ class WorkItemSummary(object):
         self.is_stitched = True
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
+            print("Start stitching channel", chan)
             if len(self.sort_data[chan]) <= 1:
                 # Need at least 2 segments to stitch
                 continue
@@ -685,19 +686,20 @@ class WorkItemSummary(object):
                                 next_real_label
                         next_real_label += 1
 
-                # It is possible to leave loop without checking last seg in the
-                # event it is a new seg
-                if next_seg_is_new and len(self.sort_data[chan][-1]) > 0:
-                    # Map all units in this segment to new real labels
-                    self.sort_data[chan][-1][1] += next_real_label
-                # Check for MUA in the last segment as we did for the others
-                curr_seg = len(self.sort_data[chan]) - 1
-                if curr_seg < 0:
-                    continue
-                for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                    mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
-                    if mua_ratio > self.max_mua_ratio:
-                        self.delete_label(chan, curr_seg, curr_l)
+            # It is possible to leave loop without checking last seg in the
+            # event it is a new seg
+            if next_seg_is_new and len(self.sort_data[chan][-1]) > 0:
+                # Map all units in this segment to new real labels
+                self.sort_data[chan][-1][1] += next_real_label
+            # Check for MUA in the last segment as we did for the others
+            curr_seg = len(self.sort_data[chan]) - 1
+            if curr_seg < 0:
+                continue
+            for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
+                mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                if mua_ratio > self.max_mua_ratio:
+                    self.delete_label(chan, curr_seg, curr_l)
+            print("Done stitching channel", chan)
 
     def summarize_neurons_by_seg(self):
         """

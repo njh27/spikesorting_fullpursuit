@@ -753,7 +753,7 @@ class WorkItemSummary(object):
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
 
-                    background_noise_std = threshold / kwargs[:sigma]
+                    # background_noise_std = threshold / kwargs[:sigma]
                     neuron["snr"] = self.get_snr(neuron["template"], background_noise_std)
 
                     self.neuron_summary_by_seg[chan][seg].append(neuron)

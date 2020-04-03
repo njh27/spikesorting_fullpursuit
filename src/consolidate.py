@@ -690,16 +690,19 @@ class WorkItemSummary(object):
             # event it is a new seg
             if next_seg_is_new and len(self.sort_data[chan][-1]) > 0:
                 # Map all units in this segment to new real labels
+                # Seg labels start at zero, so just add next_real_label. This
+                # is last segment for this channel so no need to increment
                 self.sort_data[chan][-1][1] += next_real_label
             # Check for MUA in the last segment as we did for the others
             curr_seg = len(self.sort_data[chan]) - 1
             if curr_seg < 0:
                 continue
+            if len(self.sort_data[chan][curr_seg]) == 0:
+                continue
             for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                 mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                 if mua_ratio > self.max_mua_ratio:
                     self.delete_label(chan, curr_seg, curr_l)
-            print("Done stitching channel", chan)
 
     def summarize_neurons_by_seg(self):
         """

@@ -409,7 +409,8 @@ def spike_sort(Probe, **kwargs):
     sort_info.update({'n_samples': Probe.n_samples,
                         'n_channels': Probe.num_electrodes,
                         'n_samples_per_chan': curr_chan_win[1] - curr_chan_win[0],
-                        'sampling_rate': Probe.sampling_rate})
+                        'sampling_rate': Probe.sampling_rate,
+                        'n_segments': len(segment_onsets)})
 
     if settings['verbose']: print("Done.")
     print("YOU WANT THIS TO SAVE THINGS LIKE THE SIGMA VALUE USED, AND THE MEDIAN DEVIATION (FOR COMPUTING SNR) AND REALLY ALL PARAMETERS")

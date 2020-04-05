@@ -869,7 +869,7 @@ class WorkItemSummary(object):
         for next_seg in range(start_seg+1, self.n_segments):
             if len(self.neuron_summary_by_seg[next_seg]) == 0:
                 # Nothing to link
-                coninue
+                continue
             # For each currently known neuron, remove the neuron it connects to
             # (if any) in the next segment and add it to its own list
             # This is done by following the link of the last unit in the list
@@ -933,7 +933,6 @@ class WorkItemSummary(object):
         # combined_neuron['fraction_mua'] = self.get_fraction_mua(chan, seg, neuron_label)
         return combined_neuron
 
-
     def summarize_neurons_across_channels(self, overlap_time=2.5e-4, min_overlap_ratio=0.95):
         """ Creates output neurons list by combining segment-wise neurons across
         segments and across channels based on identical spikes found during the
@@ -957,10 +956,10 @@ class WorkItemSummary(object):
         if start_seg >= self.n_segments-1:
             # Need at least 2 remaining segments to stitch. With this being the
             # only segment with data, we are done
-            neurons = self.neuron_summary_by_seg[start_seg]
-            for n in neurons:
+            neuron_summary = self.neuron_summary_by_seg[start_seg]
+            for n in neuron_summary:
                 n['next_seg_link'] = None
-            return neurons
+            return neuron_summary
 
         for seg in range(start_seg, self.n_segments-1):
             if len(self.neuron_summary_by_seg[seg]) == 0:
@@ -1006,6 +1005,7 @@ class WorkItemSummary(object):
                     # This is NOT symmetric matrix! Just a look up table.
                     overlap_ratio[cn_ind, nn_ind] = max(num_hits / (num_hits + nn_misses),
                                                         num_hits / (num_hits + cn_misses))
+                print(cn_ind, np.amax(overlap_ratio[cn_ind, :]))
 
             # Assume there is no link and overwrite below if it passes threshold
             for n in self.neuron_summary_by_seg[seg]:

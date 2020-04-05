@@ -813,7 +813,7 @@ if __name__ == '__main__':
     clusters. With high thresholds you will want binary pursuit enable to find
     the remaining missed spikes.
     """
-    spike_sort_args = {'sigma': 4.5,
+    spike_sort_args = {'sigma': 4.,
                        'clip_width': [-6e-4, 8e-4], 'filter_band': (300, 6000),
                        'p_value_cut_thresh': 0.05, 'check_components': None,
                        'max_components': 10,

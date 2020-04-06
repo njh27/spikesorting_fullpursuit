@@ -409,6 +409,8 @@ class WorkItemSummary(object):
             # There are no spikes that match this label
             raise ValueError("There are no spikes for label", label, ".")
         last_index = next((select_unit.shape[0] - idx[0] - 1 for idx, val in np.ndenumerate(select_unit[::-1]) if val), None)
+        if first_index == last_index:
+            return 0. # Only one spike
         mean_rate = self.sort_info['sampling_rate'] * np.count_nonzero(select_unit)\
                     / (self.sort_data[chan][seg][0][last_index] - self.sort_data[chan][seg][0][first_index])
         return mean_rate
@@ -656,7 +658,7 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='pca', split_only=True)
+                            method='projection', split_only=True)
                     if ismerged: # This can happen if the split cutpoint forces
                         continue # a merge so check and skip
 
@@ -741,6 +743,8 @@ class WorkItemSummary(object):
                             if curr_l not in self.sort_data[chan][curr_seg - 1][1]:
                                 # Remove from real labels if its not in previous
                                 real_labels.remove(curr_l)
+                            # NOTE: I think split_memory_dicts[curr_seg - 1] can
+                            # be deleted at this point to save memory
 
                         # Assign any units in next segment that stitched to this
                         # bad one, if any, a new label.

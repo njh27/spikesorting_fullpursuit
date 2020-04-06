@@ -233,7 +233,7 @@ class WorkItemSummary(object):
     """
     def __init__(self, sort_data, work_items, sort_info,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
-                 max_mua_ratio=0.05, curr_chan_inds=None):
+                 max_mua_ratio=0.05, curr_chan_inds=None, verbose=False):
 
         self.check_input_data(sort_data, work_items)
         self.sort_info = sort_info
@@ -244,6 +244,7 @@ class WorkItemSummary(object):
         self.absolute_refractory_period = absolute_refractory_period
         self.max_mua_ratio = max_mua_ratio
         self.is_stitched = False # Repeated stitching can change results so track
+        self.verbose = verbose
         # Organize sort_data to be arranged by channel and segment.
         self.organize_sort_data()
         # Put all segment data in temporal order
@@ -428,7 +429,6 @@ class WorkItemSummary(object):
             for seg in range(0, self.n_segments):
                 for l in np.unique(self.sort_data[chan][seg][1]):
                     mua_ratio = self.get_fraction_mua(chan, seg, l)
-                    print(mua_ratio, chan, seg)
                     if mua_ratio > self.max_mua_ratio:
                         self.delete_label(chan, seg, l)
 
@@ -465,15 +465,8 @@ class WorkItemSummary(object):
             clips_merged = True
         else:
             clips_merged = False
-            # if np.count_nonzero(label_is_2) >= np.count_nonzero(label_is_1):
-            #     if one_biggest:
-            #         neuron_labels[label_is_1] = 2
-            #         neuron_labels[label_is_2] = 1
-
         neuron_labels_1 = neuron_labels[0:clips_1.shape[0]]
         neuron_labels_2 = neuron_labels[clips_1.shape[0]:]
-        print("LABELS 1", np.count_nonzero(neuron_labels_1 == 1), neuron_labels_1.shape[0])
-        print("LABELS 2", np.count_nonzero(neuron_labels_2 == 2), neuron_labels_2.shape[0])
         return clips_merged, neuron_labels_1, neuron_labels_2
 
     def stitch_segments(self):
@@ -492,7 +485,7 @@ class WorkItemSummary(object):
         self.is_stitched = True
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
-            print("Start stitching channel", chan)
+            if self.verbose: print("Start stitching channel", chan)
             if len(self.sort_data[chan]) <= 1:
                 # Need at least 2 segments to stitch
                 continue
@@ -542,7 +535,7 @@ class WorkItemSummary(object):
                     for nl in fake_labels:
                         # fake_labels are in fact the new real labels we are adding
                         real_labels.append(nl)
-                        print("In next seg new (534) added real label", next_real_label, chan, curr_seg)
+                        if self.verbose: print("In next seg new (534) added real label", next_real_label, chan, curr_seg)
                         next_real_label += 1
                     next_seg_is_new = False
                     continue
@@ -561,16 +554,16 @@ class WorkItemSummary(object):
                                 np.vstack(curr_templates + next_templates),
                                 np.hstack((curr_labels, next_labels)), [])
 
-                if chan == 0 and curr_seg in [13, 14, 15]:
-                    print(minimum_distance_pairs)
-                    for ct_ind in range(0, len(curr_templates)):
-                        print(curr_labels[ct_ind])
-                        plt.plot(curr_templates[ct_ind])
-                    plt.show()
-                    for nt_ind in range(0, len(next_templates)):
-                        print(next_labels[nt_ind])
-                        plt.plot(next_templates[nt_ind])
-                    plt.show()
+                # if chan == 0 and curr_seg in [13, 14, 15]:
+                #     print(minimum_distance_pairs)
+                #     for ct_ind in range(0, len(curr_templates)):
+                #         print(curr_labels[ct_ind])
+                #         plt.plot(curr_templates[ct_ind])
+                #     plt.show()
+                #     for nt_ind in range(0, len(next_templates)):
+                #         print(next_labels[nt_ind])
+                #         plt.plot(next_templates[nt_ind])
+                #     plt.show()
 
                 # Merge test all mutually closest clusters and track any labels
                 # in the next segment (fake_labels) that do not find a match.
@@ -603,7 +596,7 @@ class WorkItemSummary(object):
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                             method='projection', merge_only=True)
 
-                    print("At chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+                    if self.verbose: print("At chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
 
                     if is_merged:
                         # Update actual next segment label data with same labels
@@ -618,7 +611,7 @@ class WorkItemSummary(object):
                     ll_select = next_label_workspace == ll
                     self.sort_data[chan][next_seg][1][ll_select] = next_real_label
                     real_labels.append(next_real_label)
-                    print("In leftover labels (612) added real label", next_real_label, chan, curr_seg)
+                    if self.verbose: print("In leftover labels (612) added real label", next_real_label, chan, curr_seg)
                     next_real_label += 1
 
                 # Make sure newly stitched segment labels are separate from
@@ -637,22 +630,23 @@ class WorkItemSummary(object):
                                           self.sort_data[chan][next_seg][1]))
                 joint_templates, temp_labels = segment.calculate_templates(
                                         joint_clips, joint_labels)
-                if chan == 0 and curr_seg in [13, 14]:
-                    for jt_ind, jt in enumerate(joint_templates):
-                        print(temp_labels[jt_ind])
-                        plt.plot(jt)
-                    plt.show()
-                    for jt_label in np.unique(joint_labels):
-                        print(jt_label, np.count_nonzero(joint_labels == jt_label))
-                        print("Curr seg has", np.count_nonzero(self.sort_data[chan][curr_seg][1] == jt_label))
-                        print("Next seg has", np.count_nonzero(self.sort_data[chan][next_seg][1] == jt_label))
-                        plt.plot(np.mean(joint_clips[joint_labels == jt_label, :], axis=0))
-                    plt.show()
+
+                # if chan == 0 and curr_seg in [13, 14]:
+                #     for jt_ind, jt in enumerate(joint_templates):
+                #         print(temp_labels[jt_ind])
+                #         plt.plot(jt)
+                #     plt.show()
+                #     for jt_label in np.unique(joint_labels):
+                #         print(jt_label, np.count_nonzero(joint_labels == jt_label))
+                #         print("Curr seg has", np.count_nonzero(self.sort_data[chan][curr_seg][1] == jt_label))
+                #         print("Next seg has", np.count_nonzero(self.sort_data[chan][next_seg][1] == jt_label))
+                #         plt.plot(np.mean(joint_clips[joint_labels == jt_label, :], axis=0))
+                #     plt.show()
+
                 # Find all pairs of templates that are mutually closest
                 minimum_distance_pairs = sort_cython.identify_clusters_to_compare(
                                 np.vstack(joint_templates), temp_labels, [])
-                print("Doing split on joint min pairs", minimum_distance_pairs)
-                print("Labels in current segment are", np.unique(self.sort_data[chan][curr_seg][1]))
+                if self.verbose: print("Doing split on joint min pairs", minimum_distance_pairs)
                 tmp_reassign = np.zeros_like(joint_labels)
                 # Perform a split only between all minimum distance pairs
                 for c1, c2 in minimum_distance_pairs:
@@ -707,13 +701,11 @@ class WorkItemSummary(object):
                             undo_split = True
                             break
                     if undo_split:
-                        print("undoing split between", c1, c2)
+                        if self.verbose: print("undoing split between", c1, c2)
                         if 2 in labels_1:
-                            print("Assigning back", c1)
                             self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c2] = curr_original_index_to_c2
                             self.sort_data[chan][next_seg][1][next_reassign_index_to_c2] = next_original_index_to_c2
                         if 1 in labels_2:
-                            print("Assigning back", c2)
                             self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c1] = curr_original_index_to_c1
                             self.sort_data[chan][next_seg][1][next_reassign_index_to_c1] = next_original_index_to_c1
                     else:
@@ -727,12 +719,8 @@ class WorkItemSummary(object):
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                     mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                     if mua_ratio > self.max_mua_ratio:
-                        # if chan == 0 and curr_seg == 0:
-                        #     bad_unit = self.sort_data[chan][curr_seg][1] == curr_l
-                        #     plt.plot(np.mean(self.sort_data[chan][curr_seg][2][bad_unit, :], axis=0))
-                        #     plt.show()
                         # Remove this unit from current segment
-                        print("Deleting (704) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)
+                        if self.verbose: print("Deleting (704) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)
                         keep_indices = self.delete_label(chan, curr_seg, curr_l)
 
                         # Also need to remove from memory dict
@@ -758,16 +746,14 @@ class WorkItemSummary(object):
                         # bad one, if any, a new label.
                         select_next_curr_l = self.sort_data[chan][next_seg][1] == curr_l
                         if any(select_next_curr_l):
-                            # print("None stitched in next")
                             self.sort_data[chan][next_seg][1][select_next_curr_l] = next_real_label
                             real_labels.append(next_real_label)
-                            print("In leftover after deletion (732) added real label", next_real_label, chan, curr_seg)
+                            if self.verbose: print("In leftover after deletion (732) added real label", next_real_label, chan, curr_seg)
                             next_real_label += 1
 
-                print("!!!REAL LABELS ARE !!!", real_labels, np.unique(self.sort_data[chan][curr_seg][1]), np.unique(self.sort_data[chan][next_seg][1]))
+                if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels, np.unique(self.sort_data[chan][curr_seg][1]), np.unique(self.sort_data[chan][next_seg][1]))
                 if curr_seg > 0:
-                    print("Previous seg...", np.unique(self.sort_data[chan][curr_seg-1][1]))
-                    print("fake labels", fake_labels)
+                    if self.verbose: print("Previous seg...", np.unique(self.sort_data[chan][curr_seg-1][1]))
 
             # It is possible to leave loop without checking last seg in the
             # event it is a new seg
@@ -777,7 +763,7 @@ class WorkItemSummary(object):
                 # is last segment for this channel so no need to increment
                 self.sort_data[chan][-1][1] += next_real_label
                 real_labels.extend((np.unique(self.sort_data[chan][-1][1]) + next_real_label).tolist())
-                print("Last seg is new (747) added real labels", np.unique(self.sort_data[chan][-1][1]) + next_real_label, chan, curr_seg)
+                if self.verbose: print("Last seg is new (747) added real labels", np.unique(self.sort_data[chan][-1][1]) + next_real_label, chan, curr_seg)
             # Check for MUA in the last segment as we did for the others
             curr_seg = len(self.sort_data[chan]) - 1
             if curr_seg < 0:
@@ -787,7 +773,7 @@ class WorkItemSummary(object):
             for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                 mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                 if mua_ratio > self.max_mua_ratio:
-                    print("Checking last seg MUA (757) deleting at MUA ratio", mua_ratio, chan, curr_seg)
+                    if self.verbose: print("Checking last seg MUA (757) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                     self.delete_label(chan, curr_seg, curr_l)
                     if curr_seg == 0:
                         real_labels.remove(curr_l)
@@ -800,7 +786,7 @@ class WorkItemSummary(object):
                         if curr_l not in self.sort_data[chan][curr_seg-1][1]:
                             # Remove from real labels if its not in previous
                             real_labels.remove(curr_l)
-            print("!!!REAL LABELS ARE !!!", real_labels)
+            if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels)
 
     def summarize_neurons_by_seg(self):
         """

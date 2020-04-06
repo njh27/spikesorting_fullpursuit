@@ -517,7 +517,7 @@ class WorkItemSummary(object):
                 if len(self.sort_data[chan][curr_seg][1]) == 0:
                     # curr_seg is now failed next seg of last iteration
                     start_new_seg = True
-                    print("skipping seg", curr_seg, "with no spikes")
+                    if self.verbose: print("skipping seg", curr_seg, "with no spikes")
                     continue
                 if start_new_seg:
                     # Map all units in this segment to new real labels
@@ -530,7 +530,7 @@ class WorkItemSummary(object):
                 if len(self.sort_data[chan][next_seg][1]) == 0:
                     # No units sorted in NEXT segment so start fresh next segment
                     start_new_seg = True
-                    print("skipping_seg", curr_seg, "because NEXT seg has no spikes")
+                    if self.verbose: print("skipping_seg", curr_seg, "because NEXT seg has no spikes")
                     for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                         mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:

@@ -757,6 +757,8 @@ def spike_sort_parallel(Probe, **kwargs):
                 if sort_data[-1][0].size > 0:
                     # Adjust crossings for segment start time
                     sort_data[-1][0] += w_item['index_window'][0]
+            # Trim thresholds to only include neighbors
+            w_item['thresholds'] = w_item['thresholds'][w_item['neighbors']]
         else:
             # This work item found nothing (or raised an exception)
             sort_data.append([[], [], [], [], w_item['ID']])

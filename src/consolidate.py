@@ -9,6 +9,8 @@ import copy
 import warnings
 
 
+import matplotlib.pyplot as plt
+
 
 
 
@@ -198,20 +200,30 @@ def zero_symmetric_ccg(spikes_1, spikes_2, samples_window=40, d_samples=40, retu
         return counts, samples_axis
 
 
-def calculate_expected_overlap(n1, n2, overlap_time):
+def calculate_expected_overlap(n1, n2, overlap_time, sampling_rate):
     """ Returns the expected number of overlapping spikes between neuron 1 and
-        neuron 2 within a time window 'overlap_time' assuming independent
-        spiking. """
-
+    neuron 2 within a time window 'overlap_time' assuming independent spiking.
+    As usual, spike_indices within each neuron must be sorted. """
     first_index = max(n1['spike_indices'][0], n2['spike_indices'][0])
     last_index = min(n1['spike_indices'][-1], n2['spike_indices'][-1])
-    n1_count = np.count_nonzero(np.logical_and(n1['spike_indices'] >= first_index, n1['spike_indices'] <= last_index))
-    n2_count = np.count_nonzero(np.logical_and(n2['spike_indices'] >= first_index, n2['spike_indices'] <= last_index))
-    num_ms = int(np.ceil((last_index - first_index) / (n1['sampling_rate'] / 1000)))
-    if num_ms > 0:
-        expected_overlap = (overlap_time * 1000 * n1_count * n2_count) / num_ms
-    else:
-        expected_overlap = 0
+    num_ms = int(np.ceil((last_index - first_index) / (sampling_rate / 1000)))
+    if num_ms <= 0:
+        # Neurons never fire at the same time, so expected overlap is 0
+        return 0.
+
+    # Find spike indices from each neuron that fall within the same time window
+    # Should be impossible to return None because of num_ms check above
+    n1_start = next((idx[0] for idx, val in np.ndenumerate(n1['spike_indices']) if val >= first_index), None)
+    n1_stop = next((idx[0] for idx, val in np.ndenumerate(n1['spike_indices'][::-1]) if val <= last_index), None)
+    n1_stop = n1['spike_indices'].shape[0] - n1_stop - 1 # Not used as slice so -1
+    n2_start = next((idx[0] for idx, val in np.ndenumerate(n2['spike_indices']) if val >= first_index), None)
+    n2_stop = next((idx[0] for idx, val in np.ndenumerate(n2['spike_indices'][::-1]) if val <= last_index), None)
+    n2_stop = n2['spike_indices'].shape[0] - n2_stop - 1 # Not used as slice so -1
+
+    # Infer number of spikes in overlapping window based on first and last index
+    n1_count = n1_stop - n1_start
+    n2_count = n2_stop - n2_start
+    expected_overlap = (overlap_time * 1000 * n1_count * n2_count) / num_ms
 
     return expected_overlap
 
@@ -329,6 +341,12 @@ class WorkItemSummary(object):
                 self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][spike_order, :]
                 self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][spike_order]
 
+                for c_ind in range(0, self.n_chans):
+                    chan_win = [self.sort_info['n_samples_per_chan'] * c_ind,
+                                self.sort_info['n_samples_per_chan'] * (c_ind + 1)]
+                    self.sort_data[chan][seg][2][:, chan_win[0]:chan_win[1]] *= self.work_items[chan][seg]['thresholds'][c_ind]
+        print("Undid threshold NORMALIZE!")
+
     def snr_norm(self, template):
         """ This formula computes SNR relative to 3 STD of noise given that
         clips/templates have already been normalized to (divided by) the actual
@@ -357,6 +375,7 @@ class WorkItemSummary(object):
         self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][keep_indices]
         self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][keep_indices, :]
         self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][keep_indices]
+        return keep_indices
 
     def get_isi_violation_rate(self, chan, seg, label):
         """ Compute the spiking activity that occurs during the ISI violation
@@ -375,7 +394,7 @@ class WorkItemSummary(object):
         # Remove duplicate spikes from this computation and adjust the number
         # of spikes and time window accordingly
         num_isi_violations -= n_duplicates
-        refractory_adjustment = self.duplicate_tol_inds / self.sort_info['sampling_rate']
+        refractory_adjustment = 0. #self.duplicate_tol_inds / self.sort_info['sampling_rate']
         isi_violation_rate = num_isi_violations \
                              * (1.0 / (self.absolute_refractory_period - refractory_adjustment))\
                              / (np.count_nonzero(select_unit) - n_duplicates)
@@ -413,7 +432,7 @@ class WorkItemSummary(object):
                     if mua_ratio > self.max_mua_ratio:
                         self.delete_label(chan, seg, l)
 
-    def merge_test_two_units(self, clips_1, clips_2, p_cut, method='pca',
+    def merge_test_two_units(self, clips_1, clips_2, p_cut, method='projection',
                              split_only=False, merge_only=False):
         clips = np.vstack((clips_1, clips_2))
         neuron_labels = np.ones(clips.shape[0], dtype=np.int64)
@@ -430,20 +449,31 @@ class WorkItemSummary(object):
                         self.sort_info['max_components'],
                         add_peak_valley=self.sort_info['add_peak_valley'])
         elif method.lower() == 'projection':
-            t1 = np.mean(clips_1, axis=0)
-            t2 = np.mean(clips_2, axis=0)
+            # Projection onto templates, weighted by number of spikes
+            t1 = np.mean(clips_1, axis=0) * (clips_1.shape[0] / clips.shape[0])
+            t2 = np.mean(clips_2, axis=0) * (clips_2.shape[0] / clips.shape[0])
             scores = clips @ np.vstack((t1, t2)).T
         else:
             raise ValueError("Unknown method", method, "for scores. Must use 'pca' or 'projection'.")
         neuron_labels = merge_clusters(scores, neuron_labels,
                             split_only=split_only, merge_only=merge_only,
-                            p_value_cut_thresh=p_cut)
-        if np.all(neuron_labels == 1) or np.all(neuron_labels == 2):
+                            p_value_cut_thresh=p_cut, flip_labels=False)
+
+        label_is_1 = neuron_labels == 1
+        label_is_2 = neuron_labels == 2
+        if np.all(label_is_1) or np.all(label_is_2):
             clips_merged = True
         else:
             clips_merged = False
+            # if np.count_nonzero(label_is_2) >= np.count_nonzero(label_is_1):
+            #     if one_biggest:
+            #         neuron_labels[label_is_1] = 2
+            #         neuron_labels[label_is_2] = 1
+
         neuron_labels_1 = neuron_labels[0:clips_1.shape[0]]
         neuron_labels_2 = neuron_labels[clips_1.shape[0]:]
+        print("LABELS 1", np.count_nonzero(neuron_labels_1 == 1), neuron_labels_1.shape[0])
+        print("LABELS 2", np.count_nonzero(neuron_labels_2 == 2), neuron_labels_2.shape[0])
         return clips_merged, neuron_labels_1, neuron_labels_2
 
     def stitch_segments(self):
@@ -484,11 +514,13 @@ class WorkItemSummary(object):
                 # Need at least 2 remaining segments to stitch
                 continue
 
+            split_memory_dicts = [{} for x in range(0, self.n_segments)]
             # Go through each segment as the "current segment" and set the labels
             # in the next segment according to the scheme in current
             for curr_seg in range(start_seg, len(self.sort_data[chan])-1):
                 if len(self.sort_data[chan][curr_seg][1]) == 0:
                     # curr_seg is now failed next seg of last iteration
+                    next_seg_is_new = True
                     continue
                 # Make 'fake_labels' for next segment that do not overlap with
                 # the current segment and make a work space for the next
@@ -510,20 +542,35 @@ class WorkItemSummary(object):
                     for nl in fake_labels:
                         # fake_labels are in fact the new real labels we are adding
                         real_labels.append(nl)
+                        print("In next seg new (534) added real label", next_real_label, chan, curr_seg)
                         next_real_label += 1
                     next_seg_is_new = False
                     continue
+
+                curr_spike_start = 0 #max(self.sort_data[chan][curr_seg][0].shape[0] - 100, 0)
+                next_spike_stop = self.sort_data[chan][next_seg][0].shape[0] #min(self.sort_data[chan][next_seg][0].shape[0], 100)
                 # Find templates for units in each segment
                 curr_templates, curr_labels = segment.calculate_templates(
-                                        self.sort_data[chan][curr_seg][2],
-                                        self.sort_data[chan][curr_seg][1])
+                                        self.sort_data[chan][curr_seg][2][curr_spike_start:, :],
+                                        self.sort_data[chan][curr_seg][1][curr_spike_start:])
                 next_templates, next_labels = segment.calculate_templates(
-                                        self.sort_data[chan][next_seg][2],
-                                        next_label_workspace)
+                                        self.sort_data[chan][next_seg][2][:next_spike_stop, :],
+                                        next_label_workspace[:next_spike_stop])
                 # Find all pairs of templates that are mutually closest
                 minimum_distance_pairs = sort_cython.identify_clusters_to_compare(
                                 np.vstack(curr_templates + next_templates),
                                 np.hstack((curr_labels, next_labels)), [])
+
+                if chan == 0 and curr_seg in [13, 14, 15]:
+                    print(minimum_distance_pairs)
+                    for ct_ind in range(0, len(curr_templates)):
+                        print(curr_labels[ct_ind])
+                        plt.plot(curr_templates[ct_ind])
+                    plt.show()
+                    for nt_ind in range(0, len(next_templates)):
+                        print(next_labels[nt_ind])
+                        plt.plot(next_templates[nt_ind])
+                    plt.show()
 
                 # Merge test all mutually closest clusters and track any labels
                 # in the next segment (fake_labels) that do not find a match.
@@ -547,17 +594,22 @@ class WorkItemSummary(object):
                     # Choose current seg clips based on real labels
                     real_select = self.sort_data[chan][curr_seg][1] == r_l
                     clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
+                    clips_1 = clips_1[curr_spike_start:, :]
                     # Choose next seg clips based on original fake label workspace
                     fake_select = next_label_workspace == f_l
                     clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
+                    clips_2 = clips_2[:next_spike_stop, :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='template_pca', merge_only=True)
+                            method='projection', merge_only=True)
+
+                    print("At chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+
                     if is_merged:
                         # Update actual next segment label data with same labels
                         # used in curr_seg
                         self.sort_data[chan][next_seg][1][fake_select] = r_l
-                        leftover_labels.remove(c2)
+                        leftover_labels.remove(f_l)
                     # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
 
                 # Assign units in next segment that do not match any in the
@@ -566,6 +618,7 @@ class WorkItemSummary(object):
                     ll_select = next_label_workspace == ll
                     self.sort_data[chan][next_seg][1][ll_select] = next_real_label
                     real_labels.append(next_real_label)
+                    print("In leftover labels (612) added real label", next_real_label, chan, curr_seg)
                     next_real_label += 1
 
                 # Make sure newly stitched segment labels are separate from
@@ -584,10 +637,22 @@ class WorkItemSummary(object):
                                           self.sort_data[chan][next_seg][1]))
                 joint_templates, temp_labels = segment.calculate_templates(
                                         joint_clips, joint_labels)
+                if chan == 0 and curr_seg in [13, 14]:
+                    for jt_ind, jt in enumerate(joint_templates):
+                        print(temp_labels[jt_ind])
+                        plt.plot(jt)
+                    plt.show()
+                    for jt_label in np.unique(joint_labels):
+                        print(jt_label, np.count_nonzero(joint_labels == jt_label))
+                        print("Curr seg has", np.count_nonzero(self.sort_data[chan][curr_seg][1] == jt_label))
+                        print("Next seg has", np.count_nonzero(self.sort_data[chan][next_seg][1] == jt_label))
+                        plt.plot(np.mean(joint_clips[joint_labels == jt_label, :], axis=0))
+                    plt.show()
                 # Find all pairs of templates that are mutually closest
                 minimum_distance_pairs = sort_cython.identify_clusters_to_compare(
                                 np.vstack(joint_templates), temp_labels, [])
-
+                print("Doing split on joint min pairs", minimum_distance_pairs)
+                print("Labels in current segment are", np.unique(self.sort_data[chan][curr_seg][1]))
                 tmp_reassign = np.zeros_like(joint_labels)
                 # Perform a split only between all minimum distance pairs
                 for c1, c2 in minimum_distance_pairs:
@@ -597,32 +662,30 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='template_pca', split_only=True)
+                            method='pca', split_only=True)
                     if ismerged: # This can happen if the split cutpoint forces
                         continue # a merge so check and skip
-                    if 2 in labels_1:
-                        # Reassign spikes in c1 that split into c2
-                        # The merge test was done on joint clips and labels, so
-                        # we have to figure out where their indices all came from
-                        tmp_reassign[:] = 0
-                        tmp_reassign[c1_select] = labels_1
-                        # Do reassignment for both current and next segments
-                        reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 2
-                        original_curr_2 = self.sort_data[chan][curr_seg][1][reassign_index]
-                        self.sort_data[chan][curr_seg][1][reassign_index] = c2
-                        reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 2
-                        original_next_2 = self.sort_data[chan][next_seg][1][reassign_index]
-                        self.sort_data[chan][next_seg][1][reassign_index] = c2
-                    if 1 in labels_2:
-                        # Reassign spikes in c2 that split into c1
-                        tmp_reassign[:] = 0
-                        tmp_reassign[c2_select] = labels_2
-                        reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 1
-                        original_curr_1 = self.sort_data[chan][curr_seg][1][reassign_index]
-                        self.sort_data[chan][curr_seg][1][reassign_index] = c1
-                        reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 1
-                        original_next_1 = self.sort_data[chan][next_seg][1][reassign_index]
-                        self.sort_data[chan][next_seg][1][reassign_index] = c1
+
+                    # Reassign spikes in c1 that split into c2
+                    # The merge test was done on joint clips and labels, so
+                    # we have to figure out where their indices all came from
+                    tmp_reassign[:] = 0
+                    tmp_reassign[c1_select] = labels_1
+                    tmp_reassign[c2_select] = labels_2
+                    curr_reassign_index_to_c1 = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 1
+                    curr_original_index_to_c1 = self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c1]
+                    self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c1] = c1
+                    curr_reassign_index_to_c2 = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 2
+                    curr_original_index_to_c2 = self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c2]
+                    self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c2] = c2
+
+                    # Repeat for assignments in next_seg
+                    next_reassign_index_to_c1 = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 1
+                    next_original_index_to_c1 = self.sort_data[chan][next_seg][1][next_reassign_index_to_c1]
+                    self.sort_data[chan][next_seg][1][next_reassign_index_to_c1] = c1
+                    next_reassign_index_to_c2 = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 2
+                    next_original_index_to_c2 = self.sort_data[chan][next_seg][1][next_reassign_index_to_c2]
+                    self.sort_data[chan][next_seg][1][next_reassign_index_to_c2] = c2
 
                     # Check if split was a good idea and undo it if not. Basically,
                     # if a mixture is left behind after the split, we probably
@@ -632,30 +695,30 @@ class WorkItemSummary(object):
                     # so we carry on.
                     undo_split = False
                     for curr_l in [c1, c2]:
-                        if curr_l not in self.sort_data[chan][curr_seg][1]:
-                            # Split probably worked at removing mixture so unit
-                            # is not longer present in this segment
+                        mua_ratio = 0.
+                        if curr_l in self.sort_data[chan][curr_seg][1]:
+                            mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                        if mua_ratio > self.max_mua_ratio:
+                            undo_split = True
                             break
-                        mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                        if curr_l in self.sort_data[chan][next_seg][1]:
+                            mua_ratio = self.get_fraction_mua(chan, next_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             undo_split = True
                             break
                     if undo_split:
-                        # Reassign back to values before split
+                        print("undoing split between", c1, c2)
                         if 2 in labels_1:
-                            tmp_reassign[:] = 0
-                            tmp_reassign[c1_select] = labels_1
-                            reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 2
-                            self.sort_data[chan][curr_seg][1][reassign_index] = original_curr_2
-                            reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 2
-                            self.sort_data[chan][next_seg][1][reassign_index] = original_next_2
+                            print("Assigning back", c1)
+                            self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c2] = curr_original_index_to_c2
+                            self.sort_data[chan][next_seg][1][next_reassign_index_to_c2] = next_original_index_to_c2
                         if 1 in labels_2:
-                            tmp_reassign[:] = 0
-                            tmp_reassign[c2_select] = labels_2
-                            reassign_index = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 1
-                            self.sort_data[chan][curr_seg][1][reassign_index] = original_curr_1
-                            reassign_index = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 1
-                            self.sort_data[chan][next_seg][1][reassign_index] = original_next_1
+                            print("Assigning back", c2)
+                            self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c1] = curr_original_index_to_c1
+                            self.sort_data[chan][next_seg][1][next_reassign_index_to_c1] = next_original_index_to_c1
+                    else:
+                        split_memory_dicts[curr_seg][c1] = [curr_reassign_index_to_c1, curr_original_index_to_c1]
+                        split_memory_dicts[curr_seg][c2] = [curr_reassign_index_to_c2, curr_original_index_to_c2]
 
                 # Finally, check if the above split was unable to salvage any
                 # mixtures in the current segment. If it wasn't, delete that
@@ -664,13 +727,47 @@ class WorkItemSummary(object):
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                     mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                     if mua_ratio > self.max_mua_ratio:
+                        # if chan == 0 and curr_seg == 0:
+                        #     bad_unit = self.sort_data[chan][curr_seg][1] == curr_l
+                        #     plt.plot(np.mean(self.sort_data[chan][curr_seg][2][bad_unit, :], axis=0))
+                        #     plt.show()
                         # Remove this unit from current segment
-                        self.delete_label(chan, curr_seg, curr_l)
+                        print("Deleting (704) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)
+                        keep_indices = self.delete_label(chan, curr_seg, curr_l)
+
+                        # Also need to remove from memory dict
+                        for key_label in split_memory_dicts[curr_seg].keys():
+                            split_memory_dicts[curr_seg][key_label][0] = \
+                                split_memory_dicts[curr_seg][key_label][0][keep_indices]
+                            split_memory_dicts[curr_seg][key_label][1] = \
+                                split_memory_dicts[curr_seg][key_label][1][keep_indices]
+
+                        if curr_seg == 0:
+                            real_labels.remove(curr_l)
+                        else:
+                            if curr_l in split_memory_dicts[curr_seg - 1].keys():
+                                # This is in previous, so undo any effects split
+                                # could have had
+                                self.sort_data[chan][curr_seg - 1][1][split_memory_dicts[curr_seg - 1][curr_l][0]] = \
+                                        split_memory_dicts[curr_seg - 1][curr_l][1]
+                            if curr_l not in self.sort_data[chan][curr_seg - 1][1]:
+                                # Remove from real labels if its not in previous
+                                real_labels.remove(curr_l)
+
                         # Assign any units in next segment that stitched to this
-                        # bad one a new label.
-                        self.sort_data[chan][next_seg][1][self.sort_data[chan][next_seg][1] == curr_l] = \
-                                next_real_label
-                        next_real_label += 1
+                        # bad one, if any, a new label.
+                        select_next_curr_l = self.sort_data[chan][next_seg][1] == curr_l
+                        if any(select_next_curr_l):
+                            # print("None stitched in next")
+                            self.sort_data[chan][next_seg][1][select_next_curr_l] = next_real_label
+                            real_labels.append(next_real_label)
+                            print("In leftover after deletion (732) added real label", next_real_label, chan, curr_seg)
+                            next_real_label += 1
+
+                print("!!!REAL LABELS ARE !!!", real_labels, np.unique(self.sort_data[chan][curr_seg][1]), np.unique(self.sort_data[chan][next_seg][1]))
+                if curr_seg > 0:
+                    print("Previous seg...", np.unique(self.sort_data[chan][curr_seg-1][1]))
+                    print("fake labels", fake_labels)
 
             # It is possible to leave loop without checking last seg in the
             # event it is a new seg
@@ -679,6 +776,8 @@ class WorkItemSummary(object):
                 # Seg labels start at zero, so just add next_real_label. This
                 # is last segment for this channel so no need to increment
                 self.sort_data[chan][-1][1] += next_real_label
+                real_labels.extend((np.unique(self.sort_data[chan][-1][1]) + next_real_label).tolist())
+                print("Last seg is new (747) added real labels", np.unique(self.sort_data[chan][-1][1]) + next_real_label, chan, curr_seg)
             # Check for MUA in the last segment as we did for the others
             curr_seg = len(self.sort_data[chan]) - 1
             if curr_seg < 0:
@@ -688,7 +787,20 @@ class WorkItemSummary(object):
             for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                 mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                 if mua_ratio > self.max_mua_ratio:
+                    print("Checking last seg MUA (757) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                     self.delete_label(chan, curr_seg, curr_l)
+                    if curr_seg == 0:
+                        real_labels.remove(curr_l)
+                    else:
+                        if curr_l in split_memory_dicts[curr_seg - 1].keys():
+                            # This is in previous, so undo any effects split
+                            # could have had
+                            self.sort_data[chan][curr_seg - 1][1][split_memory_dicts[curr_seg - 1][curr_l][0]] = \
+                                    split_memory_dicts[curr_seg - 1][curr_l][1]
+                        if curr_l not in self.sort_data[chan][curr_seg-1][1]:
+                            # Remove from real labels if its not in previous
+                            real_labels.remove(curr_l)
+            print("!!!REAL LABELS ARE !!!", real_labels)
 
     def summarize_neurons_by_seg(self):
         """
@@ -743,11 +855,11 @@ class WorkItemSummary(object):
                     neuron['fraction_mua'] = self.get_fraction_mua(chan, seg, neuron_label)
                     self.neuron_summary_by_seg[seg].append(neuron)
 
-    def remove_redundant_neurons(self, neurons, overlap_time=2.5e-4, overlap_ratio_threshold=0.05):
+    def remove_redundant_neurons(self, neurons, overlap_time=2.5e-4, overlap_ratio_threshold=2):
         """
         """
-        if overlap_ratio_threshold <= 0. or overlap_ratio_threshold >= 1.:
-            raise ValueError("Min overlap ratio must be a value in (0, 1)")
+        # if overlap_ratio_threshold <= 0. or overlap_ratio_threshold >= 1.:
+        #     raise ValueError("Min overlap ratio must be a value in (0, 1)")
         max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
         n_total_samples = 0
 
@@ -763,13 +875,16 @@ class WorkItemSummary(object):
                 if np.intersect1d(n1['neighbors'], n2['neighbors']).size == 0:
                     # Only count violations in neighborhood
                     continue
-                actual_overlaps = zero_symmetric_ccg(n1['spike_indices'], n2['spike_indices'], max_samples, max_samples)[0]
-                if actual_overlaps[1] > (actual_overlaps[0] + actual_overlaps[2]):
-                    # Mark as a violation if center of CCG is greater than sum of bins on either side of it
-                    violation_partners[n1_ind].add(n2_ind)
-                    violation_partners[n2_ind].add(n1_ind)
+                violation_partners[n1_ind].add(n2_ind)
+                violation_partners[n2_ind].add(n1_ind)
+                # actual_overlaps = zero_symmetric_ccg(n1['spike_indices'], n2['spike_indices'], max_samples, max_samples)[0]
+                # if actual_overlaps[1] > (actual_overlaps[0] + actual_overlaps[2]):
+                #     # Mark as a violation if center of CCG is greater than sum of bins on either side of it
+                #     violation_partners[n1_ind].add(n2_ind)
+                #     violation_partners[n2_ind].add(n1_ind)
 
         overlap_ratio = np.zeros((len(neurons), len(neurons)))
+        expected_ratio = np.zeros((len(neurons), len(neurons)))
         for neuron1_ind, neuron1 in enumerate(neurons):
             neuron1_spike_train = compute_spike_trains(neuron1['spike_indices'], max_samples, [0, n_total_samples])
             # Loop through all violators with neuron1
@@ -785,14 +900,24 @@ class WorkItemSummary(object):
                 num_hits = np.count_nonzero(np.logical_and(neuron1_spike_train, neuron2_spike_train))
                 neuron2_misses = np.count_nonzero(np.logical_and(neuron2_spike_train, ~neuron1_spike_train))
                 neuron1_misses = np.count_nonzero(np.logical_and(neuron1_spike_train, ~neuron2_spike_train))
-                overlap_ratio[neuron1_ind, neuron2_ind] = max(num_hits / (num_hits + neuron2_misses), num_hits / (num_hits + neuron1_misses))
+
+                num_misses = min(neuron1_misses, neuron2_misses)
+                overlap_ratio[neuron1_ind, neuron2_ind] = num_hits / (num_hits + num_misses)
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
+
+                expected_hits = calculate_expected_overlap(neuron1, neuron2,
+                                    overlap_time, self.sort_info['sampling_rate'])
+                # NOTE: Should this be expected hits minus remaining number of spikes?
+                expected_misses = min(neuron1['spike_indices'].shape[0], neuron2['spike_indices'].shape[0]) - expected_hits
+                expected_ratio[neuron1_ind, neuron2_ind] = expected_hits / (expected_hits + expected_misses)
+                expected_ratio[neuron2_ind, neuron1_ind] = expected_ratio[neuron1_ind, neuron2_ind]
 
         neurons_remaining_indices = [x for x in range(0, len(neurons))]
         neurons_to_remove = []
         while True:
             # Look for our next best pair
             best_ratio = -np.inf
+            best_expected = -np.inf
             best_pair = []
             for i in range(0, len(neurons_remaining_indices)):
                 for j in range(i+1, len(neurons_remaining_indices)):
@@ -801,8 +926,11 @@ class WorkItemSummary(object):
                     if overlap_ratio[neuron_1_index, neuron_2_index] > best_ratio:
                         best_ratio = overlap_ratio[neuron_1_index, neuron_2_index]
                         best_pair = [neuron_1_index, neuron_2_index]
-            print("best overlap ratio is", best_ratio)
-            if best_ratio < overlap_ratio_threshold:
+
+                        best_expected = expected_ratio[neuron_1_index, neuron_2_index]
+
+            # print("best overlap ratio is", best_ratio, overlap_ratio_threshold * best_expected)
+            if best_ratio <= overlap_ratio_threshold * best_expected:
                 break
 
             # We now need to choose one of the pair to delete.
@@ -847,11 +975,11 @@ class WorkItemSummary(object):
                 del neurons[n_ind]
         return neurons
 
-    def remove_redundant_neurons_by_seg(self, overlap_time=2.5e-4, overlap_ratio_threshold=0.05):
+    def remove_redundant_neurons_by_seg(self, overlap_time=2.5e-4, overlap_ratio_threshold=2):
         for seg in range(0, self.n_segments):
             self.neuron_summary_by_seg[seg] = self.remove_redundant_neurons(
-                    self.neuron_summary_by_seg[seg],
-                    overlap_time, overlap_ratio_threshold)
+                    self.neuron_summary_by_seg[seg], overlap_time,
+                    overlap_ratio_threshold)
 
     def stitch_neurons_across_channels(self):
         start_seg = 0
@@ -1005,7 +1133,6 @@ class WorkItemSummary(object):
                     # This is NOT symmetric matrix! Just a look up table.
                     overlap_ratio[cn_ind, nn_ind] = max(num_hits / (num_hits + nn_misses),
                                                         num_hits / (num_hits + cn_misses))
-                print(cn_ind, np.amax(overlap_ratio[cn_ind, :]))
 
             # Assume there is no link and overwrite below if it passes threshold
             for n in self.neuron_summary_by_seg[seg]:
@@ -1022,6 +1149,8 @@ class WorkItemSummary(object):
                 max_cn = np.argmax(np.amax(overlap_ratio, axis=1))
                 max_nn = np.argmax(overlap_ratio[max_cn, :])
                 max_ratio = overlap_ratio[max_cn, max_nn]
+
+            print("Stopped at max ratio", max_ratio)
 
         neurons = self.stitch_neurons_across_channels()
         neuron_summary = []

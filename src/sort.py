@@ -420,7 +420,7 @@ Explanation of parameters:
 """
 def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                    merge_only=False, split_only=False, max_iter=20000,
-                   verbose=False):
+                   flip_labels=True, verbose=False):
 
     def whiten_cluster_pairs(scores, labels, c1, c2):
         centroid_1 = sort_cython.compute_cluster_centroid(scores, labels, c1)
@@ -466,30 +466,42 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
         elif merge_only:
             return False # These clusters should be split, but our options say no with merge only.
         else:
-            assign_max_c1 = True if np.count_nonzero(labels == c1) >= np.count_nonzero(labels == c2) else False
             # Reassign based on the optimal value
             select_greater = np.logical_and(np.logical_or(labels == c1, labels == c2), (projection > optimal_cut + 1e-6))
             select_less = np.logical_and(np.logical_or(labels == c1, labels == c2), ~select_greater)
-            if np.count_nonzero(select_greater) >= np.count_nonzero(select_less):
+            if flip_labels:
                 # Make label with most data going in the same as that going out
-                if assign_max_c1:
-                    labels[select_greater] = c1
-                    labels[select_less] = c2
+                assign_max_c1 = True if np.count_nonzero(labels == c1) >= np.count_nonzero(labels == c2) else False
+                if np.count_nonzero(select_greater) >= np.count_nonzero(select_less):
+                    if assign_max_c1:
+                        labels[select_greater] = c1
+                        labels[select_less] = c2
+                    else:
+                        labels[select_greater] = c2
+                        labels[select_less] = c1
                 else:
-                    labels[select_greater] = c2
-                    labels[select_less] = c1
+                    if assign_max_c1:
+                        labels[select_greater] = c2
+                        labels[select_less] = c1
+                    else:
+                        labels[select_greater] = c1
+                        labels[select_less] = c2
+                if np.count_nonzero(labels == c1) == 0 or np.count_nonzero(labels == c2) == 0:
+                    # Our optimal split forced a merge. This can happen even with
+                    # 'split_only' set to True.
+                    return True
+                return False
             else:
-                if assign_max_c1:
-                    labels[select_greater] = c2
-                    labels[select_less] = c1
-                else:
+                # Reassign labels to cluster keeping label numbers that minimize
+                # projection distance between original and new center
+                original_c1 = np.median(projection[labels == c1])
+                original_c2 = np.median(projection[labels == c2])
+                if original_c1 >= original_c2:
                     labels[select_greater] = c1
                     labels[select_less] = c2
-            if np.count_nonzero(labels == c1) == 0 or np.count_nonzero(labels == c2) == 0:
-                # Our optimal split forced a merge. This can happen even with
-                # 'split_only' set to True.
-                return True
-            return False
+                else:
+                    labels[select_greater] = c2
+                    labels[select_less] = c1
 
     # START ACTUAL OUTER FUNCTION
     if labels.size == 0:
@@ -543,7 +555,6 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                     labels[labels == c1] = c2
                 if verbose: print("Iter: ", num_iter, ", Unique clusters: ", np.unique(labels).size)
                 none_merged = False
-                # previously_compared_pairs = []
                 # labels changed, so any previous comparison is no longer valid and is removed
                 for ind, pair in reversed(list(enumerate(previously_compared_pairs))):
                     if c1 in pair or c2 in pair:

@@ -487,7 +487,7 @@ class WorkItemSummary(object):
         self.is_stitched = True
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
-            if self.verbose: print("Start stitching channel", chan)
+            print("Start stitching channel", chan)
             if len(self.sort_data[chan]) <= 1:
                 # Need at least 2 segments to stitch
                 continue
@@ -504,7 +504,7 @@ class WorkItemSummary(object):
                 if len(real_labels) > 0:
                     break
                 start_seg += 1
-            next_seg_is_new = False
+            start_new_seg = False
             if start_seg >= len(self.sort_data[chan])-1:
                 # Need at least 2 remaining segments to stitch
                 continue
@@ -513,34 +513,45 @@ class WorkItemSummary(object):
             # Go through each segment as the "current segment" and set the labels
             # in the next segment according to the scheme in current
             for curr_seg in range(start_seg, len(self.sort_data[chan])-1):
+                next_seg = curr_seg + 1
                 if len(self.sort_data[chan][curr_seg][1]) == 0:
                     # curr_seg is now failed next seg of last iteration
-                    next_seg_is_new = True
+                    start_new_seg = True
+                    print("skipping seg", curr_seg, "with no spikes")
+                    continue
+                if start_new_seg:
+                    # Map all units in this segment to new real labels
+                    self.sort_data[chan][curr_seg][1] += next_real_label # Keep out of range
+                    for nl in np.unique(self.sort_data[chan][curr_seg][1]):
+                        real_labels.append(nl)
+                        if self.verbose: print("In NEXT SEG NEW (531) added real label", nl, chan, curr_seg)
+                        next_real_label += 1
+                    start_new_seg = False
+                if len(self.sort_data[chan][next_seg][1]) == 0:
+                    # No units sorted in NEXT segment so start fresh next segment
+                    start_new_seg = True
+                    print("skipping_seg", curr_seg, "because NEXT seg has no spikes")
+                    for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
+                        mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                        if mua_ratio > self.max_mua_ratio:
+                            if self.verbose: print("Checking seg before new MUA (543) deleting at MUA ratio", mua_ratio, chan, curr_seg)
+                            self.delete_label(chan, curr_seg, curr_l)
+                            if curr_seg == 0:
+                                real_labels.remove(curr_l)
+                            else:
+                                if curr_l not in self.sort_data[chan][curr_seg-1][1]:
+                                    # Remove from real labels if its not in previous
+                                    real_labels.remove(curr_l)
                     continue
                 # Make 'fake_labels' for next segment that do not overlap with
                 # the current segment and make a work space for the next
                 # segment labels so we can compare curr and next without
                 # losing track of original labels
-                next_seg = curr_seg + 1
                 fake_labels = np.copy(np.unique(self.sort_data[chan][next_seg][1]))
                 fake_labels += next_real_label # Keep these out of range of the real labels
                 fake_labels = fake_labels.tolist()
                 next_label_workspace = np.copy(self.sort_data[chan][next_seg][1])
                 next_label_workspace += next_real_label
-                if len(fake_labels) == 0:
-                    # No units sorted in NEXT segment so start fresh next segment
-                    next_seg_is_new = True
-                    continue
-                if next_seg_is_new:
-                    # Map all units in this segment to new real labels
-                    self.sort_data[chan][curr_seg][1] += next_real_label
-                    for nl in fake_labels:
-                        # fake_labels are in fact the new real labels we are adding
-                        real_labels.append(nl)
-                        if self.verbose: print("In next seg new (534) added real label", next_real_label, chan, curr_seg)
-                        next_real_label += 1
-                    next_seg_is_new = False
-                    continue
 
                 curr_spike_start = 0 #max(self.sort_data[chan][curr_seg][0].shape[0] - 100, 0)
                 next_spike_stop = self.sort_data[chan][next_seg][0].shape[0] #min(self.sort_data[chan][next_seg][0].shape[0], 100)
@@ -556,7 +567,7 @@ class WorkItemSummary(object):
                                 np.vstack(curr_templates + next_templates),
                                 np.hstack((curr_labels, next_labels)), [])
 
-                # if chan == 0 and curr_seg in [13, 14, 15]:
+                # if chan == 2 and curr_seg in [12, 13, 14, 15]:
                 #     print(minimum_distance_pairs)
                 #     for ct_ind in range(0, len(curr_templates)):
                 #         print(curr_labels[ct_ind])
@@ -633,7 +644,7 @@ class WorkItemSummary(object):
                 joint_templates, temp_labels = segment.calculate_templates(
                                         joint_clips, joint_labels)
 
-                # if chan == 0 and curr_seg in [13, 14]:
+                # if chan == 2 and curr_seg in [12, 13, 14, 15]:
                 #     for jt_ind, jt in enumerate(joint_templates):
                 #         print(temp_labels[jt_ind])
                 #         plt.plot(jt)
@@ -729,8 +740,8 @@ class WorkItemSummary(object):
                         for key_label in split_memory_dicts[curr_seg].keys():
                             split_memory_dicts[curr_seg][key_label][0] = \
                                 split_memory_dicts[curr_seg][key_label][0][keep_indices]
-                            split_memory_dicts[curr_seg][key_label][1] = \
-                                split_memory_dicts[curr_seg][key_label][1][keep_indices]
+                            # split_memory_dicts[curr_seg][key_label][1] = \
+                            #     split_memory_dicts[curr_seg][key_label][1][keep_indices]
 
                         if curr_seg == 0:
                             real_labels.remove(curr_l)
@@ -761,7 +772,7 @@ class WorkItemSummary(object):
 
             # It is possible to leave loop without checking last seg in the
             # event it is a new seg
-            if next_seg_is_new and len(self.sort_data[chan][-1][0]) > 0:
+            if start_new_seg and len(self.sort_data[chan][-1][0]) > 0:
                 # Map all units in this segment to new real labels
                 # Seg labels start at zero, so just add next_real_label. This
                 # is last segment for this channel so no need to increment
@@ -782,11 +793,6 @@ class WorkItemSummary(object):
                     if curr_seg == 0:
                         real_labels.remove(curr_l)
                     else:
-                        if curr_l in split_memory_dicts[curr_seg - 1].keys():
-                            # This is in previous, so undo any effects split
-                            # could have had
-                            self.sort_data[chan][curr_seg - 1][1][split_memory_dicts[curr_seg - 1][curr_l][0]] = \
-                                    split_memory_dicts[curr_seg - 1][curr_l][1]
                         if curr_l not in self.sort_data[chan][curr_seg-1][1]:
                             # Remove from real labels if its not in previous
                             real_labels.remove(curr_l)

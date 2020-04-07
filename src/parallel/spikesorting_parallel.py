@@ -582,10 +582,10 @@ def spike_sort_parallel(Probe, **kwargs):
         if settings['segment_overlap'] >= settings['segment_duration']:
             raise ValueError("Segment overlap must be <= segment duration.")
         # Minimum number of segments at current segment duration and overlap
-        # needed to cover all samples
-        n_segs = np.ceil((Probe.n_samples - settings['segment_duration'])
+        # needed to cover all samples. Using floor will round to find the next
+        # multiple that is >= the input segment duration.
+        n_segs = np.floor((Probe.n_samples - settings['segment_duration'])
                           / (settings['segment_duration'] - settings['segment_overlap']))
-        n_segs -= 1 # Adjustment makes us find the next multiple >= current duration
         # Modify segment duration to next larger multiple of recording duration
         # given fixed, unaltered input overlap duration
         settings['segment_duration'] = int(np.ceil((Probe.n_samples
@@ -598,7 +598,7 @@ def spike_sort_parallel(Probe, **kwargs):
     while (curr_onset < Probe.n_samples):
         segment_onsets.append(curr_onset)
         segment_offsets.append(min(curr_onset + settings['segment_duration'], Probe.n_samples))
-        if segment_offsets[-1] == Probe.n_samples:
+        if segment_offsets[-1] >= Probe.n_samples:
             break
         curr_onset += settings['segment_duration'] - settings['segment_overlap']
     print("Using ", len(segment_onsets), "segments per channel for sorting.")

@@ -233,11 +233,10 @@ class WorkItemSummary(object):
     """
     def __init__(self, sort_data, work_items, sort_info,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
-                 max_mua_ratio=0.05, curr_chan_inds=None, verbose=False):
+                 max_mua_ratio=0.05, verbose=False):
 
         self.check_input_data(sort_data, work_items)
         self.sort_info = sort_info
-        self.curr_chan_inds = curr_chan_inds
         self.n_chans = self.sort_info['n_channels']
         self.n_segments = self.sort_info['n_segments']
         self.duplicate_tol_inds = duplicate_tol_inds
@@ -417,7 +416,9 @@ class WorkItemSummary(object):
                         self.delete_label(chan, seg, l)
 
     def merge_test_two_units(self, clips_1, clips_2, p_cut, method='projection',
-                             split_only=False, merge_only=False):
+                             split_only=False, merge_only=False, curr_chan_inds=None):
+        if self.sort_info['add_peak_valley'] and curr_chan_inds is None:
+            raise ValueError("Must give curr_chan_inds if using peak valley.")
         clips = np.vstack((clips_1, clips_2))
         neuron_labels = np.ones(clips.shape[0], dtype=np.int64)
         neuron_labels[clips_1.shape[0]:] = 2
@@ -426,10 +427,10 @@ class WorkItemSummary(object):
                         self.sort_info['check_components'],
                         self.sort_info['max_components'],
                         add_peak_valley=self.sort_info['add_peak_valley'],
-                        curr_chan_inds=self.curr_chan_inds)
+                        curr_chan_inds=curr_chan_inds)
         elif method.lower() == 'template_pca':
             scores = preprocessing.compute_template_pca(clips, neuron_labels,
-                        self.curr_chan_inds, self.sort_info['check_components'],
+                        curr_chan_inds, self.sort_info['check_components'],
                         self.sort_info['max_components'],
                         add_peak_valley=self.sort_info['add_peak_valley'])
         elif method.lower() == 'projection':
@@ -589,7 +590,7 @@ class WorkItemSummary(object):
                     clips_2 = clips_2[:next_spike_stop, :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='projection', merge_only=True)
+                            method='template_pca', merge_only=True)
 
                     if self.verbose: print("At chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
 
@@ -651,7 +652,7 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='projection', split_only=True)
+                            method='template_pca', split_only=True)
                     if ismerged: # This can happen if the split cutpoint forces
                         continue # a merge so check and skip
 
@@ -1184,7 +1185,6 @@ class WorkItemSummary(object):
         """
         # To the sort data segments into our conventional sorter items by
         # channel independent of segment/work item
-        print("THIS SHOUD RETURN AN SNR FOR EVERY SEGEMENT OF A GIVEN NEURON. THIS COULD BE VERY USEFUL LATER IF COMBINING OVER CHANNELS...")
         crossings, labels, waveforms, new_waveforms = self.get_sort_data_by_chan()
         neuron_summary = []
         for channel in range(0, len(crossings)):
@@ -1259,7 +1259,7 @@ class NeuronSummary(object):
     """
     def __init__(self, neurons,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
-                 max_mua_ratio=0.05, curr_chan_inds=None):
+                 max_mua_ratio=0.05):
         self.neurons = neurons
         self.duplicate_tol_inds = duplicate_tol_inds
         self.absolute_refractory_period = absolute_refractory_period

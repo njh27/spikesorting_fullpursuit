@@ -164,6 +164,7 @@ class TestDataset(object):
 
         if scaled_spike_thresh is None:
             scaled_spike_thresh = 2 * self.amplitude
+        self.scaled_spike_thresh = scaled_spike_thresh
 
         refractory_wins = np.array(refractory_wins)
         if refractory_wins.size == 1:
@@ -275,114 +276,57 @@ class TestDataset(object):
 
         # Enforce test_flag else this will almost surely fail
         par_sort_kwargs['test_flag'] = True
-        raise RuntimeError('Need to change to consolidate summary output!')
+        # Setup electrode TestProbe
+        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
+
+        # Set and save random generator state
         self.random_state = np.random.get_state()
         first_state = self.random_state
         np.random.set_state(first_state)
-        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
         sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
 
-        work_summary = consolidate.WorkItemSummary(neurons[0], neurons[1], single_sort_kwargs, n_chans=self.Probe.num_electrodes)
-        work_summary.stitch_segments()
-        neurons = work_summary.summarize_neurons(sorter_info=None)
+        # Make default work summary to check and organize data
+        single_wis = consolidate.WorkItemSummary(sort_data, work_items, sort_info)
+
 
         np.random.set_state(first_state)
-        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
         sort_data, work_items, sort_info = spikesorting_parallel.spike_sort_parallel(self.Probe, **par_sort_kwargs)
         self.random_state = first_state
 
-        work_summary = consolidate.WorkItemSummary(neurons_parallel[0], neurons_parallel[1], single_sort_kwargs, n_chans=self.Probe.num_electrodes)
-        work_summary.stitch_segments()
-        neurons_parallel = work_summary.summarize_neurons(sorter_info=None)
+        parallel_wis = consolidate.WorkItemSummary(sort_data, work_items, sort_info)
 
-        n_ind = 0
-        for neur, npar in zip(neurons, neurons_parallel):
-            for key in neur.keys():
-                print("testing key", key)
-                if key == 'template':
-                    continue
-                if key == 'new_spike_bool':
-                    if np.all(neur[key] == npar[key]):
-                        print("Neuron {0} {1} same".format(n_ind, key))
-                    else:
-                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
-                    continue
-                if key == 'sort_quality':
-                    continue
-                    # assert neur['sort_quality']['false_positives'] == npar['sort_quality']['false_positives'], "Neuron {0} sort quality false positives differ".format(n_ind)
-                    # assert neur['sort_quality']['false_positives'] == npar['sort_quality']['false_positives'], "Neuron {0} sort quality false positives differ".format(n_ind)
-                elif key == 'waveforms':
-                    # assert np.allclose(neur[key], npar[key], equal_nan=True), "Neuron {0} waveforms differ".format(n_ind)
-                    if np.allclose(neur[key], npar[key], equal_nan=True):
-                        print("Neuron {0} {1} same".format(n_ind, key))
-                    else:
-                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
-                else:
-                    # assert np.all(neur[key] == npar[key]), "Neuron {0} {1} differ".format(n_ind, key)
-                    if np.all(neur[key] == npar[key]):
-                        print("Neuron {0} {1} same".format(n_ind, key))
-                    else:
-                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
-            n_ind += 1
+        for key in single_wis.sort_info.keys():
+            assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key])
+        for key in parallel_wis.sort_info.keys():
+            if key == 'log_dir' or key == 'test_flag':
+                continue
+            assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key])
+        print("All sort info is the SAME.")
 
-        return neurons, neurons_parallel
+        assert len(single_wis.sort_data) == len(parallel_wis.sort_data), "Number of sort_data elements are different"
 
+        # WorkItemSummary rearranges these as a list of channels by segments
+        for chan in range(0, len(single_wis.sort_data)):
+            # Iterate over zipped segments
+            for s, p in zip(single_wis.sort_data[chan], parallel_wis.sort_data[chan]):
+                for data_ind in range(0, len(s)):
+                    assert np.allclose(s[data_ind], p[data_ind], equal_nan=True), "Data item {0} {1} on chan {2} !!! DIFFERENT !!!".format(s[4], data_ind, chan)
+                    # if np.allclose(s[data_ind], p[data_ind], equal_nan=True):
+                    #     print("Data item {0} {1} same".format(s[4], data_ind))
+                    # else:
+                    #     print("Data item {0} {1} !!! DIFFERENT !!!".format(s[4], data_ind))
+            print("All seg data on chan", chan, "is the SAME.")
 
-    def compare_single_vs_single(self, kwargs):
-        """Compare back to back runs of single spike sorter with the same random
-        seed. """
-        single_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
-                              'p_value_cut_thresh': 0.01, 'check_components': None,
-                              'max_components': 10,
-                              'min_firing_rate': 1, 'do_binary_pursuit': False,
-                              'add_peak_valley': False, 'do_ZCA_transform': True,
-                              'do_branch_PCA': True, 'use_GPU': True,
-                              'max_gpu_memory': None,
-                              'use_rand_init': True,
-                              'cleanup_neurons': False,
-                              'verbose': True}
-        for key in kwargs:
-            single_sort_kwargs[key] = kwargs[key]
+        assert len(single_wis.work_items) == len(parallel_wis.work_items), "Number of work_items elements are different"
 
-        self.random_state = np.random.get_state()
-        first_state = self.random_state
-        np.random.set_state(first_state)
-        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        neurons_1 = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
+        # WorkItemSummary rearranges these as a list of channels by segments
+        for chan in range(0, len(single_wis.sort_data)):
+            # Iterate over zipped segments
+            for s, p in zip(single_wis.work_items[chan], parallel_wis.work_items[chan]):
+                for key in s.keys():
+                    assert np.all(s[key] == p[key]), "Data item {0} {1} on chan {2} !!! DIFFERENT !!!".format(s['ID'], key, chan)
+                for key in p.keys():
+                    assert np.all(s[key] == p[key]), "Data item {0} {1} on chan {2} !!! DIFFERENT !!!".format(s['ID'], key, chan)
+            print("All seg work items on chan", chan, "are the SAME.")
 
-        np.random.set_state(first_state)
-        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        neurons_2 = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
-        self.random_state = first_state
-
-        n_ind = 0
-        for n1, n2 in zip(neurons_1, neurons_2):
-            for key in n1.keys():
-                print("testing key", key)
-                if key == 'template':
-                    continue
-                if key == 'new_spike_bool':
-                    if np.all(n1[key] == n2[key]):
-                        print("Neuron {0} {1} same".format(n_ind, key))
-                    else:
-                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
-                    continue
-                if key == 'sort_quality':
-                    continue
-                    # assert n1['sort_quality']['false_positives'] == n2['sort_quality']['false_positives'], "Neuron {0} sort quality false positives differ".format(n_ind)
-                    # assert n1['sort_quality']['false_positives'] == n2['sort_quality']['false_positives'], "Neuron {0} sort quality false positives differ".format(n_ind)
-                elif key == 'waveforms':
-                    # assert np.allclose(n1[key], n2[key], equal_nan=True), "Neuron {0} waveforms differ".format(n_ind)
-                    if np.allclose(n1[key], n2[key], equal_nan=True):
-                        print("Neuron {0} {1} same".format(n_ind, key))
-                    else:
-                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
-                else:
-                    # assert np.all(n1[key] == n2[key]), "Neuron {0} {1} differ".format(n_ind, key)
-                    if np.all(n1[key] == n2[key]):
-                        print("Neuron {0} {1} same".format(n_ind, key))
-                    else:
-                        print("Neuron {0} {1} !!! DIFFERENT !!!".format(n_ind, key))
-            n_ind += 1
-
-        return neurons_1, neurons_2
+        return single_wis, parallel_wis

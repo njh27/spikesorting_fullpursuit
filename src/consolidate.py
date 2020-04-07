@@ -114,8 +114,38 @@ def remove_spike_event_duplicates(event_indices, clips, unit_template, tol_inds=
     next_index = 1
     while next_index < event_indices.size:
         if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
-            projections = clips[curr_index:next_index+1, :] @ template_norm
+            projections = np.vstack((clips[curr_index, :], clips[next_index, :])) @ template_norm
             if projections[0] >= projections[1]:
+                # current spike is better or equal
+                keep_bool[next_index] = False
+                next_index += 1
+            else:
+                # next spike is better
+                keep_bool[curr_index] = False
+                curr_index = next_index
+                next_index += 1
+        else:
+            curr_index = next_index
+            next_index += 1
+
+    return keep_bool
+
+
+def remove_spike_event_duplicates_across_chans(event_indices, clips, thresholds,
+                                               tol_inds=1):
+    """
+    """
+    keep_bool = np.ones(event_indices.size, dtype=np.bool)
+    curr_index = 0
+    next_index = 1
+    while next_index < event_indices.size:
+        if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
+            curr_thresh_ratio = (np.amax(clips[curr_index, :]) - np.amin(clips[curr_index, :])) \
+                                / thresholds[curr_index]
+            next_thresh_ratio = (np.amax(clips[next_index, :]) - np.amin(clips[next_index, :])) \
+                                / thresholds[next_index]
+            # Choose the clip with higher signal to threshold ratio
+            if curr_thresh_ratio >= next_thresh_ratio:
                 # current spike is better or equal
                 keep_bool[next_index] = False
                 next_index += 1
@@ -226,6 +256,48 @@ def calculate_expected_overlap(n1, n2, overlap_time, sampling_rate):
     expected_overlap = (overlap_time * 1000 * n1_count * n2_count) / num_ms
 
     return expected_overlap
+
+
+def calc_isi_violation_rate(spike_indices, sampling_rate,
+        absolute_refractory_period, duplicate_tol_inds):
+    """ Compute the spiking activity that occurs during the ISI violation
+    period, absolute_refractory_period, relative to the total number of
+    spikes within the given segment, 'seg' and unit label 'label'.
+    spike_indices must be in sorted order for this to work. """
+
+    index_isi = np.diff(spike_indices)
+    num_isi_violations = np.count_nonzero(index_isi / sampling_rate
+                                          < absolute_refractory_period)
+    n_duplicates = np.count_nonzero(index_isi <= duplicate_tol_inds)
+    # Remove duplicate spikes from this computation and adjust the number
+    # of spikes and time window accordingly
+    num_isi_violations -= n_duplicates
+    refractory_adjustment = 0. #duplicate_tol_inds / sampling_rate
+    isi_violation_rate = num_isi_violations \
+                         * (1.0 / (absolute_refractory_period - refractory_adjustment))\
+                         / (spike_indices.size - n_duplicates)
+    return isi_violation_rate
+
+def mean_firing_rate(spike_indices, sampling_rate):
+    """ Compute mean firing rate for input spike indices. Spike indices must be
+    in sorted order for this to work. """
+    if spike_indices[0] == spike_indices[-1]:
+        return 0. # Only one spike
+    mean_rate = sampling_rate * spike_indices.size / (spike_indices[-1] - spike_indices[0])
+    return mean_rate
+
+def fraction_mua(spike_indices, sampling_rate, absolute_refractory_period,
+                 duplicate_tol_inds):
+    """ Estimate the fraction of noise/multi-unit activity (MUA) using analysis
+    of ISI violations. We do this by looking at the spiking activity that
+    occurs during the ISI violation period. """
+    isi_violation_rate = calc_isi_violation_rate(spike_indices, sampling_rate,
+                                absolute_refractory_period, duplicate_tol_inds)
+    mean_rate = mean_firing_rate(spike_indices, sampling_rate)
+    if mean_rate == 0.:
+        return 0.
+    else:
+        return isi_violation_rate / mean_rate
 
 
 class WorkItemSummary(object):
@@ -794,6 +866,9 @@ class WorkItemSummary(object):
                     neuron["channel"] = self.work_items[chan][seg]['channel']
                     neuron['neighbors'] = self.work_items[chan][seg]['neighbors']
                     neuron['chan_neighbor_ind'] = self.work_items[chan][seg]['chan_neighbor_ind']
+                    neuron['segment'] = self.work_items[chan][seg]['seg_number']
+                    assert neuron['segment'] == seg, "Somethings messed up here?"
+                    assert neuron['channel'] == chan
 
                     select_label = self.sort_data[chan][seg][1] == neuron_label
                     neuron["spike_indices"] = self.sort_data[chan][seg][0][select_label]
@@ -832,6 +907,7 @@ class WorkItemSummary(object):
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
                     neuron['fraction_mua'] = self.get_fraction_mua(chan, seg, neuron_label)
+                    neuron['threshold'] = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['channel']]
                     self.neuron_summary_by_seg[seg].append(neuron)
 
     def remove_redundant_neurons(self, neurons, overlap_time=2.5e-4, overlap_ratio_threshold=2):
@@ -1012,27 +1088,73 @@ class WorkItemSummary(object):
     def join_neuron_dicts(self, unit_dicts_list):
         """
         """
+        if len(unit_dicts_list) == 0:
+            return {}
         combined_neuron = {}
-        combined_neuron["channel"] = [unit_dicts_list[0]['channel']]
-        combined_neuron['neighbors'] = [unit_dicts_list[0]['neighbors']]
-        for ind in range(1, len(unit_dicts_list)):
-            if unit_dicts_list[ind]['channel'] not in combined_neuron["channel"]:
-                combined_neuron["channel"].append(unit_dicts_list[ind]['channel'])
-                combined_neuron['neighbors'].append(unit_dicts_list[ind]['neighbors'])
+        combined_neuron['summary_type'] = 'across_channels'
+        # Since a neuron can exist over multiple channels, we need to discover
+        # all the channels that are present and track which channel data
+        # correspond to
+        combined_neuron['channel'] = []
+        combined_neuron['neighbors'] = {}
+        combined_neuron['chan_neighbor_ind'] = {}
+        n_total_spikes = 0
+        for x in unit_dicts_list:
+            n_total_spikes += x['spike_indices'].shape[0]
+            if x['channel'] not in combined_neuron['channel']:
+                combined_neuron["channel"].append(x['channel'])
+                combined_neuron['neighbors'][x['channel']] = x['neighbors']
+                combined_neuron['chan_neighbor_ind'][x['channel']] = x['chan_neighbor_ind']
+        n_total_channels = len(combined_neuron['channel'])
 
-        combined_neuron["spike_indices"] = np.hstack([x['spike_indices'] for x in unit_dicts_list])
-        combined_neuron['waveforms'] = np.vstack([x['waveforms'] for x in unit_dicts_list])
-        combined_neuron["new_spike_bool"] = np.hstack([x['new_spike_bool'] for x in unit_dicts_list])
+        chan_to_ind_map = {}
+        for ind, chan in enumerate(combined_neuron['channel']):
+            chan_to_ind_map[chan] = ind
+
+        channel_selector = []
+        indices_by_unit = []
+        waveforms_by_unit = []
+        new_spike_bool_by_unit = []
+        threshold_by_unit = []
+        segment_by_unit = []
+        snr_by_unit = []
+        for unit in unit_dicts_list:
+            n_unit_events = unit['spike_indices'].size
+            if n_unit_events == 0:
+                continue
+
+            indices_by_unit.append(unit['spike_indices'])
+            waveforms_by_unit.append(unit['waveforms'])
+            new_spike_bool_by_unit.append(unit['new_spike_bool'])
+            # Make and append a bunch of book keeping numpy arrays
+            channel_selector.append(np.full(n_unit_events, unit['channel']))
+            threshold_by_unit.append(np.full(n_unit_events, unit['threshold']))
+            segment_by_unit.append(np.full(n_unit_events, unit['segment']))
+            snr_by_unit.append(np.full(n_unit_events, unit['snr']))
+
+        # Now combine everything into one
+        channel_selector = np.hstack(channel_selector)
+        threshold_by_unit = np.hstack(threshold_by_unit)
+        segment_by_unit = np.hstack(segment_by_unit)
+        snr_by_unit = np.hstack(snr_by_unit)
+        combined_neuron["spike_indices"] = np.hstack(indices_by_unit)
+        combined_neuron['waveforms'] = np.vstack(waveforms_by_unit)
+        combined_neuron["new_spike_bool"] = np.hstack(new_spike_bool_by_unit)
 
         # NOTE: This still needs to be done even though segments
         # were ordered because of overlap!
-        # Ensure spike times are ordered. Must use 'stable' sort for
+        # Ensure everything is ordered. Must use 'stable' sort for
         # output to be repeatable because overlapping segments and
         # binary pursuit can return slightly different dupliate spikes
         spike_order = np.argsort(combined_neuron["spike_indices"], kind='stable')
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][spike_order]
         combined_neuron['waveforms'] = combined_neuron['waveforms'][spike_order, :]
         combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][spike_order]
+        channel_selector = channel_selector[spike_order]
+        threshold_by_unit = threshold_by_unit[spike_order]
+        segment_by_unit = segment_by_unit[spike_order]
+        snr_by_unit = snr_by_unit[spike_order]
+
         # Remove duplicates found in binary pursuit
         keep_bool = remove_binary_pursuit_duplicates(combined_neuron["spike_indices"],
                         combined_neuron["new_spike_bool"],
@@ -1040,22 +1162,51 @@ class WorkItemSummary(object):
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
         combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]
         combined_neuron['waveforms'] = combined_neuron['waveforms'][keep_bool, :]
+        channel_selector = channel_selector[keep_bool]
+        threshold_by_unit = threshold_by_unit[keep_bool]
+        segment_by_unit = segment_by_unit[keep_bool]
+        snr_by_unit = snr_by_unit[keep_bool]
+
+        # Compute waveform of each spike on its main channel
+        combined_neuron['main_waveforms'] = np.zeros((combined_neuron['waveforms'].shape[0], self.sort_info['n_samples_per_chan']))
+        # And get their channel of origin while we are at it
+        combined_neuron['channel_selector'] = {}
+        for chan in combined_neuron['channel']:
+            main_win = [self.sort_info['n_samples_per_chan'] * combined_neuron['chan_neighbor_ind'][chan],
+                        self.sort_info['n_samples_per_chan'] * (combined_neuron['chan_neighbor_ind'][chan] + 1)]
+            chan_select = channel_selector == chan
+            combined_neuron['channel_selector'][chan] = chan_select
+            combined_neuron['main_waveforms'][chan_select, :] = combined_neuron['waveforms'][chan_select, main_win[0]:main_win[1]]
 
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping
-        # the waveform best aligned to the template
-        combined_neuron["template"] = np.mean(combined_neuron['waveforms'], axis=0)
-        keep_bool = remove_spike_event_duplicates(combined_neuron["spike_indices"],
-                        combined_neuron['waveforms'], combined_neuron["template"],
+        # the waveform with largest peak-value to threshold ratio on its main
+        # channel
+        keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron["spike_indices"],
+                        combined_neuron['main_waveforms'], threshold_by_unit,
                         tol_inds=self.duplicate_tol_inds)
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
         combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]
         combined_neuron['waveforms'] = combined_neuron['waveforms'][keep_bool, :]
+        combined_neuron['main_waveforms'] = combined_neuron['main_waveforms'][keep_bool, :]
+        for chan in combined_neuron['channel']:
+            combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
+        channel_selector = channel_selector[keep_bool]
+        threshold_by_unit = threshold_by_unit[keep_bool]
+        segment_by_unit = segment_by_unit[keep_bool]
+        snr_by_unit = snr_by_unit[keep_bool]
 
-        # Recompute template and store output
-        combined_neuron["template"] = np.mean(combined_neuron['waveforms'], axis=0)
-        # combined_neuron['snr'] = self.get_snr(chan, seg, combined_neuron["template"], rescale_template=True)
-        # combined_neuron['fraction_mua'] = self.get_fraction_mua(chan, seg, neuron_label)
+        # Recompute things of interest by channel and store for output
+        combined_neuron["template"] = {}
+        combined_neuron["snr"] = {}
+        for chan in combined_neuron['channel']:
+            combined_neuron["template"][chan] = np.mean(
+                combined_neuron['waveforms'][combined_neuron['channel_selector'][chan], :], axis=0)
+            combined_neuron['snr'][chan] = np.mean(snr_by_unit[combined_neuron['channel_selector'][chan]])
+        combined_neuron['fraction_mua'] = fraction_mua(combined_neuron["spike_indices"],
+                                            self.sort_info['sampling_rate'],
+                                            self.absolute_refractory_period,
+                                            self.duplicate_tol_inds)
         return combined_neuron
 
     def summarize_neurons_across_channels(self, overlap_time=2.5e-4, min_overlap_ratio=0.5):
@@ -1214,6 +1365,7 @@ class WorkItemSummary(object):
                 continue
             for ind, neuron_label in enumerate(np.unique(labels[channel])):
                 neuron = {}
+                neuron['summary_type'] = 'single_channel'
                 try:
                     neuron['sort_info'] = self.sort_info
                     neuron['sort_quality'] = None
@@ -1274,66 +1426,6 @@ class WorkItemSummary(object):
                 neuron_summary.append(neuron)
         return neuron_summary
 
-
-class NeuronSummary(object):
-    """
-    """
-    def __init__(self, neurons,
-                 duplicate_tol_inds=1, absolute_refractory_period=10e-4,
-                 max_mua_ratio=0.05):
-        self.neurons = neurons
-        self.duplicate_tol_inds = duplicate_tol_inds
-        self.absolute_refractory_period = absolute_refractory_period
-        self.max_mua_ratio = max_mua_ratio
-
-    def snr(self):
-        """ Return SNR relative to 3 * background_noise_std. """
-        range = np.amax(self.neurons['template']) - np.amin(self.neurons['template'])
-        background_noise_std = self.neurons['thresholds'][self.neurons['chan_neighbor_ind']] / sigma
-        return range / (3 * background_noise_std)
-
-    def isi_violation_rate(self, neur):
-        """ Compute the spiking activity that occurs during the ISI violation
-        period, absolute_refractory_period, relative to the total number of
-        spikes for neuron number 'neur'. """
-        if self.neurons[neur]['spike_indices'].shape[0] < 2:
-            raise ValueError("Neuron has less than 2 spikes, can't compute ISIs.")
-        index_isi = np.diff(self.neurons[neur]['spike_indices'])
-        num_isi_violations = np.count_nonzero(index_isi / self.neurons[neur]['sort_info']['sampling_rate']
-                                              < self.absolute_refractory_period)
-        n_duplicates = np.count_nonzero(index_isi <= self.duplicate_tol_inds)
-        # Remove duplicate spikes from this computation and adjust the number
-        # of spikes and time window accordingly
-        num_isi_violations -= n_duplicates
-        refractory_adjustment = self.duplicate_tol_inds / self.neurons[neur]['sort_info']['sampling_rate']
-        isi_violation_rate = num_isi_violations \
-                             * (1.0 / (self.absolute_refractory_period - refractory_adjustment))\
-                             / (self.neurons[neur]['spike_indices'].shape[0] - n_duplicates)
-        return isi_violation_rate
-
-    def mean_firing_rate(self, neur):
-        """ Compute mean firing rate for the input neuron 'neur'. """
-        if self.neurons[neur]['spike_indices'].shape[0] < 2:
-            raise ValueError("Neuron has less than 2 spikes, can't compute mean firing rate.")
-        mean_rate = self.neurons[neur]['sort_info']['sampling_rate'] \
-                    * self.neurons[neur]['spike_indices'].shape[0] \
-                    / (self.neurons[neur]['spike_indices'][-1] - self.neurons[neur]['spike_indices'][0])
-        return mean_rate
-
-    def fraction_mua(self, neur):
-        """ Estimate the fraction of noise/multi-unit activity (MUA) using analysis
-        of ISI violations. We do this by looking at the spiking activity that
-        occurs during the ISI violation period. """
-        violation_rate = self.isi_violation_rate(neur)
-        mean_rate = self.mean_firing_rate(neur)
-        return violation_rate / mean_rate
-
-    def delete_mua_neurons(self):
-        for n_ind, n in enumerate(self.neurons):
-            mua_ratio = self.fraction_mua(n_ind)
-            print(n_ind, mua_ratio)
-            if mua_ratio > self.max_mua_ratio:
-                pass
 
 
 

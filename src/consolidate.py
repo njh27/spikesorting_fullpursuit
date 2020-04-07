@@ -863,6 +863,7 @@ class WorkItemSummary(object):
             for chan in range(0, self.n_chans):
                 for ind, neuron_label in enumerate(np.unique(self.sort_data[chan][seg][1])):
                     neuron = {}
+                    neuron['summary_type'] = 'single_segment'
                     neuron["channel"] = self.work_items[chan][seg]['channel']
                     neuron['neighbors'] = self.work_items[chan][seg]['neighbors']
                     neuron['chan_neighbor_ind'] = self.work_items[chan][seg]['chan_neighbor_ind']
@@ -1196,7 +1197,8 @@ class WorkItemSummary(object):
         segment_by_unit = segment_by_unit[keep_bool]
         snr_by_unit = snr_by_unit[keep_bool]
 
-        # Recompute things of interest by channel and store for output
+        # Recompute things of interest like SNR and templates by channel as the
+        # average over all data from that channel and store for output
         combined_neuron["template"] = {}
         combined_neuron["snr"] = {}
         for chan in combined_neuron['channel']:

@@ -6,7 +6,7 @@ from spikesorting_python.src import consolidate
 
 
 
-def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0.33e-3, align_window=[-4e-4, 4e-4]):
+def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0., align_window=[-5e-4, 5e-4]):
 
     skip_indices = max(int(round(skip * probe_dict['sampling_rate'])), 1) - 1
     # Working with ABSOLUTE voltage here
@@ -45,70 +45,6 @@ def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0.33e
         else:
             last_n = n
     events = events[~bad_index]
-
-    return events
-
-
-def make_noise_crossings(chan_voltage, probe_dict, real_crossings, n_noise_crossings, clip_width=[-2e-4, 4e-4], skip=0.33e-3, align_window=[-4e-4, 4e-4]):
-
-    real_crossings_cc = np.copy(real_crossings)
-    real_crossings_cc.sort()
-    skip_indices = max(int(round(skip * probe_dict['sampling_rate'])), 1) - 1
-    window = time_window_to_samples(align_window, probe_dict['sampling_rate'])[0]
-
-    # Compute window centered on each real crossing such that randomly chosen noise events
-    # will not overlap with actual spikes, given the clip_width and align_windows
-    total_crossing_window = time_window_to_samples(np.add(clip_width, align_window), probe_dict['sampling_rate'])[0]
-    remove_inds = []
-    for cr in real_crossings_cc:
-        remove_inds.append(np.arange(cr+total_crossing_window[0], cr+total_crossing_window[1]))
-    remove_inds = np.hstack(remove_inds)
-    # Ensure these cannot overlap with beginning and end of voltage trace
-    noise_choices = np.arange(np.abs(total_crossing_window[0]), probe_dict['n_samples']-np.abs(total_crossing_window[1]))
-    noise_choices = noise_choices[np.in1d(noise_choices, remove_inds, invert=True)]
-    events = np.random.choice(noise_choices, n_noise_crossings, replace=False)
-    events.sort()
-
-    n_iter = 0
-    while True:
-        if n_iter > 10:
-            break
-        # Realign event times on min or max in align_window
-        # for evt in range(0, events.size):
-        #     start = max(0, events[evt] + window[0]) # Start maximally at 0 or event plus window
-        #     stop = min(probe_dict['n_samples'] - 1, events[evt] + window[1])# Stop minmally at event plus window or last index
-        #     window_clip = chan_voltage[start:stop]
-        #     max_index = np.argmax(window_clip) # Gets FIRST max in window
-        #     max_value = window_clip[max_index]
-        #     min_index = np.argmin(window_clip)
-        #     min_value = window_clip[min_index]
-        #     if max_value > -2 * min_value:
-        #         # Max value is huge compared to min value, use max index
-        #         events[evt] = start + max_index
-        #     elif min_value < -2 * max_value:
-        #         # Min value is huge (negative) compared to max, use min index
-        #         events[evt] = start + min_index
-        #     else:
-        #         # Arbitrarily choose the negative going peak
-        #         events[evt] = start + min_index
-
-        # Remove events that follow preceeding valid event by less than skip_indices samples
-        bad_index = np.zeros(events.shape[0], dtype='bool')
-        # bad_index = consolidate.find_overlapping_spike_bool(real_crossings_cc, events, max_samples=np.amax(window), except_equal=False)
-        last_n = 0
-        for n in range(1, events.shape[0]):
-            if events[n] - events[last_n] < skip_indices:
-                bad_index[n] = True
-            else:
-                last_n = n
-        n_bad = np.count_nonzero(bad_index)
-        if n_bad > 0:
-            events = events[~bad_index]
-            events = np.hstack((events, np.random.choice(noise_choices, n_bad, replace=False)))
-            events.sort()
-        else:
-            break
-        n_iter += 1
 
     return events
 
@@ -166,7 +102,7 @@ def calculate_templates(clips, neuron_labels):
     return templates, labels
 
 
-def align_events_with_template(probe_dict, chan_voltage, neuron_labels, event_indices, clip_width=[-2e-4, 4e-4]):
+def align_events_with_template(probe_dict, chan_voltage, neuron_labels, event_indices, clip_width):
     """ Takes the input data for ONE channel and computes the cross correlation
         of each spike with each template on the channel USING SINGLE CHANNEL CLIPS
         ONLY.  The spike time is then aligned with the peak cross correlation lag.
@@ -246,39 +182,6 @@ def get_zero_phase_kernel(x, x_center):
     return kernel
 
 
-def check_for_duplicate_spikes(clips, event_indices, neuron_labels, min_samples):
-    """ DATA MUST BE SORTED IN ORDER OF EVENT INDICES FOR THIS TO WORK.  Duplicates
-        are only removed within each neuron label.
-    """
-
-    keep_bool = np.ones(event_indices.size, dtype='bool')
-    templates, labels = calculate_templates(clips, neuron_labels)
-    template_norm = []
-    for t in templates:
-        template_norm.append(t / np.linalg.norm(t))
-    for neuron in labels:
-        curr_spikes = np.nonzero(neuron_labels == neuron)[0]
-        curr_index = 0
-        next_index = 1
-        while next_index < curr_spikes.size:
-            if event_indices[curr_spikes[next_index]] - event_indices[curr_spikes[curr_index]] < min_samples:
-                projections = clips[(curr_spikes[curr_index], curr_spikes[next_index]), :] @ template_norm[np.nonzero(neuron == labels)[0][0]]
-                if projections[0] > projections[1]:
-                    # current spike is better
-                    keep_bool[curr_spikes[next_index]] = False
-                    next_index += 1
-                else:
-                    # next spike is better
-                    keep_bool[curr_spikes[curr_index]] = False
-                    curr_index = next_index
-                    next_index += 1
-            else:
-                curr_index = next_index
-                next_index += 1
-
-    return keep_bool
-
-
 """
     get_clips(Probe, event_indices, clip_width)
 
@@ -289,7 +192,7 @@ This is done over all channels on probes, so threshold crossings input in
 event_indices must be a list where each element contains a numpy array of
 threshold crossing indices for the corresponding electrode in the Probe object.
 event_indices that yield a clip width beyond data boundaries are ignored. """
-def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width=[-2e-4, 4e-4], thresholds=None):
+def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width):
 
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
@@ -317,9 +220,6 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width=
     spike_clips = np.empty((np.count_nonzero(valid_event_indices), window[1] - window[0]))
     for out_ind, spk in enumerate(range(start_ind, stop_ind+1)): # Add 1 to index through last valid index
         spike_clips[out_ind, :] = chan_voltage[event_indices[spk]+window[0]:event_indices[spk]+window[1]]
-        if thresholds is not None:
-            # Rescale by channel noise
-            spike_clips[out_ind, :] /= thresholds
 
     return spike_clips, valid_event_indices
 
@@ -331,7 +231,7 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width=
     input in the list 'channels' in the order that they appear.  Event indices
     is a single one dimensional array of indices over which clips from all input
     channels will be aligned.  """
-def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width=[-2e-4, 4e-4], neighbor_thresholds=None):
+def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width):
 
     if event_indices.ndim > 1:
         raise ValueError("Event_indices must be one dimensional array of indices")
@@ -368,9 +268,6 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
             chan_ind += 1
             stop = chan_ind * (window[1] - window[0])
             spike_clips[out_ind, start:stop] = neighbor_voltage[chan, event_indices[spk]+window[0]:event_indices[spk]+window[1]]
-            if neighbor_thresholds is not None:
-                # Rescale by channel noise
-                spike_clips[out_ind, start:stop] /= neighbor_thresholds[chan]
             # Subtract start ind above to adjust for discarded events
             start = stop
 
@@ -378,12 +275,8 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
 
 
 def get_adjusted_clips(probe_dict, neighbor_voltage, channel, neighbors, clips, event_indices, neuron_labels, input_clip_width, output_clip_width):
-    """ Input clips are assumed to be threshold normalized.  Templates
-        will be made from clips, then un-normalized for subtraction from the voltage trace, which is assumed to
-        be NON-normalized.  These are normalized again so that threshold normalized adjusted clips are returned.
-        If none of this is true, using all input thresholds == 1 will have no effect.
     """
-
+    """
     output_clip_width, _, output_chan_win, output_samples_per_chan, _ = get_windows_and_indices(output_clip_width, probe_dict['sampling_rate'], channel, neighbors)
     input_clip_width, _, input_chan_win, input_samples_per_chan, _ = get_windows_and_indices(input_clip_width, probe_dict['sampling_rate'], channel, neighbors)
     valid_event_indices = np.logical_and(event_indices > np.abs(output_chan_win[0]), event_indices < probe_dict['n_samples'] - output_chan_win[1])
@@ -396,11 +289,6 @@ def get_adjusted_clips(probe_dict, neighbor_voltage, channel, neighbors, clips, 
         neighbor_voltage = neighbor_voltage.reshape(1, -1)
     if neighbors.size != neighbor_voltage.shape[0]:
         raise ValueError("Neighbors and neighbor_voltage MUST MATCH.")
-
-    # Need to un-normalize templates because Probe voltage is NOT normalized to threshold
-    for t in templates:
-        for ind, neigh in enumerate(np.nditer(neighbors)):
-            t[ind*output_samples_per_chan:output_samples_per_chan*(ind+1)] *= probe_dict['thresholds'][neigh]
 
     # Get adjusted clips at all spike times
     adjusted_clips = np.empty((event_indices.size, output_samples_per_chan * neighbors.size))
@@ -422,7 +310,6 @@ def get_adjusted_clips(probe_dict, neighbor_voltage, channel, neighbors, clips, 
             for spk_event in current_spike_indices:
                 residual_voltage[event_indices[spk_event]+input_chan_win[0]:event_indices[spk_event]+input_chan_win[1]] += temp[input_slice]
                 adjusted_clips[spk_event, output_slice] = residual_voltage[event_indices[spk_event]+output_chan_win[0]:event_indices[spk_event]+output_chan_win[1]]
-                adjusted_clips[spk_event, output_slice] /= probe_dict['thresholds'][neighbors[neigh_ind]]
                 residual_voltage[event_indices[spk_event]+input_chan_win[0]:event_indices[spk_event]+input_chan_win[1]] -= temp[input_slice]
 
     return adjusted_clips, event_indices, neuron_labels, valid_event_indices

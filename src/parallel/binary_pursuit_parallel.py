@@ -13,7 +13,7 @@ from scipy.signal import fftconvolve
 
 
 def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
-                   event_indices, neuron_labels, clip_width, thresholds=None,
+                   event_indices, neuron_labels, clip_width,
                    kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
@@ -65,15 +65,15 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                                         clip_samples[1]-clip_samples[0])
     neuron_labels = neuron_labels[~removed_index]
 
-    # Get clips NOT THRESHOLD NORMALIZED since raw voltage is not normalized
-    clips, valid_inds = segment_parallel.get_singlechannel_clips(probe_dict, neighbor_voltage[master_channel_index, :], event_indices, clip_width=clip_width, thresholds=None)
+    # Get clips for templates to subtract
+    clips, valid_inds = segment_parallel.get_singlechannel_clips(probe_dict, neighbor_voltage[master_channel_index, :], event_indices, clip_width=clip_width)
     event_indices, neuron_labels = segment_parallel.keep_valid_inds([event_indices, neuron_labels], valid_inds)
     # Remove clusters that are overlaps of different spikes
     neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, probe_dict['sampling_rate'], clip_width, 0.75)
     event_indices, neuron_labels, valid_inds = segment_parallel.align_events_with_template(probe_dict, neighbor_voltage[master_channel_index, :], neuron_labels, event_indices, clip_width=clip_width)
 
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
-    clips, valid_inds = segment_parallel.get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width=clip_width, neighbor_thresholds=None)
+    clips, valid_inds = segment_parallel.get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width=clip_width)
     event_indices, neuron_labels = segment_parallel.keep_valid_inds([event_indices, neuron_labels], valid_inds)
 
     # Ensure our neuron_labels go from 0 to M - 1 (required for kernels)
@@ -471,11 +471,6 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
     new_spike_bool = np.hstack(secret_spike_bool)
     # Realign events with center of spike
     event_indices += clip_init_samples
-
-    if thresholds is not None:
-        for n_chan in range(0, n_neighbor_chans):
-            nt_win = [n_chan*template_samples_per_chan, n_chan*template_samples_per_chan + template_samples_per_chan]
-            adjusted_clips[:, nt_win[0]:nt_win[1]] /= thresholds[n_chan]
 
     print("Found a total of", np.count_nonzero(new_spike_bool), "secret spikes", flush=True)
 

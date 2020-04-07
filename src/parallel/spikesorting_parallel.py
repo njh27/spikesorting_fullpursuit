@@ -46,7 +46,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
     settings['check_components'] = None # Number of PCs to check. None means all
     settings['max_components'] = 10 # Max number to use, of those checked
-    settings['min_firing_rate'] = 1. # Neurons that first less than this threshold (spk/s) are removed
+    settings['min_firing_rate'] = 1. # Neurons with fewer threshold crossings than this are removed
     settings['p_value_cut_thresh'] = 0.05
     settings['do_binary_pursuit'] = True
     settings['use_GPU'] = True # Force algorithms to run on the CPU rather than the GPU
@@ -375,7 +375,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         exit_type = "Found crossings"
 
         median_cluster_size = min(100, int(np.around(crossings.size / 1000)))
-        clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'], neighbor_thresholds=item_dict['thresholds'][neighbors])
+        clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
         crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
         _, _, clip_samples, _, curr_chan_inds = segment_parallel.get_windows_and_indices(settings['clip_width'], item_dict['sampling_rate'], chan, neighbors)
 
@@ -400,7 +400,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
 
         # Realign spikes based on correlation with current cluster templates before branching
         crossings, neuron_labels, _ = segment_parallel.align_events_with_template(item_dict, voltage[chan, :], neuron_labels, crossings, clip_width=settings['clip_width'])
-        clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'], neighbor_thresholds=item_dict['thresholds'][neighbors])
+        clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
         crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
         # Realign any units that have a template with peak > valley
         crossings, units_shifted = check_upward_neurons(clips, crossings,
@@ -411,8 +411,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if len(units_shifted) > 0:
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                             item_dict, voltage[neighbors, :],
-                                            crossings, clip_width=settings['clip_width'],
-                                            neighbor_thresholds=item_dict['thresholds'][neighbors])
+                                            crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment_parallel.keep_valid_inds(
                     [crossings, neuron_labels], valid_event_indices)
 
@@ -479,8 +478,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if len(units_shifted) > 0:
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                             item_dict, voltage[neighbors, :],
-                                            crossings, clip_width=settings['clip_width'],
-                                            neighbor_thresholds=item_dict['thresholds'][neighbors])
+                                            crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment_parallel.keep_valid_inds(
                     [crossings, neuron_labels], valid_event_indices)
 
@@ -496,18 +494,17 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 neuron_labels, crossings,
                                 settings['clip_width'])
-                clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'], neighbor_thresholds=item_dict['thresholds'][neighbors])
+                clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
                 crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
             else:
                 with data_dict['gpu_lock']:
                     crossings, neuron_labels, new_inds, clips = binary_pursuit_parallel.binary_pursuit(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 crossings, neuron_labels, settings['clip_width'],
-                                thresholds=item_dict['thresholds'][neighbors],
                                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
             exit_type = "Finished binary pursuit"
         else:
-            clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'], neighbor_thresholds=item_dict['thresholds'][neighbors])
+            clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
             new_inds = np.zeros(crossings.size, dtype='bool')
 
@@ -757,8 +754,6 @@ def spike_sort_parallel(Probe, **kwargs):
                 if sort_data[-1][0].size > 0:
                     # Adjust crossings for segment start time
                     sort_data[-1][0] += w_item['index_window'][0]
-            # Trim thresholds to only include neighbors
-            w_item['thresholds'] = w_item['thresholds'][w_item['neighbors']]
         else:
             # This work item found nothing (or raised an exception)
             sort_data.append([[], [], [], [], w_item['ID']])

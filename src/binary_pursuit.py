@@ -13,7 +13,7 @@ os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
 
 
 def binary_pursuit(Probe, channel, event_indices, neuron_labels,
-        clip_width, thresholds=None, kernels_path=None, max_gpu_memory=None):
+        clip_width, kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
 
@@ -56,15 +56,15 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                                         clip_samples[1]-clip_samples[0])
     neuron_labels = neuron_labels[~removed_index]
 
-    # Get clips NOT THRESHOLD NORMALIZED since raw voltage is not normalized
-    clips, valid_inds = segment.get_singlechannel_clips(Probe, channel, event_indices, clip_width=clip_width, thresholds=None)
+    # Get clips for templates to subtract
+    clips, valid_inds = segment.get_singlechannel_clips(Probe, channel, event_indices, clip_width=clip_width)
     event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
     # Remove clusters that are overlaps of different spikes
     neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, Probe.sampling_rate, clip_width, 0.75)
     event_indices, neuron_labels, valid_inds = segment.align_events_with_template(Probe, channel, neuron_labels, event_indices, clip_width=clip_width)
 
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
-    clips, valid_inds = segment.get_multichannel_clips(Probe, Probe.get_neighbors(channel), event_indices, clip_width=clip_width, thresholds=None)
+    clips, valid_inds = segment.get_multichannel_clips(Probe, Probe.get_neighbors(channel), event_indices, clip_width=clip_width)
     event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
 
     # Ensure our neuron_labels go from 0 to M - 1 (required for kernels)
@@ -464,11 +464,6 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     new_spike_bool = np.hstack(secret_spike_bool)
     # Realign events with center of spike
     event_indices += clip_init_samples
-
-    if thresholds is not None:
-        for n_ind, n_chan in enumerate(neighbors):
-            nt_win = [n_ind*template_samples_per_chan, n_ind*template_samples_per_chan + template_samples_per_chan]
-            adjusted_clips[:, nt_win[0]:nt_win[1]] /= thresholds[n_chan]
 
     print("Found a total of", np.count_nonzero(new_spike_bool), "secret spikes", flush=True)
 

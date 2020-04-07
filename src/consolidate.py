@@ -342,30 +342,12 @@ class WorkItemSummary(object):
                 self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][spike_order, :]
                 self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][spike_order]
 
-                for c_ind in range(0, self.n_chans):
-                    chan_win = [self.sort_info['n_samples_per_chan'] * c_ind,
-                                self.sort_info['n_samples_per_chan'] * (c_ind + 1)]
-                    self.sort_data[chan][seg][2][:, chan_win[0]:chan_win[1]] *= self.work_items[chan][seg]['thresholds'][c_ind]
-        print("Undid threshold NORMALIZE!")
-
-    def snr_norm(self, template):
-        """ This formula computes SNR relative to 3 STD of noise given that
-        clips/templates have already been normalized to (divided by) the actual
-        computed threshold value during sorting. """
-        range = np.amax(template) - np.amin(template)
-        snr = (self.sort_info['sigma'] / 4.) * range
-        return snr
-
-    def get_snr(self, chan, seg, full_template, rescale_template=True):
-        if rescale_template:
-            temp_scale = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['chan_neighbor_ind']]
-        else:
-            temp_scale = 1.
+    def get_snr(self, chan, seg, full_template):
         # Get SNR on the main channel
         background_noise_std = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['chan_neighbor_ind']] / self.sort_info['sigma']
         main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][seg]['chan_neighbor_ind'],
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
-        main_template = full_template[main_win[0]:main_win[1]] * temp_scale
+        main_template = full_template[main_win[0]:main_win[1]]
         range = np.amax(main_template) - np.amin(main_template)
         return range / (3 * background_noise_std)
 
@@ -1743,6 +1725,39 @@ def combine_two_neurons(neuron1, neuron2, min_ISI=6e-4):
     neuron1["peak_valley"] = np.amax(main_template) - np.amin(main_template)
 
     return neuron1
+
+
+def check_for_duplicate_spikes(clips, event_indices, neuron_labels, min_samples):
+    """ DATA MUST BE SORTED IN ORDER OF EVENT INDICES FOR THIS TO WORK.  Duplicates
+        are only removed within each neuron label.
+    """
+
+    keep_bool = np.ones(event_indices.size, dtype='bool')
+    templates, labels = calculate_templates(clips, neuron_labels)
+    template_norm = []
+    for t in templates:
+        template_norm.append(t / np.linalg.norm(t))
+    for neuron in labels:
+        curr_spikes = np.nonzero(neuron_labels == neuron)[0]
+        curr_index = 0
+        next_index = 1
+        while next_index < curr_spikes.size:
+            if event_indices[curr_spikes[next_index]] - event_indices[curr_spikes[curr_index]] < min_samples:
+                projections = clips[(curr_spikes[curr_index], curr_spikes[next_index]), :] @ template_norm[np.nonzero(neuron == labels)[0][0]]
+                if projections[0] > projections[1]:
+                    # current spike is better
+                    keep_bool[curr_spikes[next_index]] = False
+                    next_index += 1
+                else:
+                    # next spike is better
+                    keep_bool[curr_spikes[curr_index]] = False
+                    curr_index = next_index
+                    next_index += 1
+            else:
+                curr_index = next_index
+                next_index += 1
+
+    return keep_bool
 
 
 def remove_ISI_violations(neurons, min_ISI=None):

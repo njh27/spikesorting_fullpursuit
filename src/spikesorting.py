@@ -31,7 +31,7 @@ def spike_sorting_settings(**kwargs):
     settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
     settings['check_components'] = None # Number of PCs to check. None means all, else integer
     settings['max_components'] = 10 # Max number to use, of those checked, integer
-    settings['min_firing_rate'] = 1. # Neurons that first less than this threshold (spk/s) are removed
+    settings['min_firing_rate'] = 1. # Neurons with fewer threshold crossings than this are removed
     settings['p_value_cut_thresh'] = 0.05
     settings['do_binary_pursuit'] = True
     settings['use_GPU'] = True # Force algorithms to run on the CPU rather than the GPU
@@ -133,7 +133,7 @@ def spike_sort_item(Probe, work_item, settings):
 
     median_cluster_size = min(100, int(np.around(crossings.size / 1000)))
     if settings['verbose']: print("Getting clips")
-    clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'], thresholds=work_item['thresholds'])
+    clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
     crossings = segment.keep_valid_inds([crossings], valid_event_indices)
     _, _, clip_samples, _, curr_chan_inds = segment.get_windows_and_indices(settings['clip_width'], Probe.sampling_rate, chan, work_item['neighbors'])
 
@@ -156,7 +156,7 @@ def spike_sort_item(Probe, work_item, settings):
 
     # Realign spikes based on correlation with current cluster templates before branching
     crossings, neuron_labels, _ = segment.align_events_with_template(Probe, chan, neuron_labels, crossings, clip_width=settings['clip_width'])
-    clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'], thresholds=work_item['thresholds'])
+    clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
     crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
     # Realign any units that have a template with peak > valley
     crossings, units_shifted = check_upward_neurons(clips,
@@ -168,8 +168,7 @@ def spike_sort_item(Probe, work_item, settings):
         clips, valid_event_indices = segment.get_multichannel_clips(Probe,
                                         work_item['neighbors'],
                                         crossings,
-                                        clip_width=settings['clip_width'],
-                                        thresholds=work_item['thresholds'])
+                                        clip_width=settings['clip_width'])
         crossings, neuron_labels = segment.keep_valid_inds(
                 [crossings, neuron_labels], valid_event_indices)
 
@@ -236,8 +235,7 @@ def spike_sort_item(Probe, work_item, settings):
         clips, valid_event_indices = segment.get_multichannel_clips(Probe,
                                         work_item['neighbors'],
                                         crossings,
-                                        clip_width=settings['clip_width'],
-                                        thresholds=work_item['thresholds'])
+                                        clip_width=settings['clip_width'])
         crossings, neuron_labels = segment.keep_valid_inds(
                 [crossings, neuron_labels], valid_event_indices)
 
@@ -250,16 +248,15 @@ def spike_sort_item(Probe, work_item, settings):
             crossings, neuron_labels, new_inds = overlap.binary_pursuit_secret_spikes(
                                     Probe, chan, neuron_labels, crossings,
                                     settings['clip_width'])
-            clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'], thresholds=work_item['thresholds'])
+            clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
         else:
             crossings, neuron_labels, new_inds, clips = binary_pursuit.binary_pursuit(
                 Probe, chan, crossings, neuron_labels, settings['clip_width'],
-                thresholds=work_item['thresholds'], kernels_path=None,
-                max_gpu_memory=settings['max_gpu_memory'])
+                kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
     else:
         # Need to get newly aligned clips and new_inds = False
-        clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'], thresholds=work_item['thresholds'])
+        clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
         crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
         new_inds = np.zeros(crossings.size, dtype=np.bool)
 

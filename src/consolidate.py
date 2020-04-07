@@ -830,7 +830,7 @@ class WorkItemSummary(object):
 
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
-                    neuron['snr'] = self.get_snr(chan, seg, neuron["template"], rescale_template=True)
+                    neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
                     neuron['fraction_mua'] = self.get_fraction_mua(chan, seg, neuron_label)
                     self.neuron_summary_by_seg[seg].append(neuron)
 
@@ -893,6 +893,8 @@ class WorkItemSummary(object):
 
         neurons_remaining_indices = [x for x in range(0, len(neurons))]
         neurons_to_remove = []
+        max_accepted = 0.
+        max_expected = 0.
         while True:
             # Look for our next best pair
             best_ratio = -np.inf
@@ -902,15 +904,26 @@ class WorkItemSummary(object):
                 for j in range(i+1, len(neurons_remaining_indices)):
                     neuron_1_index = neurons_remaining_indices[i]
                     neuron_2_index = neurons_remaining_indices[j]
+                    if (overlap_ratio[neuron_1_index, neuron_2_index] <
+                        overlap_ratio_threshold * expected_ratio[neuron_1_index, neuron_2_index]):
+                        # Overlap not high enough to merit deletion of one
+                        # But track our proximity to input threshold
+                        if overlap_ratio[neuron_1_index, neuron_2_index] > max_accepted:
+                            max_accepted = overlap_ratio[neuron_1_index, neuron_2_index]
+                            max_expected = overlap_ratio_threshold * expected_ratio[neuron_1_index, neuron_2_index]
+                        continue
                     if overlap_ratio[neuron_1_index, neuron_2_index] > best_ratio:
                         best_ratio = overlap_ratio[neuron_1_index, neuron_2_index]
                         best_pair = [neuron_1_index, neuron_2_index]
-
                         best_expected = expected_ratio[neuron_1_index, neuron_2_index]
 
-            # print("best overlap ratio is", best_ratio, overlap_ratio_threshold * best_expected)
-            if best_ratio <= overlap_ratio_threshold * best_expected:
+            if len(best_pair) == 0 or best_ratio == 0:
+                # No more pairs exceed ratio threshold
+                print("Maximum accepted ratio was", max_accepted, "at expected threshold", max_expected)
                 break
+            # if best_ratio <= overlap_ratio_threshold * best_expected:
+            #     print("Stopped overlaps at ratio", best_ratio, "versus threshold", overlap_ratio_threshold * best_expected)
+            #     break
 
             # We now need to choose one of the pair to delete.
             neuron_1 = neurons[best_pair[0]]
@@ -969,10 +982,14 @@ class WorkItemSummary(object):
             neurons = [[x] for x in self.neuron_summary_by_seg[start_seg]]
             break
         if start_seg >= self.n_segments-1:
-            # Need at least 2 remaining segments to stitch. With this being the
-            # only segment with data, we are done
+            # Need at least 2 remaining neurons to stitch.
+            if len(self.neuron_summary_by_seg[start_seg]) == 0:
+                # No neurons with data found
+                return [{}]
+            # With this being the only neuron, we are done
             neurons = self.neuron_summary_by_seg[start_seg]
-            return neurons
+            return [neurons]
+
         for next_seg in range(start_seg+1, self.n_segments):
             if len(self.neuron_summary_by_seg[next_seg]) == 0:
                 # Nothing to link
@@ -993,7 +1010,8 @@ class WorkItemSummary(object):
         return neurons
 
     def join_neuron_dicts(self, unit_dicts_list):
-        print("STACKING CLIPS AND CHOOSING THE BEST LOOKING SPIKE WILL BE A REAL PROBLEM WITH CLIPS FROM DIFFERENT CHANNELS (AND POSSIBLY NEIGHBORHOOD SIZES)!!!")
+        """
+        """
         combined_neuron = {}
         combined_neuron["channel"] = [unit_dicts_list[0]['channel']]
         combined_neuron['neighbors'] = [unit_dicts_list[0]['neighbors']]
@@ -1040,29 +1058,33 @@ class WorkItemSummary(object):
         # combined_neuron['fraction_mua'] = self.get_fraction_mua(chan, seg, neuron_label)
         return combined_neuron
 
-    def summarize_neurons_across_channels(self, overlap_time=2.5e-4, min_overlap_ratio=0.95):
+    def summarize_neurons_across_channels(self, overlap_time=2.5e-4, min_overlap_ratio=0.5):
         """ Creates output neurons list by combining segment-wise neurons across
         segments and across channels based on identical spikes found during the
         overlapping portions of consecutive segments. Requires that there be
         overlap between segments, and enough overlap to be useful. """
-        max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
         if min_overlap_ratio <= 0. or min_overlap_ratio >= 1.:
             raise ValueError("Min overlap ratio must be a value in (0, 1)")
+        max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
         # Start with neurons as those in first segment
         # Doesn't matter if there are no neurons yet it will get appended later
         # Establishes a list of dictionaries. Each dictionary represents a single
-        # neuron. Its keys are segment numbers, and they return the index to the
-        # neuron in that segment that belongs to it.
+        # neuron as usual. Here we add an extra key 'next_seg_link' that indicates
+        # the index of the neuron dictionary in the next segment that
+        # corresponds with it. If no neurons in the next seg correspond, the
+        # value for this key is None.
         start_seg = 0
         while start_seg < self.n_segments:
             if len(self.neuron_summary_by_seg[start_seg]) == 0:
                 start_seg += 1
                 continue
-            # neurons = [{} for x in range(0, len(self.neuron_summary_by_seg[start_seg]))]
             break
         if start_seg >= self.n_segments-1:
-            # Need at least 2 remaining segments to stitch. With this being the
-            # only segment with data, we are done
+            # Need at least 2 remaining segments to stitch.
+            if len(self.neuron_summary_by_seg[start_seg]) == 0:
+                # No neurons with data found
+                return [{}]
+            # With this being the only segment with data, we are done
             neuron_summary = self.neuron_summary_by_seg[start_seg]
             for n in neuron_summary:
                 n['next_seg_link'] = None
@@ -1128,8 +1150,7 @@ class WorkItemSummary(object):
                 max_cn = np.argmax(np.amax(overlap_ratio, axis=1))
                 max_nn = np.argmax(overlap_ratio[max_cn, :])
                 max_ratio = overlap_ratio[max_cn, max_nn]
-
-            print("Stopped at max ratio", max_ratio)
+            print("Stopped with maximum rejected overlap ratio", max_ratio)
 
         neurons = self.stitch_neurons_across_channels()
         neuron_summary = []

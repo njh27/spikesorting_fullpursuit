@@ -231,7 +231,7 @@ class TestDataset(object):
                            'min_firing_rate': 1, 'do_binary_pursuit': False,
                            'add_peak_valley': False, 'do_branch_PCA': True,
                            'use_GPU': True, 'max_gpu_memory': None,
-                           'use_rand_init': True,
+                           'save_1_cpu': True, 'use_rand_init': True,
                            'cleanup_neurons': False,
                            'verbose': True,
                            'test_flag': True, 'log_dir': None,
@@ -266,7 +266,7 @@ class TestDataset(object):
                            'min_firing_rate': 1, 'do_binary_pursuit': False,
                            'add_peak_valley': False, 'do_branch_PCA': True,
                            'use_GPU': True, 'max_gpu_memory': None,
-                           'use_rand_init': True,
+                           'save_1_cpu': True, 'use_rand_init': True,
                            'cleanup_neurons': False,
                            'verbose': True,
                            'test_flag': True, 'log_dir': None,
@@ -298,7 +298,7 @@ class TestDataset(object):
         for key in single_wis.sort_info.keys():
             assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key])
         for key in parallel_wis.sort_info.keys():
-            if key == 'log_dir' or key == 'test_flag':
+            if key in ['log_dir', 'test_flag', 'save_1_cpu']:
                 continue
             assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key])
         print("All sort info is the SAME.")

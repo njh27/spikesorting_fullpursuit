@@ -315,6 +315,7 @@ class WorkItemSummary(object):
         self.absolute_refractory_period = absolute_refractory_period
         self.max_mua_ratio = max_mua_ratio
         self.is_stitched = False # Repeated stitching can change results so track
+        self.last_overlap_ratio_threshold = np.inf
         self.verbose = verbose
         # Organize sort_data to be arranged by channel and segment.
         self.organize_sort_data()
@@ -914,8 +915,13 @@ class WorkItemSummary(object):
     def remove_redundant_neurons(self, neurons, overlap_time=2.5e-4, overlap_ratio_threshold=2):
         """
         """
-        # if overlap_ratio_threshold <= 0. or overlap_ratio_threshold >= 1.:
-        #     raise ValueError("Min overlap ratio must be a value in (0, 1)")
+        # NOTE: Can't do this here and in the function that calls it...
+        # if overlap_ratio_threshold >= self.last_overlap_ratio_threshold:
+        #     print("Redundant neurons already removed at threshold >=", overlap_ratio_threshold. "Further attempts will have no effect.")
+        #     print("Skipping remove_redundant_neurons.")
+        #     return
+        # else:
+        #     self.last_overlap_ratio_threshold = overlap_ratio_threshold
         max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
         n_total_samples = 0
 
@@ -1045,6 +1051,14 @@ class WorkItemSummary(object):
         return neurons
 
     def remove_redundant_neurons_by_seg(self, overlap_time=2.5e-4, overlap_ratio_threshold=2):
+        """
+        """
+        if overlap_ratio_threshold >= self.last_overlap_ratio_threshold:
+            print("Redundant neurons already removed at threshold >=", overlap_ratio_threshold. "Further attempts will have no effect.")
+            print("Skipping remove_redundant_neurons_by_seg.")
+            return
+        else:
+            self.last_overlap_ratio_threshold = overlap_ratio_threshold
         for seg in range(0, self.n_segments):
             self.neuron_summary_by_seg[seg] = self.remove_redundant_neurons(
                     self.neuron_summary_by_seg[seg], overlap_time,

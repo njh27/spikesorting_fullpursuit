@@ -51,6 +51,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['do_binary_pursuit'] = True
     settings['use_GPU'] = True # Force algorithms to run on the CPU rather than the GPU
     settings['max_gpu_memory'] = None # Use as much memory as possible
+    settings['save_1_cpu'] = True
     settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
     settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
     settings['cleanup_neurons'] = False # Remove garbage at the end
@@ -119,7 +120,9 @@ def filter_parallel(Probe, low_cutoff=300, high_cutoff=6000):
     b_filt, a_filt = signal.butter(1, [low_cutoff, high_cutoff], btype='band')
     print("Performing voltage filtering")
     filt_results = []
-    with mp.Pool(processes=psutil.cpu_count(logical=False), initializer=init_pool_dict, initargs=(filt_X, Probe.voltage.shape)) as pool:
+    # Number of processes was giving me out of memory error on Windows 10 until
+    # I dropped it to half number of cores.
+    with mp.Pool(processes=psutil.cpu_count(logical=False)//2, initializer=init_pool_dict, initargs=(filt_X, Probe.voltage.shape)) as pool:
         try:
             for chan in range(0, Probe.num_electrodes):
                 filt_results.append(pool.apply_async(filter_one_chan, args=(chan, b_filt, a_filt)))
@@ -205,7 +208,7 @@ def single_thresholds_and_samples(voltage, sigma):
     return thresholds, samples_over_thresh
 
 
-def allocate_cpus_by_chan(samples_over_thresh, cpu_queue):
+def allocate_cpus_by_chan(samples_over_thresh):
     """ Assign CPUs/threads according to number of threshold crossings,
     THIS IS EXTREMELY APPROXIMATE since it counts time points
     above threshold, and each spike will have more than one of these.
@@ -218,12 +221,12 @@ def allocate_cpus_by_chan(samples_over_thresh, cpu_queue):
             cpu_alloc.append(6)
         elif magnitude > 5*median_crossings:
             cpu_alloc.append(4)
-        elif magnitude > median_crossings:
+        elif magnitude > 2*median_crossings:
             cpu_alloc.append(2)
         else:
             cpu_alloc.append(1)
 
-    return cpu_queue, cpu_alloc
+    return cpu_alloc
 
 
 class NoSpikesError(Exception):
@@ -663,11 +666,17 @@ def spike_sort_parallel(Probe, **kwargs):
                                             work_items), key=lambda pair: pair[0]))]))
 
     n_cpus = psutil.cpu_count(logical=True)
+    if settings['save_1_cpu']:
+        n_cpus -= 1
     cpu_queue = manager.Queue(n_cpus)
     for cpu in range(n_cpus):
         cpu_queue.put(cpu)
     # cpu_alloc returned in order of samples_over_thresh/work_items
-    cpu_queue, cpu_alloc = allocate_cpus_by_chan(samples_over_thresh, cpu_queue)
+    cpu_alloc = allocate_cpus_by_chan(samples_over_thresh, cpu_queue)
+    # Make sure none exceed number available
+    for x in range(0, len(cpu_alloc)):
+        if cpu_alloc[x] > n_cpus:
+            cpu_alloc[x] = n_cpus
     init_dict['cpu_queue'] = cpu_queue
     completed_items_queue = manager.Queue(len(work_items))
     init_dict['completed_items_queue'] = completed_items_queue
@@ -688,6 +697,9 @@ def spike_sort_parallel(Probe, **kwargs):
         w_item['ID'] = wi_ind # Assign ID number in order of deployment
         # With timeout=None, this will block until sufficient cpus are available
         # as requested by cpu_alloc
+        # NOTE: this currently goes in order, so if 1 CPU is available but next
+        # work item wants 2, it will wait until 2 are available rather than
+        # starting a different item that only wants 1 CPU...
         use_cpus = [cpu_queue.get(timeout=None) for x in range(cpu_alloc[wi_ind])]
         n_complete = len(data_dict['completed_items']) # Do once to avoid race
         if n_complete > completed_items_index:
@@ -775,7 +787,7 @@ if __name__ == '__main__':
     import sys
     from shutil import rmtree
 
-    # python.exe SpikeSortingParallel.py C:\Nate\LearnDirTunePurk_Yoda_49.pl2 C:\Nate\sorted_yoda_49.pickle
+    # python.exe spikesorting_python\src\parallel\spikesorting_parallel.py C:\Nate\LearnDirTunePurk_Yoda_46.pl2 C:\Nate\sorted_yoda_46.pickle
 
     proc = psutil.Process()  # get self pid
     proc.cpu_affinity(cpus=list(range(psutil.cpu_count())))
@@ -819,7 +831,7 @@ if __name__ == '__main__':
                        'segment_overlap': 150,
                        'add_peak_valley': False, 'do_branch_PCA': True,
                        'use_GPU': True, 'max_gpu_memory': None,
-                       'use_rand_init': True,
+                       'save_1_cpu': True, 'use_rand_init': True,
                        'cleanup_neurons': False,
                        'verbose': True, 'test_flag': False, 'log_dir': log_dir,
                        'do_ZCA_transform': True}

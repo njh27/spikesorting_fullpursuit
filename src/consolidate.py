@@ -1054,7 +1054,7 @@ class WorkItemSummary(object):
         """
         """
         if overlap_ratio_threshold >= self.last_overlap_ratio_threshold:
-            print("Redundant neurons already removed at threshold >=", overlap_ratio_threshold. "Further attempts will have no effect.")
+            print("Redundant neurons already removed at threshold >=", overlap_ratio_threshold, "Further attempts will have no effect.")
             print("Skipping remove_redundant_neurons_by_seg.")
             return
         else:

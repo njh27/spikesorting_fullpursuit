@@ -672,7 +672,7 @@ def spike_sort_parallel(Probe, **kwargs):
     for cpu in range(n_cpus):
         cpu_queue.put(cpu)
     # cpu_alloc returned in order of samples_over_thresh/work_items
-    cpu_alloc = allocate_cpus_by_chan(samples_over_thresh, cpu_queue)
+    cpu_alloc = allocate_cpus_by_chan(samples_over_thresh)
     # Make sure none exceed number available
     for x in range(0, len(cpu_alloc)):
         if cpu_alloc[x] > n_cpus:

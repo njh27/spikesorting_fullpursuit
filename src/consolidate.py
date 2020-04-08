@@ -172,8 +172,9 @@ def compute_spike_trains(spike_indices_list, bin_width_samples, min_max_samples)
     spike_trains_list = [[] for x in range(0, len(spike_indices_list))]
 
     for ind, unit in enumerate(spike_indices_list):
+        unit_select = np.logical_and(unit >= min_max_samples[0], unit <= min_max_samples[1])
         # Convert the spike indices to units of bin_width_samples
-        spikes = (np.floor((unit + bin_width_samples/2 - min_max_samples[0]) / bin_width_samples)).astype(np.int64)
+        spikes = (np.floor((unit[unit_select] + bin_width_samples/2 - min_max_samples[0]) / bin_width_samples)).astype(np.int64)
         spike_trains_list[ind] = np.zeros(train_len, dtype=np.bool)
         spike_trains_list[ind][spikes] = True
 
@@ -663,7 +664,7 @@ class WorkItemSummary(object):
                     clips_2 = clips_2[:next_spike_stop, :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='template_pca', merge_only=True)
+                            method='projection', merge_only=True)
 
                     if self.verbose: print("At chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
 
@@ -725,7 +726,7 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='template_pca', split_only=True)
+                            method='projection', split_only=True)
                     if ismerged: # This can happen if the split cutpoint forces
                         continue # a merge so check and skip
 
@@ -1281,6 +1282,10 @@ class WorkItemSummary(object):
                 cn_start = next((idx[0] for idx, val in np.ndenumerate(
                             self.neuron_summary_by_seg[seg][cn_ind]['spike_indices'])
                             if val >= overlap_win[0]), None)
+                if cn_start is None:
+                    # current neuron has no spikes in the overlap
+                    overlap_ratio[cn_ind, :] = 0.
+                    continue
                 cn_spike_train = compute_spike_trains(
                         self.neuron_summary_by_seg[seg][cn_ind]['spike_indices'][cn_start:],
                         max_samples, overlap_win)
@@ -1289,18 +1294,29 @@ class WorkItemSummary(object):
                     nn_stop = next((idx[0] for idx, val in np.ndenumerate(
                                 self.neuron_summary_by_seg[next_seg][nn_ind]['spike_indices'])
                                 if val >= overlap_win[1]), None)
+                    if nn_stop is None or nn_stop == 0:
+                        # next neuron has no spikes in the overlap
+                        overlap_ratio[cn_ind, nn_ind] = 0.
+                        continue
                     nn_spike_train = compute_spike_trains(
                             self.neuron_summary_by_seg[next_seg][nn_ind]['spike_indices'][:nn_stop],
                             max_samples, overlap_win)
                     n_nn_spikes = np.count_nonzero(nn_spike_train)
+                    try:
+                        num_hits = np.count_nonzero(np.logical_and(cn_spike_train, nn_spike_train))
+                        nn_misses = np.count_nonzero(np.logical_and(nn_spike_train, ~cn_spike_train))
+                        cn_misses = np.count_nonzero(np.logical_and(cn_spike_train, ~nn_spike_train))
 
-                    num_hits = np.count_nonzero(np.logical_and(cn_spike_train, nn_spike_train))
-                    nn_misses = np.count_nonzero(np.logical_and(nn_spike_train, ~cn_spike_train))
-                    cn_misses = np.count_nonzero(np.logical_and(cn_spike_train, ~nn_spike_train))
-
-                    # This is NOT symmetric matrix! Just a look up table.
-                    overlap_ratio[cn_ind, nn_ind] = max(num_hits / (num_hits + nn_misses),
-                                                        num_hits / (num_hits + cn_misses))
+                        # This is NOT symmetric matrix! Just a look up table.
+                        overlap_ratio[cn_ind, nn_ind] = max(num_hits / (num_hits + nn_misses),
+                                                            num_hits / (num_hits + cn_misses))
+                    except:
+                        print(num_hits, nn_misses, cn_misses)
+                        print(cn_start, nn_stop, n_cn_spikes, n_nn_spikes)
+                        print(self.neuron_summary_by_seg[next_seg][nn_ind]['spike_indices'].size)
+                        print(self.neuron_summary_by_seg[next_seg][nn_ind]['spike_indices'][nn_stop], overlap_win[1])
+                        print(self.neuron_summary_by_seg[next_seg][nn_ind]['spike_indices'][nn_stop+1])
+                        raise
 
             # Assume there is no link and overwrite below if it passes threshold
             for n in self.neuron_summary_by_seg[seg]:

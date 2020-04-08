@@ -116,7 +116,6 @@ def spike_sort_item(Probe, work_item, settings):
     """
     """
     chan = work_item['channel']
-    if settings['verbose']: print("Working on item", work_item['ID'], "on electrode", chan, "segment", work_item['seg_number'])
 
     skip = np.amax(np.abs(settings['clip_width'])) / 2
     align_window = [skip, skip]
@@ -392,6 +391,7 @@ def spike_sort(Probe, **kwargs):
     sort_data = []
     # Put the work items through the sorter
     for wi_ind, w_item in enumerate(work_items):
+        if settings['verbose']: print("Working on item {0}/{1} on electrode {2} segment {3}".format(wi_ind+1, len(work_items), chan, w_item['seg_number']))
         # Create a probe copy specific to this segment
         segProbe = copy.copy(Probe) # Only shallow copy then reassign stuff that changes
         segProbe.n_samples = w_item['n_samples']

@@ -343,8 +343,10 @@ class WorkItemSummary(object):
                 if len(s_data[di]) == 0:
                     empty_count += 1
                 else:
-                    if s_data[di].shape[0] != n_spikes:
-                        raise ValueError("Every data element of sort_data list must indicate the same number of spikes. Element", w_item['ID'], "does not.")
+                    pass
+                    # This is caught below by empty_count !=4 ...
+                    # if s_data[di].shape[0] != n_spikes:
+                    #     raise ValueError("Every data element of sort_data list must indicate the same number of spikes. Element", w_item['ID'], "does not.")
             if empty_count > 0:
                 # Require that if any data element is empty, all are empty (this
                 # is how they should be coming out of sorter)
@@ -528,6 +530,55 @@ class WorkItemSummary(object):
         neuron_labels_2 = neuron_labels[clips_1.shape[0]:]
         return clips_merged, neuron_labels_1, neuron_labels_2
 
+    def check_missed_alignment_merge(self, main_seg, leftover_seg, main_labels, leftover_labels):
+        """ Alternative to sort_cython.identify_clusters_to_compare that simply
+        chooses the most similar template after shifting to optimal alignment.
+        Intended as helper function so that neurons do not fail to stitch in the
+        event their alignment changes between segments. """
+        for ml in main_labels:
+            if len(leftover_labels) == 0:
+                # Nothing this could connect to so giveup
+                break
+            for ll in leftover_labels:
+                if (c1 in real_labels) and (c2 in fake_labels):
+                    r_l = c1
+                    f_l = c2
+                elif (c2 in real_labels) and (c1 in fake_labels):
+                    r_l = c2
+                    f_l = c1
+                else:
+                    # Require one from each segment to compare
+                    # In this condition units that were split from each
+                    # other within a segment are actually closer to each
+                    # other than they are to anything in the other segment.
+                    # This suggests we should not merge these as one of
+                    # them is likely garbage.
+                    continue
+                # Choose current seg clips based on real labels
+                real_select = self.sort_data[chan][curr_seg][1] == r_l
+                clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
+                clips_1 = clips_1[curr_spike_start:, :]
+                # Choose next seg clips based on original fake label workspace
+                fake_select = next_label_workspace == f_l
+                clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
+                clips_2 = clips_2[:next_spike_stop, :]
+                is_merged, _, _ = self.merge_test_two_units(
+                        clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
+                        method='template_pca', merge_only=True,
+                        curr_chan_inds=curr_chan_inds)
+
+                if self.verbose: print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+
+                if is_merged:
+                    # Update actual next segment label data with same labels
+                    # used in curr_seg
+                    self.sort_data[chan][next_seg][1][fake_select] = r_l
+                    leftover_labels.remove(f_l)
+                    main_labels.remove(r_l)
+                else:
+                    print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+
+
     def stitch_segments(self):
         """
         Returns
@@ -645,6 +696,7 @@ class WorkItemSummary(object):
                 # in the next segment (fake_labels) that do not find a match.
                 # These are assigned a new real label.
                 leftover_labels = [x for x in fake_labels]
+                main_labels = [x for x in curr_labels]
                 for c1, c2 in minimum_distance_pairs:
                     if (c1 in real_labels) and (c2 in fake_labels):
                         r_l = c1
@@ -680,9 +732,14 @@ class WorkItemSummary(object):
                         # used in curr_seg
                         self.sort_data[chan][next_seg][1][fake_select] = r_l
                         leftover_labels.remove(f_l)
+                        main_labels.remove(r_l)
                     else:
                         print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
                     # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
+
+                # Make sure none of the main labels is terminating due to a misalignment
+                # self.check_missed_alignment_merge(curr_seg, next_seg, main_labels, leftover_labels)
+
 
                 # Assign units in next segment that do not match any in the
                 # current segment a new real label

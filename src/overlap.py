@@ -153,13 +153,11 @@ def reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, 
         if (j_scores[choose_combo] >= k_scores[choose_combo] and
             template_labels[i_inds[choose_combo, 1]] not in already_removed):
             # assign everything to neuron j, i.e. template_labels[i_inds[choose_combo, 1]]
-            # neuron_labels[neuron_labels == template_labels[spk]] = template_labels[i_inds[choose_combo, 1]]
-            neuron_labels = neuron_labels[neuron_labels != template_labels[spk]]
+            neuron_labels[neuron_labels == template_labels[spk]] = template_labels[i_inds[choose_combo, 1]]
             already_used.append(template_labels[i_inds[choose_combo, 1]])
             already_removed.append(template_labels[spk])
         elif template_labels[i_inds[choose_combo, 2]] not in already_removed:
-            # neuron_labels[neuron_labels == template_labels[spk]] = template_labels[i_inds[choose_combo, 2]]
-            neuron_labels = neuron_labels[neuron_labels != template_labels[spk]]
+            neuron_labels[neuron_labels == template_labels[spk]] = template_labels[i_inds[choose_combo, 2]]
             already_used.append(template_labels[i_inds[choose_combo, 2]])
             already_removed.append(template_labels[spk])
         else:

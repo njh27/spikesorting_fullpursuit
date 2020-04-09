@@ -51,7 +51,9 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     _, master_channel_index, clip_samples, template_samples_per_chan, curr_chan_inds = segment.get_windows_and_indices(
         clip_width, Probe.sampling_rate, channel, Probe.get_neighbors(channel))
     # Remove any spikes within 1 clip width of each other
-    event_indices.sort()
+    event_order = np.argsort(event_indices)
+    event_indices = event_indices[event_order]
+    neuron_labels = neuron_labels[event_order]
     event_indices, removed_index = remove_overlapping_spikes(event_indices,
                                         clip_samples[1]-clip_samples[0])
     neuron_labels = neuron_labels[~removed_index]

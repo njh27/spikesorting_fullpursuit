@@ -68,11 +68,11 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
     neuron_labels = neuron_labels[~removed_index]
 
     # Get clips for templates to subtract
-    clips, valid_inds = segment_parallel.get_singlechannel_clips(probe_dict, neighbor_voltage[master_channel_index, :], event_indices, clip_width=clip_width)
-    event_indices, neuron_labels = segment_parallel.keep_valid_inds([event_indices, neuron_labels], valid_inds)
+    # clips, valid_inds = segment_parallel.get_singlechannel_clips(probe_dict, neighbor_voltage[master_channel_index, :], event_indices, clip_width=clip_width)
+    # event_indices, neuron_labels = segment_parallel.keep_valid_inds([event_indices, neuron_labels], valid_inds)
     # Remove clusters that are overlaps of different spikes
-    neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, probe_dict['sampling_rate'], clip_width, 0.75)
-    event_indices, neuron_labels, valid_inds = segment_parallel.align_events_with_template(probe_dict, neighbor_voltage[master_channel_index, :], neuron_labels, event_indices, clip_width=clip_width)
+    # neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, probe_dict['sampling_rate'], clip_width, 0.75)
+    # event_indices, neuron_labels, valid_inds = segment_parallel.align_events_with_template(probe_dict, neighbor_voltage[master_channel_index, :], neuron_labels, event_indices, clip_width=clip_width)
 
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
     clips, valid_inds = segment_parallel.get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width=clip_width)

@@ -530,7 +530,9 @@ class WorkItemSummary(object):
         neuron_labels_2 = neuron_labels[clips_1.shape[0]:]
         return clips_merged, neuron_labels_1, neuron_labels_2
 
-    def check_missed_alignment_merge(self, main_seg, leftover_seg, main_labels, leftover_labels):
+    def check_missed_alignment_merge(self, chan, main_seg, leftover_seg,
+                main_labels, leftover_labels, leftover_workspace, main_start,
+                leftover_stop):
         """ Alternative to sort_cython.identify_clusters_to_compare that simply
         chooses the most similar template after shifting to optimal alignment.
         Intended as helper function so that neurons do not fail to stitch in the
@@ -539,44 +541,58 @@ class WorkItemSummary(object):
             if len(leftover_labels) == 0:
                 # Nothing this could connect to so giveup
                 break
+            # Choose main seg template
+            main_select = self.sort_data[chan][main_seg][1] == ml
+            clips_1 = self.sort_data[chan][main_seg][2][main_select, :]
+            clips_1 = clips_1[main_start:, :]
+            main_template = np.mean(clips_1, axis=0)
+            # Find best shift/correlation match in the leftovers
+            # Align all waves with their own template
+            for wave in range(0, clips.shape[0]):
+                cross_corr = np.correlate(np.abs(clips[wave, :]), central_template, mode='valid')
+                event_indices[wave] += np.argmax(cross_corr) - int(temp_index[0])
+            best_corr = -np.inf
+            best_shift = 0
             for ll in leftover_labels:
-                if (c1 in real_labels) and (c2 in fake_labels):
-                    r_l = c1
-                    f_l = c2
-                elif (c2 in real_labels) and (c1 in fake_labels):
-                    r_l = c2
-                    f_l = c1
-                else:
-                    # Require one from each segment to compare
-                    # In this condition units that were split from each
-                    # other within a segment are actually closer to each
-                    # other than they are to anything in the other segment.
-                    # This suggests we should not merge these as one of
-                    # them is likely garbage.
-                    continue
-                # Choose current seg clips based on real labels
-                real_select = self.sort_data[chan][curr_seg][1] == r_l
-                clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
-                clips_1 = clips_1[curr_spike_start:, :]
-                # Choose next seg clips based on original fake label workspace
-                fake_select = next_label_workspace == f_l
-                clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
-                clips_2 = clips_2[:next_spike_stop, :]
-                is_merged, _, _ = self.merge_test_two_units(
-                        clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                        method='template_pca', merge_only=True,
-                        curr_chan_inds=curr_chan_inds)
+                # Find leftover template
+                ll_select = leftover_workspace == ll
+                clips_2 = self.sort_data[chan][leftover_seg][2][ll_select, :]
+                clips_2 = clips_2[:leftover_stop, :]
+                leftover_template = np.mean(clips_2, axis=0)
+                cross_corr = np.correlate(main_template, leftover_template, mode='full')
+                max_corr_ind = np.argmax(cross_corr)
+                if cross_corr[max_corr_ind] > best_corr:
+                    best_corr = cross_corr[max_corr_ind]
+                    best_shift = max_corr_ind - cross_corr.shape[0]//2
+                    best_clips = clips_2
+                    best_select = ll_select
+                    chosen_ll = ll
 
-                if self.verbose: print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+            if best_shift > 0:
+                clips_1 = clips_1[:, best_shift:]
+                best_clips = best_clips[:-1*best_shift]
+            elif best_shift < 0:
+                clips_1 = clips_1[:best_shift]
+                best_clips = best_clips[-1*best_shift:]
+            else:
+                # No need to shift
+                pass
+            # Check if the main merges with its best aligned leftover
+            is_merged, _, _ = self.merge_test_two_units(
+                    clips_1, best_clips, self.sort_info['p_value_cut_thresh'],
+                    method='template_pca', merge_only=True,
+                    curr_chan_inds=None)
 
-                if is_merged:
-                    # Update actual next segment label data with same labels
-                    # used in curr_seg
-                    self.sort_data[chan][next_seg][1][fake_select] = r_l
-                    leftover_labels.remove(f_l)
-                    main_labels.remove(r_l)
-                else:
-                    print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+            if self.verbose: print("In 'check_missed_alignment_merge' Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+
+            if is_merged:
+                # Update actual next segment label data with same labels
+                # used in curr_seg
+                self.sort_data[chan][leftover_seg][1][best_select] = ml
+                leftover_labels.remove(ll)
+                # main_labels.remove(ml) # I don't think this is necessary?
+            else:
+                print("In 'check_missed_alignment_merge' Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
 
 
     def stitch_segments(self):
@@ -738,7 +754,9 @@ class WorkItemSummary(object):
                     # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
 
                 # Make sure none of the main labels is terminating due to a misalignment
-                # self.check_missed_alignment_merge(curr_seg, next_seg, main_labels, leftover_labels)
+                # self.check_missed_alignment_merge(chan, curr_seg, next_seg,
+                            # main_labels, leftover_labels, next_label_workspace,
+                            # curr_spike_start, next_spike_stop)
 
 
                 # Assign units in next segment that do not match any in the
@@ -1211,7 +1229,7 @@ class WorkItemSummary(object):
             n_unit_events = unit['spike_indices'].size
             if n_unit_events == 0:
                 continue
-
+            print("!!! I NEED TO MAKE THIS SHIFT/ALIGN ALL THE INDICES (IF NOT WAVEFORMS) SO DUPLICATES ETC ARE VALID!!!")
             indices_by_unit.append(unit['spike_indices'])
             waveforms_by_unit.append(unit['waveforms'])
             new_spike_bool_by_unit.append(unit['new_spike_bool'])
@@ -1477,6 +1495,7 @@ class WorkItemSummary(object):
             for ind, neuron_label in enumerate(np.unique(labels[channel])):
                 neuron = {}
                 neuron['summary_type'] = 'single_channel'
+                print("!!! I NEED TO MAKE THIS SHIFT/ALIGN ALL THE INDICES (IF NOT WAVEFORMS) SO DUPLICATES ETC ARE VALID!!!")
                 try:
                     neuron['sort_info'] = self.sort_info
                     neuron['sort_quality'] = None

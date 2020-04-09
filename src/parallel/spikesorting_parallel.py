@@ -333,11 +333,11 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             else:
                 # Move stdout to the log_dir file
                 if sys.platform == 'win32':
-                    sys.stdout = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']+1) + ".out", "w")
-                    sys.stderr = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']+1) + "_errors.out", "w")
+                    sys.stdout = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + ".out", "w")
+                    sys.stderr = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
                 else:
-                    sys.stdout = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']+1) + ".out", "w")
-                    sys.stderr = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']+1) + "_errors.out", "w")
+                    sys.stdout = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + ".out", "w")
+                    sys.stderr = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
                 print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']))
 
         # Setup threads and affinity based on use_cpus if not on mac OS
@@ -402,7 +402,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if settings['verbose']: print("Currently", curr_num_clusters.size, "different clusters", flush=True)
 
         # Realign spikes based on correlation with current cluster templates before branching
-        crossings, neuron_labels, _ = segment_parallel.align_events_with_template(item_dict, voltage[chan, :], neuron_labels, crossings, clip_width=settings['clip_width'])
+        crossings, neuron_labels, _ = segment_parallel.align_events_with_central_template(item_dict, voltage[chan, :], neuron_labels, crossings, clip_width=settings['clip_width'])
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
         crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
         # Realign any units that have a template with peak > valley

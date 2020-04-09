@@ -673,13 +673,15 @@ class WorkItemSummary(object):
                             method='template_pca', merge_only=True,
                             curr_chan_inds=curr_chan_inds)
 
-                    if self.verbose: print("At chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+                    if self.verbose: print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
 
                     if is_merged:
                         # Update actual next segment label data with same labels
                         # used in curr_seg
                         self.sort_data[chan][next_seg][1][fake_select] = r_l
                         leftover_labels.remove(f_l)
+                    else:
+                        print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
                     # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
 
                 # Assign units in next segment that do not match any in the

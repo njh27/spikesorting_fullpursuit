@@ -131,6 +131,36 @@ def align_events_with_template(probe_dict, chan_voltage, neuron_labels, event_in
     return event_indices, neuron_labels, valid_inds
 
 
+def align_events_with_central_template(probe_dict, chan_voltage, neuron_labels, event_indices, clip_width):
+    """ Takes the input data for ONE channel and computes the cross correlation
+        of each spike with each template on the channel USING SINGLE CHANNEL CLIPS
+        ONLY.  The spike time is then aligned with the peak cross correlation lag.
+        This outputs new event indices reflecting this alignment, that can then be
+        used to input into final sorting, as in cluster sharpening. """
+
+    window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
+    # Create clips twice as wide as current clip width, IN SAMPLES, for better cross corr
+    cc_clip_width = [0, 0]
+    cc_clip_width[0] = 2 * window[0] / probe_dict['sampling_rate']
+    cc_clip_width[1] = 2 * (window[1]-1) / probe_dict['sampling_rate']
+    # Find indices within extra wide clips that correspond to the original clipwidth for template
+    temp_index = [0, 0]
+    temp_index[0] = -1 * min(int(round(clip_width[0] * probe_dict['sampling_rate'])), 0)
+    temp_index[1] = 2 * temp_index[0] + max(int(round(clip_width[1] * probe_dict['sampling_rate'])), 1) + 1 # Add one so that last element is included
+    clips, valid_inds = get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width=cc_clip_width)
+    event_indices = event_indices[valid_inds]
+    neuron_labels = neuron_labels[valid_inds]
+    templates, labels = calculate_templates(clips[:, temp_index[0]:temp_index[1]], neuron_labels)
+    central_template = np.mean(np.abs(np.vstack(templates)), axis=0)
+
+    # First, align all waves with their own template
+    for wave in range(0, clips.shape[0]):
+        cross_corr = np.correlate(np.abs(clips[wave, :]), central_template, mode='valid')
+        event_indices[wave] += np.argmax(cross_corr) - int(temp_index[0])
+
+    return event_indices, neuron_labels, valid_inds
+
+
 def align_adjusted_clips_with_template(probe_dict, neighbor_voltage, channel, neighbors, clips, event_indices, neuron_labels, clip_width):
     """
         """

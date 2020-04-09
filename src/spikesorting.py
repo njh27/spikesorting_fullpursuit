@@ -154,7 +154,7 @@ def spike_sort_item(Probe, work_item, settings):
     if settings['verbose']: print("Currently", curr_num_clusters.size, "different clusters")
 
     # Realign spikes based on correlation with current cluster templates before branching
-    crossings, neuron_labels, _ = segment.align_events_with_template(Probe, chan, neuron_labels, crossings, clip_width=settings['clip_width'])
+    crossings, neuron_labels, _ = segment.align_events_with_central_template(Probe, chan, neuron_labels, crossings, clip_width=settings['clip_width'])
     clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
     crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
     # Realign any units that have a template with peak > valley

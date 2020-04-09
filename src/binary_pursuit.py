@@ -60,13 +60,21 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     clips, valid_inds = segment.get_singlechannel_clips(Probe, channel, event_indices, clip_width=clip_width)
     event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
     # Remove clusters that are overlaps of different spikes
-    neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, Probe.sampling_rate, clip_width, 0.75)
+    import matplotlib.pyplot as plt
+    templates, _ = segment.calculate_templates(clips, neuron_labels)
+    for t in templates:
+        plt.plot(t)
+    plt.show()
+    # neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, Probe.sampling_rate, clip_width, 0.75)
     event_indices, neuron_labels, valid_inds = segment.align_events_with_template(Probe, channel, neuron_labels, event_indices, clip_width=clip_width)
 
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
     clips, valid_inds = segment.get_multichannel_clips(Probe, Probe.get_neighbors(channel), event_indices, clip_width=clip_width)
     event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
-
+    templates, _ = segment.calculate_templates(clips, neuron_labels)
+    for t in templates:
+        plt.plot(t[curr_chan_inds])
+    plt.show()
     # Ensure our neuron_labels go from 0 to M - 1 (required for kernels)
     # This MUST be done after removing overlaps and reassigning simultaneous
     reorder_labels(neuron_labels)

@@ -221,7 +221,7 @@ def allocate_cpus_by_chan(samples_over_thresh):
             cpu_alloc.append(6)
         elif magnitude > 5*median_crossings:
             cpu_alloc.append(4)
-        elif magnitude > 2*median_crossings:
+        elif magnitude > median_crossings:
             cpu_alloc.append(2)
         else:
             cpu_alloc.append(1)
@@ -285,7 +285,7 @@ def branch_pca_2_0(neuron_labels, clips, curr_chan_inds, p_value_cut_thresh=0.01
             scores = preprocessing.compute_pca_by_channel(clust_clips, curr_chan_inds,
                         check_components, max_components, add_peak_valley=add_peak_valley)
         else:
-            raise ValueError("Sharpen method must be either 'pca', or 'chan_pca'.")
+            raise ValueError("Branch method must be either 'pca', or 'chan_pca'.")
         n_random = max(100, np.around(clust_clips.shape[0] / 100)) if use_rand_init else 0
         clust_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
         clust_labels = sort.merge_clusters(scores, clust_labels,
@@ -822,8 +822,8 @@ if __name__ == '__main__':
     clusters. With high thresholds you will want binary pursuit enable to find
     the remaining missed spikes.
     """
-    spike_sort_args = {'sigma': 4.,
-                       'clip_width': [-6e-4, 8e-4], 'filter_band': (300, 6000),
+    spike_sort_args = {'sigma': 3.5,
+                       'clip_width': [-6e-4, 12e-4], 'filter_band': (300, 6000),
                        'p_value_cut_thresh': 0.05, 'check_components': None,
                        'max_components': 10,
                        'min_firing_rate': 0.5, 'do_binary_pursuit': True,
@@ -831,7 +831,7 @@ if __name__ == '__main__':
                        'segment_overlap': 150,
                        'add_peak_valley': False, 'do_branch_PCA': True,
                        'use_GPU': True, 'max_gpu_memory': None,
-                       'save_1_cpu': True, 'use_rand_init': True,
+                       'save_1_cpu': False, 'use_rand_init': True,
                        'cleanup_neurons': False,
                        'verbose': True, 'test_flag': False, 'log_dir': log_dir,
                        'do_ZCA_transform': True}

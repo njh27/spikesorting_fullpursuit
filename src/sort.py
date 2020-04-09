@@ -98,8 +98,6 @@ def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, 
         distances[select] = temp_distance[select]
         _, label_counts = np.unique(labels, return_counts=True)
 
-    print("Max farthest added", current_num_centers - pre_centers, "labels")
-
     return labels
 
 

@@ -157,7 +157,6 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                                      * n_neighbor_chans))
         num_seconds_per_chunk = min(num_seconds_per_chunk, np.floor(max_addressable_seconds))
         num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * Probe.sampling_rate))
-        print("Note: Can fit ", num_seconds_per_chunk, "s of data in GPU memory.")
 
         if num_indices_per_chunk < 4 * template_samples_per_chan:
             raise ValueError("Cannot fit enough data on GPU to run binary pursuit. Decrease neighborhoods and/or clip width.")

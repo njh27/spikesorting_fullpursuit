@@ -464,7 +464,7 @@ class WorkItemSummary(object):
             # There are no spikes that match this label
             raise ValueError("There are no spikes for label", label, ".")
         last_index = next((select_unit.shape[0] - idx[0] - 1 for idx, val in np.ndenumerate(select_unit[::-1]) if val), None)
-        if first_index == last_index:
+        if self.sort_data[chan][seg][0][first_index] == self.sort_data[chan][seg][0][last_index]:
             return 0. # Only one spike
         mean_rate = self.sort_info['sampling_rate'] * np.count_nonzero(select_unit)\
                     / (self.sort_data[chan][seg][0][last_index] - self.sort_data[chan][seg][0][first_index])
@@ -565,6 +565,12 @@ class WorkItemSummary(object):
             if start_seg >= len(self.sort_data[chan])-1:
                 # Need at least 2 remaining segments to stitch
                 continue
+            if self.sort_info['add_peak_valley']:
+                main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][start_seg]['chan_neighbor_ind'],
+                            self.sort_info['n_samples_per_chan'] * (self.work_items[chan][start_seg]['chan_neighbor_ind'] + 1)]
+                curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
+            else:
+                curr_chan_inds = None
 
             split_memory_dicts = [{} for x in range(0, self.n_segments)]
             # Go through each segment as the "current segment" and set the labels
@@ -664,7 +670,8 @@ class WorkItemSummary(object):
                     clips_2 = clips_2[:next_spike_stop, :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='projection', merge_only=True)
+                            method='template_pca', merge_only=True,
+                            curr_chan_inds=curr_chan_inds)
 
                     if self.verbose: print("At chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
 
@@ -726,7 +733,8 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='projection', split_only=True)
+                            method='template_pca', split_only=True,
+                            curr_chan_inds=curr_chan_inds)
                     if ismerged: # This can happen if the split cutpoint forces
                         continue # a merge so check and skip
 
@@ -1035,7 +1043,13 @@ class WorkItemSummary(object):
                 delete_2 = True
             elif (neuron_2['snr'] > neuron_1['snr']) and (neuron_2['fraction_mua'] < self.max_mua_ratio):
                 delete_1 = True
+            # Ones above are redundant with this but for sake of clarity
+            elif (neuron_1['snr'] > neuron_2['snr']):
+                delete_2 = True
+            elif (neuron_2['snr'] > neuron_1['snr']):
+                delete_1 = True
             else:
+                print("Deleting both with MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "and SNR", neuron_1['snr'], neuron_2['snr'])
                 delete_1 = True
                 delete_2 = True
 
@@ -1230,7 +1244,8 @@ class WorkItemSummary(object):
         """ Creates output neurons list by combining segment-wise neurons across
         segments and across channels based on identical spikes found during the
         overlapping portions of consecutive segments. Requires that there be
-        overlap between segments, and enough overlap to be useful. """
+        overlap between segments, and enough overlap to be useful.
+        The overlap time is the window used to consider spikes the same"""
         if min_overlap_ratio <= 0. or min_overlap_ratio >= 1.:
             raise ValueError("Min overlap ratio must be a value in (0, 1)")
         max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
@@ -1249,13 +1264,18 @@ class WorkItemSummary(object):
             break
         if start_seg >= self.n_segments-1:
             # Need at least 2 remaining segments to stitch.
+            if start_seg == self.n_segments:
+                # No neurons with data found
+                return [{}]
             if len(self.neuron_summary_by_seg[start_seg]) == 0:
                 # No neurons with data found
                 return [{}]
             # With this being the only segment with data, we are done
-            neuron_summary = self.neuron_summary_by_seg[start_seg]
-            for n in neuron_summary:
+            neurons = self.neuron_summary_by_seg[start_seg]
+            neuron_summary = []
+            for n in neurons:
                 n['next_seg_link'] = None
+                neuron_summary.append(self.join_neuron_dicts([n]))
             return neuron_summary
 
         for seg in range(start_seg, self.n_segments-1):

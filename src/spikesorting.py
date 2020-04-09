@@ -94,7 +94,7 @@ def branch_pca_2_0(neuron_labels, clips, curr_chan_inds, p_value_cut_thresh=0.01
             scores = preprocessing.compute_pca_by_channel(clust_clips, curr_chan_inds,
                         check_components, max_components, add_peak_valley=add_peak_valley)
         else:
-            raise ValueError("Sharpen method must be either 'pca', or 'chan_pca'.")
+            raise ValueError("Branch method must be either 'pca', or 'chan_pca'.")
         n_random = max(100, np.around(clust_clips.shape[0] / 100)) if use_rand_init else 0
         clust_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
         clust_labels = sort.merge_clusters(scores, clust_labels,
@@ -391,7 +391,7 @@ def spike_sort(Probe, **kwargs):
     sort_data = []
     # Put the work items through the sorter
     for wi_ind, w_item in enumerate(work_items):
-        if settings['verbose']: print("Working on item {0}/{1} on electrode {2} segment {3}".format(wi_ind+1, len(work_items), chan, w_item['seg_number']))
+        if settings['verbose']: print("Working on item {0}/{1} on electrode {2} segment {3}".format(wi_ind+1, len(work_items), w_item['channel'], w_item['seg_number']))
         # Create a probe copy specific to this segment
         segProbe = copy.copy(Probe) # Only shallow copy then reassign stuff that changes
         segProbe.n_samples = w_item['n_samples']

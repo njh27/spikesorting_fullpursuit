@@ -860,7 +860,7 @@ class WorkItemSummary(object):
                     if curr_seg == 0:
                         real_labels.remove(curr_l)
                     else:
-                        if curr_l not in self.sort_data[chan][curr_seg-1][1]:
+                        if not start_new_seg and curr_l not in self.sort_data[chan][curr_seg-1][1]:
                             # Remove from real labels if its not in previous
                             real_labels.remove(curr_l)
             if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels)

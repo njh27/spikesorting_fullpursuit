@@ -150,8 +150,8 @@ def align_events_with_central_template(probe_dict, chan_voltage, neuron_labels, 
     clips, valid_inds = get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width=cc_clip_width)
     event_indices = event_indices[valid_inds]
     neuron_labels = neuron_labels[valid_inds]
-    templates, labels = calculate_templates(clips[:, temp_index[0]:temp_index[1]], neuron_labels)
-    central_template = np.mean(np.abs(np.vstack(templates)), axis=0)
+    # Mean template over all clips so its weighted by spike number
+    central_template = np.mean(np.abs(clips[:, temp_index[0]:temp_index[1]]), axis=0)
 
     # First, align all waves with their own template
     for wave in range(0, clips.shape[0]):

@@ -243,16 +243,22 @@ def print_process_info(title):
 """
     Since alignment is biased toward down neurons, up can be shifted. """
 def check_upward_neurons(clips, event_indices, neuron_labels, curr_chan_inds,
-                            clip_width, sampling_rate):
+                         chan_voltage, clip_width, item_dict):
     templates, labels = segment_parallel.calculate_templates(clips[:, curr_chan_inds], neuron_labels)
-    window, clip_width = segment_parallel.time_window_to_samples(clip_width, sampling_rate)
-    center_index = -1 * min(int(round(clip_width[0] * sampling_rate)), 0)
+    window, clip_width = segment_parallel.time_window_to_samples(clip_width, item_dict['sampling_rate'])
+    center_index = -1 * min(int(round(clip_width[0] * item_dict['sampling_rate'])), 0)
     units_shifted = []
     for t_ind, temp in enumerate(templates):
         if np.amax(temp) > np.abs(np.amin(temp)):
             # Template peak is greater than absolute valley so realign on max
             label_ind = neuron_labels == labels[t_ind]
-            event_indices[label_ind] += np.argmax(clips[label_ind, :][:, curr_chan_inds], axis=1) - int(center_index)
+            # event_indices[label_ind] += np.argmax(clips[label_ind, :][:, curr_chan_inds], axis=1) - int(center_index)
+            # Realign spikes based on a central "template"
+            event_indices[label_ind], _ = segment_parallel.align_events_with_central_template(
+                                item_dict, chan_voltage,
+                                event_indices[label_ind],
+                                clip_width=clip_width,
+                                inverted=False)
             units_shifted.append(labels[t_ind])
 
     return event_indices, units_shifted
@@ -401,14 +407,19 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             curr_num_clusters = np.zeros(1, dtype=np.int64)
         if settings['verbose']: print("Currently", curr_num_clusters.size, "different clusters", flush=True)
 
-        # Realign spikes based on correlation with current cluster templates before branching
-        crossings, neuron_labels, _ = segment_parallel.align_events_with_central_template(item_dict, voltage[chan, :], neuron_labels, crossings, clip_width=settings['clip_width'])
+        # Realign spikes based on a central "template"
+        crossings, _ = segment_parallel.align_events_with_central_template(
+                            item_dict, voltage[chan, :], crossings,
+                            clip_width=settings['clip_width'], inverted=True)
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
-        crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
+        crossings, neuron_labels = segment_parallel.keep_valid_inds(
+                [crossings, neuron_labels], valid_event_indices)
+
         # Realign any units that have a template with peak > valley
         crossings, units_shifted = check_upward_neurons(clips, crossings,
-                                    neuron_labels, curr_chan_inds, settings['clip_width'],
-                                    item_dict['sampling_rate'])
+                                    neuron_labels, curr_chan_inds,
+                                    voltage[chan, :], settings['clip_width'],
+                                    item_dict)
         if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
         exit_type = "Found upward spikes"
         if len(units_shifted) > 0:
@@ -474,8 +485,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
 
         # Realign any units that have a template with peak > valley
         crossings, units_shifted = check_upward_neurons(clips, crossings,
-                                    neuron_labels, curr_chan_inds, settings['clip_width'],
-                                    item_dict['sampling_rate'])
+                                    neuron_labels, curr_chan_inds,
+                                    voltage[chan, :], settings['clip_width'],
+                                    item_dict)
         if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
         exit_type = "Found upward spikes"
         if len(units_shifted) > 0:

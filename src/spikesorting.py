@@ -52,16 +52,21 @@ def spike_sorting_settings(**kwargs):
 """
     Since alignment is biased toward down neurons, up can be shifted. """
 def check_upward_neurons(clips, event_indices, neuron_labels, curr_chan_inds,
-                            clip_width, sampling_rate):
+                            clip_width, Probe):
     templates, labels = segment.calculate_templates(clips[:, curr_chan_inds], neuron_labels)
-    window, clip_width = segment.time_window_to_samples(clip_width, sampling_rate)
-    center_index = -1 * min(int(round(clip_width[0] * sampling_rate)), 0)
+    window, clip_width = segment.time_window_to_samples(clip_width, Probe.sampling_rate)
+    center_index = -1 * min(int(round(clip_width[0] * Probe.sampling_rate)), 0)
     units_shifted = []
     for t_ind, temp in enumerate(templates):
         if np.amax(temp) > np.abs(np.amin(temp)):
             # Template peak is greater than absolute valley so realign on max
             label_ind = neuron_labels == labels[t_ind]
-            event_indices[label_ind] += np.argmax(clips[label_ind, :][:, curr_chan_inds], axis=1) - int(center_index)
+            # event_indices[label_ind] += np.argmax(clips[label_ind, :][:, curr_chan_inds], axis=1) - int(center_index)
+            # Realign spikes based on a central "template"
+            event_indices[label_ind], _ = segment.align_events_with_central_template(
+                                Probe, chan, event_indices[label_ind],
+                                clip_width=clip_width,
+                                inverted=False)
             units_shifted.append(labels[t_ind])
 
     return event_indices, units_shifted
@@ -153,15 +158,19 @@ def spike_sort_item(Probe, work_item, settings):
         curr_num_clusters = np.zeros(1, dtype=np.int64)
     if settings['verbose']: print("Currently", curr_num_clusters.size, "different clusters")
 
-    # Realign spikes based on correlation with current cluster templates before branching
-    crossings, neuron_labels, _ = segment.align_events_with_central_template(Probe, chan, neuron_labels, crossings, clip_width=settings['clip_width'])
+    # Realign spikes based on a central "template"
+    crossings, _ = segment.align_events_with_central_template(Probe, chan,
+                        crossings, clip_width=settings['clip_width'],
+                        inverted=True)
     clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
-    crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
+    crossings, neuron_labels = segment.keep_valid_inds(
+                                [crossings, neuron_labels], valid_event_indices)
+
     # Realign any units that have a template with peak > valley
     crossings, units_shifted = check_upward_neurons(clips,
                                         crossings, neuron_labels,
                                         curr_chan_inds, settings['clip_width'],
-                                        Probe.sampling_rate)
+                                        Probe)
     if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
     if len(units_shifted) > 0:
         clips, valid_event_indices = segment.get_multichannel_clips(Probe,
@@ -228,7 +237,7 @@ def spike_sort_item(Probe, work_item, settings):
     crossings, units_shifted = check_upward_neurons(clips,
                                         crossings, neuron_labels,
                                         curr_chan_inds, settings['clip_width'],
-                                        Probe.sampling_rate)
+                                        Probe)
     if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
     if len(units_shifted) > 0:
         clips, valid_event_indices = segment.get_multichannel_clips(Probe,

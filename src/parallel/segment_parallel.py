@@ -168,7 +168,7 @@ def align_events_with_central_template(probe_dict, chan_voltage, event_indices,
             # central_template = haar
             central_template = -1*central_template[center-window[0]:center+window[1]+1]
             temp_scales.append(central_template)
-            temp_scales.append(-1*central_template)
+            # temp_scales.append(-1*central_template)
         scale *= 2
         pseudo_frequency = Fc / (scale * (1/probe_dict['sampling_rate']))
 

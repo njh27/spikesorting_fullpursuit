@@ -135,6 +135,10 @@ def spike_sort_item(Probe, work_item, settings):
         min_cluster_size = 1
     if settings['verbose']: print("Using minimum cluster size of", min_cluster_size)
 
+    # Realign spikes based on a central "template"
+    crossings, _ = segment.align_events_with_central_template(Probe, chan,
+                        crossings, clip_width=settings['clip_width'])
+
     median_cluster_size = min(100, int(np.around(crossings.size / 1000)))
     if settings['verbose']: print("Getting clips")
     clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
@@ -158,27 +162,32 @@ def spike_sort_item(Probe, work_item, settings):
         curr_num_clusters = np.zeros(1, dtype=np.int64)
     if settings['verbose']: print("Currently", curr_num_clusters.size, "different clusters")
 
-    # Realign spikes based on a central "template"
-    crossings, _ = segment.align_events_with_central_template(Probe, chan,
-                        crossings, clip_width=settings['clip_width'],
-                        inverted=True)
-    clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
-    crossings, neuron_labels = segment.keep_valid_inds(
-                                [crossings, neuron_labels], valid_event_indices)
+    # # Realign spikes based on a central "template"
+    # crossings, _ = segment.align_events_with_central_template(Probe, chan,
+    #                     crossings, clip_width=settings['clip_width'],
+    #                     inverted=True)
 
-    # Realign any units that have a template with peak > valley
-    crossings, units_shifted = check_upward_neurons(clips,
-                                        crossings, neuron_labels,
-                                        curr_chan_inds, settings['clip_width'],
-                                        Probe)
-    if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
-    if len(units_shifted) > 0:
-        clips, valid_event_indices = segment.get_multichannel_clips(Probe,
-                                        work_item['neighbors'],
-                                        crossings,
-                                        clip_width=settings['clip_width'])
-        crossings, neuron_labels = segment.keep_valid_inds(
-                [crossings, neuron_labels], valid_event_indices)
+    # # Realign any units that have a template with peak > valley
+    # crossings, units_shifted = check_upward_neurons(clips,
+    #                                     crossings, neuron_labels,
+    #                                     curr_chan_inds, settings['clip_width'],
+    #                                     Probe)
+    # if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
+    # if len(units_shifted) > 0:
+    #     clips, valid_event_indices = segment.get_multichannel_clips(Probe,
+    #                                     work_item['neighbors'],
+    #                                     crossings,
+    #                                     clip_width=settings['clip_width'])
+    #     crossings, neuron_labels = segment.keep_valid_inds(
+    #             [crossings, neuron_labels], valid_event_indices)
+
+    crossings, neuron_labels, _ = segment.align_events_with_template(Probe, chan, neuron_labels, crossings, clip_width=settings['clip_width'])
+    clips, valid_event_indices = segment.get_multichannel_clips(Probe,
+                                    work_item['neighbors'],
+                                    crossings,
+                                    clip_width=settings['clip_width'])
+    crossings, neuron_labels = segment.keep_valid_inds(
+            [crossings, neuron_labels], valid_event_indices)
 
     # Single channel branch
     if curr_num_clusters.size > 1 and settings['do_branch_PCA']:
@@ -233,19 +242,19 @@ def spike_sort_item(Probe, work_item, settings):
         if settings['verbose']: print("Done.")
         return [], [], [], []
 
-    # Realign any units that have a template with peak > valley
-    crossings, units_shifted = check_upward_neurons(clips,
-                                        crossings, neuron_labels,
-                                        curr_chan_inds, settings['clip_width'],
-                                        Probe)
-    if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
-    if len(units_shifted) > 0:
-        clips, valid_event_indices = segment.get_multichannel_clips(Probe,
-                                        work_item['neighbors'],
-                                        crossings,
-                                        clip_width=settings['clip_width'])
-        crossings, neuron_labels = segment.keep_valid_inds(
-                [crossings, neuron_labels], valid_event_indices)
+    # # Realign any units that have a template with peak > valley
+    # crossings, units_shifted = check_upward_neurons(clips,
+    #                                     crossings, neuron_labels,
+    #                                     curr_chan_inds, settings['clip_width'],
+    #                                     Probe)
+    # if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
+    # if len(units_shifted) > 0:
+    #     clips, valid_event_indices = segment.get_multichannel_clips(Probe,
+    #                                     work_item['neighbors'],
+    #                                     crossings,
+    #                                     clip_width=settings['clip_width'])
+    #     crossings, neuron_labels = segment.keep_valid_inds(
+    #             [crossings, neuron_labels], valid_event_indices)
 
     # Realign spikes based on correlation with current cluster templates before doing binary pursuit
     crossings, neuron_labels, _ = segment.align_events_with_template(Probe, chan, neuron_labels, crossings, clip_width=settings['clip_width'])

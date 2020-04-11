@@ -165,7 +165,7 @@ def align_events_with_template(Probe, channel, neuron_labels, event_indices, cli
 
 
 def align_events_with_central_template(Probe, channel, event_indices,
-                                       clip_width, inverted=True):
+                                       clip_width):
     """ Takes the input data for ONE channel and computes the cross correlation
         of each spike with each template on the channel USING SINGLE CHANNEL CLIPS
         ONLY.  The spike time is then aligned with the peak cross correlation lag.
@@ -176,20 +176,29 @@ def align_events_with_central_template(Probe, channel, event_indices,
     clips, valid_inds = get_singlechannel_clips(Probe, channel, event_indices, clip_width=clip_width)
     event_indices = event_indices[valid_inds]
     # Create a mexican hat central template, centered on the current clip width
-    # inverted as desired
     window = np.abs(window)
     center = max(window)
-    # Clips have a center and are odd, so this will match
-    central_template = signal.ricker(2 * center+1, np.log(center))
-    if inverted:
-        central_template *= -1
-    central_template = central_template[center-window[0]:center+window[1]+1]
+    temp_scales = []
+    scale = 1
+    while scale < (window[1] + window[0]) // 2:
+        # Clips have a center and are odd, so this will match
+        central_template = signal.ricker(2 * center+1, scale)
+        central_template = central_template[center-window[0]:center+window[1]+1]
+        temp_scales.append(central_template)
+        temp_scales.append(-1*central_template)
+        scale *= 2
     cross_corr_center = central_template.shape[0] // 2
 
     # Align all waves on the mexican hat central template
     for wave in range(0, clips.shape[0]):
-        cross_corr = np.correlate(clips[wave, :], central_template, mode='same')
-        event_indices[wave] += np.argmax(cross_corr) - cross_corr_center
+        best_arg = cross_corr_center
+        best_corr = -np.inf
+        for ts in temp_scales:
+            cross_corr = np.correlate(clips[wave, :], ts, mode='same')
+            if np.amax(cross_corr) > best_corr:
+                best_corr = np.amax(cross_corr)
+                best_arg = np.argmax(cross_corr)
+        event_indices[wave] += best_arg - cross_corr_center
 
     return event_indices, valid_inds
 

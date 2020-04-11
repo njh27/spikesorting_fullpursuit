@@ -383,6 +383,11 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
 
         exit_type = "Found crossings"
 
+        # Realign spikes based on a central "template"
+        crossings, _ = segment_parallel.align_events_with_central_template(
+                            item_dict, voltage[chan, :], crossings,
+                            clip_width=settings['clip_width'])
+
         median_cluster_size = min(100, int(np.around(crossings.size / 1000)))
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
         crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
@@ -407,27 +412,31 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             curr_num_clusters = np.zeros(1, dtype=np.int64)
         if settings['verbose']: print("Currently", curr_num_clusters.size, "different clusters", flush=True)
 
-        # Realign spikes based on a central "template"
-        crossings, _ = segment_parallel.align_events_with_central_template(
-                            item_dict, voltage[chan, :], crossings,
-                            clip_width=settings['clip_width'], inverted=True)
-        clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
+        # # Realign spikes based on a central "template"
+        # crossings, _ = segment_parallel.align_events_with_central_template(
+        #                     item_dict, voltage[chan, :], crossings,
+        #                     clip_width=settings['clip_width'], inverted=True)
+
+        # # Realign any units that have a template with peak > valley
+        # crossings, units_shifted = check_upward_neurons(clips, crossings,
+        #                             neuron_labels, curr_chan_inds,
+        #                             voltage[chan, :], settings['clip_width'],
+        #                             item_dict)
+        # if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
+        # exit_type = "Found upward spikes"
+        # if len(units_shifted) > 0:
+        #     clips, valid_event_indices = segment_parallel.get_multichannel_clips(
+        #                                     item_dict, voltage[neighbors, :],
+        #                                     crossings, clip_width=settings['clip_width'])
+        #     crossings, neuron_labels = segment_parallel.keep_valid_inds(
+        #             [crossings, neuron_labels], valid_event_indices)
+
+        crossings, neuron_labels, _ = segment_parallel.align_events_with_template(item_dict, voltage[chan, :], neuron_labels, crossings, clip_width=settings['clip_width'])
+        clips, valid_event_indices = segment_parallel.get_multichannel_clips(
+                                        item_dict, voltage[neighbors, :],
+                                        crossings, clip_width=settings['clip_width'])
         crossings, neuron_labels = segment_parallel.keep_valid_inds(
                 [crossings, neuron_labels], valid_event_indices)
-
-        # Realign any units that have a template with peak > valley
-        crossings, units_shifted = check_upward_neurons(clips, crossings,
-                                    neuron_labels, curr_chan_inds,
-                                    voltage[chan, :], settings['clip_width'],
-                                    item_dict)
-        if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
-        exit_type = "Found upward spikes"
-        if len(units_shifted) > 0:
-            clips, valid_event_indices = segment_parallel.get_multichannel_clips(
-                                            item_dict, voltage[neighbors, :],
-                                            crossings, clip_width=settings['clip_width'])
-            crossings, neuron_labels = segment_parallel.keep_valid_inds(
-                    [crossings, neuron_labels], valid_event_indices)
 
         # Single channel branch
         if curr_num_clusters.size > 1 and settings['do_branch_PCA']:
@@ -483,19 +492,19 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             crossings, neuron_labels, clips, new_inds = [], [], [], []
             raise NoSpikesError
 
-        # Realign any units that have a template with peak > valley
-        crossings, units_shifted = check_upward_neurons(clips, crossings,
-                                    neuron_labels, curr_chan_inds,
-                                    voltage[chan, :], settings['clip_width'],
-                                    item_dict)
-        if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
-        exit_type = "Found upward spikes"
-        if len(units_shifted) > 0:
-            clips, valid_event_indices = segment_parallel.get_multichannel_clips(
-                                            item_dict, voltage[neighbors, :],
-                                            crossings, clip_width=settings['clip_width'])
-            crossings, neuron_labels = segment_parallel.keep_valid_inds(
-                    [crossings, neuron_labels], valid_event_indices)
+        # # Realign any units that have a template with peak > valley
+        # crossings, units_shifted = check_upward_neurons(clips, crossings,
+        #                             neuron_labels, curr_chan_inds,
+        #                             voltage[chan, :], settings['clip_width'],
+        #                             item_dict)
+        # if settings['verbose']: print("Found", len(units_shifted), "upward neurons that were realigned", flush=True)
+        # exit_type = "Found upward spikes"
+        # if len(units_shifted) > 0:
+        #     clips, valid_event_indices = segment_parallel.get_multichannel_clips(
+        #                                     item_dict, voltage[neighbors, :],
+        #                                     crossings, clip_width=settings['clip_width'])
+        #     crossings, neuron_labels = segment_parallel.keep_valid_inds(
+        #             [crossings, neuron_labels], valid_event_indices)
 
         exit_type = "Finished sorting clusters"
 

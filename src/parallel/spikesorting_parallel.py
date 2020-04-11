@@ -386,7 +386,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         # Realign spikes based on a central "template"
         crossings, _ = segment_parallel.align_events_with_central_template(
                             item_dict, voltage[chan, :], crossings,
-                            clip_width=settings['clip_width'])
+                            settings['clip_width'],
+                            settings['filter_band'])
 
         median_cluster_size = min(100, int(np.around(crossings.size / 1000)))
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])

@@ -137,7 +137,8 @@ def spike_sort_item(Probe, work_item, settings):
 
     # Realign spikes based on a central "template"
     crossings, _ = segment.align_events_with_central_template(Probe, chan,
-                        crossings, clip_width=settings['clip_width'])
+                        crossings, settings['clip_width'],
+                        settings['filter_band'])
 
     median_cluster_size = min(100, int(np.around(crossings.size / 1000)))
     if settings['verbose']: print("Getting clips")

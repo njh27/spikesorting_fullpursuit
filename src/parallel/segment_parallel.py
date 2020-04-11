@@ -132,7 +132,7 @@ def align_events_with_template(probe_dict, chan_voltage, neuron_labels, event_in
 
 
 def align_events_with_central_template(probe_dict, chan_voltage, event_indices,
-                                       clip_width):
+                                       clip_width, band_width):
     """ Takes the input data for ONE channel and computes the cross correlation
         of each spike with each template on the channel USING SINGLE CHANNEL CLIPS
         ONLY.  The spike time is then aligned with the peak cross correlation lag.
@@ -147,15 +147,32 @@ def align_events_with_central_template(probe_dict, chan_voltage, event_indices,
     center = max(window)
     temp_scales = []
     scale = 1
-    while scale < (window[1] + window[0]) // 2:
-        # Clips have a center and are odd, so this will match
-        central_template = signal.ricker(2 * center+1, scale)
-        central_template = central_template[center-window[0]:center+window[1]+1]
-        temp_scales.append(central_template)
-        temp_scales.append(-1*central_template)
-        scale *= 2
-    cross_corr_center = central_template.shape[0] // 2
 
+    # Find center frequency of wavelet Fc. Uses the method in PyWavelets
+    # central_frequency function
+    central_template = signal.ricker(2 * center+1, scale)
+    domain = float(central_template.shape[0])
+    index = np.argmax(np.abs(np.fft.fft(central_template)[1:])) + 2
+    if index > len(central_template) / 2:
+        index = len(central_template) - index + 2
+    Fc = 1.0 / (domain / (index - 1))
+
+    pseudo_frequency = Fc / (scale * (1/probe_dict['sampling_rate']))
+    while pseudo_frequency > band_width[0]:
+        if pseudo_frequency < band_width[1]:
+            # Clips have a center and are odd, so this will match
+            central_template = signal.ricker(2 * center+1, scale)
+            # haar = np.zeros(2 * center + 1)
+            # haar[center-scale:center] = -1.
+            # haar[center+1:center+1+scale] = 1.
+            # central_template = haar
+            central_template = -1*central_template[center-window[0]:center+window[1]+1]
+            temp_scales.append(central_template)
+            temp_scales.append(-1*central_template)
+        scale *= 2
+        pseudo_frequency = Fc / (scale * (1/probe_dict['sampling_rate']))
+
+    cross_corr_center = central_template.shape[0] // 2
     # Align all waves on the mexican hat central template
     for wave in range(0, clips.shape[0]):
         best_arg = cross_corr_center

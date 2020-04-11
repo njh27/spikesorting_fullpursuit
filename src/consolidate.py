@@ -491,7 +491,7 @@ class WorkItemSummary(object):
                     if mua_ratio > self.max_mua_ratio:
                         self.delete_label(chan, seg, l)
 
-    def merge_test_two_units(self, clips_1, clips_2, p_cut, method='projection',
+    def merge_test_two_units(self, clips_1, clips_2, p_cut, method='template_pca',
                              split_only=False, merge_only=False, curr_chan_inds=None):
         if self.sort_info['add_peak_valley'] and curr_chan_inds is None:
             raise ValueError("Must give curr_chan_inds if using peak valley.")
@@ -751,9 +751,18 @@ class WorkItemSummary(object):
                         main_labels.remove(r_l)
                     else:
                         print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+                        plt.plot(np.mean(clips_1, axis=0))
+                        plt.plot(np.mean(clips_2, axis=0))
                     # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
 
                 # Make sure none of the main labels is terminating due to a misalignment
+                if len(main_labels) > 0:
+                    print("Main label leftover")
+                    for ml in main_labels:
+                        real_select = self.sort_data[chan][curr_seg][1] == ml
+                        clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
+                        clips_1 = clips_1[curr_spike_start:, :]
+                        plt.plot(np.mean(clips_1, axis=0))
                 # self.check_missed_alignment_merge(chan, curr_seg, next_seg,
                             # main_labels, leftover_labels, next_label_workspace,
                             # curr_spike_start, next_spike_stop)

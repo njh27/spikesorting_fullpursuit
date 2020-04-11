@@ -147,6 +147,10 @@ def align_events_with_central_template(probe_dict, chan_voltage, event_indices,
     center = max(window)
     temp_scales = []
     scale = 1
+    # Minimum oscillation that will fit in this clip width
+    min_win_freq = 1./((window[1] + window[0])/probe_dict['sampling_rate'])
+    align_band_width = [band_width[0], band_width[1]]
+    align_band_width[0] = max(min_win_freq, align_band_width[0])
 
     # Find center frequency of wavelet Fc. Uses the method in PyWavelets
     # central_frequency function
@@ -157,18 +161,13 @@ def align_events_with_central_template(probe_dict, chan_voltage, event_indices,
         index = len(central_template) - index + 2
     Fc = 1.0 / (domain / (index - 1))
 
+    # Build scaled templates for power of two frequencies within band width
     pseudo_frequency = Fc / (scale * (1/probe_dict['sampling_rate']))
-    while pseudo_frequency > band_width[0]:
-        if pseudo_frequency < band_width[1]:
+    while pseudo_frequency > align_band_width[0]:
+        if pseudo_frequency < align_band_width[1]:
             # Clips have a center and are odd, so this will match
             central_template = signal.ricker(2 * center+1, scale)
-            # haar = np.zeros(2 * center + 1)
-            # haar[center-scale:center] = -1.
-            # haar[center+1:center+1+scale] = 1.
-            # central_template = haar
-            central_template = -1*central_template[center-window[0]:center+window[1]+1]
             temp_scales.append(central_template)
-            # temp_scales.append(-1*central_template)
         scale *= 2
         pseudo_frequency = Fc / (scale * (1/probe_dict['sampling_rate']))
 
@@ -178,11 +177,11 @@ def align_events_with_central_template(probe_dict, chan_voltage, event_indices,
         best_arg = cross_corr_center
         best_corr = -np.inf
         for ts in temp_scales:
-            cross_corr = np.correlate(clips[wave, :], ts, mode='same')
+            cross_corr = np.abs(np.correlate(clips[wave, :], ts, mode='full'))
             if np.amax(cross_corr) > best_corr:
                 best_corr = np.amax(cross_corr)
                 best_arg = np.argmax(cross_corr)
-        event_indices[wave] += best_arg - cross_corr_center
+        event_indices[wave] += best_arg - cross_corr_center - window[0]
 
     return event_indices, valid_inds
 

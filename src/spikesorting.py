@@ -428,9 +428,6 @@ def spike_sort(Probe, **kwargs):
                         'n_segments': len(segment_onsets)})
 
     if settings['verbose']: print("Done.")
-    print("YOU WANT THIS TO SAVE THINGS LIKE THE SIGMA VALUE USED, AND THE MEDIAN DEVIATION (FOR COMPUTING SNR) AND REALLY ALL PARAMETERS")
-    print("You want to use here, and in consolidate the SNR based on the threshold value found divided by SIGMA instead of Matt method.")
-    print("David did this by just passing the input kwgs into a settings dictionary for the output")
-    print("Also I need to make sure that all ints are np.int64 so this is compatible with windows compiled sort_cython, including in the segment files etc...")
+
     print("Also need to delete the load file functionality in electrode.py since it only assumes .npy file")
     return sort_data, work_items, sort_info

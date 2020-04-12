@@ -572,10 +572,10 @@ class WorkItemSummary(object):
             # Align and truncate clips for best match pair
             if best_shift > 0:
                 best_ml_clips = best_ml_clips[:, best_shift:]
-                best_ll_clips = best_ll_clips[:-1*best_shift]
+                best_ll_clips = best_ll_clips[:, :-1*best_shift]
             elif best_shift < 0:
-                best_ml_clips = best_ml_clips[:best_shift]
-                best_ll_clips = best_ll_clips[-1*best_shift:]
+                best_ml_clips = best_ml_clips[:, :best_shift]
+                best_ll_clips = best_ll_clips[:, -1*best_shift:]
             else:
                 # No need to shift
                 # I think this can still happen if perhaps there were duplicates

@@ -532,68 +532,77 @@ class WorkItemSummary(object):
 
     def check_missed_alignment_merge(self, chan, main_seg, leftover_seg,
                 main_labels, leftover_labels, leftover_workspace, main_start,
-                leftover_stop):
+                leftover_stop, curr_chan_inds=None):
         """ Alternative to sort_cython.identify_clusters_to_compare that simply
         chooses the most similar template after shifting to optimal alignment.
         Intended as helper function so that neurons do not fail to stitch in the
         event their alignment changes between segments. """
-        for ml in main_labels:
-            if len(leftover_labels) == 0:
-                # Nothing this could connect to so giveup
-                break
-            # Choose main seg template
-            main_select = self.sort_data[chan][main_seg][1] == ml
-            clips_1 = self.sort_data[chan][main_seg][2][main_select, :]
-            clips_1 = clips_1[main_start:, :]
-            main_template = np.mean(clips_1, axis=0)
-            # Find best shift/correlation match in the leftovers
-            # Align all waves with their own template
-            for wave in range(0, clips.shape[0]):
-                cross_corr = np.correlate(np.abs(clips[wave, :]), central_template, mode='valid')
-                event_indices[wave] += np.argmax(cross_corr) - int(temp_index[0])
+        # Keep trying as long as there are leftovers to try
+        while (len(main_labels) > 0) and (len(leftover_labels) > 0):
+            # Need to find the best match between main and leftovers
+            # NOTE: this is not normalized and so will be biased toward matching
+            # larger spikes. I think this is a good thing since SNR should also
+            # be highest for these units, do them first.
             best_corr = -np.inf
             best_shift = 0
-            for ll in leftover_labels:
-                # Find leftover template
-                ll_select = leftover_workspace == ll
-                clips_2 = self.sort_data[chan][leftover_seg][2][ll_select, :]
-                clips_2 = clips_2[:leftover_stop, :]
-                leftover_template = np.mean(clips_2, axis=0)
-                cross_corr = np.correlate(main_template, leftover_template, mode='full')
-                max_corr_ind = np.argmax(cross_corr)
-                if cross_corr[max_corr_ind] > best_corr:
-                    best_corr = cross_corr[max_corr_ind]
-                    best_shift = max_corr_ind - cross_corr.shape[0]//2
-                    best_clips = clips_2
-                    best_select = ll_select
-                    chosen_ll = ll
+            for ml in main_labels:
+                # Choose main seg template
+                ml_select = self.sort_data[chan][main_seg][1] == ml
+                clips_1 = self.sort_data[chan][main_seg][2][ml_select, :]
+                clips_1 = clips_1[main_start:, :]
+                main_template = np.mean(clips_1, axis=0)
+                for ll in leftover_labels:
+                    # Find leftover template
+                    ll_select = leftover_workspace == ll
+                    clips_2 = self.sort_data[chan][leftover_seg][2][ll_select, :]
+                    clips_2 = clips_2[:leftover_stop, :]
+                    leftover_template = np.mean(clips_2, axis=0)
+                    cross_corr = np.correlate(main_template, leftover_template, mode='full')
+                    max_corr_ind = np.argmax(cross_corr)
+                    if cross_corr[max_corr_ind] > best_corr:
+                        best_corr = cross_corr[max_corr_ind]
+                        best_shift = max_corr_ind - cross_corr.shape[0]//2
+                        best_ml_clips = clips_1
+                        best_ll_clips = clips_2
+                        best_ml_select = ml_select
+                        best_ll_select = ll_select
+                        chosen_ml = ml
+                        chosen_ll = ll
 
+            # Align and truncate clips for best match pair
             if best_shift > 0:
-                clips_1 = clips_1[:, best_shift:]
-                best_clips = best_clips[:-1*best_shift]
+                best_ml_clips = best_ml_clips[:, best_shift:]
+                best_ll_clips = best_ll_clips[:-1*best_shift]
             elif best_shift < 0:
-                clips_1 = clips_1[:best_shift]
-                best_clips = best_clips[-1*best_shift:]
+                best_ml_clips = best_ml_clips[:best_shift]
+                best_ll_clips = best_ll_clips[-1*best_shift:]
             else:
                 # No need to shift
+                # I think this can still happen if perhaps there were duplicates
+                # and so this nearest pair wasn't checked before?
                 pass
             # Check if the main merges with its best aligned leftover
             is_merged, _, _ = self.merge_test_two_units(
-                    clips_1, best_clips, self.sort_info['p_value_cut_thresh'],
+                    best_ml_clips, best_ll_clips,
+                    self.sort_info['p_value_cut_thresh'],
                     method='template_pca', merge_only=True,
-                    curr_chan_inds=None)
+                    curr_chan_inds=curr_chan_inds)
 
-            if self.verbose: print("In 'check_missed_alignment_merge' Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
-
+            if self.verbose: print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", ml, ll)
+            print("Should start plotting best ml and ll!")
+            plt.plot(np.mean(best_ml_clips, axis=0))
+            plt.plot(np.mean(best_ll_clips, axis=0))
+            plt.show()
             if is_merged:
                 # Update actual next segment label data with same labels
-                # used in curr_seg
+                # used in main_seg
                 self.sort_data[chan][leftover_seg][1][best_select] = ml
+                # This leftover is used up
                 leftover_labels.remove(ll)
-                # main_labels.remove(ml) # I don't think this is necessary?
             else:
-                print("In 'check_missed_alignment_merge' Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
-
+                print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", ml, ll)
+            # This main label had its pick of litter and failed so its done
+            main_labels.remove(ml)
 
     def stitch_segments(self):
         """
@@ -751,22 +760,25 @@ class WorkItemSummary(object):
                         main_labels.remove(r_l)
                     else:
                         print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+                        print("Initial comparison failed for these 2 waveforms")
                         plt.plot(np.mean(clips_1, axis=0))
                         plt.plot(np.mean(clips_2, axis=0))
+                        plt.show()
                     # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
 
                 # Make sure none of the main labels is terminating due to a misalignment
                 if len(main_labels) > 0:
-                    print("Main label leftover")
+                    print("These are the leftover label templates")
                     for ml in main_labels:
                         real_select = self.sort_data[chan][curr_seg][1] == ml
                         clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
                         clips_1 = clips_1[curr_spike_start:, :]
                         plt.plot(np.mean(clips_1, axis=0))
-                # self.check_missed_alignment_merge(chan, curr_seg, next_seg,
-                            # main_labels, leftover_labels, next_label_workspace,
-                            # curr_spike_start, next_spike_stop)
-
+                    plt.show()
+                    self.check_missed_alignment_merge(chan, curr_seg, next_seg,
+                                main_labels, leftover_labels, next_label_workspace,
+                                curr_spike_start, next_spike_stop,
+                                curr_chan_inds=curr_chan_inds)
 
                 # Assign units in next segment that do not match any in the
                 # current segment a new real label
@@ -1234,11 +1246,11 @@ class WorkItemSummary(object):
         threshold_by_unit = []
         segment_by_unit = []
         snr_by_unit = []
+        print("!!! I NEED TO MAKE THIS SHIFT/ALIGN ALL THE INDICES (IF NOT WAVEFORMS) SO DUPLICATES ETC ARE VALID!!!")
         for unit in unit_dicts_list:
             n_unit_events = unit['spike_indices'].size
             if n_unit_events == 0:
                 continue
-            print("!!! I NEED TO MAKE THIS SHIFT/ALIGN ALL THE INDICES (IF NOT WAVEFORMS) SO DUPLICATES ETC ARE VALID!!!")
             indices_by_unit.append(unit['spike_indices'])
             waveforms_by_unit.append(unit['waveforms'])
             new_spike_bool_by_unit.append(unit['new_spike_bool'])

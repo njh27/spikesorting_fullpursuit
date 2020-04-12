@@ -598,7 +598,7 @@ class WorkItemSummary(object):
             if is_merged:
                 # Update actual next segment label data with same labels
                 # used in main_seg
-                self.sort_data[chan][leftover_seg][1][best_select] = ml
+                self.sort_data[chan][leftover_seg][1][best_ll_select] = ml
                 # This leftover is used up
                 leftover_labels.remove(ll)
             else:

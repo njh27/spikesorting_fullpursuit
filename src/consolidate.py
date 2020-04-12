@@ -532,7 +532,7 @@ class WorkItemSummary(object):
 
     def check_missed_alignment_merge(self, chan, main_seg, leftover_seg,
                 main_labels, leftover_labels, leftover_workspace, main_start,
-                leftover_stop, curr_chan_inds=None):
+                leftover_stop, curr_chan_inds):
         """ Alternative to sort_cython.identify_clusters_to_compare that simply
         chooses the most similar template after shifting to optimal alignment.
         Intended as helper function so that neurons do not fail to stitch in the
@@ -557,7 +557,9 @@ class WorkItemSummary(object):
                     clips_2 = self.sort_data[chan][leftover_seg][2][ll_select, :]
                     clips_2 = clips_2[:leftover_stop, :]
                     leftover_template = np.mean(clips_2, axis=0)
-                    cross_corr = np.correlate(main_template, leftover_template, mode='full')
+                    cross_corr = np.correlate(main_template[curr_chan_inds],
+                                        leftover_template[curr_chan_inds],
+                                        mode='full')
                     max_corr_ind = np.argmax(cross_corr)
                     if cross_corr[max_corr_ind] > best_corr:
                         best_corr = cross_corr[max_corr_ind]
@@ -641,12 +643,9 @@ class WorkItemSummary(object):
             if start_seg >= len(self.sort_data[chan])-1:
                 # Need at least 2 remaining segments to stitch
                 continue
-            if self.sort_info['add_peak_valley']:
-                main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][start_seg]['chan_neighbor_ind'],
-                            self.sort_info['n_samples_per_chan'] * (self.work_items[chan][start_seg]['chan_neighbor_ind'] + 1)]
-                curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
-            else:
-                curr_chan_inds = None
+            main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][start_seg]['chan_neighbor_ind'],
+                        self.sort_info['n_samples_per_chan'] * (self.work_items[chan][start_seg]['chan_neighbor_ind'] + 1)]
+            curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
 
             split_memory_dicts = [{} for x in range(0, self.n_segments)]
             # Go through each segment as the "current segment" and set the labels
@@ -777,8 +776,7 @@ class WorkItemSummary(object):
                     plt.show()
                     self.check_missed_alignment_merge(chan, curr_seg, next_seg,
                                 main_labels, leftover_labels, next_label_workspace,
-                                curr_spike_start, next_spike_stop,
-                                curr_chan_inds=curr_chan_inds)
+                                curr_spike_start, next_spike_stop, curr_chan_inds)
 
                 # Assign units in next segment that do not match any in the
                 # current segment a new real label

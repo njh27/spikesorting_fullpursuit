@@ -131,7 +131,7 @@ def align_events_with_template(probe_dict, chan_voltage, neuron_labels, event_in
     return event_indices, neuron_labels, valid_inds
 
 
-def align_events_with_central_template(probe_dict, chan_voltage, event_indices,
+def wavelet_align_events(probe_dict, chan_voltage, event_indices,
                                        clip_width, band_width):
     """ Takes the input data for ONE channel and computes the cross correlation
         of each spike with each template on the channel USING SINGLE CHANNEL CLIPS
@@ -152,14 +152,9 @@ def align_events_with_central_template(probe_dict, chan_voltage, event_indices,
     align_band_width = [band_width[0], band_width[1]]
     align_band_width[0] = max(min_win_freq, align_band_width[0])
 
-    haar = np.zeros(2 * center + 1,)
-    haar[center:center+1] = -1.
-    haar[center+1:center+2] = 1.
-
     # Find center frequency of wavelet Fc. Uses the method in PyWavelets
     # central_frequency function
     central_template = signal.ricker(2 * center+1, scale)
-    central_template = np.convolve(central_template, haar, mode='same')
     domain = float(central_template.shape[0])
     index = np.argmax(np.abs(np.fft.fft(central_template)[1:])) + 2
     if index > len(central_template) / 2:
@@ -172,10 +167,13 @@ def align_events_with_central_template(probe_dict, chan_voltage, event_indices,
         if pseudo_frequency < align_band_width[1]:
             # Clips have a center and are odd, so this will match
             central_template = signal.ricker(2 * center+1, scale)
-            central_template = np.convolve(central_template, haar, mode='same')
+            # central_template *= -1.
             temp_scales.append(central_template)
         scale *= 2
         pseudo_frequency = Fc / (scale * (1/probe_dict['sampling_rate']))
+
+    if len(temp_scales) == 0:
+        return event_indices, valid_inds
 
     cross_corr_center = central_template.shape[0] // 2
     # Align all waves on the mexican hat central template
@@ -183,10 +181,11 @@ def align_events_with_central_template(probe_dict, chan_voltage, event_indices,
         best_arg = cross_corr_center
         best_corr = -np.inf
         for ts in temp_scales:
-            cross_corr = (np.correlate(clips[wave, :], ts, mode='full'))
-            if np.amax(cross_corr) > best_corr:
-                best_corr = np.amax(cross_corr)
-                best_arg = np.argmax(cross_corr)
+            cross_corr = np.abs(np.correlate(clips[wave, :], ts, mode='full'))
+            max_ind = np.argmax(cross_corr)
+            if cross_corr[max_ind] > best_corr:
+                best_corr = cross_corr[max_ind]
+                best_arg = max_ind
         event_indices[wave] += best_arg - cross_corr_center - window[0]
 
     return event_indices, valid_inds

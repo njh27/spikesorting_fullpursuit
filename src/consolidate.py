@@ -596,6 +596,7 @@ class WorkItemSummary(object):
             plt.plot(np.mean(best_ll_clips, axis=0))
             plt.show()
             if is_merged:
+                print("Merging these together")
                 # Update actual next segment label data with same labels
                 # used in main_seg
                 self.sort_data[chan][leftover_seg][1][best_ll_select] = ml

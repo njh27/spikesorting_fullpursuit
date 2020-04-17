@@ -591,10 +591,10 @@ class WorkItemSummary(object):
                     curr_chan_inds=curr_chan_inds)
 
             if self.verbose: print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", ml, ll)
-            print("Should start plotting best ml and ll!")
-            plt.plot(np.mean(best_ml_clips, axis=0))
-            plt.plot(np.mean(best_ll_clips, axis=0))
-            plt.show()
+            # print("Should start plotting best ml and ll!")
+            # plt.plot(np.mean(best_ml_clips, axis=0))
+            # plt.plot(np.mean(best_ll_clips, axis=0))
+            # plt.show()
             if is_merged:
                 print("Merging these together")
                 # Update actual next segment label data with same labels
@@ -676,17 +676,14 @@ class WorkItemSummary(object):
                             if self.verbose: print("Checking seg before new MUA (543) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                             self.delete_label(chan, curr_seg, curr_l)
                             if curr_seg == 0:
+                                print("removing label 679", chan, curr_seg)
                                 real_labels.remove(curr_l)
                             else:
                                 if curr_l not in self.sort_data[chan][curr_seg-1][1]:
                                     # Remove from real labels if its not in previous
+                                    print("removing label 684", chan, curr_seg)
                                     real_labels.remove(curr_l)
                     continue
-
-                curr_unique_labels = np.unique(self.sort_data[chan][curr_seg][1])
-                for rl in real_labels:
-                    if rl not in curr_unique_labels:
-                        print("There is a label here that isn't REAL")
 
                 # Make 'fake_labels' for next segment that do not overlap with
                 # the current segment and make a work space for the next
@@ -766,21 +763,21 @@ class WorkItemSummary(object):
                         main_labels.remove(r_l)
                     else:
                         print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
-                        print("Initial comparison failed for these 2 waveforms")
-                        plt.plot(np.mean(clips_1, axis=0))
-                        plt.plot(np.mean(clips_2, axis=0))
-                        plt.show()
+                        # print("Initial comparison failed for these 2 waveforms")
+                        # plt.plot(np.mean(clips_1, axis=0))
+                        # plt.plot(np.mean(clips_2, axis=0))
+                        # plt.show()
                     # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
 
                 # Make sure none of the main labels is terminating due to a misalignment
                 if len(main_labels) > 0:
                     print("These are the leftover label templates")
-                    for ml in main_labels:
-                        real_select = self.sort_data[chan][curr_seg][1] == ml
-                        clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
-                        clips_1 = clips_1[curr_spike_start:, :]
-                        plt.plot(np.mean(clips_1, axis=0))
-                    plt.show()
+                    # for ml in main_labels:
+                    #     real_select = self.sort_data[chan][curr_seg][1] == ml
+                    #     clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
+                    #     clips_1 = clips_1[curr_spike_start:, :]
+                    #     plt.plot(np.mean(clips_1, axis=0))
+                    # plt.show()
                     self.check_missed_alignment_merge(chan, curr_seg, next_seg,
                                 main_labels, leftover_labels, next_label_workspace,
                                 curr_spike_start, next_spike_stop, curr_chan_inds)
@@ -899,6 +896,15 @@ class WorkItemSummary(object):
                 # next segment that matched with it
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                     mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+
+                    curr_unique_labels = np.unique(self.sort_data[chan][curr_seg][1])
+                    for cl in curr_unique_labels:
+                        if cl not in real_labels:
+                            print("There is a label here that isn't REAL")
+                            print(chan, curr_seg)
+                            print(curr_unique_labels)
+                            print(real_labels)
+
                     if mua_ratio > self.max_mua_ratio:
                         # Remove this unit from current segment
                         if self.verbose: print("Deleting (704) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)
@@ -912,6 +918,7 @@ class WorkItemSummary(object):
                             #     split_memory_dicts[curr_seg][key_label][1][keep_indices]
 
                         if curr_seg == 0:
+                            print("removing label 919", chan, curr_seg)
                             real_labels.remove(curr_l)
                         else:
                             if curr_l in split_memory_dicts[curr_seg - 1].keys():
@@ -921,6 +928,7 @@ class WorkItemSummary(object):
                                         split_memory_dicts[curr_seg - 1][curr_l][1]
                             if curr_l not in self.sort_data[chan][curr_seg - 1][1]:
                                 # Remove from real labels if its not in previous
+                                print("removing label 929", chan, curr_seg)
                                 real_labels.remove(curr_l)
                             # NOTE: I think split_memory_dicts[curr_seg - 1] can
                             # be deleted at this point to save memory

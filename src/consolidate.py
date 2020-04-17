@@ -682,6 +682,12 @@ class WorkItemSummary(object):
                                     # Remove from real labels if its not in previous
                                     real_labels.remove(curr_l)
                     continue
+
+                curr_unique_labels = np.unique(self.sort_data[chan][curr_seg][1])
+                for rl in real_labels:
+                    if rl not in curr_unique_labels:
+                        print("There is a label here that isn't REAL")
+
                 # Make 'fake_labels' for next segment that do not overlap with
                 # the current segment and make a work space for the next
                 # segment labels so we can compare curr and next without

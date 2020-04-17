@@ -253,6 +253,12 @@ def spike_sort_item(Probe, work_item, settings):
         crossings, neuron_labels, _ = segment.align_events_with_template(Probe,
                     chan, neuron_labels, crossings,
                     clip_width=settings['clip_width'])
+        clips, valid_event_indices = segment.get_multichannel_clips(Probe,
+                                        work_item['neighbors'],
+                                        crossings,
+                                        clip_width=settings['clip_width'])
+        crossings, neuron_labels = segment.keep_valid_inds(
+                [crossings, neuron_labels], valid_event_indices)
 
         crossings, any_merged = check_spike_alignment(clips,
                         crossings, neuron_labels, curr_chan_inds, settings)

@@ -496,9 +496,14 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             neuron_labels = sort.merge_clusters(scores, neuron_labels,
                                 split_only = False,
                                 p_value_cut_thresh=settings['p_value_cut_thresh'])
-            crossings, neuron_labels, _ = segment_parallel.align_events_with_template(
+            crossings, neuron_labels, valid_inds = segment_parallel.align_events_with_template(
                             item_dict, voltage[chan, :], neuron_labels, crossings,
                             clip_width=settings['clip_width'])
+            clips, valid_event_indices = segment_parallel.get_multichannel_clips(
+                                            item_dict, voltage[neighbors, :],
+                                            crossings, clip_width=settings['clip_width'])
+            crossings, neuron_labels = segment_parallel.keep_valid_inds(
+                    [crossings, neuron_labels], valid_event_indices)
 
             crossings, any_merged = check_spike_alignment(clips,
                             crossings, neuron_labels, curr_chan_inds, settings)

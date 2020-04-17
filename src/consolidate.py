@@ -317,7 +317,7 @@ class WorkItemSummary(object):
         self.max_mua_ratio = max_mua_ratio
         self.is_stitched = False # Repeated stitching can change results so track
         self.last_overlap_ratio_threshold = np.inf
-        self.verbose = verbose
+        self.verbose = True
         # Organize sort_data to be arranged by channel and segment.
         self.organize_sort_data()
         # Put all segment data in temporal order
@@ -894,17 +894,17 @@ class WorkItemSummary(object):
                 # mixtures in the current segment. If it wasn't, delete that
                 # unit from the current segment and relabel any units in the
                 # next segment that matched with it
+
+                curr_unique_labels = np.unique(self.sort_data[chan][curr_seg][1])
+                for cl in curr_unique_labels:
+                    if cl not in real_labels:
+                        print("There is a label here that isn't REAL")
+                        print(chan, curr_seg)
+                        print(curr_unique_labels)
+                        print(real_labels)
+
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                     mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
-
-                    curr_unique_labels = np.unique(self.sort_data[chan][curr_seg][1])
-                    for cl in curr_unique_labels:
-                        if cl not in real_labels:
-                            print("There is a label here that isn't REAL")
-                            print(chan, curr_seg)
-                            print(curr_unique_labels)
-                            print(real_labels)
-
                     if mua_ratio > self.max_mua_ratio:
                         # Remove this unit from current segment
                         if self.verbose: print("Deleting (704) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)

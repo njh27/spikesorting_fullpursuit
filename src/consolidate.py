@@ -676,12 +676,12 @@ class WorkItemSummary(object):
                             if self.verbose: print("Checking seg before new MUA (543) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                             self.delete_label(chan, curr_seg, curr_l)
                             if curr_seg == 0:
-                                print("removing label 679", chan, curr_seg)
+                                print("removing label 679", "label", curr_l, chan, curr_seg)
                                 real_labels.remove(curr_l)
                             else:
                                 if curr_l not in self.sort_data[chan][curr_seg-1][1]:
                                     # Remove from real labels if its not in previous
-                                    print("removing label 684", chan, curr_seg)
+                                    print("removing label 684", "label", curr_l,  chan, curr_seg)
                                     real_labels.remove(curr_l)
                     continue
 
@@ -918,7 +918,7 @@ class WorkItemSummary(object):
                             #     split_memory_dicts[curr_seg][key_label][1][keep_indices]
 
                         if curr_seg == 0:
-                            print("removing label 919", chan, curr_seg)
+                            print("removing label 919", "label", curr_l, chan, curr_seg)
                             real_labels.remove(curr_l)
                         else:
                             if curr_l in split_memory_dicts[curr_seg - 1].keys():
@@ -928,7 +928,7 @@ class WorkItemSummary(object):
                                         split_memory_dicts[curr_seg - 1][curr_l][1]
                             if curr_l not in self.sort_data[chan][curr_seg - 1][1]:
                                 # Remove from real labels if its not in previous
-                                print("removing label 929", chan, curr_seg)
+                                print("removing label 929", "label", curr_l, chan, curr_seg)
                                 real_labels.remove(curr_l)
                             # NOTE: I think split_memory_dicts[curr_seg - 1] can
                             # be deleted at this point to save memory

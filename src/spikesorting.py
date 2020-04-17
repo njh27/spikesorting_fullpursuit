@@ -58,7 +58,6 @@ def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
     any_merged = False
     unit_inds_to_check = [x for x in range(0, len(templates))]
     previously_aligned_dict = {}
-    print("Checking spike alignment of", len(unit_inds_to_check), "clusters")
     while len(unit_inds_to_check) > 1:
         # Find nearest cross corr template matched pair
         best_corr = -np.inf
@@ -90,7 +89,6 @@ def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
             clips_2 = clips_2[:, -1*best_shift:]
         else:
             # No need to shift, or even check these further
-            print("Units already optimally aligned, skipping test.")
             if clips_1.shape[0] >= clips_2.shape[0]:
                 unit_inds_to_check.remove(best_pair_inds[1])
             else:
@@ -104,24 +102,12 @@ def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
                     settings['check_components'], settings['max_components'],
                     add_peak_valley=settings['add_peak_valley'],
                     curr_chan_inds=np.arange(0, combined_clips.shape[1]))
-        # Projection onto templates, weighted by number of spikes
-        # t1 = np.mean(clips_1, axis=0) * (clips_1.shape[0] / combined_clips.shape[0])
-        # t2 = np.mean(clips_2, axis=0) * (clips_2.shape[0] / combined_clips.shape[0])
-        # scores = combined_clips @ np.vstack((t1, t2)).T
-        # scores = preprocessing.compute_template_pca(combined_clips, pseudo_labels,
-        #             np.arange(0, combined_clips.shape[1]),
-        #             settings['check_components'],
-        #             settings['max_components'],
-        #             add_peak_valley=settings['add_peak_valley'])
         pseudo_labels = sort.merge_clusters(scores, pseudo_labels,
                             split_only = False, merge_only=True,
                             p_value_cut_thresh=settings['p_value_cut_thresh'])
         if np.all(pseudo_labels == 1) or np.all(pseudo_labels == 2):
             any_merged = True
-            half_x_corr = cross_corr.shape[0]//2
-            print("Alignment check is MERGING!")
             if clips_1.shape[0] >= clips_2.shape[0]:
-                print("Neuron 2 events are being shifted by average of", -1*best_shift)
                 # Align all neuron 2 waves with neuron 1 template
                 event_indices[select_n_2] += -1*best_shift
                 unit_inds_to_check.remove(best_pair_inds[1])
@@ -133,7 +119,6 @@ def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
                     previously_aligned_dict[best_pair_inds[0]] = []
                 previously_aligned_dict[best_pair_inds[0]].append(best_pair_inds[1])
             else:
-                print("Neuron 1 events are being shifted by average of", best_shift)
                 # Align all neuron 1 waves with neuron 2 template
                 event_indices[select_n_1] += best_shift
                 unit_inds_to_check.remove(best_pair_inds[0])
@@ -148,40 +133,7 @@ def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
                 if best_pair_inds[1] not in previously_aligned_dict:
                     previously_aligned_dict[best_pair_inds[1]] = []
                 previously_aligned_dict[best_pair_inds[1]].append(best_pair_inds[0])
-
-            print("Templates were")
-            plt.plot(templates[best_pair_inds[0]])
-            plt.plot(templates[best_pair_inds[1]])
-            plt.show()
-            print("Shifted mean clips were")
-            plt.plot(np.mean(clips_1, axis=0))
-            plt.plot(np.mean(clips_2, axis=0))
-            plt.show()
-            print("Shifted clip 1 samples were")
-            plt.plot(clips_1[0::10, :].T)
-            plt.show()
-            print("Shifted clip 2 samples were")
-            plt.plot(clips_2[0::10, :].T)
-            plt.show()
-
         else:
-            # Do nothing. Do not check either of these again
-            print("Alignment check did NOT merge!")
-            print("Templates were")
-            plt.plot(templates[best_pair_inds[0]])
-            plt.plot(templates[best_pair_inds[1]])
-            plt.show()
-            print("Shifted mean clips were")
-            plt.plot(np.mean(clips_1, axis=0))
-            plt.plot(np.mean(clips_2, axis=0))
-            plt.show()
-            print("Shifted clip 1 samples were")
-            plt.plot(clips_1[0::10, :].T)
-            plt.show()
-            print("Shifted clip 2 samples were")
-            plt.plot(clips_2[0::10, :].T)
-            plt.show()
-
             unit_inds_to_check.remove(best_pair_inds[0])
             unit_inds_to_check.remove(best_pair_inds[1])
 
@@ -254,16 +206,16 @@ def spike_sort_item(Probe, work_item, settings):
 
     # Realign spikes based on a common wavelet
     crossings = segment.wavelet_align_events(Probe, chan, crossings,
-                                        align_window, settings['clip_width'],
+                                        settings['clip_width'],
                                         settings['filter_band'])
 
     median_cluster_size = min(100, int(np.around(crossings.size / 1000)))
     if settings['verbose']: print("Getting clips")
     clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
     crossings = segment.keep_valid_inds([crossings], valid_event_indices)
-    keep_clips = np.amax(np.abs(clips[:, curr_chan_inds]), axis=1) > work_item['thresholds'][chan]
-    crossings = crossings[keep_clips]
-    clips = clips[keep_clips, :]
+    # keep_clips = np.amax(np.abs(clips[:, curr_chan_inds]), axis=1) > work_item['thresholds'][chan]
+    # crossings = crossings[keep_clips]
+    # clips = clips[keep_clips, :]
 
     if settings['verbose']: print("Start initial clustering and merge")
     # Do initial single channel sort
@@ -277,7 +229,12 @@ def spike_sort_item(Probe, work_item, settings):
                             split_only = False,
                             p_value_cut_thresh=settings['p_value_cut_thresh'])
 
-        crossings, neuron_labels, _ = segment.align_events_with_best_template(Probe, chan, neuron_labels, crossings, clip_width=settings['clip_width'])
+        crossings, neuron_labels, _ = segment.align_templates(Probe, chan, neuron_labels,
+                            crossings, clip_width=settings['clip_width'])
+        crossings, neuron_labels, _ = segment.align_events_with_best_template(
+                                        Probe, chan, neuron_labels, crossings,
+                                        clip_width=settings['clip_width'])
+
         clips, valid_event_indices = segment.get_multichannel_clips(Probe,
                                         work_item['neighbors'],
                                         crossings,
@@ -293,29 +250,24 @@ def spike_sort_item(Probe, work_item, settings):
         neuron_labels = sort.merge_clusters(scores, neuron_labels,
                             split_only = False,
                             p_value_cut_thresh=settings['p_value_cut_thresh'])
+        crossings, neuron_labels, _ = segment.align_events_with_template(Probe,
+                    chan, neuron_labels, crossings,
+                    clip_width=settings['clip_width'])
 
-        # crossings, neuron_labels, _ = segment.align_events_with_template(Probe, chan, neuron_labels, crossings, clip_width=settings['clip_width'])
-        # clips, valid_event_indices = segment.get_multichannel_clips(Probe,
-        #                                 work_item['neighbors'],
-        #                                 crossings,
-        #                                 clip_width=settings['clip_width'])
-        # crossings, neuron_labels = segment.keep_valid_inds(
-        #         [crossings, neuron_labels], valid_event_indices)
-
-        # crossings, any_merged = check_spike_alignment(clips,
-        #                 crossings, neuron_labels, curr_chan_inds, settings)
-        # if any_merged:
-        #     # Resort based on new clip alignment
-        #     clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
-        #     crossings = segment.keep_valid_inds([crossings], valid_event_indices)
-        #     scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
-        #                 settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
-        #                 curr_chan_inds=np.arange(0, curr_chan_inds.size))
-        #     n_random = max(100, np.around(crossings.size / 100)) if settings['use_rand_init'] else 0
-        #     neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
-        #     neuron_labels = sort.merge_clusters(scores, neuron_labels,
-        #                         split_only = False,
-        #                         p_value_cut_thresh=settings['p_value_cut_thresh'])
+        crossings, any_merged = check_spike_alignment(clips,
+                        crossings, neuron_labels, curr_chan_inds, settings)
+        if any_merged:
+            # Resort based on new clip alignment
+            clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
+            crossings = segment.keep_valid_inds([crossings], valid_event_indices)
+            scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
+                        settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
+                        curr_chan_inds=np.arange(0, curr_chan_inds.size))
+            n_random = max(100, np.around(crossings.size / 100)) if settings['use_rand_init'] else 0
+            neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
+            neuron_labels = sort.merge_clusters(scores, neuron_labels,
+                                split_only = False,
+                                p_value_cut_thresh=settings['p_value_cut_thresh'])
         curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
     else:
         neuron_labels = np.zeros(1, dtype=np.int64)

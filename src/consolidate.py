@@ -317,7 +317,7 @@ class WorkItemSummary(object):
         self.max_mua_ratio = max_mua_ratio
         self.is_stitched = False # Repeated stitching can change results so track
         self.last_overlap_ratio_threshold = np.inf
-        self.verbose = True
+        self.verbose = False
         # Organize sort_data to be arranged by channel and segment.
         self.organize_sort_data()
         # Put all segment data in temporal order
@@ -590,8 +590,8 @@ class WorkItemSummary(object):
                     method='template_pca', merge_only=True,
                     curr_chan_inds=curr_chan_inds)
 
-            if self.verbose: print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", ml, ll)
-            # print("Should start plotting best ml and ll!")
+            if self.verbose: print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", chosen_ml, chosen_ll)
+            # print("Should start plotting best chosen_ml and chosen_ll!")
             # plt.plot(np.mean(best_ml_clips, axis=0))
             # plt.plot(np.mean(best_ll_clips, axis=0))
             # plt.show()
@@ -599,13 +599,13 @@ class WorkItemSummary(object):
                 print("Merging these together")
                 # Update actual next segment label data with same labels
                 # used in main_seg
-                self.sort_data[chan][leftover_seg][1][best_ll_select] = ml
+                self.sort_data[chan][leftover_seg][1][best_ll_select] = chosen_ml
                 # This leftover is used up
-                leftover_labels.remove(ll)
+                leftover_labels.remove(chosen_ll)
             else:
-                print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", ml, ll)
+                print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", chosen_ml, chosen_ll)
             # This main label had its pick of litter and failed so its done
-            main_labels.remove(ml)
+            main_labels.remove(chosen_ml)
 
     def stitch_segments(self):
         """

@@ -596,16 +596,14 @@ class WorkItemSummary(object):
             # plt.plot(np.mean(best_ll_clips, axis=0))
             # plt.show()
             if is_merged:
-                print("Merging these together")
                 # Update actual next segment label data with same labels
                 # used in main_seg
                 self.sort_data[chan][leftover_seg][1][best_ll_select] = chosen_ml
                 # This leftover is used up
                 leftover_labels.remove(chosen_ll)
             else:
-                print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", chosen_ml, chosen_ll)
-            # This main label had its pick of litter and failed so its done
-            main_labels.remove(chosen_ml)
+                # This main label had its pick of litter and failed so its done
+                main_labels.remove(chosen_ml)
 
     def stitch_segments(self):
         """
@@ -676,12 +674,12 @@ class WorkItemSummary(object):
                             if self.verbose: print("Checking seg before new MUA (543) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                             self.delete_label(chan, curr_seg, curr_l)
                             if curr_seg == 0:
-                                print("removing label 679", "label", curr_l, chan, curr_seg)
+                                if self.verbose: print("removing label 679", "label", curr_l, chan, curr_seg)
                                 real_labels.remove(curr_l)
                             else:
                                 if curr_l not in self.sort_data[chan][curr_seg-1][1]:
                                     # Remove from real labels if its not in previous
-                                    print("removing label 684", "label", curr_l,  chan, curr_seg)
+                                    if self.verbose: print("removing label 684", "label", curr_l,  chan, curr_seg)
                                     real_labels.remove(curr_l)
                     continue
 
@@ -708,17 +706,6 @@ class WorkItemSummary(object):
                 minimum_distance_pairs = sort_cython.identify_clusters_to_compare(
                                 np.vstack(curr_templates + next_templates),
                                 np.hstack((curr_labels, next_labels)), [])
-
-                # if chan == 2 and curr_seg in [12, 13, 14, 15]:
-                #     print(minimum_distance_pairs)
-                #     for ct_ind in range(0, len(curr_templates)):
-                #         print(curr_labels[ct_ind])
-                #         plt.plot(curr_templates[ct_ind])
-                #     plt.show()
-                #     for nt_ind in range(0, len(next_templates)):
-                #         print(next_labels[nt_ind])
-                #         plt.plot(next_templates[nt_ind])
-                #     plt.show()
 
                 # Merge test all mutually closest clusters and track any labels
                 # in the next segment (fake_labels) that do not find a match.
@@ -761,23 +748,9 @@ class WorkItemSummary(object):
                         self.sort_data[chan][next_seg][1][fake_select] = r_l
                         leftover_labels.remove(f_l)
                         main_labels.remove(r_l)
-                    else:
-                        print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
-                        # print("Initial comparison failed for these 2 waveforms")
-                        # plt.plot(np.mean(clips_1, axis=0))
-                        # plt.plot(np.mean(clips_2, axis=0))
-                        # plt.show()
-                    # Could also ask whether these have spike rate overlap in the overlap window roughly equal to their firing rates?
 
                 # Make sure none of the main labels is terminating due to a misalignment
                 if len(main_labels) > 0:
-                    print("These are the leftover label templates")
-                    # for ml in main_labels:
-                    #     real_select = self.sort_data[chan][curr_seg][1] == ml
-                    #     clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
-                    #     clips_1 = clips_1[curr_spike_start:, :]
-                    #     plt.plot(np.mean(clips_1, axis=0))
-                    # plt.show()
                     self.check_missed_alignment_merge(chan, curr_seg, next_seg,
                                 main_labels, leftover_labels, next_label_workspace,
                                 curr_spike_start, next_spike_stop, curr_chan_inds)
@@ -807,18 +780,6 @@ class WorkItemSummary(object):
                                           self.sort_data[chan][next_seg][1]))
                 joint_templates, temp_labels = segment.calculate_templates(
                                         joint_clips, joint_labels)
-
-                # if chan == 2 and curr_seg in [12, 13, 14, 15]:
-                #     for jt_ind, jt in enumerate(joint_templates):
-                #         print(temp_labels[jt_ind])
-                #         plt.plot(jt)
-                #     plt.show()
-                #     for jt_label in np.unique(joint_labels):
-                #         print(jt_label, np.count_nonzero(joint_labels == jt_label))
-                #         print("Curr seg has", np.count_nonzero(self.sort_data[chan][curr_seg][1] == jt_label))
-                #         print("Next seg has", np.count_nonzero(self.sort_data[chan][next_seg][1] == jt_label))
-                #         plt.plot(np.mean(joint_clips[joint_labels == jt_label, :], axis=0))
-                #     plt.show()
 
                 # Find all pairs of templates that are mutually closest
                 minimum_distance_pairs = sort_cython.identify_clusters_to_compare(
@@ -894,15 +855,6 @@ class WorkItemSummary(object):
                 # mixtures in the current segment. If it wasn't, delete that
                 # unit from the current segment and relabel any units in the
                 # next segment that matched with it
-
-                curr_unique_labels = np.unique(self.sort_data[chan][curr_seg][1])
-                for cl in curr_unique_labels:
-                    if cl not in real_labels:
-                        print("There is a label here that isn't REAL")
-                        print(chan, curr_seg)
-                        print(curr_unique_labels)
-                        print(real_labels)
-
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                     mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                     if mua_ratio > self.max_mua_ratio:
@@ -914,11 +866,9 @@ class WorkItemSummary(object):
                         for key_label in split_memory_dicts[curr_seg].keys():
                             split_memory_dicts[curr_seg][key_label][0] = \
                                 split_memory_dicts[curr_seg][key_label][0][keep_indices]
-                            # split_memory_dicts[curr_seg][key_label][1] = \
-                            #     split_memory_dicts[curr_seg][key_label][1][keep_indices]
 
                         if curr_seg == 0:
-                            print("removing label 919", "label", curr_l, chan, curr_seg)
+                            if self.verbose: print("removing label 919", "label", curr_l, chan, curr_seg)
                             real_labels.remove(curr_l)
                         else:
                             if curr_l in split_memory_dicts[curr_seg - 1].keys():
@@ -928,7 +878,7 @@ class WorkItemSummary(object):
                                         split_memory_dicts[curr_seg - 1][curr_l][1]
                             if curr_l not in self.sort_data[chan][curr_seg - 1][1]:
                                 # Remove from real labels if its not in previous
-                                print("removing label 929", "label", curr_l, chan, curr_seg)
+                                if self.verbose: print("removing label 929", "label", curr_l, chan, curr_seg)
                                 real_labels.remove(curr_l)
                             # NOTE: I think split_memory_dicts[curr_seg - 1] can
                             # be deleted at this point to save memory

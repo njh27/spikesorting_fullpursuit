@@ -477,7 +477,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
 
             crossings, neuron_labels, _ = segment_parallel.align_templates(
                             item_dict, voltage[chan, :], neuron_labels, crossings,
-                            clip_width=settings['clip_width'])
+                            clip_width=settings['clip_width'])        
             crossings, neuron_labels, _ = segment_parallel.align_events_with_best_template(
                             item_dict, voltage[chan, :], neuron_labels, crossings,
                             clip_width=settings['clip_width'])

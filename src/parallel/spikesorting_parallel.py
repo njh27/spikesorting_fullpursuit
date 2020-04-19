@@ -477,7 +477,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
 
             crossings, neuron_labels, _ = segment_parallel.align_templates(
                             item_dict, voltage[chan, :], neuron_labels, crossings,
-                            clip_width=settings['clip_width'])        
+                            clip_width=settings['clip_width'])
             crossings, neuron_labels, _ = segment_parallel.align_events_with_best_template(
                             item_dict, voltage[chan, :], neuron_labels, crossings,
                             clip_width=settings['clip_width'])
@@ -733,7 +733,8 @@ def spike_sort_parallel(Probe, **kwargs):
             thresholds, _ = single_thresholds_and_samples(seg_voltage, settings['sigma'])
             zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                             thresholds, settings['sigma'],
-                            zca_cushion, n_samples=1e6)
+                            zca_cushion, settings['do_binary_pursuit'],
+                            n_samples=1e6)
             seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
         thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
         samples_over_thresh.extend(seg_over_thresh)

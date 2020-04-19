@@ -469,7 +469,8 @@ def spike_sort(Probe, **kwargs):
             thresholds = segment.median_threshold(seg_voltage, settings['sigma'])
             zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                             thresholds, settings['sigma'],
-                            zca_cushion, n_samples=1e6)
+                            zca_cushion, settings['do_binary_pursuit'],
+                            n_samples=1e6)
             seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
         thresholds = segment.median_threshold(seg_voltage, settings['sigma'])
         segment_voltages.append(seg_voltage)

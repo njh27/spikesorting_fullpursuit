@@ -26,14 +26,19 @@ def get_full_zca_matrix(data, rowvar=True):
     return zca_matrix
 
 
-def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion, n_samples=1e6):
+def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion,
+                                 do_binary_pursuit=True, n_samples=1e6):
     """
         The ZCA procedure was taken (and reformatted into 2 lines) from:
         https://github.com/zellyn/deeplearning-class-2011/blob/master/ufldl/pca_2d/pca_2d.py
         """
     if voltage_data.ndim == 1:
         return 1.
-    zca_thresholds = thresholds
+    zca_thresholds = np.copy(thresholds)
+    if do_binary_pursuit:
+        # Since binary pursuit can dip roughly halfway below threshold, we can
+        # adjust our noise computation accordingly
+        zca_thresholds /= 2
     # convert cushion to zero centered window
     thresh_cushion = (thresh_cushion * 2 + 1)
     volt_thresh_bool = np.zeros(voltage_data.shape, dtype='bool')

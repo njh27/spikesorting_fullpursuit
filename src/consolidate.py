@@ -1296,8 +1296,9 @@ class WorkItemSummary(object):
         combined_neuron["snr"] = {}
         chans_to_remove = []
         for chan in combined_neuron['channel']:
-            print(chan)
             if snr_by_unit[combined_neuron['channel_selector'][chan]].size == 0:
+                # Spikes contributing from this channel have been removed so
+                # remove all its data below
                 chans_to_remove.append(chan)
             else:
                 combined_neuron["template"][chan] = np.mean(
@@ -1305,10 +1306,10 @@ class WorkItemSummary(object):
                 combined_neuron['snr'][chan] = np.mean(snr_by_unit[combined_neuron['channel_selector'][chan]])
         for chan_ind in reversed(range(0, len(chans_to_remove))):
             chan_num = chans_to_remove[chan_ind]
-            del combined_neuron['channel'][chan_ind]
-            del combined_neuron['neighbors'][chan_num]
-            del combined_neuron['chan_neighbor_ind'][chan_num]
-            del combined_neuron['channel_selector'][chan_num]
+            del combined_neuron['channel'][chan_ind] # A list so use index
+            del combined_neuron['neighbors'][chan_num] # Rest of these are all
+            del combined_neuron['chan_neighbor_ind'][chan_num] # dictionaries so
+            del combined_neuron['channel_selector'][chan_num] #  use value
         combined_neuron['fraction_mua'] = fraction_mua(combined_neuron["spike_indices"],
                                             self.sort_info['sampling_rate'],
                                             self.absolute_refractory_period,

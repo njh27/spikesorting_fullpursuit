@@ -49,8 +49,6 @@ def remove_across_channel_duplicate_neurons(neuron_summary, overlap_time=2.5e-4,
     return neuron_summary
 
 
-
-
 def find_overlapping_spike_bool(spikes1, spikes2, max_samples=20, except_equal=False):
     """ Finds an index into spikes2 that indicates whether a spike index of spike2
         occurs within +/- max_samples of a spike index in spikes1.  Spikes1 and 2
@@ -257,6 +255,25 @@ def calculate_expected_overlap(n1, n2, overlap_time, sampling_rate):
     expected_overlap = (overlap_time * 1000 * n1_count * n2_count) / num_ms
 
     return expected_overlap
+
+
+def calc_fraction_mua_to_peak(spike_indices, sampling_rate,
+                         absolute_refractory_period, duplicate_tol_inds,
+                         check_window=0.5):
+
+    all_isis = np.diff(spike_indices)
+    refractory_inds = int(round(absolute_refractory_period * sampling_rate))
+    bin_width = refractory_inds - duplicate_tol_inds
+    check_inds = int(round(check_window * sampling_rate))
+    bin_edges = np.arange(0, check_inds + bin_width, bin_width)
+    counts, xval = np.histogram(all_isis, bin_edges)
+    isi_peak = np.amax(counts)
+    num_isi_violations = np.count_nonzero(all_isis < refractory_inds)
+    n_duplicates = np.count_nonzero(all_isis <= duplicate_tol_inds)
+    num_isi_violations -= n_duplicates
+    fraction_mua_to_peak = num_isi_violations / isi_peak
+
+    return fraction_mua_to_peak
 
 
 def calc_isi_violation_rate(spike_indices, sampling_rate,
@@ -483,11 +500,33 @@ class WorkItemSummary(object):
         else:
             return isi_violation_rate / mean_rate
 
+    def get_fraction_mua_to_peak(self, chan, seg, label, check_window=0.5):
+        """
+        """
+        select_unit = self.sort_data[chan][seg][1] == label
+        if ~np.any(select_unit):
+            # There are no spikes that match this label
+            raise ValueError("There are no spikes for label", label, ".")
+        unit_spikes = self.sort_data[chan][seg][0][select_unit]
+        all_isis = np.diff(unit_spikes)
+        refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
+        bin_width = refractory_inds - self.duplicate_tol_inds
+        check_inds = int(round(check_window * self.sort_info['sampling_rate']))
+        bin_edges = np.arange(0, check_inds + bin_width, bin_width)
+        counts, xval = np.histogram(all_isis, bin_edges)
+        isi_peak = np.amax(counts)
+        num_isi_violations = np.count_nonzero(all_isis < refractory_inds)
+        n_duplicates = np.count_nonzero(all_isis <= self.duplicate_tol_inds)
+        num_isi_violations -= n_duplicates
+        fraction_mua_to_peak = num_isi_violations / isi_peak
+
+        return fraction_mua_to_peak
+
     def delete_mua_units(self):
         for chan in range(0, self.n_chans):
             for seg in range(0, self.n_segments):
                 for l in np.unique(self.sort_data[chan][seg][1]):
-                    mua_ratio = self.get_fraction_mua(chan, seg, l)
+                    mua_ratio = self.get_fraction_mua_to_peak(chan, seg, l)
                     if mua_ratio > self.max_mua_ratio:
                         self.delete_label(chan, seg, l)
 
@@ -673,7 +712,7 @@ class WorkItemSummary(object):
                     start_new_seg = True
                     if self.verbose: print("skipping_seg", curr_seg, "because NEXT seg has no spikes")
                     for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                        mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                        mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             if self.verbose: print("Checking seg before new MUA (543) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                             self.delete_label(chan, curr_seg, curr_l)
@@ -834,12 +873,12 @@ class WorkItemSummary(object):
                     for curr_l in [c1, c2]:
                         mua_ratio = 0.
                         if curr_l in self.sort_data[chan][curr_seg][1]:
-                            mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                            mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             undo_split = True
                             break
                         if curr_l in self.sort_data[chan][next_seg][1]:
-                            mua_ratio = self.get_fraction_mua(chan, next_seg, curr_l)
+                            mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             undo_split = True
                             break
@@ -860,7 +899,7 @@ class WorkItemSummary(object):
                 # unit from the current segment and relabel any units in the
                 # next segment that matched with it
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                    mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                    mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
                     if mua_ratio > self.max_mua_ratio:
                         # Remove this unit from current segment
                         if self.verbose: print("Deleting (704) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)
@@ -916,7 +955,7 @@ class WorkItemSummary(object):
             if len(self.sort_data[chan][curr_seg][0]) == 0:
                 continue
             for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
                 if mua_ratio > self.max_mua_ratio:
                     if self.verbose: print("Checking last seg MUA (757) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                     self.delete_label(chan, curr_seg, curr_l)
@@ -982,7 +1021,7 @@ class WorkItemSummary(object):
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
-                    neuron['fraction_mua'] = self.get_fraction_mua(chan, seg, neuron_label)
+                    neuron['fraction_mua'] = self.get_fraction_mua_to_peak(chan, seg, neuron_label)
                     neuron['threshold'] = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['channel']]
                     self.neuron_summary_by_seg[seg].append(neuron)
 
@@ -1310,7 +1349,7 @@ class WorkItemSummary(object):
             del combined_neuron['neighbors'][chan_num] # Rest of these are all
             del combined_neuron['chan_neighbor_ind'][chan_num] # dictionaries so
             del combined_neuron['channel_selector'][chan_num] #  use value
-        combined_neuron['fraction_mua'] = fraction_mua(combined_neuron["spike_indices"],
+        combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(combined_neuron["spike_indices"],
                                             self.sort_info['sampling_rate'],
                                             self.absolute_refractory_period,
                                             self.duplicate_tol_inds)

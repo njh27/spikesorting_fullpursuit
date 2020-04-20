@@ -499,5 +499,5 @@ def cleanup_clusters(clips, neuron_labels):
             if np.logical_or(curr_SSE > nl_mean_SSE_clips + 2*nl_STD_clips,
                              curr_SSE < nl_mean_SSE_clips - 2*nl_STD_clips):
                 keep_clips[nl_ind] = False
-    print("Cleanup is deleting", np.count_nonzero(~keep_clips), "spikes of", keep_clips.shape[0])
+
     return keep_clips

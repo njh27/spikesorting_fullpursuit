@@ -480,7 +480,8 @@ def cleanup_clusters(clips, neuron_labels):
 
     total_SSE_clips = np.sum(clips ** 2, axis=1)
     total_mean_SSE_clips = np.mean(total_SSE_clips)
-    total_STD_clips = np.std(total_SSE_clips)
+    # total_STD_clips = np.std(total_SSE_clips)
+    total_STD_clips = np.median(total_SSE_clips) / 0.6745
     overall_deviant = np.logical_or(total_SSE_clips > total_mean_SSE_clips + 3*total_STD_clips,
                         total_SSE_clips < total_mean_SSE_clips - 3*total_STD_clips)
     keep_clips[overall_deviant] = False
@@ -491,7 +492,8 @@ def cleanup_clusters(clips, neuron_labels):
         nl_template = np.mean(clips[select_nl, :], axis=0)
         nl_SSE_clips = np.sum((clips[select_nl, :] - nl_template) ** 2, axis=1)
         nl_mean_SSE_clips = np.mean(nl_SSE_clips)
-        nl_STD_clips = np.std(nl_SSE_clips)
+        # nl_STD_clips = np.std(nl_SSE_clips)
+        nl_STD_clips = np.median(nl_SSE_clips) / 0.6745
         for nl_ind in range(0, clips.shape[0]):
             if not select_nl[nl_ind]:
                 continue

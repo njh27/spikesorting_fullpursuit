@@ -1200,7 +1200,6 @@ class WorkItemSummary(object):
                 combined_neuron["channel"].append(x['channel'])
                 combined_neuron['neighbors'][x['channel']] = x['neighbors']
                 combined_neuron['chan_neighbor_ind'][x['channel']] = x['chan_neighbor_ind']
-        n_total_channels = len(combined_neuron['channel'])
 
         chan_to_ind_map = {}
         for ind, chan in enumerate(combined_neuron['channel']):
@@ -1295,10 +1294,21 @@ class WorkItemSummary(object):
         # average over all data from that channel and store for output
         combined_neuron["template"] = {}
         combined_neuron["snr"] = {}
+        chans_to_remove = []
         for chan in combined_neuron['channel']:
-            combined_neuron["template"][chan] = np.mean(
-                combined_neuron['waveforms'][combined_neuron['channel_selector'][chan], :], axis=0)
-            combined_neuron['snr'][chan] = np.mean(snr_by_unit[combined_neuron['channel_selector'][chan]])
+            print(chan)
+            if snr_by_unit[combined_neuron['channel_selector'][chan]].size == 0:
+                chans_to_remove.append(chan)
+            else:
+                combined_neuron["template"][chan] = np.mean(
+                    combined_neuron['waveforms'][combined_neuron['channel_selector'][chan], :], axis=0)
+                combined_neuron['snr'][chan] = np.mean(snr_by_unit[combined_neuron['channel_selector'][chan]])
+        for chan_ind in reversed(range(0, len(chans_to_remove))):
+            chan_num = chans_to_remove[chan_ind]
+            del combined_neuron['channel'][chan_ind]
+            del combined_neuron['neighbors'][chan_num]
+            del combined_neuron['chan_neighbor_ind'][chan_num]
+            del combined_neuron['channel_selector'][chan_num]
         combined_neuron['fraction_mua'] = fraction_mua(combined_neuron["spike_indices"],
                                             self.sort_info['sampling_rate'],
                                             self.absolute_refractory_period,

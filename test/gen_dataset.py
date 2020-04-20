@@ -356,11 +356,11 @@ class TestDataset(object):
             # Iterate over zipped segments
             for s, p in zip(single_wis.sort_data[chan], parallel_wis.sort_data[chan]):
                 for data_ind in range(0, len(s)):
-                    assert np.allclose(s[data_ind], p[data_ind], equal_nan=True), "Data item {0} {1} on chan {2} !!! DIFFERENT !!!".format(s[4], data_ind, chan)
-                    # if np.allclose(s[data_ind], p[data_ind], equal_nan=True):
-                    #     print("Data item {0} {1} same".format(s[4], data_ind))
-                    # else:
-                    #     print("Data item {0} {1} !!! DIFFERENT !!!".format(s[4], data_ind))
+                    try:
+                        assert np.allclose(s[data_ind], p[data_ind], equal_nan=True), "Data item {0} {1} on chan {2} !!! DIFFERENT !!!".format(s[4], data_ind, chan)
+                    except:
+                        print("Data item {0} {1} on chan {2} !!! DIFFERENT (probably in size) !!!".format(s[4], data_ind, chan))
+                        raise
             print("All seg data on chan", chan, "is the SAME.")
 
         assert len(single_wis.work_items) == len(parallel_wis.work_items), "Number of work_items elements are different"

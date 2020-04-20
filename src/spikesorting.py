@@ -288,6 +288,14 @@ def spike_sort_item(Probe, work_item, settings):
     crossings, neuron_labels = segment.keep_valid_inds(
             [crossings, neuron_labels], valid_event_indices)
 
+    if settings['do_branch_PCA'] and settings['do_binary_pursuit']:
+        # Remove deviant clips before doing branch PCA to avoid getting clusters
+        # of overlaps or garbage
+        keep_clips = preprocessing.cleanup_clusters(clips[:, curr_chan_inds], neuron_labels)
+        crossings, neuron_labels = segment.keep_valid_inds(
+                [crossings, neuron_labels], keep_clips)
+        clips = clips[keep_clips, :]
+
     # Single channel branch
     if curr_num_clusters.size > 1 and settings['do_branch_PCA']:
         neuron_labels = branch_pca_2_0(neuron_labels, clips[:, curr_chan_inds],
@@ -300,6 +308,14 @@ def spike_sort_item(Probe, work_item, settings):
                             method='pca')
         curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
         if settings['verbose']: print("After SINGLE BRANCH", curr_num_clusters.size, "different clusters")
+
+    if settings['do_branch_PCA'] and settings['do_binary_pursuit']:
+        # Remove deviant clips before doing branch PCA to avoid getting clusters
+        # over overlaps or garbage, this time on full neighborhood
+        keep_clips = preprocessing.cleanup_clusters(clips, neuron_labels)
+        crossings, neuron_labels = segment.keep_valid_inds(
+                [crossings, neuron_labels], keep_clips)
+        clips = clips[keep_clips, :]
 
     # Multi channel branch
     if Probe.num_electrodes > 1 and settings['do_branch_PCA']:

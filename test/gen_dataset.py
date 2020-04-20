@@ -65,7 +65,9 @@ class TestProbe(electrode.AbstractProbe):
 class TestDataset(object):
     """ Actual IDs are output as the index at (self.neuron_templates.shape[1] // 2)
     """
-    def __init__(self, num_channels, duration, random_seed=None, neuron_templates=None, frequency_range=(300, 6000), samples_per_second=40000, amplitude=1):
+    def __init__(self, num_channels, duration, random_seed=None,
+                 neuron_templates=None, frequency_range=(300, 6000),
+                 samples_per_second=40000, amplitude=1, percent_shared_noise=0):
         self.num_channels = num_channels
         self.duration = duration
         self.frequency_range = frequency_range
@@ -77,6 +79,11 @@ class TestDataset(object):
             self.neuron_templates = self.get_default_templates()
         self.voltage_array = None
         self.actual_IDs = []
+        self.percent_shared_noise = percent_shared_noise
+        if self.percent_shared_noise > 1:
+            self.percent_shared_noise = 1.
+        if self.percent_shared_noise < 0.:
+            self.percent_shared_noise = 0.
         self.random_seed = random_seed
         np.random.seed(self.random_seed)
         self.random_state = np.random.get_state()
@@ -136,9 +143,14 @@ class TestDataset(object):
         return bandlimited_noise
 
     def gen_noise_voltage_array(self):
-        noise_voltage_array = np.empty((self.num_channels, self.samples_per_second*self.duration))
+        noise_voltage_array = np.zeros((self.num_channels, self.samples_per_second*self.duration))
+        if self.percent_shared_noise > 0:
+            # Make a shared array
+            shared_noise = self.percent_shared_noise * self.gen_bandlimited_noise()
+            for i in range (0, self.num_channels):
+                noise_voltage_array[i, :] = shared_noise
         for i in range (0, self.num_channels):
-            noise_voltage_array[i, :] = self.gen_bandlimited_noise()
+            noise_voltage_array[i, :] += (1-self.percent_shared_noise) * self.gen_bandlimited_noise()
         return noise_voltage_array
 
     def gen_test_dataset(self, firing_rates, template_inds, chan_scaling_factors, refractory_wins=1.5e-3):

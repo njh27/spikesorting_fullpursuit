@@ -622,9 +622,10 @@ class WorkItemSummary(object):
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
             print("Start stitching channel", chan)
+            jump_to_end = False
             if len(self.sort_data[chan]) <= 1:
                 # Need at least 2 segments to stitch
-                continue
+                jump_to_end = True
             # Start with the current labeling scheme in first segment,
             # which is assumed to be ordered from 0-N (as output by sorter)
             # Find first segment with labels and start there
@@ -641,15 +642,18 @@ class WorkItemSummary(object):
             start_new_seg = False
             if start_seg >= len(self.sort_data[chan])-1:
                 # Need at least 2 remaining segments to stitch
-                continue
-            main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][start_seg]['chan_neighbor_ind'],
-                        self.sort_info['n_samples_per_chan'] * (self.work_items[chan][start_seg]['chan_neighbor_ind'] + 1)]
-            curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
+                jump_to_end = True
+            else:
+                main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][start_seg]['chan_neighbor_ind'],
+                            self.sort_info['n_samples_per_chan'] * (self.work_items[chan][start_seg]['chan_neighbor_ind'] + 1)]
+                curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
 
-            split_memory_dicts = [{} for x in range(0, self.n_segments)]
+                split_memory_dicts = [{} for x in range(0, self.n_segments)]
             # Go through each segment as the "current segment" and set the labels
             # in the next segment according to the scheme in current
             for curr_seg in range(start_seg, len(self.sort_data[chan])-1):
+                if jump_to_end:
+                    break
                 next_seg = curr_seg + 1
                 if len(self.sort_data[chan][curr_seg][1]) == 0:
                     # curr_seg is now failed next seg of last iteration

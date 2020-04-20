@@ -38,7 +38,8 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
     if do_binary_pursuit:
         # Since binary pursuit can dip roughly halfway below threshold, we can
         # adjust our noise computation accordingly
-        zca_thresholds /= 2
+        # zca_thresholds /= 2
+        pass
     # convert cushion to zero centered window
     thresh_cushion = (thresh_cushion * 2 + 1)
     volt_thresh_bool = np.zeros(voltage_data.shape, dtype='bool')

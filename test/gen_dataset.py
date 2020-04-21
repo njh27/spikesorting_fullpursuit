@@ -190,7 +190,7 @@ class TestDataset(object):
             for chan in range(0, self.num_channels):
                 preview_templates[neuron] = np.vstack((preview_templates[neuron],
                     chan_scaling_factors[chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude))
-        w_color = ['r', 'b', 'g']
+        w_color = ['b', 'r', 'g']
         for n in range(0, len(preview_templates)):
             use_color = w_color.pop(0)
             _ = plt.plot(preview_templates[n].flatten(), color=use_color)

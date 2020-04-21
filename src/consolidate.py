@@ -264,6 +264,9 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate,
     all_isis = np.diff(spike_indices)
     refractory_inds = int(round(absolute_refractory_period * sampling_rate))
     bin_width = refractory_inds - duplicate_tol_inds
+    if bin_width <= 0:
+        print("duplicate_tol_inds encompasses absolute_refractory_period. Fraction MUA enforced at 0.")
+        return 0.
     check_inds = int(round(check_window * sampling_rate))
     bin_edges = np.arange(0, check_inds + bin_width, bin_width)
     counts, xval = np.histogram(all_isis, bin_edges)
@@ -271,6 +274,8 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate,
     num_isi_violations = np.count_nonzero(all_isis < refractory_inds)
     n_duplicates = np.count_nonzero(all_isis <= duplicate_tol_inds)
     num_isi_violations -= n_duplicates
+    if num_isi_violations < 0:
+        num_isi_violations = 0
     if isi_peak == 0:
         isi_peak = max(num_isi_violations, 1.)
     fraction_mua_to_peak = num_isi_violations / isi_peak
@@ -513,6 +518,9 @@ class WorkItemSummary(object):
         all_isis = np.diff(unit_spikes)
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
         bin_width = refractory_inds - self.duplicate_tol_inds
+        if bin_width <= 0:
+            print("duplicate_tol_inds encompasses absolute_refractory_period. Fraction MUA enforced at 0.")
+            return 0.
         check_inds = int(round(check_window * self.sort_info['sampling_rate']))
         bin_edges = np.arange(0, check_inds + bin_width, bin_width)
         counts, xval = np.histogram(all_isis, bin_edges)
@@ -520,6 +528,8 @@ class WorkItemSummary(object):
         num_isi_violations = np.count_nonzero(all_isis < refractory_inds)
         n_duplicates = np.count_nonzero(all_isis <= self.duplicate_tol_inds)
         num_isi_violations -= n_duplicates
+        if num_isi_violations < 0:
+            num_isi_violations = 0
         if isi_peak == 0:
             isi_peak = max(num_isi_violations, 1.)
         fraction_mua_to_peak = num_isi_violations / isi_peak

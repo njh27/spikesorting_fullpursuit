@@ -1140,37 +1140,17 @@ class WorkItemSummary(object):
             # We now need to choose one of the pair to delete.
             neuron_1 = neurons[best_pair[0]]
             neuron_2 = neurons[best_pair[1]]
-            # Our first check is easy, if one of the neurons has greater SNR
-            # than the other neuron (on their primary channel, the lower SNR
-            # neuron is removed.
             delete_1 = False
             delete_2 = False
-            if False:
-                pass
-            # elif neuron_1['snr'] > 1.25 * neuron_2['snr']:
-            #     delete_2 = True
-            # elif neuron_2['snr'] > 1.25 * neuron_1['snr']:
-            #     delete_1 = True
-
-            # # Our next check is also easy - we check to see if one is a significantly
-            # # larger number of multi-unit noise activity that the other.
-            # elif (neuron_1['fraction_mua'] > 2 * neuron_2['fraction_mua']) and (neuron_2['fraction_mua'] > 0):
-            #     delete_1 = True
-            # elif (neuron_2['fraction_mua'] > 2 * neuron_1['fraction_mua']) and (neuron_1['fraction_mua'] > 0):
-            #     delete_2 = True
-            # elif (neuron_1['fraction_mua'] < neuron_2['fraction_mua']) and (neuron_1['snr'] > neuron_2['snr']):
-            #     delete_2 = True
-            # elif (neuron_2['fraction_mua'] < neuron_1['fraction_mua']) and (neuron_2['snr'] > neuron_1['snr']):
-            #     delete_1 = True
-            # elif (neuron_1['snr'] > neuron_2['snr']) and (neuron_1['fraction_mua'] < self.max_mua_ratio):
-            #     delete_2 = True
-            # elif (neuron_2['snr'] > neuron_1['snr']) and (neuron_2['fraction_mua'] < self.max_mua_ratio):
-            #     delete_1 = True
-
-            # Especially with fraction_mua relative to peak ISI, we need to
-            # consider the number of spikes in a neuron. Neurons with very few
-            # spikes might have a low mua but not be very useful
-            elif (neuron_1['fraction_mua'] > neuron_2['fraction_mua']) \
+            """First doing the MUA and spike number checks because at this point
+            the stitch segments function has deleted anything with MUA over the
+            input max_mua_ratio. We can then fall back to SNR, since SNR does
+            not always correspond to isolation quality, specifically in the case
+            where other neurons are present on the same channel. Conversely,
+            low MUA can indicate good isolation, or perhaps that the unit has a
+            very small number of spikes. So we first consider MUA and spike
+            count jointly before deferring to SNR. """
+            if (neuron_1['fraction_mua'] > neuron_2['fraction_mua']) \
                 and (neuron_2['spike_indices'].shape[0] > neuron_1['spike_indices'].shape[0]):
                 # Neuron 1 has more MUA and fewer spikes
                 print('Neuron 1 has more MUA and fewer spikes')
@@ -1188,30 +1168,13 @@ class WorkItemSummary(object):
                     delete_2 = True
                 else:
                     delete_1 = True
-            # NOTE: Need to run the above check first, else if both have a zero
-            # or near zero mua ratio this choice will be arbitrary
-            # elif (neuron_1['fraction_mua'] / neuron_1['spike_indices'].shape[0]
-            #       < neuron_2['fraction_mua'] / neuron_2['spike_indices'].shape[0]):
-            #     # Neuron 1 has less MUA per spike so delete 2
-            #     print('Neuron 1 has less MUA per spike so delete 2')
-            #     delete_2 = True
-            # elif (neuron_2['fraction_mua'] / neuron_2['spike_indices'].shape[0]
-            #       < neuron_1['fraction_mua'] / neuron_1['spike_indices'].shape[0]):
-            #     # Neuron 2 has less MUA per spike so delete 1
-            #     print('Neuron 2 has less MUA per spike so delete 1')
-            #     delete_1 = True
 
-            # Ones above are redundant with this but for sake of clarity
+            # Defer to choosing max SNR
             elif (neuron_1['snr'] > neuron_2['snr']):
                 print("neuron 1 has higher SNR")
                 delete_2 = True
-            elif (neuron_2['snr'] > neuron_1['snr']):
-                print("neuron 2 has higher SNR")
-                delete_1 = True
             else:
-                print("Deleting both with MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "and SNR", neuron_1['snr'], neuron_2['snr'])
                 delete_1 = True
-                delete_2 = True
 
             if delete_1:
                 neurons_to_remove.append(best_pair[0])

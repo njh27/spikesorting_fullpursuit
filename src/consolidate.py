@@ -1178,8 +1178,9 @@ class WorkItemSummary(object):
                 # Neuron 2 has more MUA and fewer spikes
                 print('Neuron 2 has more MUA and fewer spikes')
                 delete_2 = True
-            elif neuron_1['fraction_mua'] < .001 and neuron_2['fraction_mua'] < .001:
-                # Both have very low MUA so choose most spikes
+            elif neuron_1['fraction_mua'] <= self.max_mua_ratio/10 and neuron_2['fraction_mua'] <= self.max_mua_ratio/10:
+                # Both have very low MUA so choose most spikes. NOTE: this will
+                # catch the case where both have MUA = 0.
                 print('Both have very low MUA so choose most spikes')
                 if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
                     delete_2 = True
@@ -1187,21 +1188,23 @@ class WorkItemSummary(object):
                     delete_1 = True
             # NOTE: Need to run the above check first, else if both have a zero
             # or near zero mua ratio this choice will be arbitrary
-            elif (neuron_1['fraction_mua'] / neuron_1['spike_indices'].shape[0]
-                  < neuron_2['fraction_mua'] / neuron_2['spike_indices'].shape[0]):
-                # Neuron 1 has less MUA per spike so delete 2
-                print('Neuron 1 has less MUA per spike so delete 2')
-                delete_2 = True
-            elif (neuron_2['fraction_mua'] / neuron_2['spike_indices'].shape[0]
-                  < neuron_1['fraction_mua'] / neuron_1['spike_indices'].shape[0]):
-                # Neuron 2 has less MUA per spike so delete 1
-                print('Neuron 2 has less MUA per spike so delete 1')
-                delete_1 = True
+            # elif (neuron_1['fraction_mua'] / neuron_1['spike_indices'].shape[0]
+            #       < neuron_2['fraction_mua'] / neuron_2['spike_indices'].shape[0]):
+            #     # Neuron 1 has less MUA per spike so delete 2
+            #     print('Neuron 1 has less MUA per spike so delete 2')
+            #     delete_2 = True
+            # elif (neuron_2['fraction_mua'] / neuron_2['spike_indices'].shape[0]
+            #       < neuron_1['fraction_mua'] / neuron_1['spike_indices'].shape[0]):
+            #     # Neuron 2 has less MUA per spike so delete 1
+            #     print('Neuron 2 has less MUA per spike so delete 1')
+            #     delete_1 = True
 
             # Ones above are redundant with this but for sake of clarity
             elif (neuron_1['snr'] > neuron_2['snr']):
+                print("neuron 1 has higher SNR")
                 delete_2 = True
             elif (neuron_2['snr'] > neuron_1['snr']):
+                print("neuron 2 has higher SNR")
                 delete_1 = True
             else:
                 print("Deleting both with MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "and SNR", neuron_1['snr'], neuron_2['snr'])

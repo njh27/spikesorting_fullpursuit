@@ -1027,6 +1027,8 @@ class WorkItemSummary(object):
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
                     neuron['fraction_mua'] = self.get_fraction_mua_to_peak(chan, seg, neuron_label)
                     neuron['threshold'] = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['channel']]
+                    neuron['main_win'] = [self.sort_info['n_samples_per_chan'] * neuron['chan_neighbor_ind'],
+                                          self.sort_info['n_samples_per_chan'] * (neuron['chan_neighbor_ind'] + 1)]
                     self.neuron_summary_by_seg[seg].append(neuron)
 
     def remove_redundant_neurons(self, neurons, overlap_time=2.5e-4, overlap_ratio_threshold=2):
@@ -1236,13 +1238,31 @@ class WorkItemSummary(object):
         combined_neuron['channel'] = []
         combined_neuron['neighbors'] = {}
         combined_neuron['chan_neighbor_ind'] = {}
+        combined_neuron['main_windows'] = {}
         n_total_spikes = 0
+        n_peak = 0
         for x in unit_dicts_list:
             n_total_spikes += x['spike_indices'].shape[0]
             if x['channel'] not in combined_neuron['channel']:
                 combined_neuron["channel"].append(x['channel'])
                 combined_neuron['neighbors'][x['channel']] = x['neighbors']
                 combined_neuron['chan_neighbor_ind'][x['channel']] = x['chan_neighbor_ind']
+                combined_neuron['main_windows'][x['channel']] = x['main_win']
+            if np.amax(x['template'][x['main_win'][0]:x['main_win'][1]]) \
+                > np.amin(x['template'][x['main_win'][0]:x['main_win'][1]]):
+                n_peak += 1
+
+        if n_peak / len(unit_dicts_list) > 0.5:
+            # Majority of templates have larger peak than valley
+            align_peak = True
+        else:
+            align_peak = False
+        waveform_clip_center = int(round(np.abs(self.sort_info['clip_width'][0] * self.sort_info['sampling_rate']))) + 1
+
+        for unit in unit_dicts_list:
+            n_unit_events = unit['spike_indices'].size
+            if n_unit_events == 0:
+                continue
 
         chan_to_ind_map = {}
         for ind, chan in enumerate(combined_neuron['channel']):
@@ -1255,12 +1275,19 @@ class WorkItemSummary(object):
         threshold_by_unit = []
         segment_by_unit = []
         snr_by_unit = []
-        print("!!! I NEED TO MAKE THIS SHIFT/ALIGN ALL THE INDICES (IF NOT WAVEFORMS) SO DUPLICATES ETC ARE VALID!!!")
         for unit in unit_dicts_list:
             n_unit_events = unit['spike_indices'].size
             if n_unit_events == 0:
                 continue
-            indices_by_unit.append(unit['spike_indices'])
+            # First adjust all spike indices to where they would have been if
+            # aligned to the specified peak or valley so that spike times are
+            # all on equal footing when computing redundant spikes, MUA etc.
+            if align_peak:
+                shift = np.argmax(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
+            else:
+                shift = np.argmin(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
+
+            indices_by_unit.append(unit['spike_indices'] + shift)
             waveforms_by_unit.append(unit['waveforms'])
             new_spike_bool_by_unit.append(unit['new_spike_bool'])
             # Make and append a bunch of book keeping numpy arrays
@@ -1304,32 +1331,28 @@ class WorkItemSummary(object):
         segment_by_unit = segment_by_unit[keep_bool]
         snr_by_unit = snr_by_unit[keep_bool]
 
-        # Compute waveform of each spike on its main channel
-        combined_neuron['main_waveforms'] = np.zeros((combined_neuron['waveforms'].shape[0], self.sort_info['n_samples_per_chan']))
-        # And get their channel of origin while we are at it
+        # Get each spike's channel of origin and the waveforms on main channel
+        main_waveforms = np.zeros((combined_neuron['waveforms'].shape[0], self.sort_info['n_samples_per_chan']))
         combined_neuron['channel_selector'] = {}
         for chan in combined_neuron['channel']:
-            main_win = [self.sort_info['n_samples_per_chan'] * combined_neuron['chan_neighbor_ind'][chan],
-                        self.sort_info['n_samples_per_chan'] * (combined_neuron['chan_neighbor_ind'][chan] + 1)]
             chan_select = channel_selector == chan
             combined_neuron['channel_selector'][chan] = chan_select
-            combined_neuron['main_waveforms'][chan_select, :] = combined_neuron['waveforms'][chan_select, main_win[0]:main_win[1]]
+            main_win = combined_neuron['main_windows'][chan]
+            main_waveforms[chan_select, :] = combined_neuron['waveforms'][chan_select, main_win[0]:main_win[1]]
 
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping
         # the waveform with largest peak-value to threshold ratio on its main
         # channel
         keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron["spike_indices"],
-                        combined_neuron['main_waveforms'], threshold_by_unit,
-                        tol_inds=self.duplicate_tol_inds)
+                        main_waveforms, threshold_by_unit, tol_inds=self.duplicate_tol_inds)
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
         combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]
         combined_neuron['waveforms'] = combined_neuron['waveforms'][keep_bool, :]
-        combined_neuron['main_waveforms'] = combined_neuron['main_waveforms'][keep_bool, :]
         for chan in combined_neuron['channel']:
             combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
         channel_selector = channel_selector[keep_bool]
-        threshold_by_unit = threshold_by_unit[keep_bool]
+        threshold_by_unit = threshold_by_unit[keep_bool] # NOTE: not currently output...
         segment_by_unit = segment_by_unit[keep_bool]
         snr_by_unit = snr_by_unit[keep_bool]
 
@@ -1353,6 +1376,7 @@ class WorkItemSummary(object):
             del combined_neuron['neighbors'][chan_num] # Rest of these are all
             del combined_neuron['chan_neighbor_ind'][chan_num] # dictionaries so
             del combined_neuron['channel_selector'][chan_num] #  use value
+            del combined_neuron['main_windows'][chan_num]
         combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(combined_neuron["spike_indices"],
                                             self.sort_info['sampling_rate'],
                                             self.absolute_refractory_period,

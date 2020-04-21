@@ -536,7 +536,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings, neuron_labels = segment_parallel.keep_valid_inds(
                 [crossings, neuron_labels], valid_event_indices)
 
-        if settings['do_branch_PCA'] and settings['do_binary_pursuit']:
+        if settings['do_binary_pursuit']:
             # Remove deviant clips before doing branch PCA to avoid getting clusters
             # of overlaps or garbage
             keep_clips = preprocessing.cleanup_clusters(clips[:, curr_chan_inds], neuron_labels)

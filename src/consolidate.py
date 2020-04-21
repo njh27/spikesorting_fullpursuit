@@ -271,6 +271,8 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate,
     num_isi_violations = np.count_nonzero(all_isis < refractory_inds)
     n_duplicates = np.count_nonzero(all_isis <= duplicate_tol_inds)
     num_isi_violations -= n_duplicates
+    if isi_peak == 0:
+        isi_peak = max(num_isi_violations, 1.)
     fraction_mua_to_peak = num_isi_violations / isi_peak
 
     return fraction_mua_to_peak
@@ -518,6 +520,8 @@ class WorkItemSummary(object):
         num_isi_violations = np.count_nonzero(all_isis < refractory_inds)
         n_duplicates = np.count_nonzero(all_isis <= self.duplicate_tol_inds)
         num_isi_violations -= n_duplicates
+        if isi_peak == 0:
+            isi_peak = max(num_isi_violations, 1.)
         fraction_mua_to_peak = num_isi_violations / isi_peak
 
         return fraction_mua_to_peak

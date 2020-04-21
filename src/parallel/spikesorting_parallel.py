@@ -945,7 +945,7 @@ if __name__ == '__main__':
     the remaining missed spikes.
     """
     spike_sort_args = {'sigma': 4.,
-                       'clip_width': [-8e-4, 10e-4], 'filter_band': (300, 8000),
+                       'clip_width': [-4e-4, 6e-4], 'filter_band': (1000, 8000),
                        'p_value_cut_thresh': 0.05, 'check_components': None,
                        'max_components': 10,
                        'min_firing_rate': 2., 'do_binary_pursuit': True,

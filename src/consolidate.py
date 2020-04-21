@@ -1145,10 +1145,12 @@ class WorkItemSummary(object):
             # neuron is removed.
             delete_1 = False
             delete_2 = False
-            if neuron_1['snr'] > 1.25 * neuron_2['snr']:
-                delete_2 = True
-            elif neuron_2['snr'] > 1.25 * neuron_1['snr']:
-                delete_1 = True
+            if False:
+                pass
+            # elif neuron_1['snr'] > 1.25 * neuron_2['snr']:
+            #     delete_2 = True
+            # elif neuron_2['snr'] > 1.25 * neuron_1['snr']:
+            #     delete_1 = True
 
             # # Our next check is also easy - we check to see if one is a significantly
             # # larger number of multi-unit noise activity that the other.

@@ -1154,16 +1154,19 @@ class WorkItemSummary(object):
                 and (neuron_2['spike_indices'].shape[0] > neuron_1['spike_indices'].shape[0]):
                 # Neuron 1 has more MUA and fewer spikes
                 print('Neuron 1 has more MUA and fewer spikes')
+                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_1 = True
             elif (neuron_2['fraction_mua'] > neuron_1['fraction_mua']) \
                 and (neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]):
                 # Neuron 2 has more MUA and fewer spikes
                 print('Neuron 2 has more MUA and fewer spikes')
+                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_2 = True
             elif neuron_1['fraction_mua'] <= self.max_mua_ratio/10 and neuron_2['fraction_mua'] <= self.max_mua_ratio/10:
                 # Both have very low MUA so choose most spikes. NOTE: this will
                 # catch the case where both have MUA = 0.
                 print('Both have very low MUA so choose most spikes')
+                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
                     delete_2 = True
                 else:
@@ -1171,7 +1174,7 @@ class WorkItemSummary(object):
 
             # Defer to choosing max SNR
             elif (neuron_1['snr'] > neuron_2['snr']):
-                print("neuron 1 has higher SNR")
+                print("neuron 1 has higher SNR", neuron_1['snr'] , neuron_2['snr'])
                 delete_2 = True
             else:
                 delete_1 = True

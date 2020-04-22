@@ -665,8 +665,12 @@ class WorkItemSummary(object):
                     if cross_corr[max_corr_ind] > best_corr:
                         best_corr = cross_corr[max_corr_ind]
                         best_shift = max_corr_ind - cross_corr.shape[0]//2
-                        best_ml_clips = clips_1
-                        best_ll_clips = clips_2
+                        if main_seg != leftover_seg:
+                            best_ml_clips = clips_1[:, curr_chan_inds]
+                            best_ll_clips = clips_2[:, curr_chan_inds]
+                        else:
+                            best_ml_clips = clips_1
+                            best_ll_clips = clips_2
                         best_ml_select = ml_select
                         best_ll_select = ll_select
                         chosen_ml = ml

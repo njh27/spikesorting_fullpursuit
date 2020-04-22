@@ -553,10 +553,14 @@ class WorkItemSummary(object):
         neuron_labels[clips_1.shape[0]:] = 2
         if method.lower() == 'pca':
             scores = preprocessing.compute_pca(clips,
-                        self.sort_info['check_components'],
-                        self.sort_info['max_components'],
+                        5, 5,
                         add_peak_valley=self.sort_info['add_peak_valley'],
                         curr_chan_inds=curr_chan_inds)
+            # scores = preprocessing.compute_pca(clips,
+            #             self.sort_info['check_components'],
+            #             self.sort_info['max_components'],
+            #             add_peak_valley=self.sort_info['add_peak_valley'],
+            #             curr_chan_inds=curr_chan_inds)
         elif method.lower() == 'template_pca':
             scores = preprocessing.compute_template_pca(clips, neuron_labels,
                         curr_chan_inds, self.sort_info['check_components'],
@@ -644,7 +648,7 @@ class WorkItemSummary(object):
             is_merged, _, _ = self.merge_test_two_units(
                     best_ml_clips, best_ll_clips,
                     self.sort_info['p_value_cut_thresh'],
-                    method='template_pca', merge_only=True,
+                    method='pca', merge_only=True,
                     curr_chan_inds=curr_chan_inds)
 
             if self.verbose: print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", chosen_ml, chosen_ll)
@@ -655,9 +659,17 @@ class WorkItemSummary(object):
             if is_merged:
                 # Update actual next segment label data with same labels
                 # used in main_seg
-                self.sort_data[chan][leftover_seg][1][best_ll_select] = chosen_ml
-                # This leftover is used up
-                leftover_labels.remove(chosen_ll)
+                if chosen_ml < chosen_ll:
+                    self.sort_data[chan][leftover_seg][1][best_ll_select] = chosen_ml
+                    # This leftover is used up
+                    leftover_labels.remove(chosen_ll)
+                else:
+                    # I think this shouldn't happen since labels should have
+                    # been ordered on input
+                    print("!!! Relabelling main_labels based on leftovers !!!")
+                    self.sort_data[chan][leftover_seg][1][best_ml_select] = chosen_ll
+                    # This leftover is used up
+                    leftover_labels.remove(chosen_ml)
             else:
                 # This main label had its pick of litter and failed so its done
                 main_labels.remove(chosen_ml)
@@ -726,7 +738,7 @@ class WorkItemSummary(object):
                         real_labels.append(nl)
                         if self.verbose: print("In NEXT SEG NEW (531) added real label", nl, chan, curr_seg)
                         next_real_label += 1
-                    start_new_seg = False
+                    # start_new_seg = False
                 if len(self.sort_data[chan][next_seg][1]) == 0:
                     # No units sorted in NEXT segment so start fresh next segment
                     start_new_seg = True
@@ -800,7 +812,7 @@ class WorkItemSummary(object):
                     clips_2 = clips_2[:next_spike_stop, :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='template_pca', merge_only=True,
+                            method='pca', merge_only=True,
                             curr_chan_inds=curr_chan_inds)
 
                     if self.verbose: print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
@@ -813,7 +825,7 @@ class WorkItemSummary(object):
                         # main_labels.remove(r_l)
 
 
-                if curr_seg == 0:
+                if curr_seg == 0 or start_new_seg:
                     pseudo_leftovers = [x for x in main_labels]
                     self.check_missed_alignment_merge(chan, curr_seg, curr_seg,
                                 main_labels, pseudo_leftovers,
@@ -864,7 +876,7 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='template_pca', split_only=True,
+                            method='pca', split_only=True,
                             curr_chan_inds=curr_chan_inds)
                     if ismerged: # This can happen if the split cutpoint forces
                         continue # a merge so check and skip
@@ -962,6 +974,8 @@ class WorkItemSummary(object):
                             if self.verbose: print("In leftover after deletion (732) added real label", next_real_label, chan, curr_seg)
                             next_real_label += 1
 
+                # If we made it here then we are not starting a new seg
+                start_new_seg = False
                 if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels, np.unique(self.sort_data[chan][curr_seg][1]), np.unique(self.sort_data[chan][next_seg][1]))
                 if curr_seg > 0:
                     if self.verbose: print("Previous seg...", np.unique(self.sort_data[chan][curr_seg-1][1]))

@@ -790,8 +790,8 @@ class WorkItemSummary(object):
                                 np.vstack(curr_templates + next_templates),
                                 np.hstack((curr_labels, next_labels)), [])
 
-                curr_max_use_clips = 100
-                next_max_use_clips = 100
+                curr_max_use_clips = 1000
+                next_max_use_clips = 1000
 
                 # Merge test all mutually closest clusters and track any labels
                 # in the next segment (fake_labels) that do not find a match.

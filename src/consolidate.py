@@ -330,7 +330,8 @@ class WorkItemSummary(object):
     """
     def __init__(self, sort_data, work_items, sort_info,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
-                 max_mua_ratio=0.05, n_max_merge_test_clips=None, verbose=False):
+                 max_mua_ratio=0.05, n_max_merge_test_clips=None,
+                 merge_test_overlap_indices=None, verbose=False):
 
         self.check_input_data(sort_data, work_items)
         self.sort_info = sort_info
@@ -342,6 +343,9 @@ class WorkItemSummary(object):
         self.n_max_merge_test_clips = n_max_merge_test_clips
         if n_max_merge_test_clips is None:
             self.n_max_merge_test_clips = np.inf
+        if merge_test_overlap_indices is None:
+            merge_test_overlap_indices = work_items[0]['overlap']
+        self.merge_test_overlap_indices = merge_test_overlap_indices
         # curr_spike_start = 0 #max(self.sort_data[chan][curr_seg][0].shape[0] - 100, 0)
         # next_spike_stop = self.sort_data[chan][next_seg][0].shape[0] #min(self.sort_data[chan][next_seg][0].shape[0], 100)
 
@@ -437,8 +441,14 @@ class WorkItemSummary(object):
         the spike event times. Use 'stable' sort for output to be repeatable
         because overlapping segments and binary pursuit can return identical
         dupliate spikes that become sorted in different orders. """
+        self.neuron_summary_seg_inds = []
         for chan in range(0, self.n_chans):
             for seg in range(0, self.n_segments):
+                if chan == 0:
+                    # This is the same for every channel so only do once
+                    self.neuron_summary_seg_inds.append(self.work_items[0][seg]['index_window'])
+                    if self.neuron_summary_seg_inds[-1][1] - self.neuron_summary_seg_inds[-1][0] <= self.merge_test_overlap_indices:
+                        raise ValueError("Number of merge test overlap indices must be less than the total segment size!")
                 if len(self.sort_data[chan][seg][0]) == 0:
                     continue # No spikes in this segment
                 spike_order = np.argsort(self.sort_data[chan][seg][0], kind='stable')
@@ -611,11 +621,21 @@ class WorkItemSummary(object):
             # be highest for these units, do them first.
             best_corr = -np.inf
             best_shift = 0
+            main_remove = []
+            leftover_remove = []
             for ml in main_labels:
                 # Choose main seg template
                 ml_select = self.sort_data[chan][main_seg][1] == ml
                 clips_1 = self.sort_data[chan][main_seg][2][ml_select, :]
                 if main_seg != leftover_seg:
+                    start_edge = self.neuron_summary_seg_inds[main_seg][1] - self.merge_test_overlap_indices
+                    c1_start = next((idx[0] for idx, val in np.ndenumerate(
+                                self.sort_data[chan][main_seg][0][ml_select])
+                                if val >= start_edge), None)
+                    if c1_start is None:
+                        main_remove.append(ml)
+                        continue
+                    clips_1 = clips_1[c1_start:, :]
                     clips_1 = clips_1[max(clips_1.shape[0]-self.n_max_merge_test_clips, 0):, :]
                 main_template = np.mean(clips_1, axis=0)
                 for ll in leftover_labels:
@@ -625,6 +645,17 @@ class WorkItemSummary(object):
                     ll_select = leftover_workspace == ll
                     clips_2 = self.sort_data[chan][leftover_seg][2][ll_select, :]
                     if main_seg != leftover_seg:
+                        stop_edge = self.neuron_summary_seg_inds[main_seg][1]
+                        c2_start = next((idx[0] for idx, val in np.ndenumerate(
+                                    self.sort_data[chan][leftover_seg][0][ll_select])
+                                    if val >= start_edge), None)
+                        c2_stop = next((idx[0] for idx, val in np.ndenumerate(
+                                    self.sort_data[chan][leftover_seg][0][ll_select])
+                                    if val > stop_edge), None)
+                        if c2_start is None:
+                            leftover_remove.append(ll)
+                            continue
+                        clips_2 = clips_2[c2_start:c2_stop, :]
                         clips_2 = clips_2[:min(self.n_max_merge_test_clips, clips_2.shape[0]), :]
                     leftover_template = np.mean(clips_2, axis=0)
                     cross_corr = np.correlate(main_template[curr_chan_inds],
@@ -640,6 +671,10 @@ class WorkItemSummary(object):
                         best_ll_select = ll_select
                         chosen_ml = ml
                         chosen_ll = ll
+            for mr in main_remove:
+                main_labels.remove(mr)
+            for lr in leftover_remove:
+                leftover_labels.remove(lr)
             if np.isinf(best_corr):
                 # Never found a match to reset the best ml/ll so we are done
                 break
@@ -818,10 +853,27 @@ class WorkItemSummary(object):
                     # Choose current seg clips based on real labels
                     real_select = self.sort_data[chan][curr_seg][1] == r_l
                     clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
+                    start_edge = self.neuron_summary_seg_inds[curr_seg][1] - self.merge_test_overlap_indices
+                    c1_start = next((idx[0] for idx, val in np.ndenumerate(
+                                self.sort_data[chan][curr_seg][0][real_select])
+                                if val >= start_edge), None)
+                    if c1_start is None:
+                        continue
+                    clips_1 = clips_1[c1_start:, :]
                     clips_1 = clips_1[max(clips_1.shape[0]-self.n_max_merge_test_clips, 0):, :]
                     # Choose next seg clips based on original fake label workspace
                     fake_select = next_label_workspace == f_l
                     clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
+                    stop_edge = self.neuron_summary_seg_inds[curr_seg][1]
+                    c2_start = next((idx[0] for idx, val in np.ndenumerate(
+                                self.sort_data[chan][next_seg][0][fake_select])
+                                if val >= start_edge), None)
+                    c2_stop = next((idx[0] for idx, val in np.ndenumerate(
+                                self.sort_data[chan][next_seg][0][fake_select])
+                                if val > stop_edge), None)
+                    if c2_start is None:
+                        continue
+                    clips_2 = clips_2[c2_start:c2_stop, :]
                     clips_2 = clips_2[:min(self.n_max_merge_test_clips, clips_2.shape[0]), :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
@@ -836,7 +888,6 @@ class WorkItemSummary(object):
                         self.sort_data[chan][next_seg][1][fake_select] = r_l
                         leftover_labels.remove(f_l)
                         # main_labels.remove(r_l)
-
 
                 if curr_seg == 0 or start_new_seg:
                     pseudo_leftovers = [x for x in main_labels]
@@ -1025,9 +1076,7 @@ class WorkItemSummary(object):
         """
         """
         self.neuron_summary_by_seg = [[] for x in range(0, self.n_segments)]
-        self.neuron_summary_seg_inds = []
         for seg in range(0, self.n_segments):
-            self.neuron_summary_seg_inds.append(self.work_items[0][seg]['index_window'])
             for chan in range(0, self.n_chans):
                 for ind, neuron_label in enumerate(np.unique(self.sort_data[chan][seg][1])):
                     neuron = {}

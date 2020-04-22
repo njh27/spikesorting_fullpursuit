@@ -553,7 +553,7 @@ class WorkItemSummary(object):
         neuron_labels[clips_1.shape[0]:] = 2
         if method.lower() == 'pca':
             scores = preprocessing.compute_pca(clips,
-                        5, 5,
+                        5, 10,
                         add_peak_valley=self.sort_info['add_peak_valley'],
                         curr_chan_inds=curr_chan_inds)
             # scores = preprocessing.compute_pca(clips,
@@ -563,9 +563,13 @@ class WorkItemSummary(object):
             #             curr_chan_inds=curr_chan_inds)
         elif method.lower() == 'template_pca':
             scores = preprocessing.compute_template_pca(clips, neuron_labels,
-                        curr_chan_inds, self.sort_info['check_components'],
-                        self.sort_info['max_components'],
+                        curr_chan_inds, 10,
+                        5,
                         add_peak_valley=self.sort_info['add_peak_valley'])
+            # scores = preprocessing.compute_template_pca(clips, neuron_labels,
+            #             curr_chan_inds, self.sort_info['check_components'],
+            #             self.sort_info['max_components'],
+            #             add_peak_valley=self.sort_info['add_peak_valley'])
         elif method.lower() == 'projection':
             # Projection onto templates, weighted by number of spikes
             t1 = np.mean(clips_1, axis=0) * (clips_1.shape[0] / clips.shape[0])
@@ -606,7 +610,8 @@ class WorkItemSummary(object):
                 # Choose main seg template
                 ml_select = self.sort_data[chan][main_seg][1] == ml
                 clips_1 = self.sort_data[chan][main_seg][2][ml_select, :]
-                clips_1 = clips_1[max(clips_1.shape[0]-main_start, 0):, :]
+                if main_seg != leftover_seg:
+                    clips_1 = clips_1[max(clips_1.shape[0]-main_start, 0):, :]
                 main_template = np.mean(clips_1, axis=0)
                 for ll in leftover_labels:
                     # Find leftover template
@@ -614,7 +619,8 @@ class WorkItemSummary(object):
                         continue
                     ll_select = leftover_workspace == ll
                     clips_2 = self.sort_data[chan][leftover_seg][2][ll_select, :]
-                    clips_2 = clips_2[:min(leftover_stop, clips_2.shape[0]), :]
+                    if main_seg != leftover_seg:
+                        clips_2 = clips_2[:min(leftover_stop, clips_2.shape[0]), :]
                     leftover_template = np.mean(clips_2, axis=0)
                     cross_corr = np.correlate(main_template[curr_chan_inds],
                                         leftover_template[curr_chan_inds],
@@ -667,6 +673,8 @@ class WorkItemSummary(object):
                     # I think this shouldn't happen since labels should have
                     # been ordered on input
                     print("!!! Relabelling main_labels based on leftovers !!!")
+                    print("main labels were", main_labels)
+                    print("leftovers were", leftover_labels)
                     self.sort_data[chan][leftover_seg][1][best_ml_select] = chosen_ll
                     # This leftover is used up
                     leftover_labels.remove(chosen_ml)
@@ -782,8 +790,8 @@ class WorkItemSummary(object):
                                 np.vstack(curr_templates + next_templates),
                                 np.hstack((curr_labels, next_labels)), [])
 
-                curr_max_use_clips = 1000
-                next_max_use_clips = 1000
+                curr_max_use_clips = 100
+                next_max_use_clips = 100
 
                 # Merge test all mutually closest clusters and track any labels
                 # in the next segment (fake_labels) that do not find a match.

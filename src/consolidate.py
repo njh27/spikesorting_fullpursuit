@@ -606,6 +606,8 @@ class WorkItemSummary(object):
                 main_template = np.mean(clips_1, axis=0)
                 for ll in leftover_labels:
                     # Find leftover template
+                    if ll == ml:
+                        continue
                     ll_select = leftover_workspace == ll
                     clips_2 = self.sort_data[chan][leftover_seg][2][ll_select, :]
                     clips_2 = clips_2[:leftover_stop, :]
@@ -654,6 +656,8 @@ class WorkItemSummary(object):
                 self.sort_data[chan][leftover_seg][1][best_ll_select] = chosen_ml
                 # This leftover is used up
                 leftover_labels.remove(chosen_ll)
+                if chosen_ll in main_labels:
+                    main_labels.remove(chosen_ll)
             else:
                 # This main label had its pick of litter and failed so its done
                 main_labels.remove(chosen_ml)
@@ -804,10 +808,17 @@ class WorkItemSummary(object):
                         # used in curr_seg
                         self.sort_data[chan][next_seg][1][fake_select] = r_l
                         leftover_labels.remove(f_l)
-                        main_labels.remove(r_l)
+                        # main_labels.remove(r_l)
 
+
+                if curr_seg == 0:
+                    pseudo_leftovers = [x for x in main_labels]
+                    self.check_missed_alignment_merge(chan, curr_seg, curr_seg,
+                                main_labels, pseudo_leftovers,
+                                self.sort_data[chan][curr_seg][1],
+                                curr_spike_start, next_spike_stop, curr_chan_inds)
                 # Make sure none of the main labels is terminating due to a misalignment
-                if len(main_labels) > 0:
+                if len(leftover_labels) > 0:
                     self.check_missed_alignment_merge(chan, curr_seg, next_seg,
                                 main_labels, leftover_labels, next_label_workspace,
                                 curr_spike_start, next_spike_stop, curr_chan_inds)
@@ -1150,19 +1161,7 @@ class WorkItemSummary(object):
             low MUA can indicate good isolation, or perhaps that the unit has a
             very small number of spikes. So we first consider MUA and spike
             count jointly before deferring to SNR. """
-            if (neuron_1['fraction_mua'] > neuron_2['fraction_mua']) \
-                and (neuron_2['spike_indices'].shape[0] > neuron_1['spike_indices'].shape[0]):
-                # Neuron 1 has more MUA and fewer spikes
-                print('Neuron 1 has more MUA and fewer spikes')
-                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
-                delete_1 = True
-            elif (neuron_2['fraction_mua'] > neuron_1['fraction_mua']) \
-                and (neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]):
-                # Neuron 2 has more MUA and fewer spikes
-                print('Neuron 2 has more MUA and fewer spikes')
-                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
-                delete_2 = True
-            elif neuron_1['fraction_mua'] <= self.max_mua_ratio/10 and neuron_2['fraction_mua'] <= self.max_mua_ratio/10:
+            if neuron_1['fraction_mua'] <= self.max_mua_ratio/10 and neuron_2['fraction_mua'] <= self.max_mua_ratio/10:
                 # Both have very low MUA so choose most spikes. NOTE: this will
                 # catch the case where both have MUA = 0.
                 print('Both have very low MUA so choose most spikes')
@@ -1171,6 +1170,18 @@ class WorkItemSummary(object):
                     delete_2 = True
                 else:
                     delete_1 = True
+            elif (neuron_1['fraction_mua'] > 10*neuron_2['fraction_mua']) \
+                and (neuron_2['spike_indices'].shape[0] > neuron_1['spike_indices'].shape[0]):
+                # Neuron 1 has more MUA and fewer spikes
+                print('Neuron 1 has more MUA and fewer spikes')
+                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
+                delete_1 = True
+            elif (neuron_2['fraction_mua'] > 10*neuron_1['fraction_mua']) \
+                and (neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]):
+                # Neuron 2 has more MUA and fewer spikes
+                print('Neuron 2 has more MUA and fewer spikes')
+                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
+                delete_2 = True
 
             # Defer to choosing max SNR
             elif (neuron_1['snr'] > neuron_2['snr']):

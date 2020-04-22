@@ -944,7 +944,8 @@ if __name__ == '__main__':
     clusters. With high thresholds you will want binary pursuit enable to find
     the remaining missed spikes.
     """
-    spike_sort_args = {'sigma': 4.,
+    # Run 49 at sigma 4, width 6-8 fitler 1000-8000
+    spike_sort_args = {'sigma': 4.25,
                        'clip_width': [-4e-4, 6e-4], 'filter_band': (1000, 8000),
                        'p_value_cut_thresh': 0.05, 'check_components': None,
                        'max_components': 10,
@@ -977,8 +978,8 @@ if __name__ == '__main__':
             print("!!! WARNING !!!: ZCA transform is OFF but data is being loaded from PL2 file.")
         print("Reading voltage from file")
         raw_voltage = load_voltage_parallel(pl2_reader, 'SPKC')
-        # t_t_start = int(40000 * 60 * 0)
-        # t_t_stop =  int(40000 * 60 * 5)
+        # t_t_start = int(40000 * 60 * 10)
+        # t_t_stop =  int(40000 * 60 * 15)
         SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=raw_voltage)#[:, t_t_start:t_t_stop])
     else:
         with open(use_voltage_file, 'rb') as fp:

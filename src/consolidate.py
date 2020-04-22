@@ -625,7 +625,9 @@ class WorkItemSummary(object):
                         best_ll_select = ll_select
                         chosen_ml = ml
                         chosen_ll = ll
-
+            if np.isinf(best_corr):
+                # Never found a match to reset the best ml/ll so we are done
+                break
             # Align and truncate clips for best match pair
             if best_shift > 0:
                 best_ml_clips = best_ml_clips[:, best_shift:]
@@ -656,11 +658,11 @@ class WorkItemSummary(object):
                 self.sort_data[chan][leftover_seg][1][best_ll_select] = chosen_ml
                 # This leftover is used up
                 leftover_labels.remove(chosen_ll)
-                if chosen_ll in main_labels:
-                    main_labels.remove(chosen_ll)
             else:
                 # This main label had its pick of litter and failed so its done
                 main_labels.remove(chosen_ml)
+                if chosen_ml in leftover_labels:
+                    leftover_labels.remove(chosen_ml)
 
     def stitch_segments(self):
         """

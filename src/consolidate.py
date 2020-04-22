@@ -330,7 +330,7 @@ class WorkItemSummary(object):
     """
     def __init__(self, sort_data, work_items, sort_info,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
-                 max_mua_ratio=0.05, verbose=False):
+                 max_mua_ratio=0.05, n_max_merge_test_clips=None, verbose=False):
 
         self.check_input_data(sort_data, work_items)
         self.sort_info = sort_info
@@ -339,6 +339,12 @@ class WorkItemSummary(object):
         self.duplicate_tol_inds = duplicate_tol_inds
         self.absolute_refractory_period = absolute_refractory_period
         self.max_mua_ratio = max_mua_ratio
+        self.n_max_merge_test_clips = n_max_merge_test_clips
+        if n_max_merge_test_clips is None:
+            self.n_max_merge_test_clips = np.inf
+        # curr_spike_start = 0 #max(self.sort_data[chan][curr_seg][0].shape[0] - 100, 0)
+        # next_spike_stop = self.sort_data[chan][next_seg][0].shape[0] #min(self.sort_data[chan][next_seg][0].shape[0], 100)
+
         self.is_stitched = False # Repeated stitching can change results so track
         self.last_overlap_ratio_threshold = np.inf
         self.verbose = False
@@ -592,8 +598,7 @@ class WorkItemSummary(object):
         return clips_merged, neuron_labels_1, neuron_labels_2
 
     def check_missed_alignment_merge(self, chan, main_seg, leftover_seg,
-                main_labels, leftover_labels, leftover_workspace, main_start,
-                leftover_stop, curr_chan_inds):
+                main_labels, leftover_labels, leftover_workspace, curr_chan_inds):
         """ Alternative to sort_cython.identify_clusters_to_compare that simply
         chooses the most similar template after shifting to optimal alignment.
         Intended as helper function so that neurons do not fail to stitch in the
@@ -611,7 +616,7 @@ class WorkItemSummary(object):
                 ml_select = self.sort_data[chan][main_seg][1] == ml
                 clips_1 = self.sort_data[chan][main_seg][2][ml_select, :]
                 if main_seg != leftover_seg:
-                    clips_1 = clips_1[max(clips_1.shape[0]-main_start, 0):, :]
+                    clips_1 = clips_1[max(clips_1.shape[0]-self.n_max_merge_test_clips, 0):, :]
                 main_template = np.mean(clips_1, axis=0)
                 for ll in leftover_labels:
                     # Find leftover template
@@ -620,7 +625,7 @@ class WorkItemSummary(object):
                     ll_select = leftover_workspace == ll
                     clips_2 = self.sort_data[chan][leftover_seg][2][ll_select, :]
                     if main_seg != leftover_seg:
-                        clips_2 = clips_2[:min(leftover_stop, clips_2.shape[0]), :]
+                        clips_2 = clips_2[:min(self.n_max_merge_test_clips, clips_2.shape[0]), :]
                     leftover_template = np.mean(clips_2, axis=0)
                     cross_corr = np.correlate(main_template[curr_chan_inds],
                                         leftover_template[curr_chan_inds],
@@ -790,9 +795,6 @@ class WorkItemSummary(object):
                                 np.vstack(curr_templates + next_templates),
                                 np.hstack((curr_labels, next_labels)), [])
 
-                curr_max_use_clips = 1000
-                next_max_use_clips = 1000
-
                 # Merge test all mutually closest clusters and track any labels
                 # in the next segment (fake_labels) that do not find a match.
                 # These are assigned a new real label.
@@ -816,11 +818,11 @@ class WorkItemSummary(object):
                     # Choose current seg clips based on real labels
                     real_select = self.sort_data[chan][curr_seg][1] == r_l
                     clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
-                    clips_1 = clips_1[max(clips_1.shape[0]-curr_max_use_clips, 0):, :]
+                    clips_1 = clips_1[max(clips_1.shape[0]-self.n_max_merge_test_clips, 0):, :]
                     # Choose next seg clips based on original fake label workspace
                     fake_select = next_label_workspace == f_l
                     clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
-                    clips_2 = clips_2[:min(next_max_use_clips, clips_2.shape[0]), :]
+                    clips_2 = clips_2[:min(self.n_max_merge_test_clips, clips_2.shape[0]), :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                             method='pca', merge_only=True,
@@ -841,12 +843,12 @@ class WorkItemSummary(object):
                     self.check_missed_alignment_merge(chan, curr_seg, curr_seg,
                                 main_labels, pseudo_leftovers,
                                 self.sort_data[chan][curr_seg][1],
-                                curr_max_use_clips, next_max_use_clips, curr_chan_inds)
+                                curr_chan_inds)
                 # Make sure none of the main labels is terminating due to a misalignment
                 if len(leftover_labels) > 0:
                     self.check_missed_alignment_merge(chan, curr_seg, next_seg,
                                 main_labels, leftover_labels, next_label_workspace,
-                                curr_max_use_clips, next_max_use_clips, curr_chan_inds)
+                                curr_chan_inds)
 
                 # Assign units in next segment that do not match any in the
                 # current segment a new real label

@@ -467,6 +467,10 @@ def spike_sort(Probe, **kwargs):
     if settings['do_ZCA_transform']:
         zca_cushion = (2 * np.ceil(np.amax(np.abs(settings['clip_width'])) \
                          * Probe.sampling_rate)).astype(np.int64)
+        thresholds = segment.median_threshold(Probe.voltage, settings['sigma'])
+        zca_matrix = preprocessing.get_noise_sampled_zca_matrix(Probe.voltage,
+                        thresholds, settings['sigma'],
+                        zca_cushion, n_samples=1e7)
 
     # Build the sorting work items
     segment_voltages = []
@@ -482,11 +486,10 @@ def spike_sort(Probe, **kwargs):
                                    segment_onsets[x]:segment_offsets[x]]
         if settings['do_ZCA_transform']:
             if settings['verbose']: print("Doing ZCA transform")
-            thresholds = segment.median_threshold(seg_voltage, settings['sigma'])
-            zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
-                            thresholds, settings['sigma'],
-                            zca_cushion, settings['do_binary_pursuit'],
-                            n_samples=1e6)
+            # thresholds = segment.median_threshold(seg_voltage, settings['sigma'])
+            # zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
+            #                 thresholds, settings['sigma'],
+            #                 zca_cushion, n_samples=1e6)
             seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
         thresholds = segment.median_threshold(seg_voltage, settings['sigma'])
         segment_voltages.append(seg_voltage)

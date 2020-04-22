@@ -606,7 +606,7 @@ class WorkItemSummary(object):
                 # Choose main seg template
                 ml_select = self.sort_data[chan][main_seg][1] == ml
                 clips_1 = self.sort_data[chan][main_seg][2][ml_select, :]
-                clips_1 = clips_1[main_start:, :]
+                clips_1 = clips_1[max(clips_1.shape[0]-main_start, 0):, :]
                 main_template = np.mean(clips_1, axis=0)
                 for ll in leftover_labels:
                     # Find leftover template
@@ -614,7 +614,7 @@ class WorkItemSummary(object):
                         continue
                     ll_select = leftover_workspace == ll
                     clips_2 = self.sort_data[chan][leftover_seg][2][ll_select, :]
-                    clips_2 = clips_2[:leftover_stop, :]
+                    clips_2 = clips_2[:min(leftover_stop, clips_2.shape[0]), :]
                     leftover_template = np.mean(clips_2, axis=0)
                     cross_corr = np.correlate(main_template[curr_chan_inds],
                                         leftover_template[curr_chan_inds],
@@ -782,6 +782,9 @@ class WorkItemSummary(object):
                                 np.vstack(curr_templates + next_templates),
                                 np.hstack((curr_labels, next_labels)), [])
 
+                curr_max_use_clips = 1000
+                next_max_use_clips = 1000
+
                 # Merge test all mutually closest clusters and track any labels
                 # in the next segment (fake_labels) that do not find a match.
                 # These are assigned a new real label.
@@ -805,11 +808,11 @@ class WorkItemSummary(object):
                     # Choose current seg clips based on real labels
                     real_select = self.sort_data[chan][curr_seg][1] == r_l
                     clips_1 = self.sort_data[chan][curr_seg][2][real_select, :]
-                    clips_1 = clips_1[curr_spike_start:, :]
+                    clips_1 = clips_1[max(clips_1.shape[0]-curr_max_use_clips, 0):, :]
                     # Choose next seg clips based on original fake label workspace
                     fake_select = next_label_workspace == f_l
                     clips_2 = self.sort_data[chan][next_seg][2][fake_select, :]
-                    clips_2 = clips_2[:next_spike_stop, :]
+                    clips_2 = clips_2[:min(next_max_use_clips, clips_2.shape[0]), :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                             method='pca', merge_only=True,
@@ -830,12 +833,12 @@ class WorkItemSummary(object):
                     self.check_missed_alignment_merge(chan, curr_seg, curr_seg,
                                 main_labels, pseudo_leftovers,
                                 self.sort_data[chan][curr_seg][1],
-                                curr_spike_start, next_spike_stop, curr_chan_inds)
+                                curr_max_use_clips, next_max_use_clips, curr_chan_inds)
                 # Make sure none of the main labels is terminating due to a misalignment
                 if len(leftover_labels) > 0:
                     self.check_missed_alignment_merge(chan, curr_seg, next_seg,
                                 main_labels, leftover_labels, next_label_workspace,
-                                curr_spike_start, next_spike_stop, curr_chan_inds)
+                                curr_max_use_clips, next_max_use_clips, curr_chan_inds)
 
                 # Assign units in next segment that do not match any in the
                 # current segment a new real label

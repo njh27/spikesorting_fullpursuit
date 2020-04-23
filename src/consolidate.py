@@ -569,23 +569,15 @@ class WorkItemSummary(object):
         neuron_labels[clips_1.shape[0]:] = 2
         if method.lower() == 'pca':
             scores = preprocessing.compute_pca(clips,
-                        5, 10,
+                        self.sort_info['check_components'],
+                        self.sort_info['max_components'],
                         add_peak_valley=self.sort_info['add_peak_valley'],
                         curr_chan_inds=curr_chan_inds)
-            # scores = preprocessing.compute_pca(clips,
-            #             self.sort_info['check_components'],
-            #             self.sort_info['max_components'],
-            #             add_peak_valley=self.sort_info['add_peak_valley'],
-            #             curr_chan_inds=curr_chan_inds)
         elif method.lower() == 'template_pca':
             scores = preprocessing.compute_template_pca(clips, neuron_labels,
-                        curr_chan_inds, 10,
-                        5,
+                        curr_chan_inds, self.sort_info['check_components'],
+                        self.sort_info['max_components'],
                         add_peak_valley=self.sort_info['add_peak_valley'])
-            # scores = preprocessing.compute_template_pca(clips, neuron_labels,
-            #             curr_chan_inds, self.sort_info['check_components'],
-            #             self.sort_info['max_components'],
-            #             add_peak_valley=self.sort_info['add_peak_valley'])
         elif method.lower() == 'projection':
             # Projection onto templates, weighted by number of spikes
             t1 = np.mean(clips_1, axis=0) * (clips_1.shape[0] / clips.shape[0])
@@ -698,7 +690,7 @@ class WorkItemSummary(object):
             is_merged, _, _ = self.merge_test_two_units(
                     best_ml_clips, best_ll_clips,
                     self.sort_info['p_value_cut_thresh'],
-                    method='pca', merge_only=True,
+                    method='template_pca', merge_only=True,
                     curr_chan_inds=curr_chan_inds)
 
             if self.verbose: print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", chosen_ml, chosen_ll)
@@ -881,7 +873,7 @@ class WorkItemSummary(object):
                     clips_2 = clips_2[:min(self.n_max_merge_test_clips, clips_2.shape[0]), :]
                     is_merged, _, _ = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='pca', merge_only=True,
+                            method='template_pca', merge_only=True,
                             curr_chan_inds=curr_chan_inds)
 
                     if self.verbose: print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
@@ -944,7 +936,7 @@ class WorkItemSummary(object):
                     clips_2 = joint_clips[c2_select, :]
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='pca', split_only=True,
+                            method='template_pca', split_only=True,
                             curr_chan_inds=curr_chan_inds)
                     if ismerged: # This can happen if the split cutpoint forces
                         continue # a merge so check and skip

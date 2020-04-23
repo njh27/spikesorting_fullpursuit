@@ -264,6 +264,7 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate,
     all_isis = np.diff(spike_indices)
     refractory_inds = int(round(absolute_refractory_period * sampling_rate))
     bin_width = refractory_inds - duplicate_tol_inds
+    bin_width = 1
     if bin_width <= 0:
         print("duplicate_tol_inds encompasses absolute_refractory_period. Fraction MUA enforced at 0.")
         return 0.
@@ -281,9 +282,10 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate,
     fraction_mua_to_peak = num_isi_violations / isi_peak
 
     if fraction_mua_to_peak >=.99:
-        print("Values were", num_isi_violations, isi_peak, n_duplicates)
-        print("With bin edeges of", bin_edges)
-
+        print("Values were", num_isi_violations, isi_peak, n_duplicates, bin_width, refractory_inds)
+        plt.bar(xval[0:-1], counts, width=xval[1]-xval[0], align='edge')
+        plt.xlim([0, 70])
+        plt.show()
     return fraction_mua_to_peak
 
 

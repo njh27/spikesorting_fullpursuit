@@ -948,8 +948,8 @@ if __name__ == '__main__':
     the remaining missed spikes.
     """
     # Run 49 at sigma 4, width 6-8 fitler 1000-8000
-    spike_sort_args = {'sigma': 4.25,
-                       'clip_width': [-4e-4, 6e-4], 'filter_band': (1000, 8000),
+    spike_sort_args = {'sigma': 4.,
+                       'clip_width': [-6e-4, 8e-4], 'filter_band': (1000, 8000),
                        'p_value_cut_thresh': 0.05, 'check_components': None,
                        'max_components': 10,
                        'min_firing_rate': 2., 'do_binary_pursuit': True,

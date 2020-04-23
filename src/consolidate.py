@@ -280,6 +280,10 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate,
         isi_peak = max(num_isi_violations, 1.)
     fraction_mua_to_peak = num_isi_violations / isi_peak
 
+    if fraction_mua_to_peak >=.99:
+        print("Values were", num_isi_violations, isi_peak, n_duplicates)
+        print("With bin edeges of", bin_edges)
+
     return fraction_mua_to_peak
 
 
@@ -346,7 +350,7 @@ class WorkItemSummary(object):
         if merge_test_overlap_indices is None:
             merge_test_overlap_indices = work_items[0]['overlap']
         self.merge_test_overlap_indices = merge_test_overlap_indices
-        
+
         self.is_stitched = False # Repeated stitching can change results so track
         self.last_overlap_ratio_threshold = np.inf
         self.verbose = False
@@ -548,6 +552,11 @@ class WorkItemSummary(object):
             isi_peak = max(num_isi_violations, 1.)
         fraction_mua_to_peak = num_isi_violations / isi_peak
 
+        if fraction_mua_to_peak >=.99:
+            print("Super high MUA for chan", chan, "seg", seg, "label", label)
+            print("Values were", num_isi_violations, isi_peak, n_duplicates)
+            print("With bin edeges of", bin_edges)
+
         return fraction_mua_to_peak
 
     def delete_mua_units(self):
@@ -611,8 +620,8 @@ class WorkItemSummary(object):
             # be highest for these units, do them first.
             best_corr = -np.inf
             best_shift = 0
-            main_remove = []
-            leftover_remove = []
+            main_remove = set()
+            leftover_remove = set()
             for ml in main_labels:
                 # Choose main seg template
                 ml_select = self.sort_data[chan][main_seg][1] == ml
@@ -623,7 +632,10 @@ class WorkItemSummary(object):
                                 self.sort_data[chan][main_seg][0][ml_select])
                                 if val >= start_edge), None)
                     if c1_start is None:
-                        main_remove.append(ml)
+                        main_remove.add(ml)
+                        continue
+                    if c1_start == clips_1.shape[0]:
+                        main_remove.add(ml)
                         continue
                     clips_1 = clips_1[c1_start:, :]
                     clips_1 = clips_1[max(clips_1.shape[0]-self.n_max_merge_test_clips, 0):, :]
@@ -643,7 +655,10 @@ class WorkItemSummary(object):
                                     self.sort_data[chan][leftover_seg][0][ll_select])
                                     if val > stop_edge), None)
                         if c2_start is None:
-                            leftover_remove.append(ll)
+                            leftover_remove.add(ll)
+                            continue
+                        if c2_start == c2_stop:
+                            leftover_remove.add(ll)
                             continue
                         clips_2 = clips_2[c2_start:c2_stop, :]
                         clips_2 = clips_2[:min(self.n_max_merge_test_clips, clips_2.shape[0]), :]
@@ -853,6 +868,8 @@ class WorkItemSummary(object):
                                 if val >= start_edge), None)
                     if c1_start is None:
                         continue
+                    if c1_start == clips_1.shape[0]:
+                        continue
                     clips_1 = clips_1[c1_start:, :]
                     clips_1 = clips_1[max(clips_1.shape[0]-self.n_max_merge_test_clips, 0):, :]
                     # Choose next seg clips based on original fake label workspace
@@ -866,6 +883,8 @@ class WorkItemSummary(object):
                                 self.sort_data[chan][next_seg][0][fake_select])
                                 if val > stop_edge), None)
                     if c2_start is None:
+                        continue
+                    if c2_start == c2_stop:
                         continue
                     clips_2 = clips_2[c2_start:c2_stop, :]
                     clips_2 = clips_2[:min(self.n_max_merge_test_clips, clips_2.shape[0]), :]
@@ -1479,7 +1498,8 @@ class WorkItemSummary(object):
         combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(combined_neuron["spike_indices"],
                                             self.sort_info['sampling_rate'],
                                             self.absolute_refractory_period,
-                                            self.duplicate_tol_inds)
+                                            0)
+
         return combined_neuron
 
     def summarize_neurons_across_channels(self, overlap_time=2.5e-4, min_overlap_ratio=0.5):

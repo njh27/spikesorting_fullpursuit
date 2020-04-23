@@ -346,9 +346,7 @@ class WorkItemSummary(object):
         if merge_test_overlap_indices is None:
             merge_test_overlap_indices = work_items[0]['overlap']
         self.merge_test_overlap_indices = merge_test_overlap_indices
-        # curr_spike_start = 0 #max(self.sort_data[chan][curr_seg][0].shape[0] - 100, 0)
-        # next_spike_stop = self.sort_data[chan][next_seg][0].shape[0] #min(self.sort_data[chan][next_seg][0].shape[0], 100)
-
+        
         self.is_stitched = False # Repeated stitching can change results so track
         self.last_overlap_ratio_threshold = np.inf
         self.verbose = False

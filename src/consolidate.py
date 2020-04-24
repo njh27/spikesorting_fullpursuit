@@ -1313,15 +1313,37 @@ class WorkItemSummary(object):
             low MUA can indicate good isolation, or perhaps that the unit has a
             very small number of spikes. So we first consider MUA and spike
             count jointly before deferring to SNR. """
-            if neuron_1['fraction_mua'] <= self.max_mua_ratio/100 and neuron_2['fraction_mua'] <= self.max_mua_ratio/100:
-                # Both have very low MUA so choose most spikes. NOTE: this will
-                # catch the case where both have MUA = 0.
-                print('Both have very low MUA so choose most spikes')
+            # if neuron_1['fraction_mua'] <= self.max_mua_ratio/100 and neuron_2['fraction_mua'] <= self.max_mua_ratio/100:
+            #     # Both have very low MUA so choose most spikes. NOTE: this will
+            #     # catch the case where both have MUA = 0.
+            #     print('Both have very low MUA so choose most spikes')
+            #     print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
+            #     if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
+            #         delete_2 = True
+            #     else:
+            #         delete_1 = True
+            if ((1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]
+                   > (1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]):
+                # Neuron 1 has higher MUA weighted spikes
+                print('Neuron 1 has higher MUA weighted spikes')
                 print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
-                if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
-                    delete_2 = True
-                else:
-                    delete_1 = True
+                delete_2 = True
+            elif ((1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]
+                   > (1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]):
+                # Neuron 2 has higher MUA weighted spikes
+                print('Neuron 2 has higher MUA weighted spikes')
+                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
+                delete_1 = True
+            # elif (neuron_1['fraction_mua'] > 100*neuron_2['fraction_mua']):
+            #     # Neuron 1 has much more MUA
+            #     print('Neuron 1 has MUCH more MUA')
+            #     print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
+            #     delete_1 = True
+            # elif (neuron_2['fraction_mua'] > 100*neuron_1['fraction_mua']):
+            #     # Neuron 2 has much more MUA
+            #     print('Neuron 2 has MUCH more MUA')
+            #     print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
+            #     delete_2 = True
             elif (neuron_1['fraction_mua'] > 10*neuron_2['fraction_mua']) \
                 and (neuron_2['spike_indices'].shape[0] > neuron_1['spike_indices'].shape[0]):
                 # Neuron 1 has more MUA and fewer spikes

@@ -389,7 +389,7 @@ class WorkItemSummary(object):
         self.sort_info = sort_info
         self.n_chans = self.sort_info['n_channels']
         self.n_segments = self.sort_info['n_segments']
-        self.duplicate_tol_inds = None
+        self.duplicate_tol_inds = duplicate_tol_inds
         self.absolute_refractory_period = absolute_refractory_period
         self.max_mua_ratio = max_mua_ratio
         self.n_max_merge_test_clips = n_max_merge_test_clips
@@ -538,7 +538,8 @@ class WorkItemSummary(object):
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
         duplicate_tol_inds = calc_spike_width(
                                 self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]],
-                                self.sort_info['clip_width'], self.sort_info['sampling_rate']) + 1
+                                self.sort_info['clip_width'], self.sort_info['sampling_rate'])
+        duplicate_tol_inds += self.duplicate_tol_inds
         index_isi = np.diff(unit_spikes)
         num_isi_violations = np.count_nonzero(
             index_isi / self.sort_info['sampling_rate']
@@ -594,13 +595,14 @@ class WorkItemSummary(object):
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
         duplicate_tol_inds = calc_spike_width(
                                 self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]],
-                                self.sort_info['clip_width'], self.sort_info['sampling_rate']) + 1
+                                self.sort_info['clip_width'], self.sort_info['sampling_rate'])
+        duplicate_tol_inds += self.duplicate_tol_inds
         all_isis = np.diff(unit_spikes)
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
         bin_width = refractory_inds - duplicate_tol_inds
         if bin_width <= 0:
-            print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at 1.")
-            duplicate_tol_inds = 1
+            print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", self.duplicate_tol_inds)
+            duplicate_tol_inds = self.duplicate_tol_inds
             bin_width = refractory_inds - duplicate_tol_inds
         check_inds = int(round(check_window * self.sort_info['sampling_rate']))
         bin_edges = np.arange(duplicate_tol_inds+1, check_inds + bin_width, bin_width)
@@ -1501,15 +1503,16 @@ class WorkItemSummary(object):
         #                         self.absolute_refractory_period,
         #                         self.sort_info['clip_width'])
         max_dup = 0
-        combined_neuron['duplicate_tol_inds'] = 1
+        combined_neuron['duplicate_tol_inds'] = self.duplicate_tol_inds
         for chan in combined_neuron['channel']:
             chan_select = channel_selector == chan
             main_win = combined_neuron['main_windows'][chan]
-            dup_inds = calc_spike_width(
+            duplicate_tol_inds = calc_spike_width(
                 combined_neuron['waveforms'][chan_select, main_win[0]:main_win[1]],
-                self.sort_info['clip_width'], self.sort_info['sampling_rate']) + 1
-            if dup_inds > max_dup:
-                combined_neuron['duplicate_tol_inds'] = dup_inds
+                self.sort_info['clip_width'], self.sort_info['sampling_rate'])
+            duplicate_tol_inds += self.duplicate_tol_inds
+            if duplicate_tol_inds > max_dup:
+                combined_neuron['duplicate_tol_inds'] = duplicate_tol_inds
 
         # Remove duplicates found in binary pursuit
         keep_bool = remove_binary_pursuit_duplicates(combined_neuron["spike_indices"],

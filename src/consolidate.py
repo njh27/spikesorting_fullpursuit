@@ -343,13 +343,17 @@ def calc_isi_violation_rate(spike_indices, sampling_rate,
     spike_indices must be in sorted order for this to work. """
 
     index_isi = np.diff(spike_indices)
+    refractory_adjustment = duplicate_tol_inds / sampling_rate
+    if absolute_refractory_period - refractory_adjustment <= 0:
+        print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", 1)
+        duplicate_tol_inds = 1
+        refractory_adjustment = 0
     num_isi_violations = np.count_nonzero(index_isi / sampling_rate
                                           < absolute_refractory_period)
     n_duplicates = np.count_nonzero(index_isi <= duplicate_tol_inds)
     # Remove duplicate spikes from this computation and adjust the number
     # of spikes and time window accordingly
     num_isi_violations -= n_duplicates
-    refractory_adjustment = 0. #duplicate_tol_inds / sampling_rate
     isi_violation_rate = num_isi_violations \
                          * (1.0 / (absolute_refractory_period - refractory_adjustment))\
                          / (spike_indices.size - n_duplicates)
@@ -540,6 +544,11 @@ class WorkItemSummary(object):
                                 self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]],
                                 self.sort_info['clip_width'], self.sort_info['sampling_rate'])
         duplicate_tol_inds += self.duplicate_tol_inds
+        refractory_adjustment = duplicate_tol_inds / self.sort_info['sampling_rate']
+        if self.absolute_refractory_period - refractory_adjustment <= 0:
+            print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", self.duplicate_tol_inds)
+            duplicate_tol_inds = self.duplicate_tol_inds
+            refractory_adjustment = 0
         index_isi = np.diff(unit_spikes)
         num_isi_violations = np.count_nonzero(
             index_isi / self.sort_info['sampling_rate']
@@ -548,7 +557,6 @@ class WorkItemSummary(object):
         # Remove duplicate spikes from this computation and adjust the number
         # of spikes and time window accordingly
         num_isi_violations -= n_duplicates
-        refractory_adjustment = duplicate_tol_inds / self.sort_info['sampling_rate']
         isi_violation_rate = num_isi_violations \
                              * (1.0 / (self.absolute_refractory_period - refractory_adjustment))\
                              / (np.count_nonzero(select_unit) - n_duplicates)
@@ -1322,7 +1330,14 @@ class WorkItemSummary(object):
             low MUA can indicate good isolation, or perhaps that the unit has a
             very small number of spikes. So we first consider MUA and spike
             count jointly before deferring to SNR. """
-            if ((1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]
+            if neuron_1['fraction_mua'] < 1e-4 and neuron_2['fraction_mua'] < 1e-4:
+                # Both MUA negligible so choose most spikes
+                print("Both MUA negligible so choosing most spikes")
+                if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
+                    delete_2= True
+                else:
+                    delete_1 = True
+            elif ((1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]
                    > 1.1*(1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]):
                 # Neuron 1 has higher MUA weighted spikes
                 print('Neuron 1 has higher MUA weighted spikes')

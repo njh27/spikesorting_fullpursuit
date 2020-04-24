@@ -882,7 +882,7 @@ class WorkItemSummary(object):
                     start_new_seg = True
                     if self.verbose: print("skipping_seg", curr_seg, "because NEXT seg has no spikes")
                     for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                        mua_ratio = self.get_fraction_mua(chan,
+                        mua_ratio = self.get_fraction_mua_to_peak(chan,
                                             curr_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             if self.verbose: print("Checking seg before new MUA (543) deleting at MUA ratio", mua_ratio, chan, curr_seg)
@@ -1069,12 +1069,12 @@ class WorkItemSummary(object):
                     for curr_l in [c1, c2]:
                         mua_ratio = 0.
                         if curr_l in self.sort_data[chan][curr_seg][1]:
-                            mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                            mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             undo_split = True
                             break
                         if curr_l in self.sort_data[chan][next_seg][1]:
-                            mua_ratio = self.get_fraction_mua(chan, next_seg, curr_l)
+                            mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             undo_split = True
                             break
@@ -1094,7 +1094,7 @@ class WorkItemSummary(object):
                 # unit from the current segment and relabel any units in the
                 # next segment that matched with it
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                    mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                    mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
                     if mua_ratio > self.max_mua_ratio:
                         # Remove this unit from current segment
                         if self.verbose: print("Deleting (1056) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)
@@ -1151,7 +1151,7 @@ class WorkItemSummary(object):
             if len(self.sort_data[chan][curr_seg][0]) == 0:
                 continue
             for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
+                mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
                 if mua_ratio > self.max_mua_ratio:
                     if self.verbose: print("Checking last seg MUA (757) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                     self.delete_label(chan, curr_seg, curr_l)
@@ -1215,7 +1215,7 @@ class WorkItemSummary(object):
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
-                    neuron['fraction_mua'] = self.get_fraction_mua(chan, seg, neuron_label)
+                    neuron['fraction_mua'] = self.get_fraction_mua_to_peak(chan, seg, neuron_label)
                     neuron['threshold'] = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['channel']]
                     neuron['main_win'] = [self.sort_info['n_samples_per_chan'] * neuron['chan_neighbor_ind'],
                                           self.sort_info['n_samples_per_chan'] * (neuron['chan_neighbor_ind'] + 1)]
@@ -1587,7 +1587,7 @@ class WorkItemSummary(object):
             del combined_neuron['chan_neighbor_ind'][chan_num] # dictionaries so
             del combined_neuron['channel_selector'][chan_num] #  use value
             del combined_neuron['main_windows'][chan_num]
-        combined_neuron['fraction_mua'] = fraction_mua(
+        combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(
                         combined_neuron["spike_indices"],
                         self.sort_info['sampling_rate'],
                         combined_neuron['duplicate_tol_inds'],

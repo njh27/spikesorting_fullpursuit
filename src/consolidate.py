@@ -257,6 +257,18 @@ def calculate_expected_overlap(n1, n2, overlap_time, sampling_rate):
     return expected_overlap
 
 
+def calc_spike_width(clips, clip_width, sampling_rate):
+    center_ind = int(round(np.abs(clip_width[0])*sampling_rate)) + 1
+    template = np.mean(clips, axis=0)
+    if template[center_ind] > 0:
+        template *= -1
+    first_peak = np.argmax(template[0:center_ind])
+    second_peak = np.argmax(template[center_ind+1:]) + center_ind
+    spike_width = second_peak - first_peak
+
+    return spike_width
+
+
 def calc_duplicate_tol_inds(spike_indices, sampling_rate,
                             absolute_refractory_period, clip_width):
     all_isis = np.diff(spike_indices)
@@ -266,20 +278,13 @@ def calc_duplicate_tol_inds(spike_indices, sampling_rate,
     counts, xval = np.histogram(all_isis, bin_edges)
     if refractory_inds - clip_inds < 2:
         raise ValueError("REFRACTORY AND CLIP INDICES ARE BASICALLY EQUAL! I should probably fix this...")
-    # median_obs = np.median(counts[clip_inds:refractory_inds+1])
-    # median_std = median_obs / 0.6745
     mean_obs = np.mean(counts[clip_inds:refractory_inds+1])
     mean_std = np.std(counts[clip_inds:refractory_inds+1])
     for c_ind in range(clip_inds, -1, -1):
         # NOTE: this stops at 0!
-        # if (counts[c_ind] < median_obs - 3*median_std) \
-        #     or (counts[c_ind] > median_obs + 3*median_std):
-        #     break
         if (counts[c_ind] < mean_obs - 3*mean_std) \
             or (counts[c_ind] > mean_obs + 3*mean_std):
             break
-        # if counts[c_ind] == 0:
-        #     break
     duplicate_tol_inds = c_ind+1
     adjusted_num_isi_violations = np.sum(counts[duplicate_tol_inds:refractory_inds+1])
     # print("Values were", duplicate_tol_inds, mean_obs, mean_std, clip_inds, refractory_inds, adjusted_num_isi_violations)
@@ -287,16 +292,17 @@ def calc_duplicate_tol_inds(spike_indices, sampling_rate,
     # plt.xlim([0, 70])
     # plt.axvline(duplicate_tol_inds)
     # plt.show()
-    duplicate_tol_inds = 1
+
     return duplicate_tol_inds, adjusted_num_isi_violations
 
 
-def calc_fraction_mua_to_peak(spike_indices, sampling_rate, clip_width,
+def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
                          absolute_refractory_period, check_window=0.5):
 
-    duplicate_tol_inds, adjusted_num_isi_violations = calc_duplicate_tol_inds(
-                            spike_indices, sampling_rate,
-                            absolute_refractory_period, clip_width)
+    # duplicate_tol_inds, adjusted_num_isi_violations = calc_duplicate_tol_inds(
+    #                         spike_indices, sampling_rate,
+    #                         absolute_refractory_period, clip_width)
+    # duplicate_tol_inds = calc_spike_width(clips, clip_width, sampling_rate) + 1
     all_isis = np.diff(spike_indices)
     refractory_inds = int(round(absolute_refractory_period * sampling_rate))
     bin_width = refractory_inds - duplicate_tol_inds
@@ -304,13 +310,14 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate, clip_width,
         print("duplicate_tol_inds encompasses absolute_refractory_period. Fraction MUA enforced at 0.")
         return 0.
     check_inds = int(round(check_window * sampling_rate))
-    bin_edges = np.arange(refractory_inds, check_inds + bin_width, bin_width)
+    bin_edges = np.arange(duplicate_tol_inds+1, check_inds + bin_width, bin_width)
     counts, xval = np.histogram(all_isis, bin_edges)
     isi_peak = np.amax(counts)
+    num_isi_violations = counts[0]
     # num_isi_violations = np.count_nonzero(all_isis < refractory_inds)
     # n_duplicates = np.count_nonzero(all_isis <= duplicate_tol_inds)
     # num_isi_violations -= n_duplicates
-    num_isi_violations = adjusted_num_isi_violations
+    # num_isi_violations = adjusted_num_isi_violations
     if num_isi_violations < 0:
         num_isi_violations = 0
     if isi_peak == 0:
@@ -571,10 +578,15 @@ class WorkItemSummary(object):
             # There are no spikes that match this label
             raise ValueError("There are no spikes for label", label, ".")
         unit_spikes = self.sort_data[chan][seg][0][select_unit]
-        duplicate_tol_inds, adjusted_num_isi_violations = calc_duplicate_tol_inds(unit_spikes,
-                                self.sort_info['sampling_rate'],
-                                self.absolute_refractory_period,
-                                self.sort_info['clip_width'])
+        # duplicate_tol_inds, adjusted_num_isi_violations = calc_duplicate_tol_inds(unit_spikes,
+        #                         self.sort_info['sampling_rate'],
+        #                         self.absolute_refractory_period,
+        #                         self.sort_info['clip_width'])
+        main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][seg]['chan_neighbor_ind'],
+                    self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
+        duplicate_tol_inds = calc_spike_width(
+                                self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]],
+                                self.sort_info['clip_width'], self.sort_info['sampling_rate']) + 1
         all_isis = np.diff(unit_spikes)
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
         bin_width = refractory_inds - duplicate_tol_inds
@@ -582,13 +594,14 @@ class WorkItemSummary(object):
             print("duplicate_tol_inds encompasses absolute_refractory_period. Fraction MUA enforced at 0.")
             return 0.
         check_inds = int(round(check_window * self.sort_info['sampling_rate']))
-        bin_edges = np.arange(refractory_inds, check_inds + bin_width, bin_width)
+        bin_edges = np.arange(duplicate_tol_inds+1, check_inds + bin_width, bin_width)
         counts, xval = np.histogram(all_isis, bin_edges)
         isi_peak = np.amax(counts)
+        num_isi_violations = counts[0]
         # num_isi_violations = np.count_nonzero(all_isis < refractory_inds)
         # n_duplicates = np.count_nonzero(all_isis <= self.sort_data[chan][seg][4])
         # num_isi_violations -= n_duplicates
-        num_isi_violations = adjusted_num_isi_violations
+        # num_isi_violations = adjusted_num_isi_violations
         if num_isi_violations < 0:
             num_isi_violations = 0
         if isi_peak == 0:
@@ -652,9 +665,10 @@ class WorkItemSummary(object):
         event their alignment changes between segments. """
         # Must distinguish between what we want to loop over again (or not) and
         # the actual values we want to output
+        loop_main = [x for x in main_labels]
         loop_leftover = [x for x in leftover_labels]
         # Keep trying as long as there are leftovers to try
-        while (len(main_labels) > 0) and (len(loop_leftover) > 0):
+        while (len(loop_main) > 0) and (len(loop_leftover) > 0):
             # Need to find the best match between main and leftovers
             # NOTE: this is not normalized and so will be biased toward matching
             # larger spikes. I think this is a good thing since SNR should also
@@ -663,7 +677,7 @@ class WorkItemSummary(object):
             best_shift = 0
             main_remove = set()
             leftover_remove = set()
-            for ml in main_labels:
+            for ml in loop_main:
                 # Choose main seg template
                 ml_select = self.sort_data[chan][main_seg][1] == ml
                 clips_1 = self.sort_data[chan][main_seg][2][ml_select, :]
@@ -724,7 +738,7 @@ class WorkItemSummary(object):
                         chosen_ml = ml
                         chosen_ll = ll
             for mr in main_remove:
-                main_labels.remove(mr)
+                loop_main.remove(mr)
             for lr in leftover_remove:
                 loop_leftover.remove(lr)
             if np.isinf(best_corr):
@@ -746,7 +760,7 @@ class WorkItemSummary(object):
             is_merged, _, _ = self.merge_test_two_units(
                     best_ml_clips, best_ll_clips,
                     self.sort_info['p_value_cut_thresh'],
-                    method='pca', merge_only=True,
+                    method='template_pca', merge_only=True,
                     curr_chan_inds=curr_chan_inds)
 
             if self.verbose: print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", chosen_ml, chosen_ll)
@@ -766,15 +780,18 @@ class WorkItemSummary(object):
                     # I think this shouldn't happen since labels should have
                     # been ordered on input
                     print("!!! Relabelling main_labels based on leftovers !!!")
-                    print("main labels were", main_labels)
+                    print("main labels were", loop_main)
                     print("leftovers were", leftover_labels)
                     self.sort_data[chan][main_seg][1][best_ml_select] = chosen_ll
                     # This leftover is used up
                     leftover_labels.remove(chosen_ml)
                     loop_leftover.remove(chosen_ml)
+                if chosen_ll in main_labels:
+                    main_labels.remove(chosen_ll)
+                    loop_main.remove(chosen_ll)
             else:
                 # This main label had its pick of litter and failed so its done
-                main_labels.remove(chosen_ml)
+                loop_main.remove(chosen_ml)
                 if chosen_ml in loop_leftover:
                     loop_leftover.remove(chosen_ml)
 
@@ -949,19 +966,16 @@ class WorkItemSummary(object):
                         # main_labels.remove(r_l)
 
                 # if curr_seg == 0 or start_new_seg:
-                #     print("BEOFRE ALL THIS", main_labels, real_labels)
                 #     pseudo_leftovers = [x for x in main_labels]
                 #     self.check_missed_alignment_merge(chan, curr_seg, curr_seg,
                 #                 main_labels, pseudo_leftovers,
                 #                 self.sort_data[chan][curr_seg][1],
                 #                 curr_chan_inds)
-                #     print("AFTERS ALL THIS", main_labels, real_labels)
-                # Make sure none of the main labels is terminating due to a misalignment
-                print("N leftover after merging", len(leftover_labels))
-                if len(leftover_labels) > 0:
-                    self.check_missed_alignment_merge(chan, curr_seg, next_seg,
-                                main_labels, leftover_labels, next_label_workspace,
-                                curr_chan_inds)
+                # # Make sure none of the main labels is terminating due to a misalignment
+                # if len(leftover_labels) > 0:
+                #     self.check_missed_alignment_merge(chan, curr_seg, next_seg,
+                #                 main_labels, leftover_labels, next_label_workspace,
+                #                 curr_chan_inds)
                 # Assign units in next segment that do not match any in the
                 # current segment a new real label
                 for ll in leftover_labels:
@@ -1481,11 +1495,21 @@ class WorkItemSummary(object):
         threshold_by_unit = threshold_by_unit[spike_order]
         segment_by_unit = segment_by_unit[spike_order]
         snr_by_unit = snr_by_unit[spike_order]
-        combined_neuron['duplicate_tol_inds'], _ = calc_duplicate_tol_inds(
-                                combined_neuron["spike_indices"],
-                                self.sort_info['sampling_rate'],
-                                self.absolute_refractory_period,
-                                self.sort_info['clip_width'])
+        # combined_neuron['duplicate_tol_inds'], _ = calc_duplicate_tol_inds(
+        #                         combined_neuron["spike_indices"],
+        #                         self.sort_info['sampling_rate'],
+        #                         self.absolute_refractory_period,
+        #                         self.sort_info['clip_width'])
+        max_dup = 0
+        combined_neuron['duplicate_tol_inds'] = 1
+        for chan in combined_neuron['channel']:
+            chan_select = channel_selector == chan
+            main_win = combined_neuron['main_windows'][chan]
+            dup_inds = calc_spike_width(
+                combined_neuron['waveforms'][chan_select, main_win[0]:main_win[1]],
+                self.sort_info['clip_width'], self.sort_info['sampling_rate']) + 1
+            if dup_inds > max_dup:
+                combined_neuron['duplicate_tol_inds'] = dup_inds
 
         # Remove duplicates found in binary pursuit
         keep_bool = remove_binary_pursuit_duplicates(combined_neuron["spike_indices"],
@@ -1548,7 +1572,7 @@ class WorkItemSummary(object):
         combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(
                         combined_neuron["spike_indices"],
                         self.sort_info['sampling_rate'],
-                        self.sort_info['clip_width'],
+                        combined_neuron['duplicate_tol_inds'],
                         self.absolute_refractory_period)
 
         return combined_neuron

@@ -965,17 +965,17 @@ class WorkItemSummary(object):
                         leftover_labels.remove(f_l)
                         # main_labels.remove(r_l)
 
-                # if curr_seg == 0 or start_new_seg:
-                #     pseudo_leftovers = [x for x in main_labels]
-                #     self.check_missed_alignment_merge(chan, curr_seg, curr_seg,
-                #                 main_labels, pseudo_leftovers,
-                #                 self.sort_data[chan][curr_seg][1],
-                #                 curr_chan_inds)
-                # # Make sure none of the main labels is terminating due to a misalignment
-                # if len(leftover_labels) > 0:
-                #     self.check_missed_alignment_merge(chan, curr_seg, next_seg,
-                #                 main_labels, leftover_labels, next_label_workspace,
-                #                 curr_chan_inds)
+                if curr_seg == 0 or start_new_seg:
+                    pseudo_leftovers = [x for x in main_labels]
+                    self.check_missed_alignment_merge(chan, curr_seg, curr_seg,
+                                main_labels, pseudo_leftovers,
+                                self.sort_data[chan][curr_seg][1],
+                                curr_chan_inds)
+                # Make sure none of the main labels is terminating due to a misalignment
+                if len(leftover_labels) > 0:
+                    self.check_missed_alignment_merge(chan, curr_seg, next_seg,
+                                main_labels, leftover_labels, next_label_workspace,
+                                curr_chan_inds)
                 # Assign units in next segment that do not match any in the
                 # current segment a new real label
                 for ll in leftover_labels:

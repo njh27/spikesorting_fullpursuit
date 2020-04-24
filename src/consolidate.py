@@ -1313,7 +1313,7 @@ class WorkItemSummary(object):
             low MUA can indicate good isolation, or perhaps that the unit has a
             very small number of spikes. So we first consider MUA and spike
             count jointly before deferring to SNR. """
-            if neuron_1['fraction_mua'] <= self.max_mua_ratio/10 and neuron_2['fraction_mua'] <= self.max_mua_ratio/10:
+            if neuron_1['fraction_mua'] <= self.max_mua_ratio/100 and neuron_2['fraction_mua'] <= self.max_mua_ratio/100:
                 # Both have very low MUA so choose most spikes. NOTE: this will
                 # catch the case where both have MUA = 0.
                 print('Both have very low MUA so choose most spikes')

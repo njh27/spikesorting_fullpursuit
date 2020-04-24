@@ -309,8 +309,9 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
     refractory_inds = int(round(absolute_refractory_period * sampling_rate))
     bin_width = refractory_inds - duplicate_tol_inds
     if bin_width <= 0:
-        print("duplicate_tol_inds encompasses absolute_refractory_period. Fraction MUA enforced at 0.")
-        return 0.
+        print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at 1.")
+        duplicate_tol_inds = 1
+        bin_width = refractory_inds - duplicate_tol_inds
     check_inds = int(round(check_window * sampling_rate))
     bin_edges = np.arange(duplicate_tol_inds+1, check_inds + bin_width, bin_width)
     counts, xval = np.histogram(all_isis, bin_edges)
@@ -362,8 +363,8 @@ def mean_firing_rate(spike_indices, sampling_rate):
     mean_rate = sampling_rate * spike_indices.size / (spike_indices[-1] - spike_indices[0])
     return mean_rate
 
-def fraction_mua(spike_indices, sampling_rate, absolute_refractory_period,
-                 duplicate_tol_inds):
+def fraction_mua(spike_indices, sampling_rate, duplicate_tol_inds,
+                 absolute_refractory_period):
     """ Estimate the fraction of noise/multi-unit activity (MUA) using analysis
     of ISI violations. We do this by looking at the spiking activity that
     occurs during the ISI violation period. """
@@ -533,15 +534,20 @@ class WorkItemSummary(object):
             # There are no spikes that match this label
             raise ValueError("There are no spikes for label", label, ".")
         unit_spikes = self.sort_data[chan][seg][0][select_unit]
+        main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][seg]['chan_neighbor_ind'],
+                    self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
+        duplicate_tol_inds = calc_spike_width(
+                                self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]],
+                                self.sort_info['clip_width'], self.sort_info['sampling_rate']) + 1
         index_isi = np.diff(unit_spikes)
         num_isi_violations = np.count_nonzero(
             index_isi / self.sort_info['sampling_rate']
             < self.absolute_refractory_period)
-        n_duplicates = np.count_nonzero(index_isi <= self.duplicate_tol_inds)
+        n_duplicates = np.count_nonzero(index_isi <= duplicate_tol_inds)
         # Remove duplicate spikes from this computation and adjust the number
         # of spikes and time window accordingly
         num_isi_violations -= n_duplicates
-        refractory_adjustment = 0. #self.duplicate_tol_inds / self.sort_info['sampling_rate']
+        refractory_adjustment = duplicate_tol_inds / self.sort_info['sampling_rate']
         isi_violation_rate = num_isi_violations \
                              * (1.0 / (self.absolute_refractory_period - refractory_adjustment))\
                              / (np.count_nonzero(select_unit) - n_duplicates)
@@ -593,8 +599,9 @@ class WorkItemSummary(object):
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
         bin_width = refractory_inds - duplicate_tol_inds
         if bin_width <= 0:
-            print("duplicate_tol_inds encompasses absolute_refractory_period. Fraction MUA enforced at 0.")
-            return 0.
+            print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at 1.")
+            duplicate_tol_inds = 1
+            bin_width = refractory_inds - duplicate_tol_inds
         check_inds = int(round(check_window * self.sort_info['sampling_rate']))
         bin_edges = np.arange(duplicate_tol_inds+1, check_inds + bin_width, bin_width)
         counts, xval = np.histogram(all_isis, bin_edges)
@@ -865,7 +872,7 @@ class WorkItemSummary(object):
                     start_new_seg = True
                     if self.verbose: print("skipping_seg", curr_seg, "because NEXT seg has no spikes")
                     for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                        mua_ratio = self.get_fraction_mua_to_peak(chan,
+                        mua_ratio = self.get_fraction_mua(chan,
                                             curr_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             if self.verbose: print("Checking seg before new MUA (543) deleting at MUA ratio", mua_ratio, chan, curr_seg)
@@ -1052,12 +1059,12 @@ class WorkItemSummary(object):
                     for curr_l in [c1, c2]:
                         mua_ratio = 0.
                         if curr_l in self.sort_data[chan][curr_seg][1]:
-                            mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
+                            mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             undo_split = True
                             break
                         if curr_l in self.sort_data[chan][next_seg][1]:
-                            mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
+                            mua_ratio = self.get_fraction_mua(chan, next_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             undo_split = True
                             break
@@ -1077,7 +1084,7 @@ class WorkItemSummary(object):
                 # unit from the current segment and relabel any units in the
                 # next segment that matched with it
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                    mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
+                    mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                     if mua_ratio > self.max_mua_ratio:
                         # Remove this unit from current segment
                         if self.verbose: print("Deleting (1056) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)
@@ -1134,7 +1141,7 @@ class WorkItemSummary(object):
             if len(self.sort_data[chan][curr_seg][0]) == 0:
                 continue
             for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
+                mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                 if mua_ratio > self.max_mua_ratio:
                     if self.verbose: print("Checking last seg MUA (757) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                     self.delete_label(chan, curr_seg, curr_l)
@@ -1198,7 +1205,7 @@ class WorkItemSummary(object):
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
-                    neuron['fraction_mua'] = self.get_fraction_mua_to_peak(chan, seg, neuron_label)
+                    neuron['fraction_mua'] = self.get_fraction_mua(chan, seg, neuron_label)
                     neuron['threshold'] = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['channel']]
                     neuron['main_win'] = [self.sort_info['n_samples_per_chan'] * neuron['chan_neighbor_ind'],
                                           self.sort_info['n_samples_per_chan'] * (neuron['chan_neighbor_ind'] + 1)]
@@ -1313,49 +1320,18 @@ class WorkItemSummary(object):
             low MUA can indicate good isolation, or perhaps that the unit has a
             very small number of spikes. So we first consider MUA and spike
             count jointly before deferring to SNR. """
-            # if neuron_1['fraction_mua'] <= self.max_mua_ratio/100 and neuron_2['fraction_mua'] <= self.max_mua_ratio/100:
-            #     # Both have very low MUA so choose most spikes. NOTE: this will
-            #     # catch the case where both have MUA = 0.
-            #     print('Both have very low MUA so choose most spikes')
-            #     print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
-            #     if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
-            #         delete_2 = True
-            #     else:
-            #         delete_1 = True
             if ((1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]
-                   > (1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]):
+                   > 1.1*(1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]):
                 # Neuron 1 has higher MUA weighted spikes
                 print('Neuron 1 has higher MUA weighted spikes')
                 print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_2 = True
             elif ((1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]
-                   > (1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]):
+                   > 1.1*(1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]):
                 # Neuron 2 has higher MUA weighted spikes
                 print('Neuron 2 has higher MUA weighted spikes')
                 print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_1 = True
-            # elif (neuron_1['fraction_mua'] > 100*neuron_2['fraction_mua']):
-            #     # Neuron 1 has much more MUA
-            #     print('Neuron 1 has MUCH more MUA')
-            #     print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
-            #     delete_1 = True
-            # elif (neuron_2['fraction_mua'] > 100*neuron_1['fraction_mua']):
-            #     # Neuron 2 has much more MUA
-            #     print('Neuron 2 has MUCH more MUA')
-            #     print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
-            #     delete_2 = True
-            elif (neuron_1['fraction_mua'] > 10*neuron_2['fraction_mua']) \
-                and (neuron_2['spike_indices'].shape[0] > neuron_1['spike_indices'].shape[0]):
-                # Neuron 1 has more MUA and fewer spikes
-                print('Neuron 1 has more MUA and fewer spikes')
-                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
-                delete_1 = True
-            elif (neuron_2['fraction_mua'] > 10*neuron_1['fraction_mua']) \
-                and (neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]):
-                # Neuron 2 has more MUA and fewer spikes
-                print('Neuron 2 has more MUA and fewer spikes')
-                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
-                delete_2 = True
 
             # Defer to choosing max SNR
             elif (neuron_1['snr'] > neuron_2['snr']):
@@ -1593,7 +1569,7 @@ class WorkItemSummary(object):
             del combined_neuron['chan_neighbor_ind'][chan_num] # dictionaries so
             del combined_neuron['channel_selector'][chan_num] #  use value
             del combined_neuron['main_windows'][chan_num]
-        combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(
+        combined_neuron['fraction_mua'] = fraction_mua(
                         combined_neuron["spike_indices"],
                         self.sort_info['sampling_rate'],
                         combined_neuron['duplicate_tol_inds'],

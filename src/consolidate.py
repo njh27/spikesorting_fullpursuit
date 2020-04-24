@@ -77,7 +77,7 @@ def find_overlapping_spike_bool(spikes1, spikes2, max_samples=20, except_equal=F
 
 
 def remove_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds=1):
-    """
+    """ Preferentially KEEPS spikes found in binary pursuit.
     """
     keep_bool = np.ones(event_indices.size, dtype=np.bool)
     curr_index = 0
@@ -85,10 +85,12 @@ def remove_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds=1):
     while next_index < event_indices.size:
         if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
             if new_spike_bool[curr_index] and ~new_spike_bool[next_index]:
-                keep_bool[curr_index] = False
+                keep_bool[next_index] = False
+                # keep_bool[curr_index] = False
                 curr_index = next_index
             elif ~new_spike_bool[curr_index] and new_spike_bool[next_index]:
-                keep_bool[next_index] = False
+                keep_bool[curr_index] = False
+                # keep_bool[next_index] = False
             elif new_spike_bool[curr_index] and new_spike_bool[next_index]:
                 # Should only be possible for first index?
                 keep_bool[next_index] = False

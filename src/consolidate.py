@@ -679,11 +679,10 @@ class WorkItemSummary(object):
     def find_nearest_shifted_pair(self, chan, seg1, seg2, labels1, labels2,
                                   l2_workspace, curr_chan_inds):
         """ Alternative to sort_cython.identify_clusters_to_compare that simply
-        chooses the most similar template after shifting to optimal alignment.
+        chooses the nearest template after shifting to optimal alignment.
         Intended as helper function so that neurons do not fail to stitch in the
         event their alignment changes between segments. """
-        best_corr = -np.inf
-        best_shift = 0
+        best_distance = np.inf
         for l1 in labels1:
             # Choose seg1 template
             l1_select = self.sort_data[chan][seg1][1] == l1
@@ -725,15 +724,29 @@ class WorkItemSummary(object):
                                           l2_template[curr_chan_inds],
                                           mode='full')
                 max_corr_ind = np.argmax(cross_corr)
-                if cross_corr[max_corr_ind] > best_corr:
-                    best_corr = cross_corr[max_corr_ind]
-                    best_shift = max_corr_ind - cross_corr.shape[0]//2
+                curr_shift = max_corr_ind - cross_corr.shape[0]//2
+                # Align and truncate template and compute distance
+                # print(l1_template.shape, l2_template.shape, curr_shift, c1_start, c2_start, c2_stop)
+                if curr_shift > 0:
+                    shiftl1 = l1_template[curr_shift:]
+                    shiftl2 = l2_template[:-1*curr_shift]
+                elif curr_shift < 0:
+                    shiftl1 = l1_template[:curr_shift]
+                    shiftl2 = l2_template[-1*curr_shift:]
+                else:
+                    shiftl1 = l1_template
+                    shiftl2 = l2_template
+                curr_distance = np.sum((shiftl1 - shiftl2) ** 2)
+                if curr_distance < best_distance:
+                    best_distance = curr_distance
+                    best_shift = curr_shift
                     best_pair = [l1, l2]
                     best_l1_clips = clips_1
                     best_l2_clips = clips_2
-        if np.isinf(best_corr):
+        if np.isinf(best_distance):
             # Never found a match
             best_pair = []
+            best_shift = 0
             best_l1_clips = None
             best_l2_clips = None
         # Align and truncate clips for best match pair
@@ -746,145 +759,36 @@ class WorkItemSummary(object):
         else:
             # No need to shift (or didn't find any pairs)
             pass
-
         return best_pair, best_shift, best_l1_clips, best_l2_clips
 
-
-    def check_missed_alignment_merge(self, chan, main_seg, leftover_seg,
-                main_labels, leftover_labels, leftover_workspace, curr_chan_inds):
-
-        # Must distinguish between what we want to loop over again (or not) and
-        # the actual values we want to output
-        loop_main = [x for x in main_labels]
-        loop_leftover = [x for x in leftover_labels]
-        # Keep trying as long as there are leftovers to try
-        while (len(loop_main) > 0) and (len(loop_leftover) > 0):
-            # Need to find the best match between main and leftovers
-            # NOTE: this is not normalized and so will be biased toward matching
-            # larger spikes. I think this is a good thing since SNR should also
-            # be highest for these units, do them first.
-            best_corr = -np.inf
-            best_shift = 0
-            main_remove = set()
-            leftover_remove = set()
-            for ml in loop_main:
-                # Choose main seg template
-                ml_select = self.sort_data[chan][main_seg][1] == ml
-                clips_1 = self.sort_data[chan][main_seg][2][ml_select, :]
-                if main_seg != leftover_seg:
-                    start_edge = self.neuron_summary_seg_inds[main_seg][1] - self.merge_test_overlap_indices
-                    c1_start = next((idx[0] for idx, val in np.ndenumerate(
-                                self.sort_data[chan][main_seg][0][ml_select])
-                                if val >= start_edge), None)
-                    if c1_start is None:
-                        main_remove.add(ml)
-                        continue
-                    if c1_start == clips_1.shape[0]:
-                        main_remove.add(ml)
-                        continue
-                    clips_1 = clips_1[c1_start:, :]
-                    clips_1 = clips_1[max(clips_1.shape[0]-self.n_max_merge_test_clips, 0):, :]
-                main_template = np.mean(clips_1, axis=0)
-                for ll in loop_leftover:
-                    # Find leftover template
-                    if ll == ml:
-                        continue
-                    ll_select = leftover_workspace == ll
-                    clips_2 = self.sort_data[chan][leftover_seg][2][ll_select, :]
-                    if main_seg != leftover_seg:
-                        stop_edge = self.neuron_summary_seg_inds[main_seg][1]
-                        c2_start = next((idx[0] for idx, val in np.ndenumerate(
-                                    self.sort_data[chan][leftover_seg][0][ll_select])
-                                    if val >= start_edge), None)
-                        c2_stop = next((idx[0] for idx, val in np.ndenumerate(
-                                    self.sort_data[chan][leftover_seg][0][ll_select])
-                                    if val > stop_edge), None)
-                        if c2_start is None:
-                            leftover_remove.add(ll)
-                            continue
-                        if c2_start == c2_stop:
-                            leftover_remove.add(ll)
-                            continue
-                        clips_2 = clips_2[c2_start:c2_stop, :]
-                        clips_2 = clips_2[:min(self.n_max_merge_test_clips, clips_2.shape[0]), :]
-                    leftover_template = np.mean(clips_2, axis=0)
-                    cross_corr = np.correlate(main_template[curr_chan_inds],
-                                        leftover_template[curr_chan_inds],
-                                        mode='full')
-                    max_corr_ind = np.argmax(cross_corr)
-                    if cross_corr[max_corr_ind] > best_corr:
-                        best_corr = cross_corr[max_corr_ind]
-                        best_shift = max_corr_ind - cross_corr.shape[0]//2
-                        # if main_seg != leftover_seg:
-                        #     best_ml_clips = clips_1[:, curr_chan_inds]
-                        #     best_ll_clips = clips_2[:, curr_chan_inds]
-                        # else:
-                        #     best_ml_clips = clips_1
-                        #     best_ll_clips = clips_2
-                        best_ml_clips = clips_1
-                        best_ll_clips = clips_2
-                        best_ml_select = ml_select
-                        best_ll_select = ll_select
-                        chosen_ml = ml
-                        chosen_ll = ll
-
-            for mr in main_remove:
-                loop_main.remove(mr)
-            for lr in leftover_remove:
-                loop_leftover.remove(lr)
-            if np.isinf(best_corr):
-                # Never found a match to reset the best ml/ll so we are done
-                break
-            # Align and truncate clips for best match pair
-            if best_shift > 0:
-                best_ml_clips = best_ml_clips[:, best_shift:]
-                best_ll_clips = best_ll_clips[:, :-1*best_shift]
-            elif best_shift < 0:
-                best_ml_clips = best_ml_clips[:, :best_shift]
-                best_ll_clips = best_ll_clips[:, -1*best_shift:]
-            else:
-                # No need to shift
-                # I think this can still happen if perhaps there were duplicates
-                # and so this nearest pair wasn't checked before?
-                pass
-            # Check if the main merges with its best aligned leftover
-            is_merged, _, _ = self.merge_test_two_units(
-                    best_ml_clips, best_ll_clips,
-                    self.sort_info['p_value_cut_thresh'],
-                    method='template_pca', merge_only=True,
-                    curr_chan_inds=curr_chan_inds)
-
-            if self.verbose: print("In 'check_missed_alignment_merge' Item", self.work_items[chan][main_seg]['ID'], "on chan", chan, "seg", main_seg, "merged", is_merged, "for labels", chosen_ml, chosen_ll)
-            # print("Should start plotting best chosen_ml and chosen_ll, which merged", is_merged)
-            # plt.plot(np.mean(best_ml_clips, axis=0))
-            # plt.plot(np.mean(best_ll_clips, axis=0))
-            # plt.show()
-            if is_merged:
-                # Update actual next segment label data with same labels
-                # used in main_seg
-                if chosen_ml < chosen_ll:
-                    self.sort_data[chan][leftover_seg][1][best_ll_select] = chosen_ml
-                    # This leftover is used up
-                    leftover_labels.remove(chosen_ll)
-                    loop_leftover.remove(chosen_ll)
+    def find_nearest_joint_pair(self, templates, labels, curr_chan_inds):
+        """
+        """
+        best_distance = np.inf
+        best_pair = []
+        best_shift = 0
+        for i in range(0, len(labels)):
+            for j in range(i+1, len(labels)):
+                cross_corr = np.correlate(templates[i][curr_chan_inds],
+                                          templates[j][curr_chan_inds],
+                                          mode='full')
+                max_corr_ind = np.argmax(cross_corr)
+                curr_shift = max_corr_ind - cross_corr.shape[0]//2
+                # Align and truncate template and compute distance
+                if curr_shift > 0:
+                    shift_i = templates[i][curr_shift:]
+                    shift_j = templates[j][:-1*curr_shift]
+                elif curr_shift < 0:
+                    shift_i = templates[i][:curr_shift]
+                    shift_j = templates[j][-1*curr_shift:]
                 else:
-                    # I think this shouldn't happen since labels should have
-                    # been ordered on input
-                    print("!!! Relabelling main_labels based on leftovers !!!")
-                    print("main labels were", loop_main)
-                    print("leftovers were", leftover_labels)
-                    self.sort_data[chan][main_seg][1][best_ml_select] = chosen_ll
-                    # This leftover is used up
-                    leftover_labels.remove(chosen_ml)
-                    loop_leftover.remove(chosen_ml)
-                if chosen_ll in main_labels:
-                    main_labels.remove(chosen_ll)
-                    loop_main.remove(chosen_ll)
-            else:
-                # This main label had its pick of litter and failed so its done
-                loop_main.remove(chosen_ml)
-                if chosen_ml in loop_leftover:
-                    loop_leftover.remove(chosen_ml)
+                    shift_i = templates[i]
+                    shift_j = templates[j]
+                curr_distance = np.sum((shift_i - shift_j) ** 2)
+                if curr_distance < best_distance:
+                    best_shift = curr_shift
+                    best_pair = [i, j]
+        return best_pair, best_shift
 
     def stitch_segments(self):
         """
@@ -983,9 +887,9 @@ class WorkItemSummary(object):
                 # in the next segment (fake_labels) that do not find a match.
                 # These are assigned a new real label.
                 leftover_labels = [x for x in fake_labels]
-                main_labels = [x for x in curr_labels]
-                while len(main_labels) > 0 and len(leftover_labels > 0):
-                    best_pair, best_shift, clips1, clips2 = self.find_nearest_shifted_pair(
+                main_labels = [x for x in real_labels]
+                while len(main_labels) > 0 and len(leftover_labels) > 0:
+                    best_pair, best_shift, clips_1, clips_2 = self.find_nearest_shifted_pair(
                                     chan, curr_seg, next_seg, main_labels,
                                     leftover_labels, next_label_workspace,
                                     curr_chan_inds)
@@ -1016,8 +920,9 @@ class WorkItemSummary(object):
                     ll_select = next_label_workspace == ll
                     self.sort_data[chan][next_seg][1][ll_select] = next_real_label
                     real_labels.append(next_real_label)
-                    if self.verbose: print("In leftover labels (612) added real label", next_real_label, chan, curr_seg)
+                    if self.verbose: print("In leftover labels (882) added real label", next_real_label, chan, curr_seg)
                     next_real_label += 1
+
                 # Make sure newly stitched segment labels are separate from
                 # their nearest template match. This should help in instances
                 # where one of the stitched units is mixed in one segment, but
@@ -1036,21 +941,39 @@ class WorkItemSummary(object):
                                         joint_clips, joint_labels)
 
                 # Find all pairs of templates that are mutually closest
-                minimum_distance_pairs = sort_cython.identify_clusters_to_compare(
-                                np.vstack(joint_templates), temp_labels, [])
-                if self.verbose: print("Doing split on joint min pairs", minimum_distance_pairs)
                 tmp_reassign = np.zeros_like(joint_labels)
-                # Perform a split only between all minimum distance pairs
-                for c1, c2 in minimum_distance_pairs:
+                temp_labels = temp_labels.tolist()
+                while len(temp_labels) > 0:
+                    best_pair, best_shift = self.find_nearest_joint_pair(
+                                    joint_templates, temp_labels, curr_chan_inds)
+                    if len(best_pair) == 0:
+                        break
+                    # Perform a split only between all minimum distance pairs
+                    c1, c2 = best_pair[0], best_pair[1]
                     c1_select = joint_labels == c1
                     clips_1 = joint_clips[c1_select, :]
                     c2_select = joint_labels == c2
                     clips_2 = joint_clips[c2_select, :]
+
+                    # Align and truncate clips for best match pair
+                    if best_shift > 0:
+                        clips_1 = clips_1[:, best_shift:]
+                        clips_2 = clips_2[:, :-1*best_shift]
+                    elif best_shift < 0:
+                        clips_1 = clips_1[:, :best_shift]
+                        clips_2 = clips_2[:, -1*best_shift:]
+                    else:
+                        pass
+
                     ismerged, labels_1, labels_2 = self.merge_test_two_units(
                             clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                             method='template_pca', split_only=True,
                             curr_chan_inds=curr_chan_inds)
                     if ismerged: # This can happen if the split cutpoint forces
+                        for x in reversed(range(0, len(temp_labels))):
+                            if temp_labels[x] in best_pair:
+                                del temp_labels[x]
+                                del joint_templates[x]
                         continue # a merge so check and skip
 
                     # Reassign spikes in c1 that split into c2
@@ -1104,6 +1027,12 @@ class WorkItemSummary(object):
                     else:
                         split_memory_dicts[curr_seg][c1] = [curr_reassign_index_to_c1, curr_original_index_to_c1]
                         split_memory_dicts[curr_seg][c2] = [curr_reassign_index_to_c2, curr_original_index_to_c2]
+                    # NOTE: Not sure if this should depend on whether we split or not?
+                    for x in reversed(range(0, len(temp_labels))):
+                        if temp_labels[x] in best_pair:
+                            del temp_labels[x]
+                            del joint_templates[x]
+
                 # Finally, check if the above split was unable to salvage any
                 # mixtures in the current segment. If it wasn't, delete that
                 # unit from the current segment and relabel any units in the

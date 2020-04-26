@@ -309,7 +309,7 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
     refractory_inds = int(round(absolute_refractory_period * sampling_rate))
     bin_width = refractory_inds - duplicate_tol_inds
     if bin_width <= 0:
-        print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at 1.")
+        # print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at 1.")
         duplicate_tol_inds = 1
         bin_width = refractory_inds - duplicate_tol_inds
     check_inds = int(round(check_window * sampling_rate))
@@ -332,7 +332,7 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
     # plt.xlim([0, 70])
     # plt.axvline(duplicate_tol_inds)
     # plt.show()
-    return fraction_mua_to_peak/2
+    return fraction_mua_to_peak
 
 
 def calc_isi_violation_rate(spike_indices, sampling_rate,
@@ -345,7 +345,7 @@ def calc_isi_violation_rate(spike_indices, sampling_rate,
     index_isi = np.diff(spike_indices)
     refractory_adjustment = duplicate_tol_inds / sampling_rate
     if absolute_refractory_period - refractory_adjustment <= 0:
-        print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", 1)
+        # print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", 1)
         duplicate_tol_inds = 1
         refractory_adjustment = 0
     num_isi_violations = np.count_nonzero(index_isi / sampling_rate
@@ -378,7 +378,7 @@ def fraction_mua(spike_indices, sampling_rate, duplicate_tol_inds,
     if mean_rate == 0.:
         return 0.
     else:
-        return (isi_violation_rate / mean_rate)/2
+        return (isi_violation_rate / mean_rate)
 
 
 class WorkItemSummary(object):
@@ -546,7 +546,7 @@ class WorkItemSummary(object):
         duplicate_tol_inds += self.duplicate_tol_inds
         refractory_adjustment = duplicate_tol_inds / self.sort_info['sampling_rate']
         if self.absolute_refractory_period - refractory_adjustment <= 0:
-            print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", self.duplicate_tol_inds)
+            # print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", self.duplicate_tol_inds)
             duplicate_tol_inds = self.duplicate_tol_inds
             refractory_adjustment = 0
         index_isi = np.diff(unit_spikes)
@@ -585,7 +585,7 @@ class WorkItemSummary(object):
         if mean_rate == 0.:
             return 0.
         else:
-            return (isi_violation_rate / mean_rate)/2
+            return (isi_violation_rate / mean_rate)
 
     def get_fraction_mua_to_peak(self, chan, seg, label, check_window=0.5):
         """
@@ -609,7 +609,7 @@ class WorkItemSummary(object):
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
         bin_width = refractory_inds - duplicate_tol_inds
         if bin_width <= 0:
-            print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", self.duplicate_tol_inds)
+            # print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", self.duplicate_tol_inds)
             duplicate_tol_inds = self.duplicate_tol_inds
             bin_width = refractory_inds - duplicate_tol_inds
         check_inds = int(round(check_window * self.sort_info['sampling_rate']))
@@ -627,7 +627,7 @@ class WorkItemSummary(object):
             isi_peak = max(num_isi_violations, 1.)
         fraction_mua_to_peak = num_isi_violations / isi_peak
 
-        return fraction_mua_to_peak/2
+        return fraction_mua_to_peak
 
     def delete_mua_units(self):
         for chan in range(0, self.n_chans):
@@ -1046,7 +1046,6 @@ class WorkItemSummary(object):
                         remove_l = best_pair[0]
                     for x in reversed(range(0, len(temp_labels))):
                         if temp_labels[x] == remove_l:
-                            print("deleting label", remove_l, "as temp label", temp_labels[x])
                             del temp_labels[x]
                             del joint_templates[x]
                             break

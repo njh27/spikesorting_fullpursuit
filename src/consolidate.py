@@ -1097,7 +1097,7 @@ class WorkItemSummary(object):
             for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
                 mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                 if mua_ratio > self.max_mua_ratio:
-                    if self.verbose: print("Checking last seg MUA (757) deleting at MUA ratio", mua_ratio, chan, curr_seg)
+                    if self.verbose: print("Checking last seg MUA (1100) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                     self.delete_label(chan, curr_seg, curr_l)
                     if curr_seg == 0:
                         real_labels.remove(curr_l)

@@ -787,7 +787,7 @@ class WorkItemSummary(object):
                 curr_distance = np.sum((shift_i - shift_j) ** 2)
                 if curr_distance < best_distance:
                     best_shift = curr_shift
-                    best_pair = [i, j]
+                    best_pair = [labels[i], labels[j]]
         return best_pair, best_shift
 
     def stitch_segments(self):
@@ -895,12 +895,15 @@ class WorkItemSummary(object):
                                     curr_chan_inds)
                     if len(best_pair) == 0:
                         break
-                    is_merged, _, _ = self.merge_test_two_units(
-                            clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='template_pca', merge_only=True,
-                            curr_chan_inds=curr_chan_inds + best_shift)
+                    if clips_1.shape[0] == 1 or clips_2.shape[0] == 2:
+                        ismerged = True
+                    else:
+                        is_merged, _, _ = self.merge_test_two_units(
+                                clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
+                                method='template_pca', merge_only=True,
+                                curr_chan_inds=curr_chan_inds + best_shift)
 
-                    if self.verbose: print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", r_l, f_l)
+                    if self.verbose: print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", best_pair)
 
                     if is_merged:
                         # Choose next seg spikes based on original fake label workspace
@@ -964,16 +967,24 @@ class WorkItemSummary(object):
                         clips_2 = clips_2[:, -1*best_shift:]
                     else:
                         pass
-
-                    ismerged, labels_1, labels_2 = self.merge_test_two_units(
-                            clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                            method='template_pca', split_only=True,
-                            curr_chan_inds=curr_chan_inds)
+                    if clips_1.shape[0] == 1 or clips_2.shape[0] == 2:
+                        ismerged = True
+                    else:
+                        ismerged, labels_1, labels_2 = self.merge_test_two_units(
+                                clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
+                                method='template_pca', split_only=True,
+                                curr_chan_inds=curr_chan_inds)
                     if ismerged: # This can happen if the split cutpoint forces
+                        # Remove label with fewest spikes
+                        if clips_1.shape[0] >= clips_2.shape[0]:
+                            remove_l = best_pair[1]
+                        else:
+                            remove_l = best_pair[0]
                         for x in reversed(range(0, len(temp_labels))):
-                            if temp_labels[x] in best_pair:
+                            if temp_labels[x] == remove_l:
                                 del temp_labels[x]
                                 del joint_templates[x]
+                                break
                         continue # a merge so check and skip
 
                     # Reassign spikes in c1 that split into c2
@@ -1028,10 +1039,17 @@ class WorkItemSummary(object):
                         split_memory_dicts[curr_seg][c1] = [curr_reassign_index_to_c1, curr_original_index_to_c1]
                         split_memory_dicts[curr_seg][c2] = [curr_reassign_index_to_c2, curr_original_index_to_c2]
                     # NOTE: Not sure if this should depend on whether we split or not?
+                    # Remove label with fewest spikes
+                    if clips_1.shape[0] >= clips_2.shape[0]:
+                        remove_l = best_pair[1]
+                    else:
+                        remove_l = best_pair[0]
                     for x in reversed(range(0, len(temp_labels))):
-                        if temp_labels[x] in best_pair:
+                        if temp_labels[x] == remove_l:
+                            print("deleting label", remove_l, "as temp label", temp_labels[x])
                             del temp_labels[x]
                             del joint_templates[x]
+                            break
 
                 # Finally, check if the above split was unable to salvage any
                 # mixtures in the current segment. If it wasn't, delete that

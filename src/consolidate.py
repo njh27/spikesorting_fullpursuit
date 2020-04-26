@@ -332,7 +332,7 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
     # plt.xlim([0, 70])
     # plt.axvline(duplicate_tol_inds)
     # plt.show()
-    return fraction_mua_to_peak
+    return fraction_mua_to_peak/2
 
 
 def calc_isi_violation_rate(spike_indices, sampling_rate,
@@ -378,7 +378,7 @@ def fraction_mua(spike_indices, sampling_rate, duplicate_tol_inds,
     if mean_rate == 0.:
         return 0.
     else:
-        return isi_violation_rate / mean_rate
+        return (isi_violation_rate / mean_rate)/2
 
 
 class WorkItemSummary(object):
@@ -585,7 +585,7 @@ class WorkItemSummary(object):
         if mean_rate == 0.:
             return 0.
         else:
-            return isi_violation_rate / mean_rate
+            return (isi_violation_rate / mean_rate)/2
 
     def get_fraction_mua_to_peak(self, chan, seg, label, check_window=0.5):
         """
@@ -627,13 +627,13 @@ class WorkItemSummary(object):
             isi_peak = max(num_isi_violations, 1.)
         fraction_mua_to_peak = num_isi_violations / isi_peak
 
-        return fraction_mua_to_peak
+        return fraction_mua_to_peak/2
 
     def delete_mua_units(self):
         for chan in range(0, self.n_chans):
             for seg in range(0, self.n_segments):
                 for l in np.unique(self.sort_data[chan][seg][1]):
-                    mua_ratio = self.get_fraction_mua_to_peak(chan, seg, l)
+                    mua_ratio = self.get_fraction_mua(chan, seg, l)
                     if mua_ratio > self.max_mua_ratio:
                         self.delete_label(chan, seg, l)
 
@@ -676,12 +676,95 @@ class WorkItemSummary(object):
         neuron_labels_2 = neuron_labels[clips_1.shape[0]:]
         return clips_merged, neuron_labels_1, neuron_labels_2
 
-    def check_missed_alignment_merge(self, chan, main_seg, leftover_seg,
-                main_labels, leftover_labels, leftover_workspace, curr_chan_inds):
+    def find_nearest_shifted_pair(self, chan, seg1, seg2, labels1, labels2,
+                                  l2_workspace, curr_chan_inds):
         """ Alternative to sort_cython.identify_clusters_to_compare that simply
         chooses the most similar template after shifting to optimal alignment.
         Intended as helper function so that neurons do not fail to stitch in the
         event their alignment changes between segments. """
+        best_corr = -np.inf
+        best_shift = 0
+        for l1 in labels1:
+            # Choose seg1 template
+            l1_select = self.sort_data[chan][seg1][1] == l1
+            clips_1 = self.sort_data[chan][seg1][2][l1_select, :]
+            # Only compare clips within specified overlap, if these are in a
+            # different segment. If same segment use all clips
+            if seg1 != seg2:
+                start_edge = self.neuron_summary_seg_inds[seg1][1] - self.merge_test_overlap_indices
+                c1_start = next((idx[0] for idx, val in np.ndenumerate(
+                            self.sort_data[chan][seg1][0][l1_select])
+                            if val >= start_edge), None)
+                if c1_start is None:
+                    continue
+                if c1_start == clips_1.shape[0]:
+                    continue
+                clips_1 = clips_1[c1_start:, :]
+                clips_1 = clips_1[max(clips_1.shape[0]-self.n_max_merge_test_clips, 0):, :]
+            l1_template = np.mean(clips_1, axis=0)
+            for l2 in labels2:
+                l2_select = l2_workspace == l2
+                clips_2 = self.sort_data[chan][seg2][2][l2_select, :]
+                if seg1 != seg2:
+                    # Stop at end of seg1 as this is end of overlap!
+                    stop_edge = self.neuron_summary_seg_inds[seg1][1]
+                    c2_start = next((idx[0] for idx, val in np.ndenumerate(
+                                self.sort_data[chan][seg2][0][l2_select])
+                                if val >= start_edge), None)
+                    if c2_start is None:
+                        continue
+                    c2_stop = next((idx[0] for idx, val in np.ndenumerate(
+                                self.sort_data[chan][seg2][0][l2_select])
+                                if val > stop_edge), None)
+                    if c2_start == c2_stop:
+                        continue
+                    clips_2 = clips_2[c2_start:c2_stop, :]
+                    clips_2 = clips_2[:min(self.n_max_merge_test_clips, clips_2.shape[0]), :]
+                l2_template = np.mean(clips_2, axis=0)
+                cross_corr = np.correlate(l1_template[curr_chan_inds],
+                                          l2_template[curr_chan_inds],
+                                          mode='full')
+                max_corr_ind = np.argmax(cross_corr)
+                if cross_corr[max_corr_ind] > best_corr:
+                    best_corr = cross_corr[max_corr_ind]
+                    best_shift = max_corr_ind - cross_corr.shape[0]//2
+                    best_pair = [l1, l2]
+
+                    # best_l1_clips = clips_1
+                    # best_l2_clips = clips_2
+                    # best_ml_select = ml_select
+                    # best_ll_select = ll_select
+                    # chosen_ml = ml
+                    # chosen_ll = ll
+
+        return best_pair, best_shift
+
+        # for mr in main_remove:
+        #     loop_main.remove(mr)
+        # for lr in leftover_remove:
+        #     loop_leftover.remove(lr)
+        # if np.isinf(best_corr):
+        #     # Never found a match to reset the best ml/ll so we are done
+        #     break
+        # # Align and truncate clips for best match pair
+        # if best_shift > 0:
+        #     best_ml_clips = best_ml_clips[:, best_shift:]
+        #     best_ll_clips = best_ll_clips[:, :-1*best_shift]
+        # elif best_shift < 0:
+        #     best_ml_clips = best_ml_clips[:, :best_shift]
+        #     best_ll_clips = best_ll_clips[:, -1*best_shift:]
+        # else:
+        #     # No need to shift
+        #     # I think this can still happen if perhaps there were duplicates
+        #     # and so this nearest pair wasn't checked before?
+        #     pass
+        #
+        # return
+
+
+    def check_missed_alignment_merge(self, chan, main_seg, leftover_seg,
+                main_labels, leftover_labels, leftover_workspace, curr_chan_inds):
+
         # Must distinguish between what we want to loop over again (or not) and
         # the actual values we want to output
         loop_main = [x for x in main_labels]
@@ -756,6 +839,7 @@ class WorkItemSummary(object):
                         best_ll_select = ll_select
                         chosen_ml = ml
                         chosen_ll = ll
+
             for mr in main_remove:
                 loop_main.remove(mr)
             for lr in leftover_remove:
@@ -882,7 +966,7 @@ class WorkItemSummary(object):
                     start_new_seg = True
                     if self.verbose: print("skipping_seg", curr_seg, "because NEXT seg has no spikes")
                     for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                        mua_ratio = self.get_fraction_mua_to_peak(chan,
+                        mua_ratio = self.get_fraction_mua(chan,
                                             curr_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             if self.verbose: print("Checking seg before new MUA (543) deleting at MUA ratio", mua_ratio, chan, curr_seg)
@@ -1069,12 +1153,12 @@ class WorkItemSummary(object):
                     for curr_l in [c1, c2]:
                         mua_ratio = 0.
                         if curr_l in self.sort_data[chan][curr_seg][1]:
-                            mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
+                            mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             undo_split = True
                             break
                         if curr_l in self.sort_data[chan][next_seg][1]:
-                            mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
+                            mua_ratio = self.get_fraction_mua(chan, next_seg, curr_l)
                         if mua_ratio > self.max_mua_ratio:
                             undo_split = True
                             break
@@ -1094,7 +1178,7 @@ class WorkItemSummary(object):
                 # unit from the current segment and relabel any units in the
                 # next segment that matched with it
                 for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                    mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
+                    mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                     if mua_ratio > self.max_mua_ratio:
                         # Remove this unit from current segment
                         if self.verbose: print("Deleting (1056) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)
@@ -1151,7 +1235,7 @@ class WorkItemSummary(object):
             if len(self.sort_data[chan][curr_seg][0]) == 0:
                 continue
             for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
+                mua_ratio = self.get_fraction_mua(chan, curr_seg, curr_l)
                 if mua_ratio > self.max_mua_ratio:
                     if self.verbose: print("Checking last seg MUA (757) deleting at MUA ratio", mua_ratio, chan, curr_seg)
                     self.delete_label(chan, curr_seg, curr_l)
@@ -1215,7 +1299,7 @@ class WorkItemSummary(object):
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
-                    neuron['fraction_mua'] = self.get_fraction_mua_to_peak(chan, seg, neuron_label)
+                    neuron['fraction_mua'] = self.get_fraction_mua(chan, seg, neuron_label)
                     neuron['threshold'] = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['channel']]
                     neuron['main_win'] = [self.sort_info['n_samples_per_chan'] * neuron['chan_neighbor_ind'],
                                           self.sort_info['n_samples_per_chan'] * (neuron['chan_neighbor_ind'] + 1)]
@@ -1587,7 +1671,7 @@ class WorkItemSummary(object):
             del combined_neuron['chan_neighbor_ind'][chan_num] # dictionaries so
             del combined_neuron['channel_selector'][chan_num] #  use value
             del combined_neuron['main_windows'][chan_num]
-        combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(
+        combined_neuron['fraction_mua'] = fraction_mua(
                         combined_neuron["spike_indices"],
                         self.sort_info['sampling_rate'],
                         combined_neuron['duplicate_tol_inds'],

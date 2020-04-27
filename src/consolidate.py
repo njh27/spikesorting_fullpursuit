@@ -388,7 +388,8 @@ class WorkItemSummary(object):
     def __init__(self, sort_data, work_items, sort_info,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
                  max_mua_ratio=0.05, n_max_merge_test_clips=None,
-                 merge_test_overlap_indices=None, verbose=False):
+                 merge_test_overlap_indices=None, min_overlapping_spikes=.05,
+                 verbose=False):
 
         self.check_input_data(sort_data, work_items)
         self.sort_info = sort_info
@@ -403,7 +404,7 @@ class WorkItemSummary(object):
         if merge_test_overlap_indices is None:
             merge_test_overlap_indices = work_items[0]['overlap']
         self.merge_test_overlap_indices = merge_test_overlap_indices
-
+        self.min_overlapping_spikes = min_overlapping_spikes
         self.is_stitched = False # Repeated stitching can change results so track
         self.last_overlap_ratio_threshold = np.inf
         self.verbose = verbose
@@ -1192,6 +1193,52 @@ class WorkItemSummary(object):
 
                     self.neuron_summary_by_seg[seg].append(neuron)
 
+    def get_overlap_ratio(self, seg1, n1_ind, seg2, n2_ind, overlap_time=2.5e-4):
+        # From next segment start to current segment end
+        overlap_win = [self.neuron_summary_seg_inds[seg2][0], self.neuron_summary_seg_inds[seg1][1]]
+        max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
+        n_total_samples = overlap_win[1] - overlap_win[0]
+        if n_total_samples < 0:
+            raise ValueError("Input seg2 must follow seg1")
+        if n_total_samples < 10 * self.sort_info['sampling_rate']:
+            summarize_message = ("Consecutive segment overlap is less than "\
+                                 "10 seconds which may not provide enough "\
+                                 "data to yield good across channel neuron summary")
+            warnings.warn(sort_data_message, RuntimeWarning, stacklevel=2)
+
+        n1_spikes = self.neuron_summary_by_seg[seg1][n1_ind]['spike_indices']
+        n2_spikes = self.neuron_summary_by_seg[seg2][n2_ind]['spike_indices']
+        if seg1 == seg2:
+            n1_start = 0
+        else:
+            n1_start = next((idx[0] for idx, val in np.ndenumerate(n1_spikes)
+                             if val >= overlap_win[0]), None)
+        if n1_start is None:
+            # neuron 1 has no spikes in the overlap
+            return 0.
+        if seg1 == seg2:
+            n2_stop = n2_spikes.shape[0]
+        else:
+            n2_stop = next((idx[0] for idx, val in np.ndenumerate(n2_spikes)
+                            if val >= overlap_win[1]), None)
+        if n2_stop is None or n2_stop == 0:
+            # neuron 2 has no spikes in the overlap
+            return 0.
+
+        n1_spike_train = compute_spike_trains(n1_spikes[n1_start:],
+                                              max_samples, overlap_win)
+        n_n1_spikes = np.count_nonzero(n1_spike_train)
+        n2_spike_train = compute_spike_trains(n2_spikes[:n2_stop],
+                                              max_samples, overlap_win)
+        n_n2_spikes = np.count_nonzero(n2_spike_train)
+
+        num_hits = np.count_nonzero(np.logical_and(n1_spike_train, n2_spike_train))
+        n1_misses = np.count_nonzero(np.logical_and(n1_spike_train, ~n2_spike_train))
+        n2_misses = np.count_nonzero(np.logical_and(n2_spike_train, ~n1_spike_train))
+        overlap_ratio = max(num_hits / (num_hits + n1_misses),
+                            num_hits / (num_hits + n2_misses))
+        return overlap_ratio
+
     def remove_redundant_neurons(self, seg, overlap_time=2.5e-4, overlap_ratio_threshold=2):
         """
         """
@@ -1232,7 +1279,6 @@ class WorkItemSummary(object):
         overlap_ratio = np.zeros((len(neurons), len(neurons)))
         expected_ratio = np.zeros((len(neurons), len(neurons)))
         for neuron1_ind, neuron1 in enumerate(neurons):
-            neuron1_spike_train = compute_spike_trains(neuron1['spike_indices'], max_samples, [0, n_total_samples])
             # Loop through all violators with neuron1
             # We already know these neurons are in each other's neighborhood
             # because violation_partners only includes neighbors
@@ -1242,13 +1288,8 @@ class WorkItemSummary(object):
                 neuron2 = neurons[neuron2_ind]
                 if neuron1['channel'] == neuron2['channel']:
                     continue # If they are on the same channel, do nothing
-                neuron2_spike_train = compute_spike_trains(neuron2['spike_indices'], max_samples, [0, n_total_samples])
-                num_hits = np.count_nonzero(np.logical_and(neuron1_spike_train, neuron2_spike_train))
-                neuron2_misses = np.count_nonzero(np.logical_and(neuron2_spike_train, ~neuron1_spike_train))
-                neuron1_misses = np.count_nonzero(np.logical_and(neuron1_spike_train, ~neuron2_spike_train))
-
-                num_misses = min(neuron1_misses, neuron2_misses)
-                overlap_ratio[neuron1_ind, neuron2_ind] = num_hits / (num_hits + num_misses)
+                overlap_ratio[neuron1_ind, neuron2_ind] = self.get_overlap_ratio(
+                                        seg, neuron1_ind, seg, neuron2_ind, overlap_time)
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
 
                 expected_hits = calculate_expected_overlap(neuron1, neuron2,
@@ -1357,8 +1398,11 @@ class WorkItemSummary(object):
                             continue
                         if prev_n['next_seg_link'] == best_pair[0]:
                             if neurons[best_pair[1]]['prev_seg_link'] is None:
-                                prev_n['next_seg_link'] = best_pair[1]
-                                neurons[best_pair[1]]['prev_seg_link'] = p_ind
+                                curr_intersection = self.get_overlap_ratio(
+                                        seg-1, p_ind, seg, best_pair[1], overlap_time)
+                                if curr_intersection > self.min_overlapping_spikes:
+                                    prev_n['next_seg_link'] = best_pair[1]
+                                    neurons[best_pair[1]]['prev_seg_link'] = p_ind
                             else:
                                 prev_n['next_seg_link'] = None
                 if seg < self.n_segments - 1:
@@ -1382,8 +1426,11 @@ class WorkItemSummary(object):
                             continue
                         if prev_n['next_seg_link'] == best_pair[1]:
                             if neurons[best_pair[0]]['prev_seg_link'] is None:
-                                prev_n['next_seg_link'] = best_pair[0]
-                                neurons[best_pair[0]]['prev_seg_link'] = p_ind
+                                curr_intersection = self.get_overlap_ratio(
+                                        seg-1, p_ind, seg, best_pair[0], overlap_time)
+                                if curr_intersection > self.min_overlapping_spikes:
+                                    prev_n['next_seg_link'] = best_pair[0]
+                                    neurons[best_pair[0]]['prev_seg_link'] = p_ind
                             else:
                                 prev_n['next_seg_link'] = None
                 if seg < self.n_segments - 1:
@@ -1416,6 +1463,30 @@ class WorkItemSummary(object):
         for seg in range(0, self.n_segments):
             self.neuron_summary_by_seg[seg] = self.remove_redundant_neurons(
                                     seg, overlap_time, overlap_ratio_threshold)
+
+    def check_overlapping_links(self, overlap_time):
+
+        for seg in range(0, self.n_segments-1):
+            n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
+                            if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
+            while len(n1_remaining) > 0:
+                max_overlap = 0.
+                for n1_ind in n1_remaining:
+                    for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
+                        if n2['prev_seg_link'] is None:
+                            if self.neuron_summary_by_seg[seg][n1_ind]['channel'] not in n2['neighbors']:
+                                continue
+                            curr_overlap = self.get_overlap_ratio(
+                                    seg, n1_ind, seg+1, n2_ind, overlap_time)
+                            if curr_overlap > max_overlap:
+                                max_overlap = curr_overlap
+                                max_overlap_pair = [n1_ind, n2_ind]
+                if max_overlap > self.min_overlapping_spikes:
+                    self.neuron_summary_by_seg[seg][max_overlap_pair[0]]['next_seg_link'] = max_overlap_pair[1]
+                    self.neuron_summary_by_seg[seg+1][max_overlap_pair[1]]['prev_seg_link'] = max_overlap_pair[0]
+                    n1_remaining.remove(max_overlap_pair[0])
+                else:
+                    break
 
     def stitch_neurons_across_channels(self):
         start_seg = 0
@@ -1638,7 +1709,7 @@ class WorkItemSummary(object):
         The overlap time is the window used to consider spikes the same"""
         # if min_overlap_ratio <= 0. or min_overlap_ratio >= 1.:
         #     raise ValueError("Min overlap ratio must be a value in (0, 1)")
-        max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
+
         # Start with neurons as those in first segment
         # Doesn't matter if there are no neurons yet it will get appended later
         # Establishes a list of dictionaries. Each dictionary represents a single
@@ -1689,55 +1760,7 @@ class WorkItemSummary(object):
             for n in self.neuron_summary_by_seg[next_seg]:
                 n['prev_seg_link'] = None
 
-            # # From next segment start to current segment end
-            # overlap_win = [self.neuron_summary_seg_inds[next_seg][0], self.neuron_summary_seg_inds[seg][1]]
-            # n_total_samples = overlap_win[1] - overlap_win[0]
-            # if n_total_samples < 10 * self.sort_info['sampling_rate']:
-            #     summarize_message = ("Consecutive segment overlap is less than "\
-            #                          "10 seconds which may not provide enough "\
-            #                          "data to yield good across channel neuron summary")
-            #     warnings.warn(sort_data_message, RuntimeWarning, stacklevel=2)
-            # # This is NOT necessarily a square matrix!
-            # overlap_ratio = np.zeros((len(self.neuron_summary_by_seg[seg]), len(self.neuron_summary_by_seg[next_seg])))
-            # for cn_ind in range(0, len(self.neuron_summary_by_seg[seg])):
-            #     cn_start = next((idx[0] for idx, val in np.ndenumerate(
-            #                 self.neuron_summary_by_seg[seg][cn_ind]['spike_indices'])
-            #                 if val >= overlap_win[0]), None)
-            #     if cn_start is None:
-            #         # current neuron has no spikes in the overlap
-            #         overlap_ratio[cn_ind, :] = 0.
-            #         continue
-            #     cn_spike_train = compute_spike_trains(
-            #             self.neuron_summary_by_seg[seg][cn_ind]['spike_indices'][cn_start:],
-            #             max_samples, overlap_win)
-            #     n_cn_spikes = np.count_nonzero(cn_spike_train)
-            #     for nn_ind in range(0, len(self.neuron_summary_by_seg[next_seg])):
-            #         nn_stop = next((idx[0] for idx, val in np.ndenumerate(
-            #                     self.neuron_summary_by_seg[next_seg][nn_ind]['spike_indices'])
-            #                     if val >= overlap_win[1]), None)
-            #         if nn_stop is None or nn_stop == 0:
-            #             # next neuron has no spikes in the overlap
-            #             overlap_ratio[cn_ind, nn_ind] = 0.
-            #             continue
-            #         nn_spike_train = compute_spike_trains(
-            #                 self.neuron_summary_by_seg[next_seg][nn_ind]['spike_indices'][:nn_stop],
-            #                 max_samples, overlap_win)
-            #         n_nn_spikes = np.count_nonzero(nn_spike_train)
-            #         try:
-            #             num_hits = np.count_nonzero(np.logical_and(cn_spike_train, nn_spike_train))
-            #             nn_misses = np.count_nonzero(np.logical_and(nn_spike_train, ~cn_spike_train))
-            #             cn_misses = np.count_nonzero(np.logical_and(cn_spike_train, ~nn_spike_train))
-            #
-            #             # This is NOT symmetric matrix! Just a look up table.
-            #             overlap_ratio[cn_ind, nn_ind] = max(num_hits / (num_hits + nn_misses),
-            #                                                 num_hits / (num_hits + cn_misses))
-            #         except:
-            #             print(num_hits, nn_misses, cn_misses)
-            #             print(cn_start, nn_stop, n_cn_spikes, n_nn_spikes)
-            #             print(self.neuron_summary_by_seg[next_seg][nn_ind]['spike_indices'].size)
-            #             print(self.neuron_summary_by_seg[next_seg][nn_ind]['spike_indices'][nn_stop], overlap_win[1])
-            #             print(self.neuron_summary_by_seg[next_seg][nn_ind]['spike_indices'][nn_stop+1])
-            #             raise
+
 
             # Assume there is no link and overwrite below if it passes threshold
             for prev_ind, n in enumerate(self.neuron_summary_by_seg[seg]):
@@ -1770,6 +1793,8 @@ class WorkItemSummary(object):
 
         self.remove_redundant_neurons_by_seg(overlap_time=overlap_time,
                                 overlap_ratio_threshold=overlap_ratio_threshold)
+
+        self.check_overlapping_links(overlap_time)
 
         neurons = self.stitch_neurons_across_channels()
         inds_to_delete = []

@@ -1469,11 +1469,15 @@ class WorkItemSummary(object):
         for seg in range(0, self.n_segments-1):
             n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
                             if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
+            if seg > 0:
+                for n_ind in n1_remaining:
+                    if self.neuron_summary_by_seg[seg][n_ind]['prev_seg_link'] is None:
+                        n1_remaining.remove(n_ind)
             while len(n1_remaining) > 0:
                 max_overlap = -1.
                 for n1_ind in n1_remaining:
                     for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
-                        if n2['prev_seg_link'] is None:
+                        if n2['prev_seg_link'] is None and n2['next_seg_link'] is not None:
                             if self.neuron_summary_by_seg[seg][n1_ind]['channel'] not in n2['neighbors']:
                                 continue
                             if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:

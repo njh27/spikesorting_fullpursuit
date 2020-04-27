@@ -1279,6 +1279,8 @@ class WorkItemSummary(object):
         overlap_ratio = np.zeros((len(neurons), len(neurons)))
         expected_ratio = np.zeros((len(neurons), len(neurons)))
         for neuron1_ind, neuron1 in enumerate(neurons):
+            # Take this opportunity to set this to default
+            neuron1['deleted_as_redundant'] = False
             # Loop through all violators with neuron1
             # We already know these neurons are in each other's neighborhood
             # because violation_partners only includes neighbors
@@ -1416,6 +1418,7 @@ class WorkItemSummary(object):
                 # it is designated as trash fro deletion
                 neurons[best_pair[0]]['prev_seg_link'] = None
                 neurons[best_pair[0]]['next_seg_link'] = None
+                neurons[best_pair[0]]['deleted_as_redundant'] = True
             if delete_2:
                 neurons_to_remove.append(best_pair[1])
                 neurons_remaining_indices.remove(best_pair[1])
@@ -1444,6 +1447,7 @@ class WorkItemSummary(object):
                 # it is designated as trash fro deletion
                 neurons[best_pair[1]]['prev_seg_link'] = None
                 neurons[best_pair[1]]['next_seg_link'] = None
+                neurons[best_pair[1]]['deleted_as_redundant'] = True
 
         # NOTE: DELETING HERE WILL MESS UP THE INDICES FOR LINKING !
         # for n_ind in reversed(range(0, len(neurons))):
@@ -1469,19 +1473,18 @@ class WorkItemSummary(object):
         for seg in range(0, self.n_segments-1):
             n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
                             if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
-            if seg > 0:
-                for n_ind in n1_remaining:
-                    if self.neuron_summary_by_seg[seg][n_ind]['prev_seg_link'] is None:
-                        n1_remaining.remove(n_ind)
+            for n_ind in n1_remaining:
+                if self.neuron_summary_by_seg[seg][n_ind]['deleted_as_redundant']:
+                    n1_remaining.remove(n_ind)
             while len(n1_remaining) > 0:
                 max_overlap = -1.
                 for n1_ind in n1_remaining:
                     for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
-                        if n2['prev_seg_link'] is None and n2['next_seg_link'] is not None:
+                        if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
                             if self.neuron_summary_by_seg[seg][n1_ind]['channel'] not in n2['neighbors']:
                                 continue
-                            if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:
-                                continue
+                            # if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:
+                            #     continue
                             curr_overlap = self.get_overlap_ratio(
                                     seg, n1_ind, seg+1, n2_ind, overlap_time)
                             if curr_overlap > max_overlap:

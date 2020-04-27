@@ -309,9 +309,10 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
     refractory_inds = int(round(absolute_refractory_period * sampling_rate))
     bin_width = refractory_inds - duplicate_tol_inds
     if bin_width <= 0:
-        # print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at 1.")
+        print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at 1.")
         duplicate_tol_inds = 1
         bin_width = refractory_inds - duplicate_tol_inds
+        return -1.
     check_inds = int(round(check_window * sampling_rate))
     bin_edges = np.arange(duplicate_tol_inds+1, check_inds + bin_width, bin_width)
     counts, xval = np.histogram(all_isis, bin_edges)
@@ -345,9 +346,9 @@ def calc_isi_violation_rate(spike_indices, sampling_rate,
     index_isi = np.diff(spike_indices)
     refractory_adjustment = duplicate_tol_inds / sampling_rate
     if absolute_refractory_period - refractory_adjustment <= 0:
-        # print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", 1)
+        print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", 1)
         duplicate_tol_inds = 1
-        refractory_adjustment = 0
+        return -1.
     num_isi_violations = np.count_nonzero(index_isi / sampling_rate
                                           < absolute_refractory_period)
     n_duplicates = np.count_nonzero(index_isi <= duplicate_tol_inds)
@@ -546,9 +547,10 @@ class WorkItemSummary(object):
         duplicate_tol_inds += self.duplicate_tol_inds
         refractory_adjustment = duplicate_tol_inds / self.sort_info['sampling_rate']
         if self.absolute_refractory_period - refractory_adjustment <= 0:
-            # print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", self.duplicate_tol_inds)
+            print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", self.duplicate_tol_inds)
             duplicate_tol_inds = self.duplicate_tol_inds
             refractory_adjustment = 0
+            return -1.
         index_isi = np.diff(unit_spikes)
         num_isi_violations = np.count_nonzero(
             index_isi / self.sort_info['sampling_rate']
@@ -609,10 +611,10 @@ class WorkItemSummary(object):
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
         bin_width = refractory_inds - duplicate_tol_inds
         if bin_width <= 0:
-            # print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", self.duplicate_tol_inds)
+            print("duplicate_tol_inds encompasses absolute_refractory_period. duplicate tolerence enforced at", self.duplicate_tol_inds)
             duplicate_tol_inds = self.duplicate_tol_inds
             bin_width = refractory_inds - duplicate_tol_inds
-            return 0.
+            return -1.
         check_inds = int(round(check_window * self.sort_info['sampling_rate']))
         bin_edges = np.arange(duplicate_tol_inds+1, check_inds + bin_width, bin_width)
         counts, xval = np.histogram(all_isis, bin_edges)
@@ -1303,7 +1305,22 @@ class WorkItemSummary(object):
             low MUA can indicate good isolation, or perhaps that the unit has a
             very small number of spikes. So we first consider MUA and spike
             count jointly before deferring to SNR. """
-            if neuron_1['fraction_mua'] < 1e-4 and neuron_2['fraction_mua'] < 1e-4:
+            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
+                print("Both units had BAD MUA")
+                # MUA calculation was invalid so just use SNR
+                if (neuron_1['snr'] > neuron_2['snr']):
+                    print("neuron 1 has higher SNR", neuron_1['snr'] , neuron_2['snr'])
+                    delete_2 = True
+                else:
+                    delete_1 = True
+            elif neuron_1['fraction_mua'] < 0 or neuron_2['fraction_mua'] < 0:
+                # MUA calculation was invalid for one unit so pick the other
+                print("One unit had BAD MUA")
+                if neuron_1['fraction_mua'] < 0:
+                    delete_2 = True
+                else:
+                    delete_1 = True
+            elif neuron_1['fraction_mua'] < 1e-4 and neuron_2['fraction_mua'] < 1e-4:
                 # Both MUA negligible so choose most spikes
                 print("Both MUA negligible so choosing most spikes")
                 if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:

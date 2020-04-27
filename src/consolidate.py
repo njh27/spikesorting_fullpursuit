@@ -1194,6 +1194,21 @@ class WorkItemSummary(object):
         """
         """
         neurons = self.neuron_summary_by_seg[seg]
+        unique_next = []
+        unique_prev = []
+        # print("checking neurons with links:")
+        # for n in neurons:
+        #     print(n['next_seg_link'], n['prev_seg_link'])
+        #     if n['next_seg_link'] is not None:
+        #         if n['next_seg_link'] in unique_next:
+        #             print("NOT UNIQUE VERY BEGINNING NEXT LINK AFTER", seg, n['next_seg_link'])
+        #         else:
+        #             unique_next.append(n['next_seg_link'])
+        #     if n['prev_seg_link'] is not None:
+        #         if n['prev_seg_link'] in unique_prev:
+        #             print("NOT UNIQUE VERY BEGINNING PREVIOUS LINK AFTER", seg)
+        #         else:
+        #             unique_prev.append(n['next_seg_link'])
         max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
         n_total_samples = 0
 
@@ -1320,11 +1335,22 @@ class WorkItemSummary(object):
                 neurons_remaining_indices.remove(best_pair[0])
                 if seg > 0:
                     # Reassign anything linking to this unit to link to 2 instead
-                    for prev_n in self.neuron_summary_by_seg[seg-1]:
+                    for p_ind, prev_n in enumerate(self.neuron_summary_by_seg[seg-1]):
                         if prev_n['next_seg_link'] is None:
                             continue
                         if prev_n['next_seg_link'] == best_pair[0]:
-                            prev_n['next_seg_link'] = best_pair[1]
+                            if neurons[best_pair[1]]['prev_seg_link'] is None:
+                                prev_n['next_seg_link'] = best_pair[1]
+                                neurons[best_pair[1]]['prev_seg_link'] = p_ind
+                            else:
+                                prev_n['next_seg_link'] = None
+                if seg < self.n_segments - 1:
+                    # Reassign anything linking to this unit to link to 2 instead
+                    for next_n in self.neuron_summary_by_seg[seg+1]:
+                        if next_n['prev_seg_link'] is None:
+                            continue
+                        if next_n['prev_seg_link'] == best_pair[0]:
+                            next_n['prev_seg_link'] = None
                 # Assign current neuron not to anything since
                 # it is designated as trash fro deletion
                 neurons[best_pair[0]]['prev_seg_link'] = None
@@ -1334,11 +1360,22 @@ class WorkItemSummary(object):
                 neurons_remaining_indices.remove(best_pair[1])
                 if seg > 0:
                     # Reassign anything linking to this unit to link to 2 instead
-                    for prev_n in self.neuron_summary_by_seg[seg-1]:
+                    for p_ind, prev_n in enumerate(self.neuron_summary_by_seg[seg-1]):
                         if prev_n['next_seg_link'] is None:
                             continue
                         if prev_n['next_seg_link'] == best_pair[1]:
-                            prev_n['next_seg_link'] = best_pair[0]
+                            if neurons[best_pair[0]]['prev_seg_link'] is None:
+                                prev_n['next_seg_link'] = best_pair[0]
+                                neurons[best_pair[0]]['prev_seg_link'] = p_ind
+                            else:
+                                prev_n['next_seg_link'] = None
+                if seg < self.n_segments - 1:
+                    # Reassign anything linking to this unit to link to 2 instead
+                    for next_n in self.neuron_summary_by_seg[seg+1]:
+                        if next_n['prev_seg_link'] is None:
+                            continue
+                        if next_n['prev_seg_link'] == best_pair[1]:
+                            next_n['prev_seg_link'] = None
                 # Assign current neuron not to anything since
                 # it is designated as trash fro deletion
                 neurons[best_pair[1]]['prev_seg_link'] = None
@@ -1576,7 +1613,7 @@ class WorkItemSummary(object):
         return combined_neuron
 
     def summarize_neurons_across_channels(self, overlap_time=2.5e-4,
-                overlap_ratio_threshold=2, delete_isolated_segs=True):
+                overlap_ratio_threshold=2, min_segs_per_unit=1):
         """ Creates output neurons list by combining segment-wise neurons across
         segments and across channels based on identical spikes found during the
         overlapping portions of consecutive segments. Requires that there be
@@ -1611,18 +1648,29 @@ class WorkItemSummary(object):
             neuron_summary = []
             for n in neurons:
                 n['next_seg_link'] = None
+                n['prev_seg_link'] = None
                 neuron_summary.append(self.join_neuron_dicts([n]))
             return neuron_summary
 
+        start_new_seg = True
         for seg in range(start_seg, self.n_segments-1):
             if len(self.neuron_summary_by_seg[seg]) == 0:
+                start_new_seg = True
                 continue
+            if start_new_seg:
+                for n in self.neuron_summary_by_seg[seg]:
+                    n['prev_seg_link'] = None
+                start_new_seg = False
+            # For the current seg, we will discover their next seg link
+            for n in self.neuron_summary_by_seg[seg]:
+                n['next_seg_link'] = None
             next_seg = seg + 1
             if len(self.neuron_summary_by_seg[next_seg]) == 0:
                 # Current seg neurons can't overlap with neurons in next seg
-                for n in self.neuron_summary_by_seg[seg]:
-                    n['next_seg_link'] = None
                 continue
+            # Set these all to None. We discover them below if they exist
+            for n in self.neuron_summary_by_seg[next_seg]:
+                n['prev_seg_link'] = None
 
             # # From next segment start to current segment end
             # overlap_win = [self.neuron_summary_seg_inds[next_seg][0], self.neuron_summary_seg_inds[seg][1]]
@@ -1676,12 +1724,8 @@ class WorkItemSummary(object):
 
             # Assume there is no link and overwrite below if it passes threshold
             for prev_ind, n in enumerate(self.neuron_summary_by_seg[seg]):
-                if seg == 0:
-                    # All units in first seg previous link to None
-                    n['prev_seg_link'] = None
-                n['next_seg_link'] = None
                 for next_ind, next_n in enumerate(self.neuron_summary_by_seg[next_seg]):
-                    if n['label'] == next_n['label']:
+                    if n['label'] == next_n['label'] and n['channel'] == next_n['channel']:
                         n['next_seg_link'] = next_ind
                         next_n['prev_seg_link'] = prev_ind
             # max_cn = np.argmax(np.amax(overlap_ratio, axis=1))
@@ -1702,18 +1746,21 @@ class WorkItemSummary(object):
         for n in self.neuron_summary_by_seg[self.n_segments-1]:
             n['next_seg_link'] = None
 
+        # for ind, cs in enumerate(self.neuron_summary_by_seg):
+        #     print("Neuron links for seg", ind, "are:")
+        #     for n in cs:
+        #         print(n['prev_seg_link'], n['next_seg_link'])
+
         self.remove_redundant_neurons_by_seg(overlap_time=overlap_time,
                                 overlap_ratio_threshold=overlap_ratio_threshold)
 
         neurons = self.stitch_neurons_across_channels()
-        if delete_isolated_segs:
-            inds_to_delete = []
-            for n_ind, n_list in enumerate(neurons):
-                # if n['next_seg_link'] is None and n['prev_seg_link'] is None:
-                if len(n_list) <= 1:
-                    inds_to_delete.append(n_ind)
-            for d_ind in reversed(inds_to_delete):
-                del neurons[d_ind]
+        inds_to_delete = []
+        for n_ind, n_list in enumerate(neurons):
+            if len(n_list) < min_segs_per_unit:
+                inds_to_delete.append(n_ind)
+        for d_ind in reversed(inds_to_delete):
+            del neurons[d_ind]
         neuron_summary = []
         for n in neurons:
             neuron_summary.append(self.join_neuron_dicts(n))

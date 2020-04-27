@@ -1470,11 +1470,13 @@ class WorkItemSummary(object):
             n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
                             if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
             while len(n1_remaining) > 0:
-                max_overlap = 0.
+                max_overlap = -1.
                 for n1_ind in n1_remaining:
                     for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
                         if n2['prev_seg_link'] is None:
                             if self.neuron_summary_by_seg[seg][n1_ind]['channel'] not in n2['neighbors']:
+                                continue
+                            if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:
                                 continue
                             curr_overlap = self.get_overlap_ratio(
                                     seg, n1_ind, seg+1, n2_ind, overlap_time)

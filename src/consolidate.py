@@ -741,7 +741,8 @@ class WorkItemSummary(object):
                 else:
                     shiftl1 = l1_template
                     shiftl2 = l2_template
-                curr_distance = np.sum((shiftl1 - shiftl2) ** 2)
+                # Must normalize distance per data point else reward big shifts
+                curr_distance = np.sum((shiftl1 - shiftl2) ** 2) / shiftl1.shape[0]
                 if curr_distance < best_distance:
                     best_distance = curr_distance
                     best_shift = curr_shift

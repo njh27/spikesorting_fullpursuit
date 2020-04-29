@@ -76,7 +76,7 @@ def find_overlapping_spike_bool(spikes1, spikes2, max_samples=20, except_equal=F
     return overlapping_spike_bool
 
 
-def remove_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds=1):
+def keep_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds=1):
     """ Preferentially KEEPS spikes found in binary pursuit.
     """
     keep_bool = np.ones(event_indices.size, dtype=np.bool)
@@ -86,11 +86,9 @@ def remove_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds=1):
         if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
             if new_spike_bool[curr_index] and ~new_spike_bool[next_index]:
                 keep_bool[next_index] = False
-                # keep_bool[curr_index] = False
                 curr_index = next_index
             elif ~new_spike_bool[curr_index] and new_spike_bool[next_index]:
                 keep_bool[curr_index] = False
-                # keep_bool[next_index] = False
             elif new_spike_bool[curr_index] and new_spike_bool[next_index]:
                 # Should only be possible for first index?
                 keep_bool[next_index] = False
@@ -109,13 +107,14 @@ def remove_spike_event_duplicates(event_indices, clips, unit_template, tol_inds=
     """
     """
     keep_bool = np.ones(event_indices.size, dtype=np.bool)
-    template_norm = unit_template / np.linalg.norm(unit_template)
+    temp_sse = np.zeros(2)
     curr_index = 0
     next_index = 1
     while next_index < event_indices.size:
         if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
-            projections = np.vstack((clips[curr_index, :], clips[next_index, :])) @ template_norm
-            if projections[0] >= projections[1]:
+            temp_sse[0] = np.sum((clips[curr_index, :] - unit_template) ** 2)
+            temp_sse[1] = np.sum((clips[next_index, :] - unit_template) ** 2)
+            if temp_sse[0] <= temp_sse[1]:
                 # current spike is better or equal
                 keep_bool[next_index] = False
                 next_index += 1
@@ -388,7 +387,7 @@ class WorkItemSummary(object):
     def __init__(self, sort_data, work_items, sort_info,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
                  max_mua_ratio=0.05, n_max_merge_test_clips=None,
-                 merge_test_overlap_indices=None, min_overlapping_spikes=.05,
+                 merge_test_overlap_indices=None, min_overlapping_spikes=.5,
                  verbose=False):
 
         self.check_input_data(sort_data, work_items)
@@ -1167,7 +1166,7 @@ class WorkItemSummary(object):
                     duplicate_tol_inds += self.duplicate_tol_inds
                     neuron['duplicate_tol_inds'] = duplicate_tol_inds
                     # Remove duplicates found in binary pursuit
-                    keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"],
+                    keep_bool = keep_binary_pursuit_duplicates(neuron["spike_indices"],
                                     neuron["new_spike_bool"],
                                     tol_inds=duplicate_tol_inds)
                     neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
@@ -1645,7 +1644,7 @@ class WorkItemSummary(object):
                 combined_neuron['duplicate_tol_inds'] = duplicate_tol_inds
 
         # Remove duplicates found in binary pursuit
-        keep_bool = remove_binary_pursuit_duplicates(combined_neuron["spike_indices"],
+        keep_bool = keep_binary_pursuit_duplicates(combined_neuron["spike_indices"],
                         combined_neuron["new_spike_bool"],
                         tol_inds=combined_neuron['duplicate_tol_inds'])
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
@@ -2136,7 +2135,7 @@ class WorkItemSummary(object):
                     self.sort_info['clip_width'], self.sort_info['sampling_rate'])
                 duplicate_tol_inds += self.duplicate_tol_inds
                 neuron['duplicate_tol_inds'] = duplicate_tol_inds
-                keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"],
+                keep_bool = keep_binary_pursuit_duplicates(neuron["spike_indices"],
                                 neuron["new_spike_bool"],
                                 tol_inds=duplicate_tol_inds)
                 neuron["spike_indices"] = neuron["spike_indices"][keep_bool]

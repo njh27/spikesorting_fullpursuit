@@ -54,9 +54,9 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     event_order = np.argsort(event_indices)
     event_indices = event_indices[event_order]
     neuron_labels = neuron_labels[event_order]
-    event_indices, removed_index = remove_overlapping_spikes(event_indices,
-                                        clip_samples[1]-clip_samples[0])
-    neuron_labels = neuron_labels[~removed_index]
+    # event_indices, removed_index = remove_overlapping_spikes(event_indices,
+    #                                     clip_samples[1]-clip_samples[0])
+    # neuron_labels = neuron_labels[~removed_index]
 
     # Get clips for templates to subtract
     # clips, valid_inds = segment.get_singlechannel_clips(Probe, channel, event_indices, clip_width=clip_width)
@@ -73,7 +73,15 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     # This MUST be done after removing overlaps and reassigning simultaneous
     reorder_labels(neuron_labels)
 
-    templates, _ = segment.calculate_templates(clips, neuron_labels)
+    templates, temp_labels = segment.calculate_templates(clips, neuron_labels)
+
+    keep_bool = remove_overlapping_spikes(event_indices, clips, neuron_labels, templates,
+                                  temp_labels, clip_samples[1]-clip_samples[0])
+    event_indices = event_indices[keep_bool]
+    neuron_labels = neuron_labels[keep_bool]
+    clips = clips[keep_bool, :]
+    templates, temp_labels = segment.calculate_templates(clips, neuron_labels)
+
     templates = np.vstack(templates).astype(np.float32)
     # Reshape our templates so that instead of being an MxN array, this
     # becomes a 1x(M*N) vector. The first template should be in the first N points

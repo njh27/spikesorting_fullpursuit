@@ -167,19 +167,51 @@ def reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, 
     return neuron_labels
 
 
-def remove_overlapping_spikes(event_indices, max_samples):
-    """ DATA MUST BE SORTED IN ORDER OF EVENT INDICES FOR THIS TO WORK.
+def remove_overlapping_spikes(event_indices, clips, neuron_labels, templates,
+                              template_labels, tol_inds):
     """
+    """
+    keep_bool = np.ones(event_indices.size, dtype=np.bool)
+    temp_sse = np.zeros(2)
+    curr_index = 0
+    next_index = 1
+    while next_index < event_indices.size:
+        if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
+            curr_temp_ind = next((idx[0] for idx, val in
+                            np.ndenumerate(template_labels) if val == neuron_labels[curr_index]), None)
+            temp_sse[0] = np.sum((clips[curr_index, :] - templates[curr_temp_ind]) ** 2)
+            next_temp_ind = next((idx[0] for idx, val in
+                            np.ndenumerate(template_labels) if val == neuron_labels[next_index]), None)
+            temp_sse[1] = np.sum((clips[next_index, :] - templates[next_temp_ind]) ** 2)
+            if temp_sse[0] <= temp_sse[1]:
+                # current spike is better or equal
+                keep_bool[next_index] = False
+                next_index += 1
+            else:
+                # next spike is better
+                keep_bool[curr_index] = False
+                curr_index = next_index
+                next_index += 1
+        else:
+            curr_index = next_index
+            next_index += 1
 
-    # Find overlapping spikes, excluding equal values
-    overlapping_spike_bool = consolidate.find_overlapping_spike_bool(event_indices, event_indices, max_samples=max_samples, except_equal=True)
-    # Also find any duplicate values and keep only one of them
-    repeats_bool = np.ones_like(event_indices, dtype='bool')
-    repeats_bool[np.unique(event_indices, return_index=True)[1]] = False
-    removed_index = np.logical_or(overlapping_spike_bool, repeats_bool)
-    event_indices = event_indices[~removed_index]
+    return keep_bool
 
-    return event_indices, removed_index
+
+# def remove_overlapping_spikes(event_indices, max_samples):
+#     """ DATA MUST BE SORTED IN ORDER OF EVENT INDICES FOR THIS TO WORK.
+#     """
+#
+#     # Find overlapping spikes, excluding equal values
+#     overlapping_spike_bool = consolidate.find_overlapping_spike_bool(event_indices, event_indices, max_samples=max_samples, except_equal=True)
+#     # Also find any duplicate values and keep only one of them
+#     repeats_bool = np.ones_like(event_indices, dtype='bool')
+#     repeats_bool[np.unique(event_indices, return_index=True)[1]] = False
+#     removed_index = np.logical_or(overlapping_spike_bool, repeats_bool)
+#     event_indices = event_indices[~removed_index]
+#
+#     return event_indices, removed_index
 
 
 def find_multichannel_max_neuron(probe_dict, neighbors, neighbor_voltage,
@@ -248,8 +280,8 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
     event_order = np.argsort(event_indices)
     event_indices = event_indices[event_order]
     neuron_labels = neuron_labels[event_order]
-    event_indices, removed_index = remove_overlapping_spikes(event_indices, clip_samples[1]-clip_samples[0])
-    neuron_labels = neuron_labels[~removed_index]
+    # event_indices, removed_index = remove_overlapping_spikes(event_indices, clip_samples[1]-clip_samples[0])
+    # neuron_labels = neuron_labels[~removed_index]
 
     # Get clips for templates to subtract
     # clips, valid_inds = segment_parallel.get_singlechannel_clips(probe_dict, neighbor_voltage[chan_neighbor_ind, :], event_indices, clip_width=clip_width)
@@ -265,6 +297,14 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
     multi_clips = np.float32(multi_clips)
 
     multi_templates, template_labels = segment_parallel.calculate_templates(multi_clips, neuron_labels)
+
+    keep_bool = remove_overlapping_spikes(event_indices, clips, neuron_labels, multi_templates,
+                                  template_labels, clip_samples[1]-clip_samples[0])
+    event_indices = event_indices[keep_bool]
+    neuron_labels = neuron_labels[keep_bool]
+    multi_clips = multi_clips[keep_bool, :]
+    multi_templates, template_labels = segment_parallel.calculate_templates(multi_clips, neuron_labels)
+
     multi_templates = [np.float32(x) for x in multi_templates]
     clips = multi_clips[:, curr_chan_inds]
     templates = [t[curr_chan_inds] for t in multi_templates]

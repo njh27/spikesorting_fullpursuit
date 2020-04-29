@@ -1522,9 +1522,10 @@ class WorkItemSummary(object):
             if len(self.neuron_summary_by_seg[start_seg]) == 0:
                 # No segments with data found
                 return [{}]
-            # With this being the only segment, we are done
-            neurons = self.neuron_summary_by_seg[start_seg]
-            return [neurons]
+            # With this being the only segment, we are done. Each neuron is a
+            # list with data only for the one segment
+            neurons = [[n] for n in self.neuron_summary_by_seg[start_seg]]
+            return neurons
 
         for next_seg in range(start_seg+1, self.n_segments):
             if len(self.neuron_summary_by_seg[next_seg]) == 0:
@@ -1549,6 +1550,7 @@ class WorkItemSummary(object):
         """
         """
         if len(unit_dicts_list) == 0:
+            print("Joine neuron dicst is returning empty")
             return {}
         combined_neuron = {}
         combined_neuron['summary_type'] = 'across_channels'
@@ -1824,15 +1826,21 @@ class WorkItemSummary(object):
         self.check_overlapping_links(overlap_time)
 
         neurons = self.stitch_neurons_across_channels()
+        # Delete any redundant segs. These shouldn't really be in here anyways
+        for n_list in neurons:
+            inds_to_delete = []
+            for n_seg_ind, n_seg in enumerate(n_list):
+                if n_seg['deleted_as_redundant']:
+                    inds_to_delete.append(n_seg_ind)
+            for d_ind in reversed(inds_to_delete):
+                del n_list[d_ind]
         inds_to_delete = []
-        print("NEURON LEN", len(neurons))
-        print("NEURON LEN 0", len(neurons[0]))
-        print("inds to delete", inds_to_delete)
         for n_ind, n_list in enumerate(neurons):
             if len(n_list) < min_segs_per_unit:
                 inds_to_delete.append(n_ind)
         for d_ind in reversed(inds_to_delete):
             del neurons[d_ind]
+
         neuron_summary = []
         for n in neurons:
             neuron_summary.append(self.join_neuron_dicts(n))

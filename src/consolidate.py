@@ -679,7 +679,8 @@ class WorkItemSummary(object):
         return clips_merged, neuron_labels_1, neuron_labels_2
 
     def find_nearest_shifted_pair(self, chan, seg1, seg2, labels1, labels2,
-                                  l2_workspace, curr_chan_inds):
+                                  l2_workspace, curr_chan_inds,
+                                  previously_compared_pairs):
         """ Alternative to sort_cython.identify_clusters_to_compare that simply
         chooses the nearest template after shifting to optimal alignment.
         Intended as helper function so that neurons do not fail to stitch in the
@@ -704,6 +705,8 @@ class WorkItemSummary(object):
                 clips_1 = clips_1[max(clips_1.shape[0]-self.n_max_merge_test_clips, 0):, :]
             l1_template = np.mean(clips_1, axis=0)
             for l2 in labels2:
+                if [l1, l2] in previously_compared_pairs:
+                    continue
                 l2_select = l2_workspace == l2
                 clips_2 = self.sort_data[chan][seg2][2][l2_select, :]
                 if seg1 != seg2:
@@ -889,11 +892,12 @@ class WorkItemSummary(object):
                 # These are assigned a new real label.
                 leftover_labels = [x for x in fake_labels]
                 main_labels = [x for x in real_labels]
+                previously_compared_pairs = []
                 while len(main_labels) > 0 and len(leftover_labels) > 0:
                     best_pair, best_shift, clips_1, clips_2 = self.find_nearest_shifted_pair(
                                     chan, curr_seg, next_seg, main_labels,
                                     leftover_labels, next_label_workspace,
-                                    curr_chan_inds)
+                                    curr_chan_inds, previously_compared_pairs)
                     if len(best_pair) == 0:
                         break
                     if clips_1.shape[0] == 1 or clips_2.shape[0] == 2:
@@ -916,7 +920,8 @@ class WorkItemSummary(object):
                     else:
                         # This main label had its pick of the litter and failed
                         # so be done with it
-                        main_labels.remove(best_pair[0])
+                        # main_labels.remove(best_pair[0])
+                        previously_compared_pairs.append(best_pair)
 
                 # Assign units in next segment that do not match any in the
                 # current segment a new real label

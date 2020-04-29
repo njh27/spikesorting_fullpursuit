@@ -767,7 +767,8 @@ class WorkItemSummary(object):
             pass
         return best_pair, best_shift, best_l1_clips, best_l2_clips
 
-    def find_nearest_joint_pair(self, templates, labels, curr_chan_inds):
+    def find_nearest_joint_pair(self, templates, labels, curr_chan_inds,
+                                previously_compared_pairs):
         """
         """
         best_distance = np.inf
@@ -775,6 +776,8 @@ class WorkItemSummary(object):
         best_shift = 0
         for i in range(0, len(labels)):
             for j in range(i+1, len(labels)):
+                if [labels[i], labels[j]] in previously_compared_pairs:
+                    continue
                 cross_corr = np.correlate(templates[i][curr_chan_inds],
                                           templates[j][curr_chan_inds],
                                           mode='full')
@@ -790,7 +793,7 @@ class WorkItemSummary(object):
                 else:
                     shift_i = templates[i]
                     shift_j = templates[j]
-                curr_distance = np.sum((shift_i - shift_j) ** 2)
+                curr_distance = np.sum((shift_i - shift_j) ** 2) / shift_i.shape[0]
                 if curr_distance < best_distance:
                     best_shift = curr_shift
                     best_pair = [labels[i], labels[j]]
@@ -953,11 +956,14 @@ class WorkItemSummary(object):
                 # Find all pairs of templates that are mutually closest
                 tmp_reassign = np.zeros_like(joint_labels)
                 temp_labels = temp_labels.tolist()
+                previously_compared_pairs = []
                 while len(temp_labels) > 0:
                     best_pair, best_shift = self.find_nearest_joint_pair(
-                                    joint_templates, temp_labels, curr_chan_inds)
+                                    joint_templates, temp_labels,
+                                    curr_chan_inds, previously_compared_pairs)
                     if len(best_pair) == 0:
                         break
+                    previously_compared_pairs.append(best_pair)
                     # Perform a split only between all minimum distance pairs
                     c1, c2 = best_pair[0], best_pair[1]
                     c1_select = joint_labels == c1

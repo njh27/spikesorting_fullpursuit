@@ -259,13 +259,14 @@ def calculate_expected_overlap(n1, n2, overlap_time, sampling_rate):
 
 
 def calc_spike_width(clips, clip_width, sampling_rate):
-    center_ind = int(round(np.abs(clip_width[0])*sampling_rate)) + 1
     template = np.mean(clips, axis=0)
-    if template[center_ind] > 0:
-        template *= -1
-    first_peak = np.argmax(template[0:center_ind])
-    second_peak = np.argmax(template[center_ind+1:]) + center_ind
-    spike_width = second_peak - first_peak
+    peak_ind = np.argmax(template)
+    valley_ind = np.argmin(template)
+    if peak_ind >= valley_ind:
+        # peak is after valley
+        spike_width = peak_ind - valley_ind
+    else:
+        spike_width = valley_ind - peak_ind
 
     return spike_width
 
@@ -1413,7 +1414,7 @@ class WorkItemSummary(object):
                             if neurons[best_pair[1]]['prev_seg_link'] is None:
                                 curr_intersection = self.get_overlap_ratio(
                                         seg-1, p_ind, seg, best_pair[1], overlap_time)
-                                if curr_intersection > self.min_overlapping_spikes:
+                                if True:#curr_intersection > self.min_overlapping_spikes:
                                     prev_n['next_seg_link'] = best_pair[1]
                                     neurons[best_pair[1]]['prev_seg_link'] = p_ind
                             else:
@@ -1442,7 +1443,7 @@ class WorkItemSummary(object):
                             if neurons[best_pair[0]]['prev_seg_link'] is None:
                                 curr_intersection = self.get_overlap_ratio(
                                         seg-1, p_ind, seg, best_pair[0], overlap_time)
-                                if curr_intersection > self.min_overlapping_spikes:
+                                if True:#curr_intersection > self.min_overlapping_spikes:
                                     prev_n['next_seg_link'] = best_pair[0]
                                     neurons[best_pair[0]]['prev_seg_link'] = p_ind
                             else:
@@ -1494,8 +1495,8 @@ class WorkItemSummary(object):
                         if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
                             if self.neuron_summary_by_seg[seg][n1_ind]['channel'] not in n2['neighbors']:
                                 continue
-                            # if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:
-                            #     continue
+                            if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:
+                                continue
                             curr_overlap = self.get_overlap_ratio(
                                     seg, n1_ind, seg+1, n2_ind, overlap_time)
                             if curr_overlap > max_overlap:
@@ -1517,11 +1518,11 @@ class WorkItemSummary(object):
             neurons = [[x] for x in self.neuron_summary_by_seg[start_seg]]
             break
         if start_seg >= self.n_segments-1:
-            # Need at least 2 remaining neurons to stitch.
+            # Need at least 2 remaining segments to stitch.
             if len(self.neuron_summary_by_seg[start_seg]) == 0:
-                # No neurons with data found
+                # No segments with data found
                 return [{}]
-            # With this being the only neuron, we are done
+            # With this being the only segment, we are done
             neurons = self.neuron_summary_by_seg[start_seg]
             return [neurons]
 
@@ -1749,22 +1750,22 @@ class WorkItemSummary(object):
                 start_seg += 1
                 continue
             break
-        if start_seg >= self.n_segments-1:
-            # Need at least 2 remaining segments to stitch.
-            if start_seg == self.n_segments:
-                # No neurons with data found
-                return [{}]
-            if len(self.neuron_summary_by_seg[start_seg]) == 0:
-                # No neurons with data found
-                return [{}]
-            # With this being the only segment with data, we are done
-            neurons = self.neuron_summary_by_seg[start_seg]
-            neuron_summary = []
-            for n in neurons:
-                n['next_seg_link'] = None
-                n['prev_seg_link'] = None
-                neuron_summary.append(self.join_neuron_dicts([n]))
-            return neuron_summary
+        # if start_seg >= self.n_segments-1:
+        #     # Need at least 2 remaining segments to stitch.
+        #     if start_seg == self.n_segments:
+        #         # No neurons with data found
+        #         return [{}]
+        #     if len(self.neuron_summary_by_seg[start_seg]) == 0:
+        #         # No neurons with data found
+        #         return [{}]
+        #     # With this being the only segment with data, we are done
+        #     neurons = self.neuron_summary_by_seg[start_seg]
+        #     neuron_summary = []
+        #     for n in neurons:
+        #         n['next_seg_link'] = None
+        #         n['prev_seg_link'] = None
+        #         neuron_summary.append(self.join_neuron_dicts([n]))
+        #     return neuron_summary
 
         start_new_seg = True
         for seg in range(start_seg, self.n_segments-1):
@@ -1824,6 +1825,9 @@ class WorkItemSummary(object):
 
         neurons = self.stitch_neurons_across_channels()
         inds_to_delete = []
+        print("NEURON LEN", len(neurons))
+        print("NEURON LEN 0", len(neurons[0]))
+        print("inds to delete", inds_to_delete)
         for n_ind, n_list in enumerate(neurons):
             if len(n_list) < min_segs_per_unit:
                 inds_to_delete.append(n_ind)
@@ -2112,7 +2116,7 @@ class WorkItemSummary(object):
         neuron_summary = []
         for channel in range(0, len(crossings)):
             if len(crossings[channel]) == 0:
-                print("Channel ", channel, " has no spikes and was skipped in summary!")
+                # This channel has no spikes
                 continue
             for ind, neuron_label in enumerate(np.unique(labels[channel])):
                 neuron = {}

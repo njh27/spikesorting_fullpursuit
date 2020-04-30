@@ -300,11 +300,6 @@ def calc_duplicate_tol_inds(spike_indices, sampling_rate,
 
 def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
                          absolute_refractory_period, check_window=0.5):
-
-    # duplicate_tol_inds, adjusted_num_isi_violations = calc_duplicate_tol_inds(
-    #                         spike_indices, sampling_rate,
-    #                         absolute_refractory_period, clip_width)
-    # duplicate_tol_inds = calc_spike_width(clips, clip_width, sampling_rate) + 1
     all_isis = np.diff(spike_indices)
     refractory_inds = int(round(absolute_refractory_period * sampling_rate))
     bin_width = refractory_inds - duplicate_tol_inds
@@ -1200,7 +1195,11 @@ class WorkItemSummary(object):
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
-                    neuron['fraction_mua'] = self.get_fraction_mua_to_peak(chan, seg, neuron_label)
+                    neuron['fraction_mua'] = calc_fraction_mua_to_peak(
+                                                neuron["spike_indices"],
+                                                self.sort_info['sampling_rate'],
+                                                neuron['duplicate_tol_inds'],
+                                                self.absolute_refractory_period)
                     neuron['threshold'] = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['channel']]
 
                     self.neuron_summary_by_seg[seg].append(neuron)
@@ -1259,21 +1258,6 @@ class WorkItemSummary(object):
         to link neurons together later and is not worth the book keeping trouble.
         """
         neurons = self.neuron_summary_by_seg[seg]
-        unique_next = []
-        unique_prev = []
-        # print("checking neurons with links:")
-        # for n in neurons:
-        #     print(n['next_seg_link'], n['prev_seg_link'])
-        #     if n['next_seg_link'] is not None:
-        #         if n['next_seg_link'] in unique_next:
-        #             print("NOT UNIQUE VERY BEGINNING NEXT LINK AFTER", seg, n['next_seg_link'])
-        #         else:
-        #             unique_next.append(n['next_seg_link'])
-        #     if n['prev_seg_link'] is not None:
-        #         if n['prev_seg_link'] in unique_prev:
-        #             print("NOT UNIQUE VERY BEGINNING PREVIOUS LINK AFTER", seg)
-        #         else:
-        #             unique_prev.append(n['next_seg_link'])
         max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
         n_total_samples = 0
 
@@ -1346,9 +1330,6 @@ class WorkItemSummary(object):
                 # No more pairs exceed ratio threshold
                 print("Maximum accepted ratio was", max_accepted, "at expected threshold", max_expected)
                 break
-            # if best_ratio <= overlap_ratio_threshold * best_expected:
-            #     print("Stopped overlaps at ratio", best_ratio, "versus threshold", overlap_ratio_threshold * best_expected)
-            #     break
 
             # We now need to choose one of the pair to delete.
             neuron_1 = neurons[best_pair[0]]
@@ -1461,7 +1442,6 @@ class WorkItemSummary(object):
                 neurons[best_pair[1]]['prev_seg_link'] = None
                 neurons[best_pair[1]]['next_seg_link'] = None
                 neurons[best_pair[1]]['deleted_as_redundant'] = True
-
         return neurons
 
     def remove_redundant_neurons_by_seg(self, overlap_time=2.5e-4, overlap_ratio_threshold=2):
@@ -1886,7 +1866,6 @@ class WorkItemSummary(object):
                 # No more pairs exceed ratio threshold
                 print("Maximum accepted ratio was", max_accepted, "at expected threshold", max_expected)
                 break
-
             # We now need to choose one of the pair to delete.
             neuron_1 = neurons[best_pair[0]]
             neuron_2 = neurons[best_pair[1]]
@@ -1935,7 +1914,7 @@ class WorkItemSummary(object):
                 print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_1 = True
             # Defer to choosing max SNR
-            elif (neuron_1['snr'] > neuron_2['snr']):
+            elif (neuron_1['snr'][neuron_1['channel'][0]] > neuron_2['snr'][neuron_2['channel'][0]]):
                 print("neuron 1 has higher SNR", neuron_1['snr'] , neuron_2['snr'])
                 delete_2 = True
             else:
@@ -1947,7 +1926,7 @@ class WorkItemSummary(object):
             if delete_2:
                 neurons_to_remove.append(best_pair[1])
                 neurons_remaining_indices.remove(best_pair[1])
-            break
+
         for n_ind in reversed(range(0, len(neurons))):
             if n_ind in neurons_to_remove:
                 del neurons[n_ind]

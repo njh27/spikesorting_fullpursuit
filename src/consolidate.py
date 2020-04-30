@@ -1236,7 +1236,6 @@ class WorkItemSummary(object):
         if n2_stop is None or n2_stop == 0:
             # neuron 2 has no spikes in the overlap
             return 0.
-
         n1_spike_train = compute_spike_trains(n1_spikes[n1_start:],
                                               max_samples, overlap_win)
         n_n1_spikes = np.count_nonzero(n1_spike_train)
@@ -1253,6 +1252,11 @@ class WorkItemSummary(object):
 
     def remove_redundant_neurons(self, seg, overlap_time=2.5e-4, overlap_ratio_threshold=2):
         """
+        Note that this function does not actually delete anything. It moves links
+        between segments as redundant units are removed and it adds a flag under
+        the key 'deleted_as_redundant' to indicate that a segment unit should
+        be deleted. Deleting units in this function would ruin the indices used
+        to link neurons together later and is not worth the book keeping trouble.
         """
         neurons = self.neuron_summary_by_seg[seg]
         unique_next = []
@@ -1314,7 +1318,6 @@ class WorkItemSummary(object):
                 expected_ratio[neuron2_ind, neuron1_ind] = expected_ratio[neuron1_ind, neuron2_ind]
 
         neurons_remaining_indices = [x for x in range(0, len(neurons))]
-        neurons_to_remove = []
         max_accepted = 0.
         max_expected = 0.
         while True:
@@ -1403,7 +1406,6 @@ class WorkItemSummary(object):
                 delete_1 = True
 
             if delete_1:
-                neurons_to_remove.append(best_pair[0])
                 neurons_remaining_indices.remove(best_pair[0])
                 if seg > 0:
                     # Reassign anything linking to this unit to link to 2 instead
@@ -1414,7 +1416,7 @@ class WorkItemSummary(object):
                             if neurons[best_pair[1]]['prev_seg_link'] is None:
                                 curr_intersection = self.get_overlap_ratio(
                                         seg-1, p_ind, seg, best_pair[1], overlap_time)
-                                if True:#curr_intersection > self.min_overlapping_spikes:
+                                if curr_intersection > self.min_overlapping_spikes:
                                     prev_n['next_seg_link'] = best_pair[1]
                                     neurons[best_pair[1]]['prev_seg_link'] = p_ind
                             else:
@@ -1432,7 +1434,6 @@ class WorkItemSummary(object):
                 neurons[best_pair[0]]['next_seg_link'] = None
                 neurons[best_pair[0]]['deleted_as_redundant'] = True
             if delete_2:
-                neurons_to_remove.append(best_pair[1])
                 neurons_remaining_indices.remove(best_pair[1])
                 if seg > 0:
                     # Reassign anything linking to this unit to link to 2 instead
@@ -1443,7 +1444,7 @@ class WorkItemSummary(object):
                             if neurons[best_pair[0]]['prev_seg_link'] is None:
                                 curr_intersection = self.get_overlap_ratio(
                                         seg-1, p_ind, seg, best_pair[0], overlap_time)
-                                if True:#curr_intersection > self.min_overlapping_spikes:
+                                if curr_intersection > self.min_overlapping_spikes:
                                     prev_n['next_seg_link'] = best_pair[0]
                                     neurons[best_pair[0]]['prev_seg_link'] = p_ind
                             else:
@@ -1461,10 +1462,6 @@ class WorkItemSummary(object):
                 neurons[best_pair[1]]['next_seg_link'] = None
                 neurons[best_pair[1]]['deleted_as_redundant'] = True
 
-        # NOTE: DELETING HERE WILL MESS UP THE INDICES FOR LINKING !
-        # for n_ind in reversed(range(0, len(neurons))):
-        #     if n_ind in neurons_to_remove:
-        #         del neurons[n_ind]
         return neurons
 
     def remove_redundant_neurons_by_seg(self, overlap_time=2.5e-4, overlap_ratio_threshold=2):
@@ -1727,8 +1724,9 @@ class WorkItemSummary(object):
     def summarize_neurons_across_channels(self, overlap_time=2.5e-4,
                 overlap_ratio_threshold=2, min_segs_per_unit=1):
         """ Creates output neurons list by combining segment-wise neurons across
-        segments and across channels based on identical spikes found during the
-        overlapping portions of consecutive segments. Requires that there be
+        segments and across channels based on stitch_segments and then using
+        identical spikes found during the overlapping portions of consecutive
+        segments. Requires that there be
         overlap between segments, and enough overlap to be useful.
         The overlap time is the window used to consider spikes the same"""
         if not self.is_stitched and self.n_segments > 1:
@@ -1739,36 +1737,13 @@ class WorkItemSummary(object):
                                 "first to combine data across time segments."
             warnings.warn(summary_message, RuntimeWarning, stacklevel=2)
 
-        # Start with neurons as those in first segment
-        # Doesn't matter if there are no neurons yet it will get appended later
-        # Establishes a list of dictionaries. Each dictionary represents a single
-        # neuron as usual. Here we add an extra key 'next_seg_link' that indicates
-        # the index of the neuron dictionary in the next segment that
-        # corresponds with it. If no neurons in the next seg correspond, the
-        # value for this key is None.
+        # Start with neurons as those in the first segment with data
         start_seg = 0
         while start_seg < self.n_segments:
             if len(self.neuron_summary_by_seg[start_seg]) == 0:
                 start_seg += 1
                 continue
             break
-        # if start_seg >= self.n_segments-1:
-        #     # Need at least 2 remaining segments to stitch.
-        #     if start_seg == self.n_segments:
-        #         # No neurons with data found
-        #         return [{}]
-        #     if len(self.neuron_summary_by_seg[start_seg]) == 0:
-        #         # No neurons with data found
-        #         return [{}]
-        #     # With this being the only segment with data, we are done
-        #     neurons = self.neuron_summary_by_seg[start_seg]
-        #     neuron_summary = []
-        #     for n in neurons:
-        #         n['next_seg_link'] = None
-        #         n['prev_seg_link'] = None
-        #         neuron_summary.append(self.join_neuron_dicts([n]))
-        #     return neuron_summary
-
         start_new_seg = True
         for seg in range(start_seg, self.n_segments-1):
             if len(self.neuron_summary_by_seg[seg]) == 0:
@@ -1783,48 +1758,29 @@ class WorkItemSummary(object):
                 n['next_seg_link'] = None
             next_seg = seg + 1
             if len(self.neuron_summary_by_seg[next_seg]) == 0:
-                # Current seg neurons can't overlap with neurons in next seg
+                # Current seg neurons can't link with neurons in next seg
                 continue
-            # Set these all to None. We discover them below if they exist
+            # For the next seg, we will discover their previous seg link.
+            # prev_seg_link is used by remove redundant neurons to match segments
+            # across channels that otherwise have links broken by redundancy
             for n in self.neuron_summary_by_seg[next_seg]:
                 n['prev_seg_link'] = None
-
-
-
-            # Assume there is no link and overwrite below if it passes threshold
+            # Use stitching labels to link segments within channel
             for prev_ind, n in enumerate(self.neuron_summary_by_seg[seg]):
                 for next_ind, next_n in enumerate(self.neuron_summary_by_seg[next_seg]):
                     if n['label'] == next_n['label'] and n['channel'] == next_n['channel']:
                         n['next_seg_link'] = next_ind
                         next_n['prev_seg_link'] = prev_ind
-            # max_cn = np.argmax(np.amax(overlap_ratio, axis=1))
-            # max_nn = np.argmax(overlap_ratio[max_cn, :])
-            # max_ratio = overlap_ratio[max_cn, max_nn]
-            # while max_ratio >= min_overlap_ratio:
-            #     self.neuron_summary_by_seg[seg][max_cn]['next_seg_link'] = max_nn
-            #     # Set to zero so these are not used again
-            #     overlap_ratio[max_cn, :] = 0
-            #     overlap_ratio[:, max_nn] = 0
-            #     # Then recompute the next best value
-            #     max_cn = np.argmax(np.amax(overlap_ratio, axis=1))
-            #     max_nn = np.argmax(overlap_ratio[max_cn, :])
-            #     max_ratio = overlap_ratio[max_cn, max_nn]
-            # print("Stopped with maximum rejected overlap ratio", max_ratio)
 
         # All units in last seg next link to None
         for n in self.neuron_summary_by_seg[self.n_segments-1]:
             n['next_seg_link'] = None
 
-        # for ind, cs in enumerate(self.neuron_summary_by_seg):
-        #     print("Neuron links for seg", ind, "are:")
-        #     for n in cs:
-        #         print(n['prev_seg_link'], n['next_seg_link'])
-
+        # Remove redundant items across channels and attempt to maintain
+        # linking continuity across channels
         self.remove_redundant_neurons_by_seg(overlap_time=overlap_time,
                                 overlap_ratio_threshold=overlap_ratio_threshold)
-
         self.check_overlapping_links(overlap_time)
-
         neurons = self.stitch_neurons_across_channels()
         # Delete any redundant segs. These shouldn't really be in here anyways
         for n_list in neurons:
@@ -1840,31 +1796,15 @@ class WorkItemSummary(object):
                 inds_to_delete.append(n_ind)
         for d_ind in reversed(inds_to_delete):
             del neurons[d_ind]
-
+        # Use the links to join eveyrthing for final output
         neuron_summary = []
         for n in neurons:
             neuron_summary.append(self.join_neuron_dicts(n))
         return neuron_summary
 
-    def remove_redundant_summaries(self, neurons, overlap_time=2.5e-4, overlap_ratio_threshold=2):
+    def remove_redundant_within_channel_summaries(self, neurons, overlap_time=2.5e-4, overlap_ratio_threshold=2):
         """
         """
-        # neurons = self.neuron_summary_by_seg[seg]
-        unique_next = []
-        unique_prev = []
-        # print("checking neurons with links:")
-        # for n in neurons:
-        #     print(n['next_seg_link'], n['prev_seg_link'])
-        #     if n['next_seg_link'] is not None:
-        #         if n['next_seg_link'] in unique_next:
-        #             print("NOT UNIQUE VERY BEGINNING NEXT LINK AFTER", seg, n['next_seg_link'])
-        #         else:
-        #             unique_next.append(n['next_seg_link'])
-        #     if n['prev_seg_link'] is not None:
-        #         if n['prev_seg_link'] in unique_prev:
-        #             print("NOT UNIQUE VERY BEGINNING PREVIOUS LINK AFTER", seg)
-        #         else:
-        #             unique_prev.append(n['next_seg_link'])
         max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
         n_total_samples = 0
 
@@ -1877,7 +1817,7 @@ class WorkItemSummary(object):
                 n_total_samples = n1['spike_indices'][-1]
             for n2_ind in range(n1_ind+1, len(neurons)):
                 n2 = neurons[n2_ind]
-                if np.intersect1d(n1['neighbors'], n2['neighbors']).size == 0:
+                if np.intersect1d(n1['neighbors'][n1['channel'][0]], n2['neighbors'][n2['channel'][0]]).size == 0:
                     # Only count violations in neighborhood
                     continue
                 violation_partners[n1_ind].add(n2_ind)
@@ -1886,8 +1826,6 @@ class WorkItemSummary(object):
         overlap_ratio = np.zeros((len(neurons), len(neurons)))
         expected_ratio = np.zeros((len(neurons), len(neurons)))
         for neuron1_ind, neuron1 in enumerate(neurons):
-            # Take this opportunity to set this to default
-            neuron1['deleted_as_redundant'] = False
             # Loop through all violators with neuron1
             # We already know these neurons are in each other's neighborhood
             # because violation_partners only includes neighbors
@@ -1895,15 +1833,25 @@ class WorkItemSummary(object):
                 if neuron2_ind <= neuron1_ind:
                     continue # Since our costs are symmetric, we only need to check indices greater than neuron1_ind
                 neuron2 = neurons[neuron2_ind]
-                if neuron1['channel'] == neuron2['channel']:
+                if neuron1['channel'][0] == neuron2['channel'][0]:
                     continue # If they are on the same channel, do nothing
-                overlap_ratio[neuron1_ind, neuron2_ind] = self.get_overlap_ratio(
-                                        seg, neuron1_ind, seg, neuron2_ind, overlap_time)
-                overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
 
+                n1_spike_train = compute_spike_trains(neuron1['spike_indices'],
+                                                      max_samples, [0, n_total_samples])
+                # n1_spike_train = np.ones(n_total_samples, dtype=np.bool)
+                n_n1_spikes = np.count_nonzero(n1_spike_train)
+                n2_spike_train = compute_spike_trains(neuron2['spike_indices'],
+                                                      max_samples, [0, n_total_samples])
+                # n2_spike_train = np.ones(n_total_samples, dtype=np.bool)
+                n_n2_spikes = np.count_nonzero(n2_spike_train)
+                num_hits = np.count_nonzero(np.logical_and(n1_spike_train, n2_spike_train))
+                n1_misses = np.count_nonzero(np.logical_and(n1_spike_train, ~n2_spike_train))
+                n2_misses = np.count_nonzero(np.logical_and(n2_spike_train, ~n1_spike_train))
+                overlap_ratio[neuron1_ind, neuron2_ind] = max(num_hits / (num_hits + n1_misses),
+                                                              num_hits / (num_hits + n2_misses))
+                overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
                 expected_hits = calculate_expected_overlap(neuron1, neuron2,
                                     overlap_time, self.sort_info['sampling_rate'])
-                # NOTE: Should this be expected hits minus remaining number of spikes?
                 expected_misses = min(neuron1['spike_indices'].shape[0], neuron2['spike_indices'].shape[0]) - expected_hits
                 expected_ratio[neuron1_ind, neuron2_ind] = expected_hits / (expected_hits + expected_misses)
                 expected_ratio[neuron2_ind, neuron1_ind] = expected_ratio[neuron1_ind, neuron2_ind]
@@ -1938,9 +1886,6 @@ class WorkItemSummary(object):
                 # No more pairs exceed ratio threshold
                 print("Maximum accepted ratio was", max_accepted, "at expected threshold", max_expected)
                 break
-            # if best_ratio <= overlap_ratio_threshold * best_expected:
-            #     print("Stopped overlaps at ratio", best_ratio, "versus threshold", overlap_ratio_threshold * best_expected)
-            #     break
 
             # We now need to choose one of the pair to delete.
             neuron_1 = neurons[best_pair[0]]
@@ -1989,7 +1934,6 @@ class WorkItemSummary(object):
                 print('Neuron 2 has higher MUA weighted spikes')
                 print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_1 = True
-
             # Defer to choosing max SNR
             elif (neuron_1['snr'] > neuron_2['snr']):
                 print("neuron 1 has higher SNR", neuron_1['snr'] , neuron_2['snr'])
@@ -2000,66 +1944,13 @@ class WorkItemSummary(object):
             if delete_1:
                 neurons_to_remove.append(best_pair[0])
                 neurons_remaining_indices.remove(best_pair[0])
-                if seg > 0:
-                    # Reassign anything linking to this unit to link to 2 instead
-                    for p_ind, prev_n in enumerate(self.neuron_summary_by_seg[seg-1]):
-                        if prev_n['next_seg_link'] is None:
-                            continue
-                        if prev_n['next_seg_link'] == best_pair[0]:
-                            if neurons[best_pair[1]]['prev_seg_link'] is None:
-                                curr_intersection = self.get_overlap_ratio(
-                                        seg-1, p_ind, seg, best_pair[1], overlap_time)
-                                if curr_intersection > self.min_overlapping_spikes:
-                                    prev_n['next_seg_link'] = best_pair[1]
-                                    neurons[best_pair[1]]['prev_seg_link'] = p_ind
-                            else:
-                                prev_n['next_seg_link'] = None
-                if seg < self.n_segments - 1:
-                    # Reassign anything linking to this unit to link to 2 instead
-                    for next_n in self.neuron_summary_by_seg[seg+1]:
-                        if next_n['prev_seg_link'] is None:
-                            continue
-                        if next_n['prev_seg_link'] == best_pair[0]:
-                            next_n['prev_seg_link'] = None
-                # Assign current neuron not to anything since
-                # it is designated as trash fro deletion
-                neurons[best_pair[0]]['prev_seg_link'] = None
-                neurons[best_pair[0]]['next_seg_link'] = None
-                neurons[best_pair[0]]['deleted_as_redundant'] = True
             if delete_2:
                 neurons_to_remove.append(best_pair[1])
                 neurons_remaining_indices.remove(best_pair[1])
-                if seg > 0:
-                    # Reassign anything linking to this unit to link to 2 instead
-                    for p_ind, prev_n in enumerate(self.neuron_summary_by_seg[seg-1]):
-                        if prev_n['next_seg_link'] is None:
-                            continue
-                        if prev_n['next_seg_link'] == best_pair[1]:
-                            if neurons[best_pair[0]]['prev_seg_link'] is None:
-                                curr_intersection = self.get_overlap_ratio(
-                                        seg-1, p_ind, seg, best_pair[0], overlap_time)
-                                if curr_intersection > self.min_overlapping_spikes:
-                                    prev_n['next_seg_link'] = best_pair[0]
-                                    neurons[best_pair[0]]['prev_seg_link'] = p_ind
-                            else:
-                                prev_n['next_seg_link'] = None
-                if seg < self.n_segments - 1:
-                    # Reassign anything linking to this unit to link to 2 instead
-                    for next_n in self.neuron_summary_by_seg[seg+1]:
-                        if next_n['prev_seg_link'] is None:
-                            continue
-                        if next_n['prev_seg_link'] == best_pair[1]:
-                            next_n['prev_seg_link'] = None
-                # Assign current neuron not to anything since
-                # it is designated as trash fro deletion
-                neurons[best_pair[1]]['prev_seg_link'] = None
-                neurons[best_pair[1]]['next_seg_link'] = None
-                neurons[best_pair[1]]['deleted_as_redundant'] = True
-
-        # NOTE: DELETING HERE WILL MESS UP THE INDICES FOR LINKING !
-        # for n_ind in reversed(range(0, len(neurons))):
-        #     if n_ind in neurons_to_remove:
-        #         del neurons[n_ind]
+            break
+        for n_ind in reversed(range(0, len(neurons))):
+            if n_ind in neurons_to_remove:
+                del neurons[n_ind]
         return neurons
 
     def get_sort_data_by_chan(self):
@@ -2090,7 +1981,7 @@ class WorkItemSummary(object):
             thresholds.append(np.hstack(seg_thresholds).astype(np.float64))
         return crossings, labels, waveforms, new_waveforms, thresholds
 
-    def summarize_neurons_within_channel(self):
+    def summarize_neurons_within_channel(self, overlap_time=2.5e-4, overlap_ratio_threshold=2):
         """
         Return a summarized version of the threshold_crossings, labels, etc. for a given
         set of crossings, neuron labels, and waveforms organized by channel.
@@ -2119,7 +2010,6 @@ class WorkItemSummary(object):
             warnings.warn(summary_message, RuntimeWarning, stacklevel=2)
         # To the sort data segments into our conventional sorter items by
         # channel independent of segment/work item
-        print("THIS DOES NOT CURRENTLY DEAL WITH REDUNDANT NEURONS AT ALL")
         crossings, labels, waveforms, new_waveforms, thresholds = self.get_sort_data_by_chan()
         neuron_summary = []
         for channel in range(0, len(crossings)):
@@ -2189,4 +2079,6 @@ class WorkItemSummary(object):
                                 neuron['duplicate_tol_inds'],
                                 self.absolute_refractory_period)
                 neuron_summary.append(neuron)
+        neuron_summary = self.remove_redundant_within_channel_summaries(neuron_summary,
+                                        overlap_time, overlap_ratio_threshold)
         return neuron_summary

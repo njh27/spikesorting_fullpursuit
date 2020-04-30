@@ -66,7 +66,7 @@ class TestDataset(object):
     """ Actual IDs are output as the index at (self.neuron_templates.shape[1] // 2)
     """
     def __init__(self, num_channels, duration, random_seed=None,
-                 neuron_templates=None, frequency_range=(300, 6000),
+                 neuron_templates=None, frequency_range=(500, 8000),
                  samples_per_second=40000, amplitude=1, percent_shared_noise=0):
         self.num_channels = num_channels
         self.duration = duration
@@ -159,6 +159,9 @@ class TestDataset(object):
         if len(firing_rates) != len(template_inds) or len(firing_rates) != len(chan_scaling_factors):
             raise ValueError("Input rates, templates, and scaling factors must all be the same length!")
 
+        low_cutoff = self.frequency_range[0] / (self.samples_per_second / 2)
+        high_cutoff = self.frequency_range[1] / (self.samples_per_second / 2)
+        b_filt, a_filt = signal.butter(1, [low_cutoff, high_cutoff], btype='band')
         refractory_wins = np.array(refractory_wins)
         if refractory_wins.size == 1:
             refractory_wins = np.repeat(refractory_wins, len(firing_rates))
@@ -173,6 +176,8 @@ class TestDataset(object):
             for chan in range(0, self.num_channels):
                 # Apply spike train to every channel this neuron is present on
                 convolve_kernel = chan_scaling_factors[neuron][chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude
+                # Filter the kernel to match the noise band
+                convolve_kernel = signal.filtfilt(b_filt, a_filt, convolve_kernel, axis=0, padlen=None)
                 self.actual_templates[neuron] = np.vstack((self.actual_templates[neuron], convolve_kernel))
                 if chan_scaling_factors[neuron][chan] <= 0:
                     continue
@@ -182,54 +187,12 @@ class TestDataset(object):
     def gen_dynamic_test_dataset(self, firing_rates, template_inds, chan_scaling_factors, refractory_wins=1.5e-3):
         """
         """
-        if len(firing_rates) != len(template_inds) or len(firing_rates) != len(chan_scaling_factors):
-            raise ValueError("Input rates, templates, and scaling factors must all be the same length!")
-
-        refractory_wins = np.array(refractory_wins)
-        if refractory_wins.size == 1:
-            refractory_wins = np.repeat(refractory_wins, len(firing_rates))
-        # Reset neuron actual IDs for each neuron
-        self.actual_IDs = [[] for neur in range(0, len(firing_rates))]
-        self.actual_templates = [np.empty((0, self.neuron_templates.shape[1])) for neur in range(0, len(firing_rates))]
-        voltage_array = self.gen_noise_voltage_array()
-        for neuron in range(0, len(firing_rates)):
-            # Generate one spike train for each neuron
-            spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
-            self.actual_IDs[neuron] = np.where(spiketrain)[0]
-            for chan in range(0, self.num_channels):
-                # Apply spike train to every channel this neuron is present on
-                convolve_kernel = chan_scaling_factors[neuron][chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude
-                self.actual_templates[neuron] = np.vstack((self.actual_templates[neuron], convolve_kernel))
-                if chan_scaling_factors[neuron][chan] <= 0:
-                    continue
-                voltage_array[chan, :] += signal.fftconvolve(spiketrain, convolve_kernel, mode='same')
-        self.voltage_array = voltage_array
+        pass
 
     def gen_gamma_test_dataset(self, firing_rates, template_inds, chan_scaling_factors, refractory_wins=1.5e-3):
         """
         """
-        if len(firing_rates) != len(template_inds) or len(firing_rates) != len(chan_scaling_factors):
-            raise ValueError("Input rates, templates, and scaling factors must all be the same length!")
-
-        refractory_wins = np.array(refractory_wins)
-        if refractory_wins.size == 1:
-            refractory_wins = np.repeat(refractory_wins, len(firing_rates))
-        # Reset neuron actual IDs for each neuron
-        self.actual_IDs = [[] for neur in range(0, len(firing_rates))]
-        self.actual_templates = [np.empty((0, self.neuron_templates.shape[1])) for neur in range(0, len(firing_rates))]
-        voltage_array = self.gen_noise_voltage_array()
-        for neuron in range(0, len(firing_rates)):
-            # Generate one spike train for each neuron
-            spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
-            self.actual_IDs[neuron] = np.where(spiketrain)[0]
-            for chan in range(0, self.num_channels):
-                # Apply spike train to every channel this neuron is present on
-                convolve_kernel = chan_scaling_factors[neuron][chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude
-                self.actual_templates[neuron] = np.vstack((self.actual_templates[neuron], convolve_kernel))
-                if chan_scaling_factors[neuron][chan] <= 0:
-                    continue
-                voltage_array[chan, :] += signal.fftconvolve(spiketrain, convolve_kernel, mode='same')
-        self.voltage_array = voltage_array
+        pass
 
     def drift_template_preview(self, template_inds, drift_funs, index):
         if len(template_inds) != len(drift_funs):
@@ -264,6 +227,9 @@ class TestDataset(object):
             scaled_spike_thresh = 2 * self.amplitude
         self.scaled_spike_thresh = scaled_spike_thresh
 
+        low_cutoff = self.frequency_range[0] / (self.samples_per_second / 2)
+        high_cutoff = self.frequency_range[1] / (self.samples_per_second / 2)
+        b_filt, a_filt = signal.butter(1, [low_cutoff, high_cutoff], btype='band')
         refractory_wins = np.array(refractory_wins)
         if refractory_wins.size == 1:
             refractory_wins = np.repeat(refractory_wins, len(firing_rates))
@@ -276,8 +242,9 @@ class TestDataset(object):
             # Store templates used, use scaling at time zero
             chan_scaling_factors = drift_funs[neuron](0)
             for chan in range(0, self.num_channels):
+                filt_template = signal.filtfilt(b_filt, a_filt, self.neuron_templates[template_inds[neuron], :], axis=0, padlen=None)
                 self.actual_templates[neuron] = np.vstack((self.actual_templates[neuron],
-                    chan_scaling_factors[chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude))
+                    chan_scaling_factors[chan] * filt_template * self.amplitude))
             # Generate one spike train for each neuron
             spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
             spiketrain[0:half_temp_width+2] = False # Ensure spike times will not overlap beginning
@@ -291,7 +258,8 @@ class TestDataset(object):
                     # continue
                 for chan in range(0, self.num_channels):
                     # Apply spike train to every channel this neuron is present on
-                    scaled_template = chan_scaling_factors[chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude
+                    filt_template = signal.filtfilt(b_filt, a_filt, self.neuron_templates[template_inds[neuron], :], axis=0, padlen=None)
+                    scaled_template = chan_scaling_factors[chan] * filt_template * self.amplitude
                     voltage_array[chan, spk_ind:(spk_ind+self.neuron_templates.shape[1])] += scaled_template
             print("Removing", np.count_nonzero(remove_IDs), "neuron", neuron, "spikes for scale factors less than", scaled_spike_thresh)
             self.actual_IDs[neuron] = self.actual_IDs[neuron][~remove_IDs]

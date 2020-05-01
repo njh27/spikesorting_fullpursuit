@@ -1788,11 +1788,14 @@ class WorkItemSummary(object):
         for n in self.neuron_summary_by_seg[self.n_segments-1]:
             n['next_seg_link'] = None
             n['deleted_as_redundant'] = False
-        self.check_overlapping_links(overlap_time)
+
         # Remove redundant items across channels and attempt to maintain
         # linking continuity across channels
         self.remove_redundant_neurons_by_seg(overlap_time=overlap_time,
                                 overlap_ratio_threshold=overlap_ratio_threshold)
+        # NOTE: This MUST run AFTER remove redundant by seg or else you can
+        # end up linking a redundant mixture to a good unit with broken link!
+        self.check_overlapping_links(overlap_time)
 
         neurons = self.stitch_neurons_across_channels()
         # Delete any redundant segs. These shouldn't really be in here anyways

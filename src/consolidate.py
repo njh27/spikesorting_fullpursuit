@@ -1493,6 +1493,8 @@ class WorkItemSummary(object):
                                 continue
                             if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:
                                 continue
+                            if n2['fraction_mua'] > self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua']:
+                                continue
                             curr_overlap = self.get_overlap_ratio(
                                     seg, n1_ind, seg+1, n2_ind, overlap_time)
                             if curr_overlap > max_overlap:

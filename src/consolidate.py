@@ -1045,8 +1045,8 @@ class WorkItemSummary(object):
                         if curr_l in self.sort_data[chan][next_seg][1]:
                             mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
                             total_correct_spikes_post += (1 - mua_ratio) * np.count_nonzero(self.sort_data[chan][next_seg][1] == curr_l)
-                    undo_split = True
-                    print("JOINT SPLIT IS SET OFF AT 1048")
+                    undo_split = False
+                    # print("JOINT SPLIT IS SET OFF AT 1048")
                     # for curr_l in [c1, c2]:
                     #     mua_ratio = 0.
                     #     if curr_l in self.sort_data[chan][curr_seg][1]:

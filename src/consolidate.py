@@ -983,7 +983,6 @@ class WorkItemSummary(object):
                                 clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                                 method='template_pca', split_only=True,
                                 curr_chan_inds=curr_chan_inds)
-
                     if ismerged: # This can happen if the split cutpoint forces
                         # Remove label with fewest spikes
                         if clips_1.shape[0] >= clips_2.shape[0]:
@@ -997,8 +996,6 @@ class WorkItemSummary(object):
                                 break
                         continue # a merge so check and skip
 
-                    # Get number of MUA based correct spikes before split to
-                    # compare with after and make decision
                     total_correct_spikes_pre = 0
                     for curr_l in [c1, c2]:
                         if curr_l in self.sort_data[chan][curr_seg][1]:
@@ -1007,6 +1004,7 @@ class WorkItemSummary(object):
                         if curr_l in self.sort_data[chan][next_seg][1]:
                             mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
                             total_correct_spikes_pre += (1 - mua_ratio) * np.count_nonzero(self.sort_data[chan][next_seg][1] == curr_l)
+
                     # Reassign spikes in c1 that split into c2
                     # The merge test was done on joint clips and labels, so
                     # we have to figure out where their indices all came from
@@ -1057,7 +1055,6 @@ class WorkItemSummary(object):
                     #         break
                     if total_correct_spikes_post < total_correct_spikes_pre:
                         undo_split = True
-
                     if undo_split:
                         if self.verbose: print("undoing split between", c1, c2)
                         if 2 in labels_1:

@@ -1298,8 +1298,6 @@ class WorkItemSummary(object):
         overlap_ratio = np.zeros((len(neurons), len(neurons)))
         expected_ratio = np.zeros((len(neurons), len(neurons)))
         for neuron1_ind, neuron1 in enumerate(neurons):
-            # Take this opportunity to set this to default
-            neuron1['deleted_as_redundant'] = False
             # Loop through all violators with neuron1
             # We already know these neurons are in each other's neighborhood
             # because violation_partners only includes neighbors
@@ -1493,8 +1491,8 @@ class WorkItemSummary(object):
                                 continue
                             if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:
                                 continue
-                            if n2['fraction_mua'] > self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua']:
-                                continue
+                            # if n2['fraction_mua'] > self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua']:
+                            #     continue
                             curr_overlap = self.get_overlap_ratio(
                                     seg, n1_ind, seg+1, n2_ind, overlap_time)
                             if curr_overlap > max_overlap:
@@ -1757,6 +1755,8 @@ class WorkItemSummary(object):
             # For the current seg, we will discover their next seg link
             for n in self.neuron_summary_by_seg[seg]:
                 n['next_seg_link'] = None
+                # Take this opportunity to set this to default
+                n['deleted_as_redundant'] = False
             next_seg = seg + 1
             if len(self.neuron_summary_by_seg[next_seg]) == 0:
                 # Current seg neurons can't link with neurons in next seg
@@ -1776,12 +1776,13 @@ class WorkItemSummary(object):
         # All units in last seg next link to None
         for n in self.neuron_summary_by_seg[self.n_segments-1]:
             n['next_seg_link'] = None
-
+            n['deleted_as_redundant'] = False
+        self.check_overlapping_links(overlap_time)
         # Remove redundant items across channels and attempt to maintain
         # linking continuity across channels
         self.remove_redundant_neurons_by_seg(overlap_time=overlap_time,
                                 overlap_ratio_threshold=overlap_ratio_threshold)
-        self.check_overlapping_links(overlap_time)
+
         neurons = self.stitch_neurons_across_channels()
         # Delete any redundant segs. These shouldn't really be in here anyways
         for n_list in neurons:

@@ -983,6 +983,7 @@ class WorkItemSummary(object):
                                 clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                                 method='template_pca', split_only=True,
                                 curr_chan_inds=curr_chan_inds)
+
                     if ismerged: # This can happen if the split cutpoint forces
                         # Remove label with fewest spikes
                         if clips_1.shape[0] >= clips_2.shape[0]:
@@ -1036,6 +1037,7 @@ class WorkItemSummary(object):
                         if mua_ratio > self.max_mua_ratio:
                             undo_split = True
                             break
+                    
                     if undo_split:
                         if self.verbose: print("undoing split between", c1, c2)
                         if 2 in labels_1:

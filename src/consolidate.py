@@ -922,11 +922,11 @@ class WorkItemSummary(object):
                         # so be done with it
                         # main_labels.remove(best_pair[0])
                         previously_compared_pairs.append(best_pair)
-
-                        if chan in [4, 6, 7, 20]:
-                            plt.plot(np.mean(clips_1, axis=0))
-                            plt.plot(np.mean(clips_2, axis=0))
-                            plt.show()
+                        #
+                        # if chan in [4, 6, 7, 20]:
+                        #     plt.plot(np.mean(clips_1, axis=0))
+                        #     plt.plot(np.mean(clips_2, axis=0))
+                        #     plt.show()
 
                 # Assign units in next segment that do not match any in the
                 # current segment a new real label
@@ -1417,13 +1417,13 @@ class WorkItemSummary(object):
                         if prev_n['next_seg_link'] is None:
                             continue
                         if prev_n['next_seg_link'] == best_pair[0]:
-                            if neurons[best_pair[1]]['prev_seg_link'] is None:
-                                curr_intersection = self.get_overlap_ratio(
-                                        seg-1, p_ind, seg, best_pair[1], overlap_time)
-                                if curr_intersection > self.min_overlapping_spikes:
-                                    prev_n['next_seg_link'] = best_pair[1]
-                                    neurons[best_pair[1]]['prev_seg_link'] = p_ind
-                            else:
+                            # if neurons[best_pair[1]]['prev_seg_link'] is None:
+                            #     curr_intersection = self.get_overlap_ratio(
+                            #             seg-1, p_ind, seg, best_pair[1], overlap_time)
+                            #     if curr_intersection > self.min_overlapping_spikes:
+                            #         prev_n['next_seg_link'] = best_pair[1]
+                            #         neurons[best_pair[1]]['prev_seg_link'] = p_ind
+                            # else:
                                 prev_n['next_seg_link'] = None
                 if seg < self.n_segments - 1:
                     # Reassign anything linking to this unit to link to 2 instead
@@ -1445,13 +1445,13 @@ class WorkItemSummary(object):
                         if prev_n['next_seg_link'] is None:
                             continue
                         if prev_n['next_seg_link'] == best_pair[1]:
-                            if neurons[best_pair[0]]['prev_seg_link'] is None:
-                                curr_intersection = self.get_overlap_ratio(
-                                        seg-1, p_ind, seg, best_pair[0], overlap_time)
-                                if curr_intersection > self.min_overlapping_spikes:
-                                    prev_n['next_seg_link'] = best_pair[0]
-                                    neurons[best_pair[0]]['prev_seg_link'] = p_ind
-                            else:
+                            # if neurons[best_pair[0]]['prev_seg_link'] is None:
+                            #     curr_intersection = self.get_overlap_ratio(
+                            #             seg-1, p_ind, seg, best_pair[0], overlap_time)
+                            #     if curr_intersection > self.min_overlapping_spikes:
+                            #         prev_n['next_seg_link'] = best_pair[0]
+                            #         neurons[best_pair[0]]['prev_seg_link'] = p_ind
+                            # else:
                                 prev_n['next_seg_link'] = None
                 if seg < self.n_segments - 1:
                     # Reassign anything linking to this unit to link to 2 instead
@@ -1485,9 +1485,12 @@ class WorkItemSummary(object):
         for seg in range(0, self.n_segments-1):
             n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
                             if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
+            bad_n1 = []
             for n_ind in n1_remaining:
                 if self.neuron_summary_by_seg[seg][n_ind]['deleted_as_redundant']:
-                    n1_remaining.remove(n_ind)
+                    bad_n1.append(n_ind)
+            for dn in bad_n1:
+                n1_remaining.remove(dn)
             while len(n1_remaining) > 0:
                 max_overlap = -1.
                 min_mua = np.inf
@@ -1548,9 +1551,9 @@ class WorkItemSummary(object):
                     continue
                 n_list.append(self.neuron_summary_by_seg[next_seg][link_index])
                 next_seg_inds.remove(link_index)
-            for new_neurons in next_seg_inds:
+            for new_neuron in next_seg_inds:
                 # Start a new list in neurons for anything that didn't link above
-                neurons.append([self.neuron_summary_by_seg[next_seg][new_neurons]])
+                neurons.append([self.neuron_summary_by_seg[next_seg][new_neuron]])
         return neurons
 
     def join_neuron_dicts(self, unit_dicts_list):

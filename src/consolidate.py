@@ -1490,21 +1490,26 @@ class WorkItemSummary(object):
                     n1_remaining.remove(n_ind)
             while len(n1_remaining) > 0:
                 max_overlap = -1.
+                min_mua = np.inf
                 for n1_ind in n1_remaining:
                     for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
                         if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
                             if self.neuron_summary_by_seg[seg][n1_ind]['channel'] not in n2['neighbors']:
                                 continue
-                            if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:
-                                continue
+                            # if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:
+                            #     continue
                             # if n2['fraction_mua'] > self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua']:
                             #     continue
                             curr_overlap = self.get_overlap_ratio(
                                     seg, n1_ind, seg+1, n2_ind, overlap_time)
-                            if curr_overlap > max_overlap:
-                                max_overlap = curr_overlap
-                                max_overlap_pair = [n1_ind, n2_ind]
-                if max_overlap > self.min_overlapping_spikes:
+                            """ Could threshold this at min overlap and choose best MUA? Maybe this also means
+                            that I should allow it to work on the same channel?"""
+                            if curr_overlap > self.min_overlapping_spikes:
+                                if n2['fraction_mua'] < min_mua:
+                                    min_mua = n2['fraction_mua']
+                                    max_overlap = curr_overlap
+                                    max_overlap_pair = [n1_ind, n2_ind]
+                if not np.isinf(min_mua):
                     self.neuron_summary_by_seg[seg][max_overlap_pair[0]]['next_seg_link'] = max_overlap_pair[1]
                     self.neuron_summary_by_seg[seg+1][max_overlap_pair[1]]['prev_seg_link'] = max_overlap_pair[0]
                     n1_remaining.remove(max_overlap_pair[0])

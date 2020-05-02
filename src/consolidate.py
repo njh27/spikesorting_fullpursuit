@@ -836,7 +836,6 @@ class WorkItemSummary(object):
                 main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][start_seg]['chan_neighbor_ind'],
                             self.sort_info['n_samples_per_chan'] * (self.work_items[chan][start_seg]['chan_neighbor_ind'] + 1)]
                 curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
-
                 split_memory_dicts = [{} for x in range(0, self.n_segments)]
             # Go through each segment as the "current segment" and set the labels
             # in the next segment according to the scheme in current
@@ -853,28 +852,28 @@ class WorkItemSummary(object):
                     # Map all units in this segment to new real labels
                     self.sort_data[chan][curr_seg][1] += next_real_label # Keep out of range
                     for nl in np.unique(self.sort_data[chan][curr_seg][1]):
+                        # Add these new labels to real_labels for tracking
                         real_labels.append(nl)
                         if self.verbose: print("In NEXT SEG NEW (531) added real label", nl, chan, curr_seg)
                         next_real_label += 1
-                    # start_new_seg = False
                 if len(self.sort_data[chan][next_seg][1]) == 0:
                     # No units sorted in NEXT segment so start fresh next segment
                     start_new_seg = True
                     if self.verbose: print("skipping_seg", curr_seg, "because NEXT seg has no spikes")
-                    for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                        mua_ratio = self.get_fraction_mua_to_peak(chan,
-                                            curr_seg, curr_l)
-                        if mua_ratio > self.max_mua_ratio:
-                            if self.verbose: print("Checking seg before new MUA (543) deleting at MUA ratio", mua_ratio, chan, curr_seg)
-                            self.delete_label(chan, curr_seg, curr_l)
-                            if curr_seg == 0:
-                                if self.verbose: print("removing label 679", "label", curr_l, chan, curr_seg)
-                                real_labels.remove(curr_l)
-                            else:
-                                if curr_l not in self.sort_data[chan][curr_seg-1][1]:
-                                    # Remove from real labels if its not in previous
-                                    if self.verbose: print("removing label 684", "label", curr_l,  chan, curr_seg)
-                                    real_labels.remove(curr_l)
+                    # for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
+                    #     mua_ratio = self.get_fraction_mua_to_peak(chan,
+                    #                         curr_seg, curr_l)
+                    #     if mua_ratio > self.max_mua_ratio:
+                    #         if self.verbose: print("Checking seg before new MUA (543) deleting at MUA ratio", mua_ratio, chan, curr_seg)
+                    #         self.delete_label(chan, curr_seg, curr_l)
+                    #         if curr_seg == 0:
+                    #             if self.verbose: print("removing label 679", "label", curr_l, chan, curr_seg)
+                    #             real_labels.remove(curr_l)
+                    #         else:
+                    #             if curr_l not in self.sort_data[chan][curr_seg-1][1]:
+                    #                 # Remove from real labels if its not in previous
+                    #                 if self.verbose: print("removing label 684", "label", curr_l,  chan, curr_seg)
+                    #                 real_labels.remove(curr_l)
                     continue
 
                 # Make 'fake_labels' for next segment that do not overlap with
@@ -1088,42 +1087,42 @@ class WorkItemSummary(object):
                 # mixtures in the current segment. If it wasn't, delete that
                 # unit from the current segment and relabel any units in the
                 # next segment that matched with it
-                for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                    mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
-                    if mua_ratio > self.max_mua_ratio:
-                        # Remove this unit from current segment
-                        if self.verbose: print("Deleting (1056) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)
-                        keep_indices = self.delete_label(chan, curr_seg, curr_l)
-
-                        # Also need to remove from memory dict
-                        for key_label in split_memory_dicts[curr_seg].keys():
-                            split_memory_dicts[curr_seg][key_label][0] = \
-                                split_memory_dicts[curr_seg][key_label][0][keep_indices]
-
-                        if curr_seg == 0:
-                            if self.verbose: print("Deleting (1065) label", "label", curr_l, chan, curr_seg)
-                            real_labels.remove(curr_l)
-                        else:
-                            if curr_l in split_memory_dicts[curr_seg - 1].keys():
-                                # This is in previous, so undo any effects split
-                                # could have had
-                                self.sort_data[chan][curr_seg - 1][1][split_memory_dicts[curr_seg - 1][curr_l][0]] = \
-                                        split_memory_dicts[curr_seg - 1][curr_l][1]
-                            if curr_l not in self.sort_data[chan][curr_seg - 1][1]:
-                                # Remove from real labels if its not in previous
-                                if self.verbose: print("Deleting (1075) label", "label", curr_l, chan, curr_seg)
-                                real_labels.remove(curr_l)
-                            # NOTE: I think split_memory_dicts[curr_seg - 1] can
-                            # be deleted at this point to save memory
-
-                        # Assign any units in next segment that stitched to this
-                        # bad one, if any, a new label.
-                        select_next_curr_l = self.sort_data[chan][next_seg][1] == curr_l
-                        if any(select_next_curr_l):
-                            self.sort_data[chan][next_seg][1][select_next_curr_l] = next_real_label
-                            real_labels.append(next_real_label)
-                            if self.verbose: print("In leftover after deletion (1086) added real label", next_real_label, chan, curr_seg)
-                            next_real_label += 1
+                # for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
+                #     mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
+                #     if mua_ratio > self.max_mua_ratio:
+                #         # Remove this unit from current segment
+                #         if self.verbose: print("Deleting (1056) label", curr_l, "at MUA ratio", mua_ratio, "for chan", chan, "seg", curr_seg)
+                #         keep_indices = self.delete_label(chan, curr_seg, curr_l)
+                #
+                #         # Also need to remove from memory dict
+                #         for key_label in split_memory_dicts[curr_seg].keys():
+                #             split_memory_dicts[curr_seg][key_label][0] = \
+                #                 split_memory_dicts[curr_seg][key_label][0][keep_indices]
+                #
+                #         if curr_seg == 0:
+                #             if self.verbose: print("Deleting (1065) label", "label", curr_l, chan, curr_seg)
+                #             real_labels.remove(curr_l)
+                #         else:
+                #             if curr_l in split_memory_dicts[curr_seg - 1].keys():
+                #                 # This is in previous, so undo any effects split
+                #                 # could have had
+                #                 self.sort_data[chan][curr_seg - 1][1][split_memory_dicts[curr_seg - 1][curr_l][0]] = \
+                #                         split_memory_dicts[curr_seg - 1][curr_l][1]
+                #             if curr_l not in self.sort_data[chan][curr_seg - 1][1]:
+                #                 # Remove from real labels if its not in previous
+                #                 if self.verbose: print("Deleting (1075) label", "label", curr_l, chan, curr_seg)
+                #                 real_labels.remove(curr_l)
+                #             # NOTE: I think split_memory_dicts[curr_seg - 1] can
+                #             # be deleted at this point to save memory
+                #
+                #         # Assign any units in next segment that stitched to this
+                #         # bad one, if any, a new label.
+                #         select_next_curr_l = self.sort_data[chan][next_seg][1] == curr_l
+                #         if any(select_next_curr_l):
+                #             self.sort_data[chan][next_seg][1][select_next_curr_l] = next_real_label
+                #             real_labels.append(next_real_label)
+                #             if self.verbose: print("In leftover after deletion (1086) added real label", next_real_label, chan, curr_seg)
+                #             next_real_label += 1
                 # If we made it here then we are not starting a new seg
                 start_new_seg = False
                 if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels, np.unique(self.sort_data[chan][curr_seg][1]), np.unique(self.sort_data[chan][next_seg][1]))
@@ -1145,17 +1144,17 @@ class WorkItemSummary(object):
                 continue
             if len(self.sort_data[chan][curr_seg][0]) == 0:
                 continue
-            for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
-                mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
-                if mua_ratio > self.max_mua_ratio:
-                    if self.verbose: print("Checking last seg MUA (1100) deleting at MUA ratio", mua_ratio, chan, curr_seg)
-                    self.delete_label(chan, curr_seg, curr_l)
-                    if curr_seg == 0:
-                        real_labels.remove(curr_l)
-                    else:
-                        if not start_new_seg and curr_l not in self.sort_data[chan][curr_seg-1][1]:
-                            # Remove from real labels if its not in previous
-                            real_labels.remove(curr_l)
+            # for curr_l in np.unique(self.sort_data[chan][curr_seg][1]):
+            #     mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
+            #     if mua_ratio > self.max_mua_ratio:
+            #         if self.verbose: print("Checking last seg MUA (1100) deleting at MUA ratio", mua_ratio, chan, curr_seg)
+            #         self.delete_label(chan, curr_seg, curr_l)
+            #         if curr_seg == 0:
+            #             real_labels.remove(curr_l)
+            #         else:
+            #             if not start_new_seg and curr_l not in self.sort_data[chan][curr_seg-1][1]:
+            #                 # Remove from real labels if its not in previous
+            #                 real_labels.remove(curr_l)
             if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels)
             self.is_stitched = True
 
@@ -1230,7 +1229,7 @@ class WorkItemSummary(object):
                     self.neuron_summary_by_seg[seg].append(neuron)
 
     def get_overlap_ratio(self, seg1, n1_ind, seg2, n2_ind, overlap_time=2.5e-4):
-        # From next segment start to current segment end
+        # From next seg2 start to seg1 end
         overlap_win = [self.neuron_summary_seg_inds[seg2][0], self.neuron_summary_seg_inds[seg1][1]]
         max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
         n_total_samples = overlap_win[1] - overlap_win[0]
@@ -1266,7 +1265,6 @@ class WorkItemSummary(object):
         n2_spike_train = compute_spike_trains(n2_spikes[:n2_stop],
                                               max_samples, overlap_win)
         n_n2_spikes = np.count_nonzero(n2_spike_train)
-
         num_hits = np.count_nonzero(np.logical_and(n1_spike_train, n2_spike_train))
         n1_misses = np.count_nonzero(np.logical_and(n1_spike_train, ~n2_spike_train))
         n2_misses = np.count_nonzero(np.logical_and(n2_spike_train, ~n1_spike_train))
@@ -1284,19 +1282,14 @@ class WorkItemSummary(object):
         """
         neurons = self.neuron_summary_by_seg[seg]
         max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
-        n_total_samples = 0
 
         # Create list of sets of excessive neuron overlap between all pairwise units
         violation_partners = [set() for x in range(0, len(neurons))]
         for n1_ind, n1 in enumerate(neurons):
             violation_partners[n1_ind].add(n1_ind)
-            if n1['spike_indices'][-1] > n_total_samples:
-                # Find the maximum number of samples over all neurons while we are here for use later
-                n_total_samples = n1['spike_indices'][-1]
             for n2_ind in range(n1_ind+1, len(neurons)):
                 n2 = neurons[n2_ind]
-                if np.intersect1d(n1['neighbors'], n2['neighbors']).size == 0:
-                    # Only count violations in neighborhood
+                if n1['channel'] not in n2['neighbors']:
                     continue
                 violation_partners[n1_ind].add(n2_ind)
                 violation_partners[n2_ind].add(n1_ind)
@@ -1393,13 +1386,13 @@ class WorkItemSummary(object):
                    > 1.1*(1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]):
                 # Neuron 1 has higher MUA weighted spikes
                 print('Neuron 1 has higher MUA weighted spikes')
-                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
+                # print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_2 = True
             elif ((1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]
                    > 1.1*(1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]):
                 # Neuron 2 has higher MUA weighted spikes
                 print('Neuron 2 has higher MUA weighted spikes')
-                print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
+                # print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_1 = True
 
             # Defer to choosing max SNR
@@ -1505,8 +1498,6 @@ class WorkItemSummary(object):
                             #     continue
                             curr_overlap = self.get_overlap_ratio(
                                     seg, n1_ind, seg+1, n2_ind, overlap_time)
-                            """ Could threshold this at min overlap and choose best MUA? Maybe this also means
-                            that I should allow it to work on the same channel?"""
                             if curr_overlap > self.min_overlapping_spikes:
                                 if n2['fraction_mua'] < min_mua:
                                     min_mua = n2['fraction_mua']

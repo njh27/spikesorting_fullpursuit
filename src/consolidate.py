@@ -1513,10 +1513,12 @@ class WorkItemSummary(object):
                                     seg, n1_ind, seg+1, n2_ind, overlap_time)
                             if curr_overlap < self.min_overlapping_spikes:
                                 continue
-                            if n2['fraction_mua'] < 0:
-                                curr_overlap_mua = curr_overlap
+                            if n2['fraction_mua'] < 0 and self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] < 0:
+                                curr_overlap_mua = n2['snr']*((curr_overlap) * n2['spike_indices'].shape[0])
+                            elif n2['fraction_mua'] < 0 or self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] < 0:
+                                continue
                             else:
-                                curr_overlap_mua = curr_overlap - n2['fraction_mua']
+                                curr_overlap_mua = n2['snr']*((curr_overlap - n2['fraction_mua']) * n2['spike_indices'].shape[0])
                             if curr_overlap_mua > max_overlap_mua:
                                 max_overlap_mua = curr_overlap_mua
                                 max_overlap_pair = [n1_ind, n2_ind]

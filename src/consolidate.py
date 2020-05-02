@@ -1940,14 +1940,14 @@ class WorkItemSummary(object):
                     delete_2 = True
                 else:
                     delete_1 = True
-            elif ((1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]
-                   > 1.1*(1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]):
+            elif (neuron_1['snr']*((1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0])
+                   > 1.1*neuron_2['snr']*(1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]):
                 # Neuron 1 has higher MUA weighted spikes
                 print('Neuron 1 has higher MUA weighted spikes')
                 print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_2 = True
-            elif ((1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]
-                   > 1.1*(1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]):
+            elif (neuron_2['snr']*((1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0])
+                   > 1.1*neuron_1['snr']*(1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]):
                 # Neuron 2 has higher MUA weighted spikes
                 print('Neuron 2 has higher MUA weighted spikes')
                 print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
@@ -2097,6 +2097,7 @@ class WorkItemSummary(object):
                                 neuron['duplicate_tol_inds'],
                                 self.absolute_refractory_period)
                 neuron_summary.append(neuron)
-        neuron_summary = self.remove_redundant_within_channel_summaries(neuron_summary,
-                                        overlap_time, overlap_ratio_threshold)
+        print("Redundant removal turned OFF")
+        # neuron_summary = self.remove_redundant_within_channel_summaries(neuron_summary,
+        #                                 overlap_time, overlap_ratio_threshold)
         return neuron_summary

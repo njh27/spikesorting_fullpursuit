@@ -268,7 +268,7 @@ def calc_spike_width(clips, clip_width, sampling_rate):
     else:
         spike_width = valley_ind - peak_ind
 
-    return spike_width
+    return 2*spike_width
 
 
 def calc_duplicate_tol_inds(spike_indices, sampling_rate,
@@ -1513,7 +1513,10 @@ class WorkItemSummary(object):
                                     seg, n1_ind, seg+1, n2_ind, overlap_time)
                             if curr_overlap < self.min_overlapping_spikes:
                                 continue
-                            curr_overlap_mua = curr_overlap - n2['fraction_mua']
+                            if n2['fraction_mua'] < 0:
+                                curr_overlap_mua = curr_overlap
+                            else:
+                                curr_overlap_mua = curr_overlap - n2['fraction_mua']
                             if curr_overlap_mua > max_overlap_mua:
                                 max_overlap_mua = curr_overlap_mua
                                 max_overlap_pair = [n1_ind, n2_ind]

@@ -1482,7 +1482,7 @@ class WorkItemSummary(object):
             self.neuron_summary_by_seg[seg] = self.remove_redundant_neurons(
                                     seg, overlap_time, overlap_ratio_threshold)
 
-    def check_overlapping_links(self, overlap_time):
+    def make_overlapping_links(self, overlap_time):
         """
         """
         for seg in range(0, self.n_segments-1):
@@ -1498,36 +1498,53 @@ class WorkItemSummary(object):
                 n1_remaining.remove(dn)
             while len(n1_remaining) > 0:
                 max_overlap_mua = -1.
+                best_n1_weighted_spikes = -1.
                 for n1_ind in n1_remaining:
-                    for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
-                        if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
-                            if self.neuron_summary_by_seg[seg][n1_ind]['channel'] not in n2['neighbors']:
-                                continue
-                            if n2['fraction_mua'] > self.max_mua_ratio:
-                                continue
-                            # if self.neuron_summary_by_seg[seg][n1_ind]['channel'] == n2['channel']:
-                            #     continue
-                            # if n2['fraction_mua'] > self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua']:
-                            #     continue
-                            curr_overlap = self.get_overlap_ratio(
-                                    seg, n1_ind, seg+1, n2_ind, overlap_time)
-                            if curr_overlap < self.min_overlapping_spikes:
-                                continue
-                            if n2['fraction_mua'] < 0 and self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] < 0:
-                                curr_overlap_mua = n2['snr']*((curr_overlap) * n2['spike_indices'].shape[0])
-                            elif n2['fraction_mua'] < 0 or self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] < 0:
-                                continue
-                            else:
-                                curr_overlap_mua = n2['snr']*((curr_overlap - n2['fraction_mua']) * n2['spike_indices'].shape[0])
-                            if curr_overlap_mua > max_overlap_mua:
-                                max_overlap_mua = curr_overlap_mua
-                                max_overlap_pair = [n1_ind, n2_ind]
+                    # Choose the best n1_remaining
+                    if self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] < 0:
+                        n1_weighted_spikes = (self.neuron_summary_by_seg[seg][n1_ind]['snr']
+                                              * self.neuron_summary_by_seg[seg][n1_ind]['spike_indices'].shape[0])
+                    else:
+                        n1_weighted_spikes = (self.neuron_summary_by_seg[seg][n1_ind]['snr']
+                                             * ((1 - self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'])
+                                             * self.neuron_summary_by_seg[seg][n1_ind]['spike_indices'].shape[0]))
+                    if n1_weighted_spikes > best_n1_weighted_spikes:
+                        best_n1_weighted_spikes = n1_weighted_spikes
+                        best_n1_ind = n1_ind
+                n1_ind = best_n1_ind
+
+                for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
+                    # Choose the best n2 match for n1 that satisfies thresholds
+                    if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
+                        if self.neuron_summary_by_seg[seg][n1_ind]['channel'] not in n2['neighbors']:
+                            continue
+                        if n2['fraction_mua'] > self.max_mua_ratio:
+                            continue
+                        curr_overlap = self.get_overlap_ratio(
+                                seg, n1_ind, seg+1, n2_ind, overlap_time)
+                        if curr_overlap < self.min_overlapping_spikes:
+                            continue
+                        if n2['fraction_mua'] < 0 and self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] < 0:
+                            curr_overlap_mua = n2['snr'] * n2['spike_indices'].shape[0]
+                            # curr_overlap_mua += n1_weighted_spikes
+                        elif n2['fraction_mua'] < 0 or self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] < 0:
+                            continue
+                        else:
+                            curr_overlap_mua = n2['snr']*((1 - n2['fraction_mua']) * n2['spike_indices'].shape[0])
+                            # curr_overlap_mua += n1_weighted_spikes
+                        if curr_overlap_mua > max_overlap_mua:
+                            max_overlap_mua = curr_overlap_mua
+                            max_overlap_pair = [n1_ind, n2_ind]
+
                 if max_overlap_mua > 0:
+                    # Found a match that satisfies thresholds so link them
                     self.neuron_summary_by_seg[seg][max_overlap_pair[0]]['next_seg_link'] = max_overlap_pair[1]
                     self.neuron_summary_by_seg[seg+1][max_overlap_pair[1]]['prev_seg_link'] = max_overlap_pair[0]
                     n1_remaining.remove(max_overlap_pair[0])
                 else:
-                    break
+                    # Best remaining n1 could not find an n2 match so remove it
+                    n1_remaining.remove(n1_ind)
+                    # break
 
     def stitch_neurons_across_channels(self):
         start_seg = 0
@@ -1800,7 +1817,7 @@ class WorkItemSummary(object):
                                 overlap_ratio_threshold=overlap_ratio_threshold)
         # NOTE: This MUST run AFTER remove redundant by seg or else you can
         # end up linking a redundant mixture to a good unit with broken link!
-        self.check_overlapping_links(overlap_time)
+        self.make_overlapping_links(overlap_time)
 
         neurons = self.stitch_neurons_across_channels()
         # Delete any redundant segs. These shouldn't really be in here anyways

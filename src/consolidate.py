@@ -258,7 +258,7 @@ def calculate_expected_overlap(n1, n2, overlap_time, sampling_rate):
     return expected_overlap
 
 
-def calc_spike_width(clips, clip_width, sampling_rate):
+def calc_spike_half_width(clips, clip_width, sampling_rate):
     template = np.mean(clips, axis=0)
     peak_ind = np.argmax(template)
     valley_ind = np.argmin(template)
@@ -268,7 +268,7 @@ def calc_spike_width(clips, clip_width, sampling_rate):
     else:
         spike_width = valley_ind - peak_ind
 
-    return 2*spike_width
+    return spike_width
 
 
 def calc_duplicate_tol_inds(spike_indices, sampling_rate,
@@ -538,7 +538,7 @@ class WorkItemSummary(object):
         unit_spikes = self.sort_data[chan][seg][0][select_unit]
         main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][seg]['chan_neighbor_ind'],
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
-        duplicate_tol_inds = calc_spike_width(
+        duplicate_tol_inds = calc_spike_half_width(
                                 self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]],
                                 self.sort_info['clip_width'], self.sort_info['sampling_rate'])
         duplicate_tol_inds += self.duplicate_tol_inds
@@ -600,7 +600,7 @@ class WorkItemSummary(object):
         #                         self.sort_info['clip_width'])
         main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][seg]['chan_neighbor_ind'],
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
-        duplicate_tol_inds = calc_spike_width(
+        duplicate_tol_inds = calc_spike_half_width(
                                 self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]],
                                 self.sort_info['clip_width'], self.sort_info['sampling_rate'])
         duplicate_tol_inds += self.duplicate_tol_inds
@@ -1201,7 +1201,7 @@ class WorkItemSummary(object):
                     neuron['waveforms'] = neuron['waveforms'][spike_order, :]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
 
-                    duplicate_tol_inds = calc_spike_width(
+                    duplicate_tol_inds = calc_spike_half_width(
                         neuron['waveforms'][:, neuron['main_win'][0]:neuron['main_win'][1]],
                         self.sort_info['clip_width'], self.sort_info['sampling_rate'])
                     duplicate_tol_inds += self.duplicate_tol_inds
@@ -1663,7 +1663,7 @@ class WorkItemSummary(object):
         # for chan in combined_neuron['channel']:
         #     chan_select = channel_selector == chan
         #     main_win = combined_neuron['main_windows'][chan]
-        #     duplicate_tol_inds = calc_spike_width(
+        #     duplicate_tol_inds = calc_spike_half_width(
         #         combined_neuron['waveforms'][chan_select, main_win[0]:main_win[1]],
         #         self.sort_info['clip_width'], self.sort_info['sampling_rate'])
         #     duplicate_tol_inds += self.duplicate_tol_inds
@@ -2064,7 +2064,7 @@ class WorkItemSummary(object):
                 neuron['waveforms'] = neuron['waveforms'][spike_order, :]
                 neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
                 # Remove duplicates found in binary pursuit
-                duplicate_tol_inds = calc_spike_width(
+                duplicate_tol_inds = calc_spike_half_width(
                     neuron['waveforms'][:, neuron['main_win'][channel][0]:neuron['main_win'][channel][1]],
                     self.sort_info['clip_width'], self.sort_info['sampling_rate'])
                 duplicate_tol_inds += self.duplicate_tol_inds

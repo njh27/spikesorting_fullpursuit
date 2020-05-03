@@ -730,10 +730,10 @@ def spike_sort_parallel(Probe, **kwargs):
     if settings['do_ZCA_transform']:
         zca_cushion = (2 * np.ceil(np.amax(np.abs(settings['clip_width'])) \
                      * Probe.sampling_rate)).astype(np.int64)
-        thresholds, _ = single_thresholds_and_samples(Probe.voltage, settings['sigma'])
-        zca_matrix = preprocessing.get_noise_sampled_zca_matrix(Probe.voltage,
-                        thresholds, settings['sigma'],
-                        zca_cushion, n_samples=1e7)
+        # thresholds, _ = single_thresholds_and_samples(Probe.voltage, settings['sigma'])
+        # zca_matrix = preprocessing.get_noise_sampled_zca_matrix(Probe.voltage,
+        #                 thresholds, settings['sigma'],
+        #                 zca_cushion, n_samples=1e7)
 
     # Build the sorting work items
     init_dict['segment_voltages'] = []
@@ -750,10 +750,10 @@ def spike_sort_parallel(Probe, **kwargs):
                                    segment_onsets[x]:segment_offsets[x]]
         if settings['do_ZCA_transform']:
             if settings['verbose']: print("Doing ZCA transform")
-            # thresholds, _ = single_thresholds_and_samples(seg_voltage, settings['sigma'])
-            # zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
-            #                 thresholds, settings['sigma'],
-            #                 zca_cushion, n_samples=1e6)
+            thresholds, _ = single_thresholds_and_samples(seg_voltage, settings['sigma'])
+            zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
+                            thresholds, settings['sigma'],
+                            zca_cushion, n_samples=1e6)
             seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
         thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
         samples_over_thresh.extend(seg_over_thresh)

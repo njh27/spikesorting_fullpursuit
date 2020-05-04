@@ -13,40 +13,52 @@ import matplotlib.pyplot as plt
 
 
 
+def zero_symmetric_ccg(spikes_1, spikes_2, samples_window=40, d_samples=40, return_trains=False):
+    """ Returns the cross correlogram of
+        spikes_2 relative to spikes_1 at each lag from -samples_window to
+        +samples_window in steps of d_samples.  Bins of the CCG are centered
+        at these steps, and so will include a bin centered on lag zero if d_samples
+        divides evently into samples_window.
 
+        This is a more basic version of other CCG functions in that it is made
+        to quickly compute a simple, zero-centered CCG with integer window
+        value and integer step size where the window and step are in UNITS OF
+        SAMPLES!  Remember that CCG is computed over a BINARY spike train,
+        so using excessively large bins will actually cause the overlaps
+        to decrease. """
+    samples_window = int(samples_window)
+    d_samples = int(d_samples)
+    samples_axis = np.arange(-1 * samples_window, samples_window+d_samples, d_samples).astype(np.int64)
+    counts = np.zeros(samples_axis.size, dtype=np.int64)
 
-def remove_across_channel_duplicate_neurons(neuron_summary, overlap_time=2.5e-4, ccg_peak_threshold=2):
-    """ Assumes input neurons list is already sorted from most desireable to least
-        desireable units, because neurons toward the end of neuron summary will be
-        deleted if they violate with neurons to their right.  If consolidation
-        is desired, that should be run first because this will delete neurons that
-        potentially should have been combined. Duplicates are only removed if they
-        are within each other's neighborhoods. """
+    # Convert the spike indices to units of d_samples
+    spikes_1 = (np.floor((spikes_1 + d_samples/2) / d_samples)).astype(np.int64)
+    spikes_2 = (np.floor((spikes_2 + d_samples/2) / d_samples)).astype(np.int64)
+    samples_axis = (np.floor((samples_axis + d_samples/2) / d_samples)).astype(np.int64)
 
-    max_samples = int(round(overlap_time * neuron_summary[0]['sampling_rate']))
-    remove_neuron = [False for x in range(0, len(neuron_summary))]
-    for (i, neuron1) in enumerate(neuron_summary):
-        if remove_neuron[i]:
-            continue
-        for j in range(i+1, len(neuron_summary)):
-            neuron2 = neuron_summary[j]
-            if remove_neuron[j]:
-                continue
-            if np.intersect1d(neuron1['neighbors'], neuron2['neighbors']).size == 0:
-                continue
-            # Check if these two have overlapping spikes, i.e. an unusual peak in their
-            # CCG at extremely fine timescales
-            actual_overlaps = zero_symmetric_ccg(neuron1['spike_indices'], neuron2['spike_indices'], max_samples, max_samples)[0]
-            if (actual_overlaps[1] > ccg_peak_threshold * (actual_overlaps[0] + actual_overlaps[2])):
-                remove_neuron[j] = True
+    # Convert to spike trains
+    train_len = int(max(spikes_1[-1], spikes_2[-1])) + 1 # This is samples, so need to add 1
+    spike_trains_1 = np.zeros(train_len, dtype=np.bool)
+    spike_trains_1[spikes_1] = True
+    spike_trains_2 = np.zeros(train_len, dtype=np.bool)
+    spike_trains_2[spikes_2] = True
 
-    # Remove any offending neurons
-    for n, should_remove in reversed(list(enumerate(remove_neuron))):
-        if should_remove:
-            print("Deleting neuron", n, "for spike violations")
-            del neuron_summary[n]
+    for lag_ind, lag in enumerate(samples_axis):
+        # Construct a timeseries for neuron 2 based on the current spike index as the
+        # zero point
+        if lag > 0:
+            counts[lag_ind] = np.count_nonzero(np.logical_and(spike_trains_1[0:-1*lag],
+                                            spike_trains_2[lag:]))
+        elif lag < 0:
+            counts[lag_ind] = np.count_nonzero(np.logical_and(spike_trains_2[0:lag],
+                                            spike_trains_1[-1*lag:]))
+        else:
+            counts[lag_ind] = np.count_nonzero(np.logical_and(spike_trains_1, spike_trains_2))
 
-    return neuron_summary
+    if return_trains:
+        return counts, samples_axis, spike_trains_1, spike_trains_2
+    else:
+        return counts, samples_axis
 
 
 def find_overlapping_spike_bool(spikes1, spikes2, max_samples=20, except_equal=False):
@@ -76,7 +88,7 @@ def find_overlapping_spike_bool(spikes1, spikes2, max_samples=20, except_equal=F
     return overlapping_spike_bool
 
 
-def keep_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds=1):
+def keep_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds):
     """ Preferentially KEEPS spikes found in binary pursuit.
     """
     keep_bool = np.ones(event_indices.size, dtype=np.bool)
@@ -86,24 +98,71 @@ def keep_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds=1):
         if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
             if new_spike_bool[curr_index] and ~new_spike_bool[next_index]:
                 keep_bool[next_index] = False
-                curr_index = next_index
+                # Move next index, keep current index
+                next_index += 1
             elif ~new_spike_bool[curr_index] and new_spike_bool[next_index]:
                 keep_bool[curr_index] = False
-            elif new_spike_bool[curr_index] and new_spike_bool[next_index]:
-                # Should only be possible for first index?
-                keep_bool[next_index] = False
+                # Move current index to next, move next index
+                curr_index = next_index
+                next_index += 1
             else:
                 # Two spikes with same index, neither from binary pursuit.
                 #  Should be chosen based on templates or some other means.
-                pass
+                # Move both indices to next pair
+                curr_index = next_index
+                next_index += 1
         else:
+            # Move both indices to next pair
             curr_index = next_index
-        next_index += 1
+            next_index += 1
 
     return keep_bool
 
 
-def remove_spike_event_duplicates(event_indices, clips, unit_template, tol_inds=1):
+def remove_binary_pursuit_duplicates(event_indices, clips, unit_template,
+                                     new_spike_bool, tol_inds):
+    """ Preferentially removes overlapping spikes that were both found by binary
+    pursuit. This can remove double dipping artifacts as binary pursuit attempts
+    to minimize residual error. This only applies for data sorted within the
+    same segment and belonging to the same unit, so inputs should reflect that. """
+    keep_bool = np.ones(event_indices.size, dtype=np.bool)
+    temp_sse = np.zeros(2)
+    curr_index = 0
+    next_index = 1
+    while next_index < event_indices.size:
+        if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
+            # Violate window
+            if new_spike_bool[curr_index] and new_spike_bool[next_index]:
+                # AND both found by binary pursuit
+                temp_sse[0] = np.sum((clips[curr_index, :] - unit_template) ** 2)
+                temp_sse[1] = np.sum((clips[next_index, :] - unit_template) ** 2)
+                if temp_sse[0] <= temp_sse[1]:
+                    # current spike is better or equal
+                    keep_bool[next_index] = False
+                    # Move next index, keep current index
+                    next_index += 1
+                else:
+                    # next spike is better
+                    keep_bool[curr_index] = False
+                    # Move current index to next, move next index
+                    curr_index = next_index
+                    next_index += 1
+            elif new_spike_bool[curr_index] and ~new_spike_bool[next_index]:
+                # Move next index, keep current index
+                next_index += 1
+            else:
+                # Move current index to next, move next index
+                curr_index = next_index
+                next_index += 1
+        else:
+            # Move both indices to next pair
+            curr_index = next_index
+            next_index += 1
+
+    return keep_bool
+
+
+def remove_spike_event_duplicates(event_indices, clips, unit_template, tol_inds):
     """
     """
     keep_bool = np.ones(event_indices.size, dtype=np.bool)
@@ -117,34 +176,43 @@ def remove_spike_event_duplicates(event_indices, clips, unit_template, tol_inds=
             if temp_sse[0] <= temp_sse[1]:
                 # current spike is better or equal
                 keep_bool[next_index] = False
+                # Move next index, keep current index
                 next_index += 1
             else:
                 # next spike is better
                 keep_bool[curr_index] = False
+                # Move current index to next, move next index
                 curr_index = next_index
                 next_index += 1
         else:
+            # Move both indices to next pair
             curr_index = next_index
             next_index += 1
 
     return keep_bool
 
 
-def remove_spike_event_duplicates_across_chans(event_indices, clips, thresholds,
-                                               tol_inds=1):
+def remove_spike_event_duplicates_across_chans(combined_neuron):
     """
     """
+    event_indices = combined_neuron['spike_indices']
     keep_bool = np.ones(event_indices.size, dtype=np.bool)
+    temp_sse = np.zeros(2)
     curr_index = 0
     next_index = 1
     while next_index < event_indices.size:
-        if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
-            curr_thresh_ratio = (np.amax(clips[curr_index, :]) - np.amin(clips[curr_index, :])) \
-                                / thresholds[curr_index]
-            next_thresh_ratio = (np.amax(clips[next_index, :]) - np.amin(clips[next_index, :])) \
-                                / thresholds[next_index]
-            # Choose the clip with higher signal to threshold ratio
-            if curr_thresh_ratio >= next_thresh_ratio:
+        if event_indices[next_index] - event_indices[curr_index] <= combined_neuron['duplicate_tol_inds']:
+            # Compare each spike to the template for its own channel and choose
+            # the one that matches its own assigned template/channel best
+            curr_chan, next_chan = None, None
+            for chan in combined_neuron['channel_selector'].keys():
+                if combined_neuron['channel_selector'][chan][curr_index]:
+                    curr_chan = chan
+                if combined_neuron['channel_selector'][chan][next_index]:
+                    next_chan = chan
+            temp_sse[0] = np.sum((combined_neuron['waveforms'][curr_index, :] - combined_neuron['template'][curr_chan]) ** 2)
+            temp_sse[1] = np.sum((combined_neuron['waveforms'][next_index, :] - combined_neuron['template'][next_chan]) ** 2)
+            if temp_sse[0] <= temp_sse[1]:
                 # current spike is better or equal
                 keep_bool[next_index] = False
                 next_index += 1
@@ -178,56 +246,6 @@ def compute_spike_trains(spike_indices_list, bin_width_samples, min_max_samples)
         spike_trains_list[ind][spikes] = True
 
     return spike_trains_list if len(spike_trains_list) > 1 else spike_trains_list[0]
-
-
-def zero_symmetric_ccg(spikes_1, spikes_2, samples_window=40, d_samples=40, return_trains=False):
-    """ Returns the cross correlogram of
-        spikes_2 relative to spikes_1 at each lag from -samples_window to
-        +samples_window in steps of d_samples.  Bins of the CCG are centered
-        at these steps, and so will include a bin centered on lag zero if d_samples
-        divides evently into samples_window.
-
-        This is a more basic version of other CCG functions in that it is made
-        to quickly compute a simple, zero-centered CCG with integer window
-        value and integer step size where the window and step are in UNITS OF
-        SAMPLES!  Remember that CCG is computed over a BINARY spike train,
-        so using excessively large bins will actually cause the overlaps
-        to decrease. """
-
-    samples_window = int(samples_window)
-    d_samples = int(d_samples)
-    samples_axis = np.arange(-1 * samples_window, samples_window+d_samples, d_samples).astype(np.int64)
-    counts = np.zeros(samples_axis.size, dtype=np.int64)
-
-    # Convert the spike indices to units of d_samples
-    spikes_1 = (np.floor((spikes_1 + d_samples/2) / d_samples)).astype(np.int64)
-    spikes_2 = (np.floor((spikes_2 + d_samples/2) / d_samples)).astype(np.int64)
-    samples_axis = (np.floor((samples_axis + d_samples/2) / d_samples)).astype(np.int64)
-
-    # Convert to spike trains
-    train_len = int(max(spikes_1[-1], spikes_2[-1])) + 1 # This is samples, so need to add 1
-
-    spike_trains_1 = np.zeros(train_len, dtype=np.bool)
-    spike_trains_1[spikes_1] = True
-    spike_trains_2 = np.zeros(train_len, dtype=np.bool)
-    spike_trains_2[spikes_2] = True
-
-    for lag_ind, lag in enumerate(samples_axis):
-        # Construct a timeseries for neuron 2 based on the current spike index as the
-        # zero point
-        if lag > 0:
-            counts[lag_ind] = np.count_nonzero(np.logical_and(spike_trains_1[0:-1*lag],
-                                            spike_trains_2[lag:]))
-        elif lag < 0:
-            counts[lag_ind] = np.count_nonzero(np.logical_and(spike_trains_2[0:lag],
-                                            spike_trains_1[-1*lag:]))
-        else:
-            counts[lag_ind] = np.count_nonzero(np.logical_and(spike_trains_1, spike_trains_2))
-
-    if return_trains:
-        return counts, samples_axis, spike_trains_1, spike_trains_2
-    else:
-        return counts, samples_axis
 
 
 def calculate_expected_overlap(n1, n2, overlap_time, sampling_rate):
@@ -271,33 +289,6 @@ def calc_spike_half_width(clips, clip_width, sampling_rate):
     return spike_width
 
 
-def calc_duplicate_tol_inds(spike_indices, sampling_rate,
-                            absolute_refractory_period, clip_width):
-    all_isis = np.diff(spike_indices)
-    refractory_inds = int(round(absolute_refractory_period * sampling_rate))
-    clip_inds = int(round(np.amax(np.abs(clip_width)) * sampling_rate))
-    bin_edges = np.arange(0, 2*refractory_inds + 1, 1)
-    counts, xval = np.histogram(all_isis, bin_edges)
-    if refractory_inds - clip_inds < 2:
-        raise ValueError("REFRACTORY AND CLIP INDICES ARE BASICALLY EQUAL! I should probably fix this...")
-    mean_obs = np.mean(counts[clip_inds:refractory_inds+1])
-    mean_std = np.std(counts[clip_inds:refractory_inds+1])
-    for c_ind in range(clip_inds, -1, -1):
-        # NOTE: this stops at 0!
-        if (counts[c_ind] < mean_obs - 3*mean_std) \
-            or (counts[c_ind] > mean_obs + 3*mean_std):
-            break
-    duplicate_tol_inds = c_ind+1
-    adjusted_num_isi_violations = np.sum(counts[duplicate_tol_inds:refractory_inds+1])
-    # print("Values were", duplicate_tol_inds, mean_obs, mean_std, clip_inds, refractory_inds, adjusted_num_isi_violations)
-    # plt.bar(xval[0:-1], counts, width=xval[1]-xval[0], align='edge')
-    # plt.xlim([0, 70])
-    # plt.axvline(duplicate_tol_inds)
-    # plt.show()
-
-    return duplicate_tol_inds, adjusted_num_isi_violations
-
-
 def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
                          absolute_refractory_period, check_window=0.5):
     all_isis = np.diff(spike_indices)
@@ -313,21 +304,12 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
     counts, xval = np.histogram(all_isis, bin_edges)
     isi_peak = np.amax(counts)
     num_isi_violations = counts[0]
-    # num_isi_violations = np.count_nonzero(all_isis < refractory_inds)
-    # n_duplicates = np.count_nonzero(all_isis <= duplicate_tol_inds)
-    # num_isi_violations -= n_duplicates
-    # num_isi_violations = adjusted_num_isi_violations
     if num_isi_violations < 0:
         num_isi_violations = 0
     if isi_peak == 0:
         isi_peak = max(num_isi_violations, 1.)
     fraction_mua_to_peak = num_isi_violations / isi_peak
 
-    # print("Values were", num_isi_violations, isi_peak, n_duplicates, bin_width, refractory_inds)
-    # plt.bar(xval[0:-1], counts, width=xval[1]-xval[0], align='edge')
-    # plt.xlim([0, 70])
-    # plt.axvline(duplicate_tol_inds)
-    # plt.show()
     return fraction_mua_to_peak
 
 
@@ -378,34 +360,35 @@ def fraction_mua(spike_indices, sampling_rate, duplicate_tol_inds,
 
 
 class WorkItemSummary(object):
-    """
+    """ Main class that handles and organizes output of spike_sort function.
     """
     def __init__(self, sort_data, work_items, sort_info,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
                  max_mua_ratio=0.05, n_max_merge_test_clips=None,
                  merge_test_overlap_indices=None, min_overlapping_spikes=.5,
                  verbose=False):
-
         self.check_input_data(sort_data, work_items)
         self.sort_info = sort_info
+        # These are used so frequently they are aliased for convenience
         self.n_chans = self.sort_info['n_channels']
         self.n_segments = self.sort_info['n_segments']
-        self.duplicate_tol_inds = duplicate_tol_inds
+        self.duplicate_tol_inds = duplicate_tol_inds # Added to spike half width for duplicates
         self.absolute_refractory_period = absolute_refractory_period
         self.max_mua_ratio = max_mua_ratio
         self.n_max_merge_test_clips = n_max_merge_test_clips
         if n_max_merge_test_clips is None:
+            # Setting to np.inf uses all clips in overlap indices
             self.n_max_merge_test_clips = np.inf
         if merge_test_overlap_indices is None:
+            # Use full overlap window by default
             merge_test_overlap_indices = work_items[0]['overlap']
         self.merge_test_overlap_indices = merge_test_overlap_indices
         self.min_overlapping_spikes = min_overlapping_spikes
         self.is_stitched = False # Repeated stitching can change results so track
-        self.last_overlap_ratio_threshold = np.inf
+        self.last_overlap_ratio_threshold = np.inf # Track how much overlap deleted units
         self.verbose = verbose
-        # Organize sort_data to be arranged by channel and segment.
+        # Organize sort_data to be arranged for stitching and summarizing
         self.organize_sort_data()
-        # Put all segment data in temporal order
         self.temporal_order_sort_data()
         self.delete_mua_units()
 
@@ -429,10 +412,8 @@ class WorkItemSummary(object):
                 if len(s_data[di]) == 0:
                     empty_count += 1
                 else:
-                    pass
                     # This is caught below by empty_count !=4 ...
-                    # if s_data[di].shape[0] != n_spikes:
-                    #     raise ValueError("Every data element of sort_data list must indicate the same number of spikes. Element", w_item['ID'], "does not.")
+                    pass
             if empty_count > 0:
                 # Require that if any data element is empty, all are empty (this
                 # is how they should be coming out of sorter)
@@ -510,7 +491,7 @@ class WorkItemSummary(object):
                 self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][spike_order]
 
     def get_snr(self, chan, seg, full_template):
-        # Get SNR on the main channel
+        """ Get SNR on the main channel. """
         background_noise_std = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['chan_neighbor_ind']] / self.sort_info['sigma']
         main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][seg]['chan_neighbor_ind'],
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
@@ -519,7 +500,7 @@ class WorkItemSummary(object):
         return temp_range / (3 * background_noise_std)
 
     def delete_label(self, chan, seg, label):
-        """ Remove this unit corresponding to label from current segment. """
+        """ Remove the unit corresponding to label from current segment. """
         keep_indices = self.sort_data[chan][seg][1] != label
         self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][keep_indices]
         self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][keep_indices]
@@ -1201,12 +1182,27 @@ class WorkItemSummary(object):
                     neuron['waveforms'] = neuron['waveforms'][spike_order, :]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
 
+                    # Remove possible duplicate errors caused by failure of binary
+                    # pursuit being too aggressive. Force spikes within this unit
+                    # found by binary pursuit to obey a skip time equal to the
+                    # bigger part of clip width
+                    skip_time = np.amax(np.abs(self.sort_info['clip_width']))
+                    skip_indices = int(round(skip_time * self.sort_info['sampling_rate']))
+                    keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"],
+                                    neuron['waveforms'],
+                                    np.mean(neuron['waveforms'], axis=0),
+                                    neuron["new_spike_bool"], skip_indices)
+                    neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                    neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
+                    neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
+
                     duplicate_tol_inds = calc_spike_half_width(
                         neuron['waveforms'][:, neuron['main_win'][0]:neuron['main_win'][1]],
                         self.sort_info['clip_width'], self.sort_info['sampling_rate'])
                     duplicate_tol_inds += self.duplicate_tol_inds
                     neuron['duplicate_tol_inds'] = duplicate_tol_inds
-                    # Remove duplicates found in binary pursuit
+                    # Keep duplicates found in binary pursuit since it can reject
+                    # false positives
                     keep_bool = keep_binary_pursuit_duplicates(neuron["spike_indices"],
                                     neuron["new_spike_bool"],
                                     tol_inds=duplicate_tol_inds)
@@ -1642,6 +1638,7 @@ class WorkItemSummary(object):
                 shift = np.argmax(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
             else:
                 shift = np.argmin(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
+            shift = np.argmax(np.abs(unit['template'][unit['main_win'][0]:unit['main_win'][1]])) - waveform_clip_center
 
             indices_by_unit.append(unit['spike_indices'] + shift)
             waveforms_by_unit.append(unit['waveforms'])
@@ -1700,20 +1697,24 @@ class WorkItemSummary(object):
         snr_by_unit = snr_by_unit[keep_bool]
 
         # Get each spike's channel of origin and the waveforms on main channel
-        main_waveforms = np.zeros((combined_neuron['waveforms'].shape[0], self.sort_info['n_samples_per_chan']))
+        # main_waveforms = np.zeros((combined_neuron['waveforms'].shape[0], self.sort_info['n_samples_per_chan']))
         combined_neuron['channel_selector'] = {}
+        combined_neuron["template"] = {}
         for chan in combined_neuron['channel']:
             chan_select = channel_selector == chan
             combined_neuron['channel_selector'][chan] = chan_select
-            main_win = combined_neuron['main_windows'][chan]
-            main_waveforms[chan_select, :] = combined_neuron['waveforms'][chan_select, main_win[0]:main_win[1]]
+            # main_win = combined_neuron['main_windows'][chan]
+            # main_waveforms[chan_select, :] = combined_neuron['waveforms'][chan_select, main_win[0]:main_win[1]]
+            combined_neuron["template"][chan] = np.mean(
+                combined_neuron['waveforms'][chan_select, :], axis=0)
 
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping
         # the waveform with largest peak-value to threshold ratio on its main
         # channel
-        keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron["spike_indices"],
-                        main_waveforms, threshold_by_unit, tol_inds=combined_neuron['duplicate_tol_inds'])
+        # keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron["spike_indices"],
+        #                 main_waveforms, threshold_by_unit, tol_inds=combined_neuron['duplicate_tol_inds'])
+        keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
         combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]
         combined_neuron['waveforms'] = combined_neuron['waveforms'][keep_bool, :]

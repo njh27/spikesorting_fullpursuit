@@ -366,7 +366,7 @@ class WorkItemSummary(object):
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
                  max_mua_ratio=0.05, n_max_merge_test_clips=None,
                  merge_test_overlap_indices=None, min_overlapping_spikes=.5,
-                 verbose=False):
+                 binary_pursuit_skip_time='clip_width', verbose=False):
         self.check_input_data(sort_data, work_items)
         self.sort_info = sort_info
         # These are used so frequently they are aliased for convenience
@@ -390,6 +390,14 @@ class WorkItemSummary(object):
         # Organize sort_data to be arranged for stitching and summarizing
         self.organize_sort_data()
         self.temporal_order_sort_data()
+        if binary_pursuit_skip_time is None:
+            self.binary_pursuit_skip_time = 0
+        elif binary_pursuit_skip_time == 'clip_width':
+            self.binary_pursuit_skip_time = sort_info['clip_width'][1] - sort_info['clip_width'][0]
+        else:
+            self.binary_pursuit_skip_time = binary_pursuit_skip_time
+        if self.binary_pursuit_skip_time > 0:
+            self.remove_segment_binary_pursuit_duplicates()
         self.delete_mua_units()
 
     def check_input_data(self, sort_data, work_items):
@@ -490,6 +498,50 @@ class WorkItemSummary(object):
                 self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][spike_order, :]
                 self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][spike_order]
 
+    def delete_mua_units(self):
+        min_removed_mua = np.inf
+        min_removed_mua_chan = None
+        min_removed_mua_seg = None
+        for chan in range(0, self.n_chans):
+            for seg in range(0, self.n_segments):
+                # NOTE: This will just skip if no data in segment
+                for l in np.unique(self.sort_data[chan][seg][1]):
+                    mua_ratio = self.get_fraction_mua_to_peak(chan, seg, l)
+                    if mua_ratio > self.max_mua_ratio:
+                        self.delete_label(chan, seg, l)
+                        if mua_ratio < min_removed_mua:
+                            min_removed_mua = mua_ratio
+                            min_removed_mua_chan = chan
+                            min_removed_mua_seg = seg
+        print("Least MUA removed was", min_removed_mua, "on channel", min_removed_mua_chan, "segment", min_removed_mua_seg)
+
+    def remove_segment_binary_pursuit_duplicates(self):
+        """ Removes overlapping spikes that were both found by binary
+        pursuit. This can remove double dipping artifacts as binary pursuit attempts
+        to minimize residual error. This only applies for data sorted within the
+        same segment and belonging to the same unit, so inputs should reflect that. """
+        skip_indices = int(round(self.binary_pursuit_skip_time * self.sort_info['sampling_rate']))
+        for chan in range(0, self.n_chans):
+            for seg in range(0, self.n_segments):
+                if len(self.sort_data[chan][seg][0]) == 0:
+                    # No data in this segment
+                    continue
+                keep_bool = np.ones(self.sort_data[chan][seg][0].shape[0], dtype=np.bool)
+                for l in np.unique(self.sort_data[chan][seg][1]):
+                    unit_select = self.sort_data[chan][seg][1] == l
+                    keep_bool[unit_select] = remove_binary_pursuit_duplicates(
+                            self.sort_data[chan][seg][0][unit_select],
+                            self.sort_data[chan][seg][2][unit_select, :],
+                            np.mean(self.sort_data[chan][seg][2][unit_select, :], axis=0),
+                            self.sort_data[chan][seg][3][unit_select],
+                            skip_indices)
+                # NOTE: If all items are deleted, data will become empty numpy array
+                # rather than the empty list style of original input
+                self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][keep_bool]
+                self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][keep_bool]
+                self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][keep_bool, :]
+                self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][keep_bool]
+
     def get_snr(self, chan, seg, full_template):
         """ Get SNR on the main channel. """
         background_noise_std = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['chan_neighbor_ind']] / self.sort_info['sigma']
@@ -501,6 +553,8 @@ class WorkItemSummary(object):
 
     def delete_label(self, chan, seg, label):
         """ Remove the unit corresponding to label from current segment. """
+        # NOTE: If all items are deleted, data will become empty numpy array
+        # rather than the empty list style of original input
         keep_indices = self.sort_data[chan][seg][1] != label
         self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][keep_indices]
         self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][keep_indices]
@@ -608,22 +662,6 @@ class WorkItemSummary(object):
         fraction_mua_to_peak = num_isi_violations / isi_peak
 
         return fraction_mua_to_peak
-
-    def delete_mua_units(self):
-        min_removed_mua = np.inf
-        min_removed_mua_chan = None
-        min_removed_mua_seg = None
-        for chan in range(0, self.n_chans):
-            for seg in range(0, self.n_segments):
-                for l in np.unique(self.sort_data[chan][seg][1]):
-                    mua_ratio = self.get_fraction_mua_to_peak(chan, seg, l)
-                    if mua_ratio > self.max_mua_ratio:
-                        self.delete_label(chan, seg, l)
-                        if mua_ratio < min_removed_mua:
-                            min_removed_mua = mua_ratio
-                            min_removed_mua_chan = chan
-                            min_removed_mua_seg = seg
-        print("Least MUA removed was", min_removed_mua, "on channel", min_removed_mua_chan, "segment", min_removed_mua_seg)
 
     def merge_test_two_units(self, clips_1, clips_2, p_cut, method='template_pca',
                              split_only=False, merge_only=False, curr_chan_inds=None):
@@ -1182,19 +1220,19 @@ class WorkItemSummary(object):
                     neuron['waveforms'] = neuron['waveforms'][spike_order, :]
                     neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
 
-                    # Remove possible duplicate errors caused by failure of binary
-                    # pursuit being too aggressive. Force spikes within this unit
-                    # found by binary pursuit to obey a skip time equal to the
-                    # bigger part of clip width
-                    skip_time = self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]
-                    skip_indices = int(round(skip_time * self.sort_info['sampling_rate']))
-                    keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"],
-                                    neuron['waveforms'],
-                                    np.mean(neuron['waveforms'], axis=0),
-                                    neuron["new_spike_bool"], skip_indices)
-                    neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                    neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
-                    neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
+                    # # Remove possible duplicate errors caused by failure of binary
+                    # # pursuit being too aggressive. Force spikes within this unit
+                    # # found by binary pursuit to obey a skip time equal to the
+                    # # bigger part of clip width
+                    # skip_time = self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]
+                    # skip_indices = int(round(skip_time * self.sort_info['sampling_rate']))
+                    # keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"],
+                    #                 neuron['waveforms'],
+                    #                 np.mean(neuron['waveforms'], axis=0),
+                    #                 neuron["new_spike_bool"], skip_indices)
+                    # neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                    # neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
+                    # neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
 
                     duplicate_tol_inds = calc_spike_half_width(
                         neuron['waveforms'][:, neuron['main_win'][0]:neuron['main_win'][1]],

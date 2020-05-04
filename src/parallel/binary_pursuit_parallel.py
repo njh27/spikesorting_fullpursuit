@@ -314,11 +314,16 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                 for chan in range(0, n_neighbor_chans):
                     cv_win = [chan * (stop_index - start_index),
                               chan * (stop_index - start_index) + (stop_index - start_index)]
+                    # spike_biases[n*n_neighbor_chans + chan] = np.float32(
+                    #                 np.median(np.abs(fftconvolve(
+                    #                 residual_voltage[cv_win[0]:cv_win[1]],
+                    #                 fft_kernels[n*n_neighbor_chans + chan],
+                    #                 mode='same'))))
                     spike_biases[n*n_neighbor_chans + chan] = np.float32(
-                                    np.median(np.abs(fftconvolve(
+                                    np.quantile(fftconvolve(
                                     residual_voltage[cv_win[0]:cv_win[1]],
                                     fft_kernels[n*n_neighbor_chans + chan],
-                                    mode='same'))))
+                                    mode='same'), (1 - 0.05)**n_neighbor_chans, interpolation='lower'))
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage

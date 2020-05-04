@@ -1186,7 +1186,7 @@ class WorkItemSummary(object):
                     # pursuit being too aggressive. Force spikes within this unit
                     # found by binary pursuit to obey a skip time equal to the
                     # bigger part of clip width
-                    skip_time = np.amax(np.abs(self.sort_info['clip_width']))
+                    skip_time = self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]
                     skip_indices = int(round(skip_time * self.sort_info['sampling_rate']))
                     keep_bool = remove_binary_pursuit_duplicates(neuron["spike_indices"],
                                     neuron['waveforms'],

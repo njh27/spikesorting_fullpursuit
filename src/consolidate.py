@@ -1406,7 +1406,7 @@ class WorkItemSummary(object):
             if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
                 print("Both units had BAD MUA")
                 # MUA calculation was invalid so just use SNR
-                if (neuron_1['snr'] > neuron_2['snr']):
+                if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):
                     print("neuron 1 has higher SNR", neuron_1['snr'] , neuron_2['snr'])
                     delete_2 = True
                 else:
@@ -1415,24 +1415,24 @@ class WorkItemSummary(object):
                 # MUA calculation was invalid for one unit so pick the other
                 print("One unit had BAD MUA")
                 if neuron_1['fraction_mua'] < 0:
-                    delete_2 = True
-                else:
                     delete_1 = True
-            elif neuron_1['fraction_mua'] < 1e-4 and neuron_2['fraction_mua'] < 1e-4:
-                # Both MUA negligible so choose most spikes
-                print("Both MUA negligible so choosing most spikes")
-                if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
-                    delete_2 = True
                 else:
-                    delete_1 = True
-            elif ((1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]
-                   > 1.1*(1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]):
+                    delete_2 = True
+            # elif neuron_1['fraction_mua'] < 1e-4 and neuron_2['fraction_mua'] < 1e-4:
+            #     # Both MUA negligible so choose most spikes
+            #     print("Both MUA negligible so choosing most spikes")
+            #     if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
+            #         delete_2 = True
+            #     else:
+            #         delete_1 = True
+            elif (neuron_1['snr'] * (1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]
+                   > neuron_2['snr'] * (1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]):
                 # Neuron 1 has higher MUA weighted spikes
                 print('Neuron 1 has higher MUA weighted spikes')
                 # print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_2 = True
-            elif ((1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]
-                   > 1.1*(1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]):
+            elif (neuron_2['snr'] * (1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]
+                   > neuron_1['snr'] * (1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]):
                 # Neuron 2 has higher MUA weighted spikes
                 print('Neuron 2 has higher MUA weighted spikes')
                 # print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
@@ -1676,7 +1676,7 @@ class WorkItemSummary(object):
                 shift = np.argmax(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
             else:
                 shift = np.argmin(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
-            shift = np.argmax(np.abs(unit['template'][unit['main_win'][0]:unit['main_win'][1]])) - waveform_clip_center
+            shift = 0#np.argmax(np.abs(unit['template'][unit['main_win'][0]:unit['main_win'][1]])) - waveform_clip_center
 
             indices_by_unit.append(unit['spike_indices'] + shift)
             waveforms_by_unit.append(unit['waveforms'])

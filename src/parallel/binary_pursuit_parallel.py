@@ -311,6 +311,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                 # spike_probability = chunk_crossings.shape[0] / (stop_index - start_index)
                 # gamma[n] = np.float32(-1 * np.log(spike_probability) + np.log(1 - spike_probability))
                 gamma[n] = np.float32(0) # Ignore spike probability
+                neighbor_bias = np.zeros(probe_dict['n_samples'], dtype=np.float32)
                 for chan in range(0, n_neighbor_chans):
                     cv_win = [chan * (stop_index - start_index),
                               chan * (stop_index - start_index) + (stop_index - start_index)]

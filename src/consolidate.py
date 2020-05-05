@@ -1645,6 +1645,7 @@ class WorkItemSummary(object):
         chan_align_peak = {}
         n_total_spikes = 0
         n_peak = 0
+        max_clip_samples = 0
         for x in unit_dicts_list:
             n_total_spikes += x['spike_indices'].shape[0]
             if x['channel'] not in combined_neuron['channel']:
@@ -1653,6 +1654,8 @@ class WorkItemSummary(object):
                 combined_neuron['chan_neighbor_ind'][x['channel']] = x['chan_neighbor_ind']
                 combined_neuron['main_windows'][x['channel']] = x['main_win']
                 chan_align_peak[x['channel']] = [0, 0] # [Peak votes, total]
+                if x['waveforms'].shape[1] > max_clip_samples:
+                    max_clip_samples = x['waveforms'].shape[1]
             if x['duplicate_tol_inds'] > combined_neuron['duplicate_tol_inds']:
                 combined_neuron['duplicate_tol_inds'] = x['duplicate_tol_inds']
             if np.amax(x['template'][x['main_win'][0]:x['main_win'][1]]) \
@@ -1701,8 +1704,20 @@ class WorkItemSummary(object):
         segment_by_unit = np.hstack(segment_by_unit)
         snr_by_unit = np.hstack(snr_by_unit)
         combined_neuron["spike_indices"] = np.hstack(indices_by_unit)
-        combined_neuron['waveforms'] = np.vstack(waveforms_by_unit)
+        # Need to account for fact that different channels can have different
+        # neighborhood sizes. So make all waveforms start from beginning, and
+        # remainder zeroed out if it has no data
+        combined_neuron['waveforms'] = np.zeros((combined_neuron["spike_indices"].shape[0], max_clip_samples))
+        wave_start_ind = 0
+        for waves in waveforms_by_unit:
+            combined_neuron['waveforms'][wave_start_ind:waves.shape[0]+wave_start_ind, 0:waves.shape[1]] = waves
+            wave_start_ind += waves.shape[0]
         combined_neuron["new_spike_bool"] = np.hstack(new_spike_bool_by_unit)
+
+        # Cleanup some memory that wasn't overwritten during concatenation
+        del indices_by_unit
+        del waveforms_by_unit
+        del new_spike_bool_by_unit
 
         # NOTE: This still needs to be done even though segments
         # were ordered because of overlap!
@@ -1822,8 +1837,12 @@ class WorkItemSummary(object):
             if len(self.neuron_summary_by_seg[start_seg]) == 0:
                 start_seg += 1
                 continue
+            # All units in first seg previous link to None
+            for n in self.neuron_summary_by_seg[start_seg]:
+                n['prev_seg_link'] = None
             break
-        start_new_seg = True
+
+        start_new_seg = False
         for seg in range(start_seg, self.n_segments-1):
             if len(self.neuron_summary_by_seg[seg]) == 0:
                 start_new_seg = True

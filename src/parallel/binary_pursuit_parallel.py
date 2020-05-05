@@ -315,26 +315,14 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                 for chan in range(0, n_neighbor_chans):
                     cv_win = [chan * (stop_index - start_index),
                               chan * (stop_index - start_index) + (stop_index - start_index)]
-                    if chan == master_channel_index:
-                        # Master channel bias is more strict and unrelated to
-                        # calculations on other channels
-                        spike_biases[n*n_neighbor_chans + chan] = np.float32(
-                                        np.median(np.abs(fftconvolve(
-                                        residual_voltage[cv_win[0]:cv_win[1]],
-                                        fft_kernels[n*n_neighbor_chans + chan],
-                                        mode='same'))))
-                    else:
-                        # Joint bias across all other neighborhood channels
-                        neighbor_bias += np.float32(fftconvolve(
-                                    residual_voltage[cv_win[0]:cv_win[1]],
-                                    fft_kernels[n*n_neighbor_chans + chan],
-                                    mode='same'))
+                    neighbor_bias += np.float32(fftconvolve(
+                                residual_voltage[cv_win[0]:cv_win[1]],
+                                fft_kernels[n*n_neighbor_chans + chan],
+                                mode='same'))
                 # Not actually necessary to split this up evenly among the
                 # neighborhood channels but somewhat logically pleasing
-                use_neighbor_bias = np.quantile(neighbor_bias, .95, interpolation='lower') / (n_neighbor_chans - 1)
+                use_neighbor_bias = (np.quantile(neighbor_bias, .95, interpolation='lower')) / (n_neighbor_chans)
                 for chan in range(0, n_neighbor_chans):
-                    if chan == master_channel_index:
-                        continue
                     spike_biases[n*n_neighbor_chans + chan] = use_neighbor_bias
 
             # Delete stuff no longer needed for this chunk

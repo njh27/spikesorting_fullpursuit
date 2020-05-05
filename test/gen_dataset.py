@@ -43,21 +43,46 @@ dict_other_templates = {'upsidedown_47a': np.array(
         0.17122906,  0.19176712,  0.20754389])}
 
 
+class TestSingleElectrode(electrode.AbstractProbe):
+
+    def __init__(self, sampling_rate, voltage_array):
+        electrode.AbstractProbe.__init__(self, sampling_rate, 1, voltage_array=voltage_array)
+
+    def get_neighbors(self, channel):
+        """ Test probe neighbor function simple returns an array of all channel numbers.
+            """
+        return np.zeros(1, dtype=np.int64)
+
+
+class TestTetrode(electrode.AbstractProbe):
+
+    def __init__(self, sampling_rate, voltage_array):
+        if num_channels is None:
+            num_channels = voltage_array.shape[1]
+        electrode.AbstractProbe.__init__(self, sampling_rate, 4, voltage_array=voltage_array)
+
+    def get_neighbors(self, channel):
+        """ Test probe neighbor function simple returns an array of all channel numbers.
+            """
+        start = 0
+        stop = 4
+
+        return np.arange(start, stop)
+
+
 class TestProbe(electrode.AbstractProbe):
 
     def __init__(self, sampling_rate, voltage_array, num_channels=None):
         if num_channels is None:
             num_channels = voltage_array.shape[1]
+        self.num_channels = num_channels
         electrode.AbstractProbe.__init__(self, sampling_rate, num_channels, voltage_array=voltage_array)
 
     def get_neighbors(self, channel):
         """ Test probe neighbor function simple returns an array of all channel numbers.
             """
-
-        # start = max(channel - 2, 0)
-        # stop = min(channel + 3, 4)
-        start = 0
-        stop = 4
+        start = max(channel - 2, 0)
+        stop = min(channel + 3, self.num_channels)
 
         return np.arange(start, stop)
 
@@ -283,7 +308,8 @@ class TestDataset(object):
         for key in kwargs:
             spike_sort_kwargs[key] = kwargs[key]
 
-        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
+        # self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
+        self.Probe = TestSingleElectrode(self.samples_per_second, self.voltage_array)
         sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **spike_sort_kwargs)
 
         return sort_data, work_items, sort_info

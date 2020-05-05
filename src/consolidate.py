@@ -1326,29 +1326,18 @@ class WorkItemSummary(object):
         neurons = self.neuron_summary_by_seg[seg]
         max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
 
-        # Create list of sets of excessive neuron overlap between all pairwise units
-        violation_partners = [set() for x in range(0, len(neurons))]
-        for n1_ind, n1 in enumerate(neurons):
-            violation_partners[n1_ind].add(n1_ind)
-            for n2_ind in range(n1_ind+1, len(neurons)):
-                n2 = neurons[n2_ind]
-                if n1['channel'] not in n2['neighbors']:
-                    continue
-                violation_partners[n1_ind].add(n2_ind)
-                violation_partners[n2_ind].add(n1_ind)
-
         overlap_ratio = np.zeros((len(neurons), len(neurons)))
         expected_ratio = np.zeros((len(neurons), len(neurons)))
         for neuron1_ind, neuron1 in enumerate(neurons):
-            # Loop through all violators with neuron1
-            # We already know these neurons are in each other's neighborhood
-            # because violation_partners only includes neighbors
-            for neuron2_ind in violation_partners[neuron1_ind]:
+            # Loop through all pairs of units and compute overlap and expected
+            for neuron2_ind in range(0, len(neurons)):
                 if neuron2_ind <= neuron1_ind:
                     continue # Since our costs are symmetric, we only need to check indices greater than neuron1_ind
                 neuron2 = neurons[neuron2_ind]
                 if neuron1['channel'] == neuron2['channel']:
                     continue # If they are on the same channel, do nothing
+                if neuron1['channel'] not in neuron2['neighbors']:
+                    continue # If they are not in same neighborhood, do nothing
                 overlap_ratio[neuron1_ind, neuron2_ind] = self.get_overlap_ratio(
                                         seg, neuron1_ind, seg, neuron2_ind, overlap_time)
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
@@ -1359,6 +1348,19 @@ class WorkItemSummary(object):
                 expected_misses = min(neuron1['spike_indices'].shape[0], neuron2['spike_indices'].shape[0]) - expected_hits
                 expected_ratio[neuron1_ind, neuron2_ind] = expected_hits / (expected_hits + expected_misses)
                 expected_ratio[neuron2_ind, neuron1_ind] = expected_ratio[neuron1_ind, neuron2_ind]
+
+        # Create list of sets of excessive neuron overlap between all pairwise units
+        violation_partners = [set() for x in range(0, len(neurons))]
+        for n1_ind, n1 in enumerate(neurons):
+            violation_partners[n1_ind].add(n1_ind)
+            for n2_ind in range(n1_ind+1, len(neurons)):
+                n2 = neurons[n2_ind]
+                if n1['channel'] not in n2['neighbors']:
+                    continue
+                if (overlap_ratio[n1_ind, n2_ind] >=
+                    overlap_ratio_threshold * expected_ratio[n1_ind, n2_ind]):
+                    violation_partners[n1_ind].add(n2_ind)
+                    violation_partners[n2_ind].add(n1_ind)
 
         neurons_remaining_indices = [x for x in range(0, len(neurons))]
         max_accepted = 0.
@@ -1393,6 +1395,10 @@ class WorkItemSummary(object):
             # We now need to choose one of the pair to delete.
             neuron_1 = neurons[best_pair[0]]
             neuron_2 = neurons[best_pair[1]]
+            neuron_1_score = neuron_1['snr'] * (1-neuron_1['fraction_mua']) \
+                             * neuron_1['spike_indices'].shape[0] / len(violation_partners[best_pair[0]])
+            neuron_2_score = neuron_2['snr'] * (1-neuron_2['fraction_mua']) \
+                             * neuron_2['spike_indices'].shape[0] / len(violation_partners[best_pair[1]])
             delete_1 = False
             delete_2 = False
             """First doing the MUA and spike number checks because at this point
@@ -1403,7 +1409,7 @@ class WorkItemSummary(object):
             low MUA can indicate good isolation, or perhaps that the unit has a
             very small number of spikes. So we first consider MUA and spike
             count jointly before deferring to SNR. """
-            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
+            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] <= 0:
                 print("Both units had BAD MUA")
                 # MUA calculation was invalid so just use SNR
                 if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):
@@ -1425,14 +1431,12 @@ class WorkItemSummary(object):
             #         delete_2 = True
             #     else:
             #         delete_1 = True
-            elif (neuron_1['snr'] * (1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]
-                   > neuron_2['snr'] * (1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]):
+            elif neuron_1_score > neuron_2_score:
                 # Neuron 1 has higher MUA weighted spikes
                 print('Neuron 1 has higher MUA weighted spikes')
                 # print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_2 = True
-            elif (neuron_2['snr'] * (1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0]
-                   > neuron_1['snr'] * (1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0]):
+            elif neuron_2_score > neuron_1_score:
                 # Neuron 2 has higher MUA weighted spikes
                 print('Neuron 2 has higher MUA weighted spikes')
                 # print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
@@ -1444,8 +1448,10 @@ class WorkItemSummary(object):
                 delete_2 = True
             else:
                 delete_1 = True
-
+            print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
             if delete_1:
+                print("Deleting neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
+                print("Keeping neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
                 neurons_remaining_indices.remove(best_pair[0])
                 if seg > 0:
                     # Reassign anything linking to this unit to link to 2 instead
@@ -1474,6 +1480,8 @@ class WorkItemSummary(object):
                 neurons[best_pair[0]]['next_seg_link'] = None
                 neurons[best_pair[0]]['deleted_as_redundant'] = True
             if delete_2:
+                print("Deleting neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
+                print("Keeping neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
                 neurons_remaining_indices.remove(best_pair[1])
                 if seg > 0:
                     # Reassign anything linking to this unit to link to 2 instead

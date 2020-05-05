@@ -332,13 +332,10 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                 # Not actually necessary to split this up evenly among the
                 # neighborhood channels but somewhat logically pleasing
                 use_neighbor_bias = np.quantile(neighbor_bias, .95, interpolation='lower') / (n_neighbor_chans - 1)
-                new_bias_sum = 0
                 for chan in range(0, n_neighbor_chans):
                     if chan == master_channel_index:
-                        new_bias_sum += spike_biases[n*n_neighbor_chans + chan]
                         continue
                     spike_biases[n*n_neighbor_chans + chan] = use_neighbor_bias
-                    new_bias_sum += use_neighbor_bias
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage

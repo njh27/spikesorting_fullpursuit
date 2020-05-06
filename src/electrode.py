@@ -110,7 +110,7 @@ class SProbe16by2(AbstractProbe):
         end_stereotrode = min(total_stereotrodes, stereotrode_number + 2)
         neighbors = np.arange(start_stereotrode * 2, end_stereotrode * 2, 1)
 
-        return neighbors
+        return np.int64(neighbors)
 
 
 class SingleElectrode(AbstractProbe):
@@ -140,7 +140,7 @@ class SingleTetrode(AbstractProbe):
 
         neighbors = np.arange(0, 4, 1)
 
-        return neighbors
+        return np.int64(neighbors)
 
 
 class Dense32Probe(AbstractProbe):
@@ -175,7 +175,7 @@ class Dense32Probe(AbstractProbe):
 
         neighbors = all_channel_numbers[distance_mat[np.argwhere(all_channel_numbers == channel)[0][0], :] <= 50]
 
-        return neighbors
+        return np.int64(neighbors)
 
 
 class Dense128Probe(AbstractProbe):
@@ -211,7 +211,7 @@ class Dense128Probe(AbstractProbe):
 
         neighbors = all_channel_numbers[distance_mat[np.argwhere(all_channel_numbers == channel)[0][0], :] <= 40]
 
-        return neighbors.sort()
+        return np.int64(neighbors.sort())
 
 
 class SProbe24by1(AbstractProbe):
@@ -231,7 +231,7 @@ class SProbe24by1(AbstractProbe):
         stop_electrode = min(24, channel + 2)
         neighbors = np.arange(start_electrode, stop_electrode)
 
-        return neighbors
+        return np.int64(neighbors)
 
 
 def voltage_from_PL2(PL2Reader):

@@ -297,6 +297,7 @@ class TestDataset(object):
     def sort_test_dataset(self, kwargs):
 
         spike_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
+                              'filter_band': self.frequency_range,
                               'p_value_cut_thresh': 0.01, 'check_components': None,
                               'max_components': 10,
                               'min_firing_rate': 1, 'do_binary_pursuit': False,
@@ -310,6 +311,7 @@ class TestDataset(object):
 
         self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
         # self.Probe = TestSingleElectrode(self.samples_per_second, self.voltage_array)
+        # self.Probe = TestTetrode(self.samples_per_second, self.voltage_array)
         sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **spike_sort_kwargs)
 
         return sort_data, work_items, sort_info
@@ -340,6 +342,7 @@ class TestDataset(object):
     def compare_single_vs_parallel(self, kwargs):
 
         single_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
+                              'filter_band': self.frequency_range,
                               'p_value_cut_thresh': 0.01, 'check_components': None,
                               'max_components': 10,
                               'min_firing_rate': 1, 'do_binary_pursuit': False,
@@ -388,7 +391,7 @@ class TestDataset(object):
         parallel_wis = consolidate.WorkItemSummary(sort_data, work_items, sort_info)
 
         for key in single_wis.sort_info.keys():
-            assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key])
+            assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key]), "key {0} does not match".format(key)
         for key in parallel_wis.sort_info.keys():
             if key in ['log_dir', 'test_flag', 'save_1_cpu']:
                 continue

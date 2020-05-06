@@ -54,16 +54,6 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
     event_order = np.argsort(event_indices)
     event_indices = event_indices[event_order]
     neuron_labels = neuron_labels[event_order]
-    # event_indices, removed_index = remove_overlapping_spikes(event_indices,
-    #                                     clip_samples[1]-clip_samples[0])
-    # neuron_labels = neuron_labels[~removed_index]
-
-    # Get clips for templates to subtract
-    # clips, valid_inds = segment.get_singlechannel_clips(Probe, channel, event_indices, clip_width=clip_width)
-    # event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
-    # Remove clusters that are overlaps of different spikes
-    # neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, Probe.sampling_rate, clip_width, 0.75)
-    # event_indices, neuron_labels, valid_inds = segment.align_events_with_template(Probe, channel, neuron_labels, event_indices, clip_width=clip_width)
 
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
     clips, valid_inds = segment.get_multichannel_clips(Probe, Probe.get_neighbors(channel), event_indices, clip_width=clip_width)
@@ -152,7 +142,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
         assert gpu_memory_size > 0
 
         # Estimate the number of bytes that 1 second of data take up
-        # This is skipping the gamma and template squared error buffers which are small
+        # This is skipping the bias and template squared error buffers which are small
         constant_memory_usage = templates_vector.nbytes + event_indices.nbytes + neuron_labels.nbytes
         # Usage for voltage, additional spike indices, additional spike labels
         memory_usage_per_second = (n_neighbor_chans * Probe.sampling_rate * np.dtype(np.float32).itemsize +
@@ -200,12 +190,12 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
 
         # Compute our template sum squared error (see note below).
         # This is a num_templates x num_neighbors vector
-        template_sum_squared = np.zeros(templates.shape[0] * n_neighbor_chans, dtype=np.float32)
+        template_sum_squared = np.zeros(templates.shape[0], dtype=np.float32)
         for n in range(0, templates.shape[0]):
+            template_sum_squared[n] = np.float32(-0.5 * np.dot(templates[n, :], templates[n, :]))
             for chan in range(0, n_neighbor_chans):
                 t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
-                template_sum_squared[n*n_neighbor_chans + chan] = np.float32(-0.5 * np.dot(templates[n, t_win[0]:t_win[1]], templates[n, t_win[0]:t_win[1]]))
-                # Also get the FFT kernels used for spike bias/gamma below while we're at it
+                # Also get the FFT kernels used for spike bias below while we're at it
                 fft_kernels.append(get_zero_phase_kernel(templates[n, t_win[0]:t_win[1]], clip_init_samples))
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
 
@@ -294,54 +284,19 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             residual_voltage = np.empty(chunk_voltage.shape[0], dtype=np.float32)
             cl.enqueue_copy(queue, residual_voltage, voltage_buffer, wait_for=residual_events) #dest, source
 
-            # Compute the template_sum_squared and gamma terms
-            gamma = np.zeros(templates.shape[0], dtype=np.float32)
-            spike_biases = np.zeros(templates.shape[0] * n_neighbor_chans, dtype=np.float32)
-            # Compute bias separately for each neuron and each channel, and
-            # gamma separate for each neuron
+            # Compute the template_sum_squared and bias terms
+            spike_biases = np.zeros(templates.shape[0], dtype=np.float32)
+            # Compute bias separately for each neuron
             for n in range(0, templates.shape[0]):
-                # current_event_indices = chunk_crossings[chunk_labels == n]
-                # spike_probability = chunk_crossings.shape[0] / (stop_index - start_index)
-                # gamma[n] = np.float32(-1 * np.log(spike_probability) + np.log(1 - spike_probability))
-                gamma[n] = np.float32(0) # Ignore spike probability
                 neighbor_bias = np.zeros(Probe.n_samples, dtype=np.float32)
                 for chan in range(0, n_neighbor_chans):
                     cv_win = [chan * (stop_index - start_index),
                               chan * (stop_index - start_index) + (stop_index - start_index)]
-                    # if chan == master_channel_index:
-                    #     # Master channel bias is more strict and unrelated to
-                    #     # calculations on other channels
-                    #     print("This is doing more convolutions than necessary")
-                    #     spike_biases[n*n_neighbor_chans + chan] = np.float32(
-                    #                     np.median(np.abs(fftconvolve(
-                    #                     residual_voltage[cv_win[0]:cv_win[1]],
-                    #                     fft_kernels[n*n_neighbor_chans + chan],
-                    #                     mode='same'))))
-                    #     master_bias = spike_biases[n*n_neighbor_chans + chan]
-                        # spike_biases[n*n_neighbor_chans + chan] = np.float32(
-                        #                 np.quantile(np.abs(fftconvolve(
-                        #                 residual_voltage[cv_win[0]:cv_win[1]],
-                        #                 fft_kernels[n*n_neighbor_chans + chan],
-                        #                 mode='same')), .95, interpolation='lower'))
-                    # else:
-                    #     # Joint bias across all other neighborhood channels
-                    #     neighbor_bias += np.float32(fftconvolve(
-                    #                 residual_voltage[cv_win[0]:cv_win[1]],
-                    #                 fft_kernels[n*n_neighbor_chans + chan],
-                    #                 mode='same'))
                     neighbor_bias += np.float32(fftconvolve(
                                 residual_voltage[cv_win[0]:cv_win[1]],
                                 fft_kernels[n*n_neighbor_chans + chan],
                                 mode='same'))
-
-                # Not actually necessary to split this up evenly among the
-                # neighborhood channels but somewhat logically pleasing
-                # use_neighbor_bias = (np.quantile(neighbor_bias, .95, interpolation='lower') - master_bias) / (n_neighbor_chans - 1)
-                use_neighbor_bias = (np.quantile(neighbor_bias, .95, interpolation='lower')) / (n_neighbor_chans)
-                for chan in range(0, n_neighbor_chans):
-                    # if chan == master_channel_index:
-                    #     continue
-                    spike_biases[n*n_neighbor_chans + chan] = use_neighbor_bias
+                spike_biases[n] = np.quantile(neighbor_bias, .95, interpolation='lower')
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage
@@ -363,16 +318,15 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             binary_pursuit_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
             binary_pursuit_kernel.set_arg(1, np.uint32(stop_index - start_index)) # Length of chunk voltage
             binary_pursuit_kernel.set_arg(2, n_neighbor_chans) # number of neighboring channels
-            binary_pursuit_kernel.set_arg(3, master_channel_index) # index of master channel
-            binary_pursuit_kernel.set_arg(4, template_buffer) # Our template buffer, created previously
-            binary_pursuit_kernel.set_arg(5, np.uint32(templates.shape[0])) # Number of unique neurons, M
-            binary_pursuit_kernel.set_arg(6, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
-            binary_pursuit_kernel.set_arg(7, template_sum_squared_buffer) # Sum of squared templated
-            binary_pursuit_kernel.set_arg(8, spike_biases_buffer) # Bias
-            binary_pursuit_kernel.set_arg(9, local_buffer) # Local buffer
-            binary_pursuit_kernel.set_arg(10, num_additional_spikes_buffer) # Output, total number of additional spikes
-            binary_pursuit_kernel.set_arg(11, additional_spike_indices_buffer) # Additional spike indices
-            binary_pursuit_kernel.set_arg(12, additional_spike_labels_buffer) # Additional spike labels
+            binary_pursuit_kernel.set_arg(3, template_buffer) # Our template buffer, created previously
+            binary_pursuit_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of unique neurons, M
+            binary_pursuit_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
+            binary_pursuit_kernel.set_arg(6, template_sum_squared_buffer) # Sum of squared templated
+            binary_pursuit_kernel.set_arg(7, spike_biases_buffer) # Bias
+            binary_pursuit_kernel.set_arg(8, local_buffer) # Local buffer
+            binary_pursuit_kernel.set_arg(9, num_additional_spikes_buffer) # Output, total number of additional spikes
+            binary_pursuit_kernel.set_arg(10, additional_spike_indices_buffer) # Additional spike indices
+            binary_pursuit_kernel.set_arg(11, additional_spike_labels_buffer) # Additional spike labels
 
             # Run the kernel until num_additional_spikes is zero
             chunk_total_additional_spikes = 0

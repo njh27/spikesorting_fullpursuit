@@ -414,6 +414,16 @@ def spike_sort(Probe, **kwargs):
     Probe = TestProbe(samples_per_second, voltage_array, num_channels=4)
     neurons = SpikeSorting.spike_sort(Probe, **spike_sort_kwargs)
     """
+    # Check that Probe neighborhood function is appropriate. Otherwise it can
+    # generate seemingly mysterious errors
+    try:
+        check_neighbors = Probe.get_neighbors(0)
+    except:
+        raise ValueError("Input Probe object must have a valid get_neighbors() method.")
+    if type(check_neighbors) != np.ndarray:
+        raise ValueError("Probe get_neighbors() method must return a numpy ndarray of dtype np.int64.")
+    elif check_neighbors.dtype != np.int64:
+        raise ValueError("Probe get_neighbors() method must return a numpy ndarray of dtype np.int64.")
     # Get our settings
     settings = spike_sorting_settings(**kwargs)
     if not settings['use_GPU'] and settings['do_binary_pursuit']:

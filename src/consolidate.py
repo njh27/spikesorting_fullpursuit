@@ -1336,8 +1336,8 @@ class WorkItemSummary(object):
                 neuron2 = neurons[neuron2_ind]
                 if neuron1['channel'] == neuron2['channel']:
                     continue # If they are on the same channel, do nothing
-                if neuron1['channel'] not in neuron2['neighbors']:
-                    continue # If they are not in same neighborhood, do nothing
+                # if neuron1['channel'] not in neuron2['neighbors']:
+                #     continue # If they are not in same neighborhood, do nothing
                 overlap_ratio[neuron1_ind, neuron2_ind] = self.get_overlap_ratio(
                                         seg, neuron1_ind, seg, neuron2_ind, overlap_time)
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
@@ -1355,12 +1355,17 @@ class WorkItemSummary(object):
             violation_partners[n1_ind].add(n1_ind)
             for n2_ind in range(n1_ind+1, len(neurons)):
                 n2 = neurons[n2_ind]
-                if n1['channel'] not in n2['neighbors']:
-                    continue
+                # if n1['channel'] not in n2['neighbors']:
+                #     continue
                 if (overlap_ratio[n1_ind, n2_ind] >=
                     overlap_ratio_threshold * expected_ratio[n1_ind, n2_ind]):
-                    violation_partners[n1_ind].add(n2_ind)
-                    violation_partners[n2_ind].add(n1_ind)
+                    # Overlap is higher than chance
+                    if overlap_ratio[n1_ind, n2_ind] < self.min_overlapping_spikes:
+                        # And the overlap is less than considered same unit
+                        # We do not want to punish nice units for having
+                        # multiple copies of itself due to its high SNR
+                        violation_partners[n1_ind].add(n2_ind)
+                        violation_partners[n2_ind].add(n1_ind)
 
         neurons_remaining_indices = [x for x in range(0, len(neurons))]
         max_accepted = 0.
@@ -1396,9 +1401,11 @@ class WorkItemSummary(object):
             neuron_1 = neurons[best_pair[0]]
             neuron_2 = neurons[best_pair[1]]
             neuron_1_score = neuron_1['snr'] * (1-neuron_1['fraction_mua']) \
-                             * neuron_1['spike_indices'].shape[0] / len(violation_partners[best_pair[0]])
+                             * neuron_1['spike_indices'].shape[0] \
+                             * (1 - (len(violation_partners[best_pair[0]]) - 1) / len(neurons))
             neuron_2_score = neuron_2['snr'] * (1-neuron_2['fraction_mua']) \
-                             * neuron_2['spike_indices'].shape[0] / len(violation_partners[best_pair[1]])
+                             * neuron_2['spike_indices'].shape[0] \
+                             * (1 - (len(violation_partners[best_pair[1]]) - 1) / len(neurons))
             delete_1 = False
             delete_2 = False
             """First doing the MUA and spike number checks because at this point

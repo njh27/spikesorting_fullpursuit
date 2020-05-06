@@ -308,8 +308,8 @@ class TestDataset(object):
         for key in kwargs:
             spike_sort_kwargs[key] = kwargs[key]
 
-        # self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        self.Probe = TestSingleElectrode(self.samples_per_second, self.voltage_array)
+        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
+        # self.Probe = TestSingleElectrode(self.samples_per_second, self.voltage_array)
         sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **spike_sort_kwargs)
 
         return sort_data, work_items, sort_info

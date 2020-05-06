@@ -16,6 +16,11 @@
  * @section DESCRIPTION
  */
 
+/* Allow customization of the memory type for the GPU */
+#ifndef voltage_type
+#define voltage_type float
+#endif
+
 
 /*----------------------------------------------------------------------------
  * NOTES ON PACKING OF VOLTAGES (E.G., `VOLTAGE` and `TEMPLATES` vectors):
@@ -64,10 +69,10 @@
  *  spike_indices_length: The number of spike indices (and length of spike labels).
  */
 __kernel void compute_residual(
-    __global float * restrict voltage,
+    __global voltage_type * restrict voltage,
     const unsigned int voltage_length,
     const unsigned int num_neighbor_channels,
-    __global const float * restrict templates,
+    __global const voltage_type * restrict templates,
     const unsigned int num_templates,
     const unsigned int template_length,
     __global const unsigned int * spike_indices,
@@ -189,18 +194,17 @@ static void prefix_local_sum(__local unsigned int * restrict x) /**< Length must
  *  templates: A num_timepoints * num_channels * num_neurons vector (see above description)
  *  num_templates: The dimension M of templates (num_neurons)
  *  template_length: The dimension N of templates (num timepoints)
- *  template_sum_squared: A 1x(num_templates*num_neighbor_channels) vector containing the template sum squared values
- *  gamma: 1x(num_templates*num_neighbor_channels) vector containing the bias parameter
+ *  template_sum_squared: A 1x(num_templates) vector containing the template sum squared values
+ *  gamma: 1x(num_templates) vector containing the bias parameter
  *  maximum_likelihood [out]: The maximum likelihood found at this point (private).
  *  maximum_likelihood_neuron [out]: The neuron with the maximum likelihood (private).
  */
 static void compute_maximum_likelihood(
-    __global float * restrict voltage,
+    __global voltage_type * restrict voltage,
     unsigned int voltage_length,
     const unsigned int num_neighbor_channels,
-    const unsigned int master_channel_index,
     const unsigned int index,
-    __global const float * restrict templates,
+    __global const voltage_type * restrict templates,
     const unsigned int num_templates,
     const unsigned int template_length,
     __global const float * restrict template_sum_squared,
@@ -219,41 +223,18 @@ static void compute_maximum_likelihood(
     }
 
     float current_likelihood;
-
     /* Look across all neurons (templates) */
     for (i = 0; i < num_templates; i++)
     {
-        unsigned int gamma_offset = (i * num_neighbor_channels) + master_channel_index;
-        current_likelihood = template_sum_squared[gamma_offset] - gamma[gamma_offset]; /* Our bias terms */
-
-        /* Compute sum(templates[i, :] .* residuals) for the master channel */
-        unsigned int template_offset = (i * template_length * num_neighbor_channels) + (master_channel_index * template_length);
-        unsigned int voltage_offset = index + (voltage_length * master_channel_index);
-        for (j = 0; j < template_length; j++)
-        {
-            current_likelihood = current_likelihood + templates[template_offset + j] * voltage[voltage_offset + j];
-        }
-
-        if (current_likelihood < 0)
-        {
-            continue; /* The master channel did not exceed threshold - move onto the next neuron */
-        }
-
+        current_likelihood = template_sum_squared[i] - gamma[i];
         /* The master channel exceeded threshold, check all of our neighbors */
         for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
         {
-            if (current_channel == master_channel_index)
-            {
-                continue; /* Don't recompute over the master channel */
-            }
-            gamma_offset = (i * num_neighbor_channels) + current_channel;
-            current_likelihood = current_likelihood + template_sum_squared[gamma_offset] - gamma[gamma_offset];
-
-            template_offset = (i * template_length * num_neighbor_channels) + (current_channel * template_length);
-            voltage_offset = index + (voltage_length * current_channel);
+            unsigned int template_offset = (i * template_length * num_neighbor_channels) + (current_channel * template_length);
+            unsigned int voltage_offset = index + (voltage_length * current_channel);
             for (j = 0; j < template_length; j++)
             {
-                current_likelihood = current_likelihood + templates[template_offset + j] * voltage[voltage_offset + j];
+                current_likelihood = current_likelihood + (float) templates[template_offset + j] * (float) voltage[voltage_offset + j];
             }
         }
 
@@ -288,12 +269,11 @@ static void compute_maximum_likelihood(
  *  voltage: A float32 vector containing the voltage data
  *  voltage_length: The length of voltage
  *  num_neighbor_channels: The number of neighbors channels packed into voltage and templates
- *  master_channel_index: The channel index (base-0) corresponding the our "master" channel.
  *  templates: A num_timepoints * num_channels * num_neurons vector (see above description)
  *  num_templates: The dimension M of templates (num_neurons)
  *  template_length: The dimension N of templates (num timepoints)
- *  template_sum_squared: A 1x(num_templates*num_neighbor_channels) vector containing the template sum squared values
- *  gamma: 1x(num_templates*num_neighbor_channels) vector containing the bias parameter
+ *  template_sum_squared: A 1x(num_templates) vector containing the template sum squared values
+ *  gamma: 1x(num_templates) vector containing the bias parameter
  *  local_scatch: 1xnum_local_workers vector for computing the prefix_sum
  *  num_additional_spikes [out]: A global integer representing the number of additional spikes we have added
  *  additional_spike_indices [out]: A global vector (max length = 1xnum_workers) containing the indices within voltage
@@ -303,11 +283,10 @@ static void compute_maximum_likelihood(
  *   restrictions as additional_spike_indices.
  */
 __kernel void binary_pursuit(
-    __global float * restrict voltage,
+    __global voltage_type * restrict voltage,
     const unsigned int voltage_length,
     const unsigned int num_neighbor_channels,
-    const unsigned int master_channel_index,
-    __global const float * restrict templates,
+    __global const voltage_type * restrict templates,
     const unsigned int num_templates,
     const unsigned int template_length,
     __global const float * restrict template_sum_squared,
@@ -345,7 +324,7 @@ __kernel void binary_pursuit(
         {
             float current_maximum_likelihood = 0.0;
             unsigned int current_maximum_likelihood_neuron = 0;
-            compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels, master_channel_index,
+            compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
                 i + start, templates, num_templates, template_length,
                 template_sum_squared, gamma,
                 &current_maximum_likelihood, &current_maximum_likelihood_neuron);
@@ -414,16 +393,16 @@ __kernel void binary_pursuit(
  *   clips with other neuron spiking removed.
  */
 __kernel void get_adjusted_clips(
-    __global const float * restrict voltage,
+    __global const voltage_type * restrict voltage,
     const unsigned int voltage_length,
     const unsigned int num_neighbor_channels,
-    __global const float * restrict templates,
+    __global const voltage_type * restrict templates,
     const unsigned int num_templates,
     const unsigned int template_length,
     __global const unsigned int * spike_indices,
     __global const unsigned int * spike_labels,
     const unsigned int spike_indices_length,
-    __global float * restrict clips)
+    __global voltage_type * restrict clips)
 {
     const size_t id = get_global_id(0);
     /* Return if we started a kernel and it has nothing to do */
@@ -451,7 +430,7 @@ __kernel void get_adjusted_clips(
             {
                 break;
             }
-            clips[clip_offset + i] = voltage[voltage_offset + i] + templates[template_offset + i];
+            clips[clip_offset + i] = (voltage_type) (voltage[voltage_offset + i] + templates[template_offset + i]);
         }
     }
     return;

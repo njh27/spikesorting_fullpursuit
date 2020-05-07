@@ -1096,9 +1096,13 @@ class WorkItemSummary(object):
                                 unit_1_score_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
                             else:
                                 unit_2_score_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
-                    undo_split = False
-                    if (unit_1_score_post < 0.90*unit_1_score_pre) and (unit_2_score_post < 0.90*unit_2_score_pre):
+
+                    if (unit_1_score_post > unit_1_score_pre) and (unit_2_score_post > unit_2_score_pre):
+                        undo_split = False
+                    else:
                         undo_split = True
+                    # if (unit_1_score_post < 0.90*unit_1_score_pre) or (unit_2_score_post < 0.90*unit_2_score_pre):
+                    #     undo_split = True
                     # print("JOINT SPLIT IS SET OFF AT 1048")
                     # for curr_l in [c1, c2]:
                     #     mua_ratio = 0.

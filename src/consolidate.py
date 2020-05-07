@@ -1030,18 +1030,25 @@ class WorkItemSummary(object):
                                 break
                         continue # a merge so check and skip
 
-                    total_correct_spikes_pre = 0
+                    unit_1_score_pre = 0
+                    unit_2_score_pre = 0
                     for curr_l in [c1, c2]:
                         if curr_l in self.sort_data[chan][curr_seg][1]:
                             mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
                             select = self.sort_data[chan][curr_seg][1] == curr_l
                             curr_snr = self.get_snr(chan, curr_seg, np.mean(self.sort_data[chan][curr_seg][2][select, :], axis=0))
-                            total_correct_spikes_pre += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
+                            if curr_l == c1:
+                                unit_1_score_pre += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
+                            else:
+                                unit_2_score_pre += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
                         if curr_l in self.sort_data[chan][next_seg][1]:
                             mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
                             select = self.sort_data[chan][next_seg][1] == curr_l
                             curr_snr = self.get_snr(chan, next_seg, np.mean(self.sort_data[chan][next_seg][2][select, :], axis=0))
-                            total_correct_spikes_pre += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
+                            if curr_l == c1:
+                                unit_1_score_pre += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
+                            else:
+                                unit_2_score_pre += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
 
                     # Reassign spikes in c1 that split into c2
                     # The merge test was done on joint clips and labels, so
@@ -1070,19 +1077,28 @@ class WorkItemSummary(object):
                     # with the MUA mixture, so undo the steps above. Otherwise,
                     # either there were no mixtures or the split removed them
                     # so we carry on.
-                    total_correct_spikes_post = 0
+                    unit_1_score_post = 0
+                    unit_2_score_post = 0
                     for curr_l in [c1, c2]:
                         if curr_l in self.sort_data[chan][curr_seg][1]:
                             mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
                             select = self.sort_data[chan][curr_seg][1] == curr_l
                             curr_snr = self.get_snr(chan, curr_seg, np.mean(self.sort_data[chan][curr_seg][2][select, :], axis=0))
-                            total_correct_spikes_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
+                            if curr_l == c1:
+                                unit_1_score_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
+                            else:
+                                unit_2_score_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
                         if curr_l in self.sort_data[chan][next_seg][1]:
                             mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
                             select = self.sort_data[chan][next_seg][1] == curr_l
                             curr_snr = self.get_snr(chan, next_seg, np.mean(self.sort_data[chan][next_seg][2][select, :], axis=0))
-                            total_correct_spikes_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(self.sort_data[chan][next_seg][1] == curr_l)
+                            if curr_l == c1:
+                                unit_1_score_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
+                            else:
+                                unit_2_score_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
                     undo_split = False
+                    if (unit_1_score_post < 0.90*unit_1_score_pre) and (unit_2_score_post < 0.90*unit_2_score_pre):
+                        undo_split = True
                     # print("JOINT SPLIT IS SET OFF AT 1048")
                     # for curr_l in [c1, c2]:
                     #     mua_ratio = 0.
@@ -1096,8 +1112,8 @@ class WorkItemSummary(object):
                     #     if mua_ratio > self.max_mua_ratio:
                     #         undo_split = True
                     #         break
-                    if total_correct_spikes_post < 1.1*total_correct_spikes_pre:
-                        undo_split = True
+                    # if total_correct_spikes_post < 0.90*total_correct_spikes_pre:
+                    #     undo_split = True
                     if undo_split:
                         if self.verbose: print("undoing split between", c1, c2)
                         if 2 in labels_1:

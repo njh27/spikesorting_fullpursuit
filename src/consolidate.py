@@ -366,7 +366,8 @@ class WorkItemSummary(object):
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
                  max_mua_ratio=0.05, n_max_merge_test_clips=None,
                  merge_test_overlap_indices=None, min_overlapping_spikes=.5,
-                 binary_pursuit_skip_time='clip_width', verbose=False):
+                 binary_pursuit_skip_time='clip_width', m_overlap_k_neighbors=50,
+                 verbose=False):
         self.check_input_data(sort_data, work_items)
         self.sort_info = sort_info
         # These are used so frequently they are aliased for convenience
@@ -386,6 +387,7 @@ class WorkItemSummary(object):
         self.min_overlapping_spikes = min_overlapping_spikes
         self.is_stitched = False # Repeated stitching can change results so track
         self.last_overlap_ratio_threshold = np.inf # Track how much overlap deleted units
+        self.m_overlap_k_neighbors = m_overlap_k_neighbors
         self.verbose = verbose
         # Organize sort_data to be arranged for stitching and summarizing
         self.organize_sort_data()
@@ -1032,10 +1034,14 @@ class WorkItemSummary(object):
                     for curr_l in [c1, c2]:
                         if curr_l in self.sort_data[chan][curr_seg][1]:
                             mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
-                            total_correct_spikes_pre += (1 - mua_ratio) * np.count_nonzero(self.sort_data[chan][curr_seg][1] == curr_l)
+                            select = self.sort_data[chan][curr_seg][1] == curr_l
+                            curr_snr = self.get_snr(chan, curr_seg, np.mean(self.sort_data[chan][curr_seg][2][select, :], axis=0))
+                            total_correct_spikes_pre += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
                         if curr_l in self.sort_data[chan][next_seg][1]:
                             mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
-                            total_correct_spikes_pre += (1 - mua_ratio) * np.count_nonzero(self.sort_data[chan][next_seg][1] == curr_l)
+                            select = self.sort_data[chan][next_seg][1] == curr_l
+                            curr_snr = self.get_snr(chan, next_seg, np.mean(self.sort_data[chan][next_seg][2][select, :], axis=0))
+                            total_correct_spikes_pre += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
 
                     # Reassign spikes in c1 that split into c2
                     # The merge test was done on joint clips and labels, so
@@ -1068,10 +1074,14 @@ class WorkItemSummary(object):
                     for curr_l in [c1, c2]:
                         if curr_l in self.sort_data[chan][curr_seg][1]:
                             mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
-                            total_correct_spikes_post += (1 - mua_ratio) * np.count_nonzero(self.sort_data[chan][curr_seg][1] == curr_l)
+                            select = self.sort_data[chan][curr_seg][1] == curr_l
+                            curr_snr = self.get_snr(chan, curr_seg, np.mean(self.sort_data[chan][curr_seg][2][select, :], axis=0))
+                            total_correct_spikes_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
                         if curr_l in self.sort_data[chan][next_seg][1]:
                             mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
-                            total_correct_spikes_post += (1 - mua_ratio) * np.count_nonzero(self.sort_data[chan][next_seg][1] == curr_l)
+                            select = self.sort_data[chan][next_seg][1] == curr_l
+                            curr_snr = self.get_snr(chan, next_seg, np.mean(self.sort_data[chan][next_seg][2][select, :], axis=0))
+                            total_correct_spikes_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(self.sort_data[chan][next_seg][1] == curr_l)
                     undo_split = False
                     # print("JOINT SPLIT IS SET OFF AT 1048")
                     # for curr_l in [c1, c2]:
@@ -1192,7 +1202,13 @@ class WorkItemSummary(object):
         self.neuron_summary_by_seg = [[] for x in range(0, self.n_segments)]
         for seg in range(0, self.n_segments):
             for chan in range(0, self.n_chans):
-                for ind, neuron_label in enumerate(np.unique(self.sort_data[chan][seg][1])):
+                cluster_labels = np.unique(self.sort_data[chan][seg][1])
+                m_isolation = np.zeros(cluster_labels.shape[0])
+                # m_isolation, cluster_labels = calc_m_isolation(
+                #                                 self.sort_data[chan][seg][2],
+                #                                 self.sort_data[chan][seg][1],
+                #                                 self.m_overlap_k_neighbors)
+                for neuron_label in cluster_labels:
                     neuron = {}
                     neuron['summary_type'] = 'single_segment'
                     neuron["channel"] = self.work_items[chan][seg]['channel']
@@ -1204,6 +1220,7 @@ class WorkItemSummary(object):
                                           self.sort_info['n_samples_per_chan'] * (neuron['chan_neighbor_ind'] + 1)]
                     assert neuron['segment'] == seg, "Somethings messed up here?"
                     assert neuron['channel'] == chan
+                    neuron['m_isolation'] = m_isolation[cluster_labels == neuron_label]
 
                     select_label = self.sort_data[chan][seg][1] == neuron_label
                     neuron["spike_indices"] = self.sort_data[chan][seg][0][select_label]
@@ -1336,8 +1353,8 @@ class WorkItemSummary(object):
                 neuron2 = neurons[neuron2_ind]
                 if neuron1['channel'] == neuron2['channel']:
                     continue # If they are on the same channel, do nothing
-                # if neuron1['channel'] not in neuron2['neighbors']:
-                #     continue # If they are not in same neighborhood, do nothing
+                if neuron1['channel'] not in neuron2['neighbors']:
+                    continue # If they are not in same neighborhood, do nothing
                 overlap_ratio[neuron1_ind, neuron2_ind] = self.get_overlap_ratio(
                                         seg, neuron1_ind, seg, neuron2_ind, overlap_time)
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
@@ -1351,12 +1368,14 @@ class WorkItemSummary(object):
 
         # Create list of sets of excessive neuron overlap between all pairwise units
         violation_partners = [set() for x in range(0, len(neurons))]
+        n_neighbors = [set() for x in range(0, len(neurons))]
         for n1_ind, n1 in enumerate(neurons):
-            violation_partners[n1_ind].add(n1_ind)
+            # violation_partners[n1_ind].add(n1_ind)
             for n2_ind in range(n1_ind+1, len(neurons)):
                 n2 = neurons[n2_ind]
-                # if n1['channel'] not in n2['neighbors']:
-                #     continue
+                if n1['channel'] not in n2['neighbors']:
+                    continue
+                n_neighbors[n1_ind].add(n2_ind)
                 if (overlap_ratio[n1_ind, n2_ind] >=
                     overlap_ratio_threshold * expected_ratio[n1_ind, n2_ind]):
                     # Overlap is higher than chance
@@ -1402,12 +1421,18 @@ class WorkItemSummary(object):
             neuron_2 = neurons[best_pair[1]]
             neuron_1_score = neuron_1['snr'] * (1-neuron_1['fraction_mua']) \
                              * neuron_1['spike_indices'].shape[0] \
-                             * (1 - (len(violation_partners[best_pair[0]]) - 1) / len(neurons))
+                             # * (1 - (len(violation_partners[best_pair[0]]) - 1) / len(n_neighbors[best_pair[0]]))
             neuron_2_score = neuron_2['snr'] * (1-neuron_2['fraction_mua']) \
                              * neuron_2['spike_indices'].shape[0] \
-                             * (1 - (len(violation_partners[best_pair[1]]) - 1) / len(neurons))
+                             # * (1 - (len(violation_partners[best_pair[1]]) - 1) / len(n_neighbors[best_pair[1]]))
             delete_1 = False
             delete_2 = False
+
+            print("Neurons have scores", neuron_1_score, neuron_2_score, "and m_isolation", neuron_1['m_isolation'], neuron_2['m_isolation'])
+            var_rat1 = np.sum(np.var(neuron_1['waveforms'], axis=0)) / np.var(neuron_1['template']**2)
+            var_rat2 = np.sum(np.var(neuron_2['waveforms'], axis=0)) / np.var(neuron_2['template']**2)
+            print("Variance ratios are", var_rat1, var_rat2)
+
             """First doing the MUA and spike number checks because at this point
             the stitch segments function has deleted anything with MUA over the
             input max_mua_ratio. We can then fall back to SNR, since SNR does
@@ -1487,8 +1512,8 @@ class WorkItemSummary(object):
                 neurons[best_pair[0]]['next_seg_link'] = None
                 neurons[best_pair[0]]['deleted_as_redundant'] = True
             if delete_2:
-                print("Deleting neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
                 print("Keeping neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
+                print("Deleting neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
                 neurons_remaining_indices.remove(best_pair[1])
                 if seg > 0:
                     # Reassign anything linking to this unit to link to 2 instead
@@ -2193,3 +2218,56 @@ class WorkItemSummary(object):
         # neuron_summary = self.remove_redundant_within_channel_summaries(neuron_summary,
         #                                 overlap_time, overlap_ratio_threshold)
         return neuron_summary
+
+
+def calc_m_overlap_ab(clips_a, clips_b, k_neighbors):
+    """
+    """
+    # Check at most 500 random samples from each cluster
+    N = min(clips_a.shape[0], clips_b.shape[0])
+    N = min(N, 500)
+    clips_aUb = np.vstack((clips_a, clips_b))
+    if k_neighbors > clips_a.shape[0] or k_neighbors > clips_b.shape[0]:
+        k_neighbors = min(clips_a.shape[0], clips_b.shape[0])
+        print("Input K neighbors for calc_m_overlap_ab exceeds at least one cluster size. Resetting to", k_neighbors)
+    k_in_a = 0.
+    for na in range(0, N):
+        x = np.random.randint(0, clips_a.shape[0], 1)
+        # Distance of x from all points in a union b
+        x_dist = np.sum((clips_a[x, :] - clips_aUb) ** 2, axis=1)
+
+        k_nearest_inds = np.argpartition(x_dist, k_neighbors)[:k_neighbors]
+        k_in_a += (np.count_nonzero(k_nearest_inds < clips_a.shape[0]) / k_neighbors) / clips_aUb.shape[0]
+    print("k in a", k_in_a)
+    k_in_b = 0.
+    for nb in range(0, N):
+        x = np.random.randint(0, clips_b.shape[0], 1)
+        # Distance of x from all points in a union b
+        x_dist = np.sum((clips_b[x, :] - clips_aUb) ** 2, axis=1)
+
+        k_nearest_inds = np.argpartition(x_dist, k_neighbors)[:k_neighbors]
+        k_in_b += (np.count_nonzero(k_nearest_inds >= clips_a.shape[0]) / k_neighbors) / clips_aUb.shape[0]
+    print("k in b", k_in_b)
+    m_overlap_ab = (k_in_a + k_in_b) #/ 2*N
+
+    return m_overlap_ab
+
+
+def calc_m_isolation(clips, neuron_labels, k_neighbors):
+    """
+    """
+    cluster_labels = np.unique(neuron_labels)
+    if cluster_labels.size == 1:
+        return np.ones(1), cluster_labels
+    m_overlap_ab = np.zeros((cluster_labels.shape[0], cluster_labels.shape[0]))
+    m_isolation = np.zeros(cluster_labels.shape[0])
+    # First get all pairwise overlap measures. These are symmetric
+    for a in range(0, cluster_labels.shape[0]):
+        clips_a = clips[neuron_labels == cluster_labels[a], :]
+        for b in range(a+1, cluster_labels.shape[0]):
+            clips_b = clips[neuron_labels == cluster_labels[b], :]
+            m_overlap_ab[a, b] = calc_m_overlap_ab(clips_a, clips_b, k_neighbors)
+            m_overlap_ab[b, a] = m_overlap_ab[a, b]
+        m_isolation[a] = np.amax(m_overlap_ab[a, :])
+
+    return m_isolation, cluster_labels

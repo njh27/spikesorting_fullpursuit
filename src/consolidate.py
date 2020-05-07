@@ -1097,7 +1097,7 @@ class WorkItemSummary(object):
                             else:
                                 unit_2_score_post += curr_snr * (1 - mua_ratio) * np.count_nonzero(select)
 
-                    if (unit_1_score_post > unit_1_score_pre) and (unit_2_score_post > unit_2_score_pre):
+                    if (unit_1_score_post > 1.1*unit_1_score_pre) or (unit_2_score_post > 1.1*unit_2_score_pre):
                         undo_split = False
                     else:
                         undo_split = True

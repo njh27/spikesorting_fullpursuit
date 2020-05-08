@@ -295,7 +295,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
             spike_biases = np.zeros(templates.shape[0], dtype=np.float32)
             # Compute bias separately for each neuron
             for n in range(0, templates.shape[0]):
-                neighbor_bias = np.zeros(probe_dict['n_samples'], dtype=np.float32)
+                neighbor_bias = np.zeros((stop_index - start_index), dtype=np.float32)
                 for chan in range(0, n_neighbor_chans):
                     cv_win = [chan * (stop_index - start_index),
                               chan * (stop_index - start_index) + (stop_index - start_index)]
@@ -303,7 +303,11 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                                 residual_voltage[cv_win[0]:cv_win[1]],
                                 fft_kernels[n*n_neighbor_chans + chan],
                                 mode='same'))
-                spike_biases[n] = np.quantile(neighbor_bias, .95, interpolation='lower')
+                bias_diffs = np.diff(neighbor_bias)
+                bias_peaks = np.hstack((False, np.logical_and(bias_diffs[0:-1] >= 0, bias_diffs[1:] <= 0), False))
+                bias_peaks = neighbor_bias[bias_peaks]
+                spike_biases[n] = np.mean(bias_peaks)
+                # spike_biases[n] = np.quantile(neighbor_bias, .95, interpolation='lower')
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage

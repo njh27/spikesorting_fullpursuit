@@ -11,6 +11,9 @@ import pyopencl as cl
 os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
 
 
+import matplotlib.pyplot as plt
+
+
 
 def binary_pursuit(Probe, channel, event_indices, neuron_labels,
         clip_width, kernels_path=None, max_gpu_memory=None):
@@ -288,7 +291,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             spike_biases = np.zeros(templates.shape[0], dtype=np.float32)
             # Compute bias separately for each neuron
             for n in range(0, templates.shape[0]):
-                neighbor_bias = np.zeros(Probe.n_samples, dtype=np.float32)
+                neighbor_bias = np.zeros((stop_index - start_index), dtype=np.float32)
                 for chan in range(0, n_neighbor_chans):
                     cv_win = [chan * (stop_index - start_index),
                               chan * (stop_index - start_index) + (stop_index - start_index)]
@@ -296,7 +299,22 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                                 residual_voltage[cv_win[0]:cv_win[1]],
                                 fft_kernels[n*n_neighbor_chans + chan],
                                 mode='same'))
-                spike_biases[n] = np.quantile(neighbor_bias, .95, interpolation='lower')
+                bias_diffs = np.diff(neighbor_bias)
+                bias_peaks = np.hstack((False, np.logical_and(bias_diffs[0:-1] >= 0, bias_diffs[1:] <= 0), False))
+                bias_peaks = neighbor_bias[bias_peaks]
+                spike_biases[n] = np.mean(bias_peaks)
+                # spike_biases[n] = np.quantile(neighbor_bias, .95, interpolation='lower')
+
+                # plt.axvline(np.mean(bias_peaks), color='c')
+                # bias_counts, bias_x = np.histogram(bias_peaks, 100)
+                # plt.bar(bias_x[0:-1], bias_counts, width=bias_x[1]-bias_x[0])
+                #
+                # plt.axvline(np.median(np.abs(neighbor_bias)), color='g')
+                # plt.axvline(template_sum_squared[n]/-1, color='r')
+
+                # plt.xlim([0, 800])
+                # plt.ylim([0, 1000])
+                # plt.show()
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage

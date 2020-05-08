@@ -208,6 +208,10 @@ def spike_sort_item(Probe, work_item, settings):
     crossings = segment.wavelet_align_events(Probe, chan, crossings,
                                         settings['clip_width'],
                                         settings['filter_band'])
+    print("REMOVING SPIKES FOR TESTING LINE 211")
+    keepers = np.random.rand(crossings.shape[0])
+    keepers = keepers > -1
+    crossings = crossings[keepers]
 
     median_cluster_size = min(100, int(np.around(crossings.size / 1000)))
     if settings['verbose']: print("Getting clips")

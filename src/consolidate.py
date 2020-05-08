@@ -364,7 +364,7 @@ class WorkItemSummary(object):
     """
     def __init__(self, sort_data, work_items, sort_info,
                  duplicate_tol_inds=1, absolute_refractory_period=10e-4,
-                 max_mua_ratio=0.05, n_max_merge_test_clips=None,
+                 max_mua_ratio=0.05, min_snr=1.5, n_max_merge_test_clips=None,
                  merge_test_overlap_indices=None, min_overlapping_spikes=.5,
                  binary_pursuit_skip_time='clip_width', m_overlap_k_neighbors=50,
                  verbose=False):
@@ -376,6 +376,7 @@ class WorkItemSummary(object):
         self.duplicate_tol_inds = duplicate_tol_inds # Added to spike half width for duplicates
         self.absolute_refractory_period = absolute_refractory_period
         self.max_mua_ratio = max_mua_ratio
+        self.min_snr = min_snr
         self.n_max_merge_test_clips = n_max_merge_test_clips
         if n_max_merge_test_clips is None:
             # Setting to np.inf uses all clips in overlap indices
@@ -400,7 +401,7 @@ class WorkItemSummary(object):
             self.binary_pursuit_skip_time = binary_pursuit_skip_time
         if self.binary_pursuit_skip_time > 0:
             self.remove_segment_binary_pursuit_duplicates()
-        self.delete_mua_units()
+        self.delete_bad_mua_snr_units()
 
     def check_input_data(self, sort_data, work_items):
         """ Quick check to see if everything looks right with sort_data and
@@ -500,10 +501,13 @@ class WorkItemSummary(object):
                 self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][spike_order, :]
                 self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][spike_order]
 
-    def delete_mua_units(self):
+    def delete_bad_mua_snr_units(self):
         min_removed_mua = np.inf
         min_removed_mua_chan = None
         min_removed_mua_seg = None
+        max_removed_snr = -np.inf
+        max_removed_snr_chan = None
+        max_removed_snr_seg = None
         for chan in range(0, self.n_chans):
             for seg in range(0, self.n_segments):
                 # NOTE: This will just skip if no data in segment
@@ -515,7 +519,19 @@ class WorkItemSummary(object):
                             min_removed_mua = mua_ratio
                             min_removed_mua_chan = chan
                             min_removed_mua_seg = seg
+                        # Can skip computing SNR, but will not track max
+                        # removed accurately
+                        continue
+                    select = self.sort_data[chan][seg][1] == l
+                    snr = self.get_snr(chan, seg, np.mean(self.sort_data[chan][seg][2][select, :], axis=0))
+                    if snr < self.min_snr:
+                        self.delete_label(chan, seg, l)
+                        if snr > max_removed_snr:
+                            max_removed_snr = snr
+                            max_removed_snr_chan = chan
+                            max_removed_snr_seg = seg
         print("Least MUA removed was", min_removed_mua, "on channel", min_removed_mua_chan, "segment", min_removed_mua_seg)
+        print("Maximum SNR removed was", max_removed_snr, "on channel", max_removed_snr_chan, "segment", max_removed_snr_seg)
 
     def remove_segment_binary_pursuit_duplicates(self):
         """ Removes overlapping spikes that were both found by binary
@@ -1373,8 +1389,8 @@ class WorkItemSummary(object):
                 neuron2 = neurons[neuron2_ind]
                 if neuron1['channel'] == neuron2['channel']:
                     continue # If they are on the same channel, do nothing
-                if neuron1['channel'] not in neuron2['neighbors']:
-                    continue # If they are not in same neighborhood, do nothing
+                # if neuron1['channel'] not in neuron2['neighbors']:
+                #     continue # If they are not in same neighborhood, do nothing
                 overlap_ratio[neuron1_ind, neuron2_ind] = self.get_overlap_ratio(
                                         seg, neuron1_ind, seg, neuron2_ind, overlap_time)
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
@@ -1393,8 +1409,8 @@ class WorkItemSummary(object):
             # violation_partners[n1_ind].add(n1_ind)
             for n2_ind in range(n1_ind+1, len(neurons)):
                 n2 = neurons[n2_ind]
-                if n1['channel'] not in n2['neighbors']:
-                    continue
+                # if n1['channel'] not in n2['neighbors']:
+                #     continue
                 n_neighbors[n1_ind].add(n2_ind)
                 if (overlap_ratio[n1_ind, n2_ind] >=
                     overlap_ratio_threshold * expected_ratio[n1_ind, n2_ind]):
@@ -1448,10 +1464,10 @@ class WorkItemSummary(object):
             delete_1 = False
             delete_2 = False
 
-            print("Neurons have scores", neuron_1_score, neuron_2_score, "and m_isolation", neuron_1['m_isolation'], neuron_2['m_isolation'])
-            var_rat1 = np.sum(np.var(neuron_1['waveforms'], axis=0)) / np.var(neuron_1['template']**2)
-            var_rat2 = np.sum(np.var(neuron_2['waveforms'], axis=0)) / np.var(neuron_2['template']**2)
-            print("Variance ratios are", var_rat1, var_rat2)
+            # print("Neurons have scores", neuron_1_score, neuron_2_score, "and m_isolation", neuron_1['m_isolation'], neuron_2['m_isolation'])
+            # var_rat1 = np.sum(np.var(neuron_1['waveforms'], axis=0)) / np.var(neuron_1['template']**2)
+            # var_rat2 = np.sum(np.var(neuron_2['waveforms'], axis=0)) / np.var(neuron_2['template']**2)
+            # print("Variance ratios are", var_rat1, var_rat2)
 
             """First doing the MUA and spike number checks because at this point
             the stitch segments function has deleted anything with MUA over the
@@ -1461,7 +1477,12 @@ class WorkItemSummary(object):
             low MUA can indicate good isolation, or perhaps that the unit has a
             very small number of spikes. So we first consider MUA and spike
             count jointly before deferring to SNR. """
-            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] <= 0:
+            if neuron_1['snr'] < self.min_snr or neuron_2['snr'] < self.min_snr:
+                if neuron_1['snr'] < neuron_2['snr']:
+                    delete_1 = True
+                else:
+                    delete_2 = True
+            elif neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] <= 0:
                 print("Both units had BAD MUA")
                 # MUA calculation was invalid so just use SNR
                 if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):

@@ -303,11 +303,10 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                                 residual_voltage[cv_win[0]:cv_win[1]],
                                 fft_kernels[n*n_neighbor_chans + chan],
                                 mode='same'))
-                bias_diffs = np.diff(neighbor_bias)
-                bias_peaks = np.hstack((False, np.logical_and(bias_diffs[0:-1] >= 0, bias_diffs[1:] <= 0), False))
-                bias_peaks = neighbor_bias[bias_peaks]
-                spike_biases[n] = np.mean(bias_peaks)
-                # spike_biases[n] = np.quantile(neighbor_bias, .95, interpolation='lower')
+                bias_MAD = np.median(np.abs(neighbor_bias)) / 0.6745
+                neighbor_bias = neighbor_bias[np.logical_and(neighbor_bias > -2*bias_MAD, neighbor_bias < 2*bias_MAD)]
+                std_noise = np.median(np.abs(neighbor_bias)) / 0.6745
+                spike_biases[n] = 2*std_noise
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage

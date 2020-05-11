@@ -291,9 +291,6 @@ class TestDataset(object):
             self.actual_IDs[neuron] += half_temp_width # Re-center the spike times
         self.voltage_array = voltage_array
 
-    def assess_performance():
-        pass
-
     def sort_test_dataset(self, kwargs):
 
         spike_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],

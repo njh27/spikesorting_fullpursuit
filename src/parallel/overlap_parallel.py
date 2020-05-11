@@ -311,7 +311,7 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
 
     # Compute residual voltage by subtracting all known spikes
     spike_times = np.zeros(probe_dict['n_samples'], dtype='byte')
-    spike_biases = np.zeros((template_labels.size, neighbors.size), dtype=np.float32)
+    spike_biases = np.zeros(template_labels.shape[0], dtype=np.float32)
     template_error = np.zeros((template_labels.size, neighbors.size), dtype=np.float32)
     for chan_ind, chan in enumerate(neighbors):
         if chan == channel:

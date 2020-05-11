@@ -299,37 +299,8 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                                 residual_voltage[cv_win[0]:cv_win[1]],
                                 fft_kernels[n*n_neighbor_chans + chan],
                                 mode='same'))
-                # bias_MAD = np.median(np.abs(neighbor_bias)) / 0.6745
-                # neighbor_bias = neighbor_bias[np.logical_and(neighbor_bias > -2*bias_MAD, neighbor_bias < 2*bias_MAD)]
                 std_noise = np.median(np.abs(neighbor_bias)) / 0.6745
                 spike_biases[n] = 2*std_noise
-
-                # bias_diffs = np.diff(neighbor_bias)
-                # bias_peaks = np.hstack((False, np.logical_and(bias_diffs[0:-1] >= 0, bias_diffs[1:] <= 0), False))
-                # bias_peaks = neighbor_bias[bias_peaks]
-                # spike_biases[n] = np.mean(bias_peaks)
-                # spike_biases[n] = np.quantile(neighbor_bias, .95, interpolation='lower')
-                #
-                # plt.axvline(np.quantile(neighbor_bias, .95, interpolation='lower'), color='c')
-                # bias_counts, bias_x = np.histogram(neighbor_bias, 100)
-                # plt.bar(bias_x[0:-1], bias_counts, width=bias_x[1]-bias_x[0])
-                #
-                # # plt.axvline(np.median(np.abs(neighbor_bias)), color='g')
-                # plt.axvline(template_sum_squared[n]/-1, color='g')
-                #
-                # bias_median = 0#np.median(neighbor_bias)
-                # bias_MAD = np.median(np.abs(neighbor_bias - bias_median)) / 0.6745
-                # plt.axvline(2*bias_MAD, color='r')
-                # neighbor_bias = neighbor_bias[np.logical_and(neighbor_bias > bias_median -2*bias_MAD, neighbor_bias < bias_median +2*bias_MAD)]
-                #
-                # bias_median = 0#np.median(neighbor_bias)
-                # std_noise = np.median(np.abs(neighbor_bias - bias_median)) / 0.6745
-                # print("NOISE MEDIAN IS", bias_median)
-                # plt.axvline(bias_median + 2*std_noise, color='k')
-                #
-                # plt.xlim([-800, 800])
-                # plt.ylim([0, 40000])
-                # plt.show()
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage

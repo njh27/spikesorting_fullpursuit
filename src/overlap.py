@@ -270,7 +270,21 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
         clip_width):
     """
     This function is slow and not efficient in time or memory consumption. The
-    GPU version should be preferred. """
+    GPU version should be preferred.
+    Further, this function differs from the GPU version in that it still
+    requires the likelihood to exceed a value on the master channel only,
+    and then on all channels combined. This threshold is the bias/number of
+    channels. This should only make a difference of a few spikes here and there
+    and not matter much in nearly all cases. The GPU version considers all
+    channels without special regard to the master channel but this requires
+    computing the residual at all time points across all channels. The version
+    implemented here is slow enough while only computing these values on the
+    master channel at all time points and then checking over all channels only
+    if the master crosses threshold. Note, the master channel threshold
+    could be set to 0, or some negative value such that the sum of all
+    channels is still the correct bias term. This would effectively eliminate
+    the master channel threshold and give the same results as the GPU verison.
+    However, this will only increase the computation time of this function."""
     neighbors = np.array(Probe.get_neighbors(channel)).astype(np.int64)
     # Need to find the indices of the current channel within the multichannel template
     chan_win, clip_width = segment.time_window_to_samples(clip_width, Probe.sampling_rate)
@@ -281,16 +295,6 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
     event_order = np.argsort(event_indices)
     event_indices = event_indices[event_order]
     neuron_labels = neuron_labels[event_order]
-    # event_indices, removed_index = remove_overlapping_spikes(event_indices, clip_samples[1]-clip_samples[0])
-    # neuron_labels = neuron_labels[~removed_index]
-
-    # Get clips for templates to subtract
-    # clips, valid_inds = segment.get_singlechannel_clips(Probe, channel, event_indices, clip_width=clip_width)
-    # event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
-    # Reassign any units that might represent a combination of units into one of the two combining units
-    # neuron_labels = reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, Probe.sampling_rate, clip_width, 0.75)
-    # Align everything
-    # event_indices, neuron_labels, valid_inds = segment.align_events_with_template(Probe, channel, neuron_labels, event_indices, clip_width=clip_width)
 
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
     multi_clips, valid_inds = segment.get_multichannel_clips(Probe, neighbors, event_indices, clip_width=clip_width)
@@ -299,7 +303,7 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
 
     multi_templates, template_labels = segment.calculate_templates(multi_clips, neuron_labels)
 
-    keep_bool = remove_overlapping_spikes(event_indices, clips, neuron_labels, multi_templates,
+    keep_bool = remove_overlapping_spikes(event_indices, multi_clips, neuron_labels, multi_templates,
                                   template_labels, clip_samples[1]-clip_samples[0])
     event_indices = event_indices[keep_bool]
     neuron_labels = neuron_labels[keep_bool]
@@ -312,8 +316,10 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
 
     # Compute residual voltage by subtracting all known spikes
     spike_times = np.zeros(Probe.n_samples, dtype='byte')
-    spike_biases = np.zeros(template_labels.shape[0], dtype=np.float32)
+    spike_biases = np.zeros((template_labels.shape[0], neighbors.size), dtype=np.float32)
     template_error = np.zeros((template_labels.size, neighbors.size), dtype=np.float32)
+    neighbor_bias = np.zeros((template_labels.shape[0], Probe.n_samples), dtype=np.float32)
+    # Looping here is convoluted trying to get residual for main channel last
     for chan_ind, chan in enumerate(neighbors):
         if chan == channel:
             # Wait to do main channel last so we can keep residual voltage
@@ -332,7 +338,9 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
         n = 0
         for temp_label, temp in zip(template_labels, multi_templates):
             temp_kernel = np.float32(get_zero_phase_kernel(temp[temp_win[0]:temp_win[1]], np.abs(chan_win[0])))
-            spike_biases[n, chan_ind] = np.median(np.abs(fftconvolve(residual_voltage, temp_kernel, mode='same')))
+            # spike_biases[n, chan_ind] = np.median(np.abs(fftconvolve(residual_voltage, temp_kernel, mode='same')))
+            neighbor_bias[n, :] += np.float32(fftconvolve(
+                                    residual_voltage, temp_kernel, mode='same'))
             template_error[n, chan_ind] = -0.5 * np.dot(
                 temp[temp_win[0]:temp_win[1]], temp[temp_win[0]:temp_win[1]])
             n += 1
@@ -348,10 +356,22 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
     n = 0
     for temp_label, temp in zip(template_labels, multi_templates):
         temp_kernel = np.float32(get_zero_phase_kernel(temp[curr_chan_inds], np.abs(chan_win[0])))
-        spike_biases[n, chan_neighbor_ind] = np.median(np.abs(fftconvolve(residual_voltage, temp_kernel, mode='same')))
+        # spike_biases[n, chan_neighbor_ind] = np.median(np.abs(fftconvolve(residual_voltage, temp_kernel, mode='same')))
+        neighbor_bias[n, :] += np.float32(fftconvolve(
+                                residual_voltage, temp_kernel, mode='same'))
         template_error[n, chan_neighbor_ind] = -0.5 * np.dot(
             temp[curr_chan_inds], temp[curr_chan_inds])
         n += 1
+    std_noise = np.median(np.abs(neighbor_bias), axis=1) / 0.6745
+    for unit in range(0, spike_biases.shape[0]):
+        # Evenly split bias across channels. Main channel will have to cross
+        # this number, unlike in the GPU version, but this should be low enough
+        # to make a difference of not more than a spike here or there
+        spike_biases[unit, :] = 2*std_noise / neighbors.size
+    # Free some memory
+    del spike_times
+    del neighbor_bias
+
     new_event_indices = []
     new_event_labels = []
 

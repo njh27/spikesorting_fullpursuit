@@ -308,6 +308,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage
+            del neighbor_bias
             crossings_buffer.release()
             spike_labels_buffer.release()
 

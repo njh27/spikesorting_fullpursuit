@@ -304,6 +304,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage
+            del neighbor_bias
             crossings_buffer.release()
             spike_labels_buffer.release()
 

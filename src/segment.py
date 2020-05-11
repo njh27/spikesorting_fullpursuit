@@ -204,7 +204,14 @@ def align_events_with_best_template(Probe, channel, neuron_labels, event_indices
 
 
 def align_templates(Probe, channel, neuron_labels, event_indices, clip_width):
+    """ Aligns templates to each other and shift their event indices accordingly.
 
+    This function determines the template for each cluster and then asks whether
+    the majority of clusters have templates with larger peak or valley. All
+    templates are then aligned on peak or valley according to the majority and
+    their constituent event_indices are shifted accordingly and returned. The
+    purpose is to align all events while ignoring the jitter in peak valley
+    alignment strategies caused by noise. """
     window, clip_width = time_window_to_samples(clip_width, Probe.sampling_rate)
     clips, valid_inds = get_singlechannel_clips(Probe, channel, event_indices, clip_width=clip_width)
     event_indices = event_indices[valid_inds]

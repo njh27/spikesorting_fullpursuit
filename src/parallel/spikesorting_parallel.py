@@ -79,6 +79,7 @@ def init_pool_dict(volt_array, volt_shape, init_dict=None):
 def init_load_voltage():
     mkl.set_num_threads(1)
 
+
 def load_voltage_parallel(PL2Reader, read_source):
     """
     """
@@ -240,97 +241,6 @@ def print_process_info(title):
     print('process id:', os.getpid(), flush=True)
 
 
-"""
-    Wavelet alignment can bounce back and forth based on noise blips if
-    the spike waveform is nearly symmetric in peak/valley. """
-def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
-                         settings):
-    templates, labels = segment_parallel.calculate_templates(clips[:, curr_chan_inds], neuron_labels)
-    any_merged = False
-    unit_inds_to_check = [x for x in range(0, len(templates))]
-    previously_aligned_dict = {}
-    while len(unit_inds_to_check) > 1:
-        # Find nearest cross corr template matched pair
-        best_corr = -np.inf
-        best_shift = 0
-        for i in range(0, len(unit_inds_to_check)):
-            for j in range(i + 1, len(unit_inds_to_check)):
-                t_ind_1 = unit_inds_to_check[i]
-                t_ind_2 = unit_inds_to_check[j]
-                cross_corr = np.correlate(templates[t_ind_1],
-                                          templates[t_ind_2], mode='full')
-                max_corr_ind = np.argmax(cross_corr)
-                if cross_corr[max_corr_ind] > best_corr:
-                    best_corr = cross_corr[max_corr_ind]
-                    best_shift = max_corr_ind - cross_corr.shape[0]//2
-                    best_pair_inds = [t_ind_1, t_ind_2]
-
-        # Get clips for best pair and optimally align them with each other
-        select_n_1 = neuron_labels == labels[best_pair_inds[0]]
-        select_n_2 = neuron_labels == labels[best_pair_inds[1]]
-        clips_1 = clips[select_n_1, :][:, curr_chan_inds]
-        clips_2 = clips[select_n_2, :][:, curr_chan_inds]
-
-        # Align and truncate clips for best match pair
-        if best_shift > 0:
-            clips_1 = clips_1[:, best_shift:]
-            clips_2 = clips_2[:, :-1*best_shift]
-        elif best_shift < 0:
-            clips_1 = clips_1[:, :best_shift]
-            clips_2 = clips_2[:, -1*best_shift:]
-        else:
-            # No need to shift, or even check these further
-            if clips_1.shape[0] >= clips_2.shape[0]:
-                unit_inds_to_check.remove(best_pair_inds[1])
-            else:
-                unit_inds_to_check.remove(best_pair_inds[0])
-            continue
-        # Check if the main merges with its best aligned leftover
-        combined_clips = np.vstack((clips_1, clips_2))
-        pseudo_labels = np.ones(combined_clips.shape[0], dtype=np.int64)
-        pseudo_labels[clips_1.shape[0]:] = 2
-        scores = preprocessing.compute_pca(combined_clips,
-                    settings['check_components'], settings['max_components'],
-                    add_peak_valley=settings['add_peak_valley'],
-                    curr_chan_inds=np.arange(0, combined_clips.shape[1]))
-        pseudo_labels = sort.merge_clusters(scores, pseudo_labels,
-                            split_only = False, merge_only=True,
-                            p_value_cut_thresh=settings['p_value_cut_thresh'])
-        if np.all(pseudo_labels == 1) or np.all(pseudo_labels == 2):
-            any_merged = True
-            if clips_1.shape[0] >= clips_2.shape[0]:
-                # Align all neuron 2 waves with neuron 1 template
-                event_indices[select_n_2] += -1*best_shift
-                unit_inds_to_check.remove(best_pair_inds[1])
-                if best_pair_inds[1] in previously_aligned_dict:
-                    for unit in previously_aligned_dict[best_pair_inds[1]]:
-                        select_unit = neuron_labels == unit
-                        event_indices[select_unit] += -1*best_shift
-                if best_pair_inds[0] not in previously_aligned_dict:
-                    previously_aligned_dict[best_pair_inds[0]] = []
-                previously_aligned_dict[best_pair_inds[0]].append(best_pair_inds[1])
-            else:
-                # Align all neuron 1 waves with neuron 2 template
-                event_indices[select_n_1] += best_shift
-                unit_inds_to_check.remove(best_pair_inds[0])
-                # Check if any previous units are tied to this one and should
-                # also shift
-                if best_pair_inds[0] in previously_aligned_dict:
-                    for unit in previously_aligned_dict[best_pair_inds[0]]:
-                        select_unit = neuron_labels == unit
-                        event_indices[select_unit] += best_shift
-                # Make this unit follow neuron 1 in the event neuron 1 changes
-                # in a future iteration
-                if best_pair_inds[1] not in previously_aligned_dict:
-                    previously_aligned_dict[best_pair_inds[1]] = []
-                previously_aligned_dict[best_pair_inds[1]].append(best_pair_inds[0])
-        else:
-            unit_inds_to_check.remove(best_pair_inds[0])
-            unit_inds_to_check.remove(best_pair_inds[1])
-
-    return event_indices, any_merged
-
-
 def branch_pca_2_0(neuron_labels, clips, curr_chan_inds, p_value_cut_thresh=0.01,
                     add_peak_valley=False, check_components=None,
                     max_components=None, use_rand_init=True, method='pca'):
@@ -396,22 +306,14 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
     try:
         # Print this process' errors and output to a file
         if not settings['test_flag']:
-            if settings['log_dir'] is None:
-                pass
-                # settings['log_dir'] = save_fname[0:-7] + '_std_logs'
-                # if os.path.exists(settings['log_dir']):
-                #     rmtree(settings['log_dir'])
-                #     time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
-                # os.makedirs(settings['log_dir'])
+            # Move stdout to the log_dir file
+            if sys.platform == 'win32':
+                sys.stdout = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + ".out", "w")
+                sys.stderr = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
             else:
-                # Move stdout to the log_dir file
-                if sys.platform == 'win32':
-                    sys.stdout = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + ".out", "w")
-                    sys.stderr = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
-                else:
-                    sys.stdout = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + ".out", "w")
-                    sys.stderr = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
-                print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']))
+                sys.stdout = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + ".out", "w")
+                sys.stderr = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
+            print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']))
 
         # Setup threads and affinity based on use_cpus if not on mac OS
         if 'win32' == sys.platform:
@@ -466,7 +368,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if settings['verbose']: print("Start initial clustering and merge", flush=True)
         # Do initial single channel sort. Start with single channel only because
         # later branching can split things out using multichannel info, but it
-        # can't really put things back together again
+        # can't put things back together again
         if crossings.size > 1:
             scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
                         settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
@@ -480,10 +382,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             crossings, neuron_labels, _ = segment_parallel.align_templates(
                             item_dict, voltage[chan, :], neuron_labels, crossings,
                             clip_width=settings['clip_width'])
-            # crossings, neuron_labels, _ = segment_parallel.align_events_with_best_template(
-            #                 item_dict, voltage[chan, :], neuron_labels, crossings,
-            #                 clip_width=settings['clip_width'])
-
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                             item_dict, voltage[neighbors, :],
                                             crossings, clip_width=settings['clip_width'])
@@ -499,31 +397,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                                 split_only = False,
                                 p_value_cut_thresh=settings['p_value_cut_thresh'])
 
-            # crossings, neuron_labels, valid_inds = segment_parallel.align_events_with_template(
-            #                 item_dict, voltage[chan, :], neuron_labels, crossings,
-            #                 clip_width=settings['clip_width'])
-            # clips, valid_event_indices = segment_parallel.get_multichannel_clips(
-            #                                 item_dict, voltage[neighbors, :],
-            #                                 crossings, clip_width=settings['clip_width'])
-            # crossings, neuron_labels = segment_parallel.keep_valid_inds(
-            #         [crossings, neuron_labels], valid_event_indices)
-
-            # crossings, any_merged = check_spike_alignment(clips,
-            #                 crossings, neuron_labels, curr_chan_inds, settings)
-            # if any_merged:
-            #     # Resort based on new clip alignment
-            #     clips, valid_event_indices = segment_parallel.get_multichannel_clips(
-            #                                     item_dict, voltage[neighbors, :],
-            #                                     crossings, clip_width=settings['clip_width'])
-            #     crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
-            #     scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
-            #                 settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
-            #                 curr_chan_inds=np.arange(0, curr_chan_inds.size))
-            #     n_random = max(100, np.around(crossings.size / 100)) if settings['use_rand_init'] else 0
-            #     neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
-            #     neuron_labels = sort.merge_clusters(scores, neuron_labels,
-            #                         split_only = False,
-            #                         p_value_cut_thresh=settings['p_value_cut_thresh'])
             curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
         else:
             neuron_labels = np.zeros(1, dtype=np.int64)

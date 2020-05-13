@@ -57,8 +57,6 @@ class TestSingleElectrode(electrode.AbstractProbe):
 class TestTetrode(electrode.AbstractProbe):
 
     def __init__(self, sampling_rate, voltage_array):
-        if num_channels is None:
-            num_channels = voltage_array.shape[1]
         electrode.AbstractProbe.__init__(self, sampling_rate, 4, voltage_array=voltage_array)
 
     def get_neighbors(self, channel):
@@ -306,9 +304,9 @@ class TestDataset(object):
         for key in kwargs:
             spike_sort_kwargs[key] = kwargs[key]
 
-        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
+        # self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
         # self.Probe = TestSingleElectrode(self.samples_per_second, self.voltage_array)
-        # self.Probe = TestTetrode(self.samples_per_second, self.voltage_array)
+        self.Probe = TestTetrode(self.samples_per_second, self.voltage_array)
         sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **spike_sort_kwargs)
 
         return sort_data, work_items, sort_info

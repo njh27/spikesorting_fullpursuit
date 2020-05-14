@@ -1217,7 +1217,7 @@ class WorkItemSummary(object):
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['waveforms'], axis=0)
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
-                    neuron['fraction_mua'] = calc_fraction_mua(
+                    neuron['fraction_mua'] = calc_fraction_mua_to_peak(
                                                 neuron["spike_indices"],
                                                 self.sort_info['sampling_rate'],
                                                 neuron['duplicate_tol_inds'],
@@ -1423,14 +1423,6 @@ class WorkItemSummary(object):
                     and (neuron_2['spike_indices'].shape[0] > neuron_1['spike_indices'].shape[0])):
                     # We are about to select the unit that has the most spikes and the most MUA,
                     # which can be dangerous in the case of super mixtures.
-                    # print("n1 good spikes", (1-neuron_1['fraction_mua']) * neuron_1['spike_indices'].shape[0], "n2 good spikes", (1-neuron_2['fraction_mua']) * neuron_2['spike_indices'].shape[0])
-                    # if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
-                    #     bad_n1 = neuron_1['fraction_mua'] * neuron_1['spike_indices'].shape[0]
-                    #     print("n2 plus n1 bad", neuron_2['spike_indices'].shape[0] + bad_n1)
-                    # else:
-                    #     bad_n2 = neuron_2['fraction_mua'] * neuron_2['spike_indices'].shape[0]
-                    #     print("n1 plus n2 bad", neuron_1['spike_indices'].shape[0] + bad_n2)
-
                     max_duplicate_tol_inds = max(neuron_1['duplicate_tol_inds'], neuron_2['duplicate_tol_inds'])
                     neuron_2_compliment = np.in1d(neuron_1['spike_indices'], neuron_2['spike_indices'], invert=True)
                     union_spikes = np.hstack((neuron_1['spike_indices'][neuron_2_compliment], neuron_2['spike_indices']))
@@ -1443,10 +1435,22 @@ class WorkItemSummary(object):
                                                      self.sort_info['sampling_rate'],
                                                      max_duplicate_tol_inds,
                                                      self.absolute_refractory_period)
+                    # Need to get fraction MUA by rate, rather than peak,
+                    # for comparison here
+                    fraction_mua_rate_1 = calc_fraction_mua(
+                                             neuron_1['spike_indices'],
+                                             self.sort_info['sampling_rate'],
+                                             max_duplicate_tol_inds,
+                                             self.absolute_refractory_period)
+                    fraction_mua_rate_2 = calc_fraction_mua(
+                                             neuron_2['spike_indices'],
+                                             self.sort_info['sampling_rate'],
+                                             max_duplicate_tol_inds,
+                                             self.absolute_refractory_period)
 
-                    print("Union MUA", union_fraction_mua_rate, "n1 mua", neuron_1['fraction_mua'], "n2 mua", neuron_2['fraction_mua'])
-                    if union_fraction_mua_rate > overlap_ratio_threshold * min(neuron_1['fraction_mua'], neuron_2['fraction_mua']) \
-                        and union_fraction_mua_rate > max(neuron_1['fraction_mua'], neuron_2['fraction_mua']):
+                    print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
+                    if union_fraction_mua_rate > overlap_ratio_threshold * min(fraction_mua_rate_1, fraction_mua_rate_2) \
+                        and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
                         print("!!! OVERRIDING !!!")
                         print("!!! OVERRIDING !!!")
                         # The unit with more spikes and MUA is likely a bad mixture

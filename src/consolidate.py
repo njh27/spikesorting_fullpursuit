@@ -1498,20 +1498,20 @@ class WorkItemSummary(object):
                 delete_1 = False
                 delete_2 = True
 
-            if neurons[best_pair[0]]['prev_seg_link'] is None and \
-                neurons[best_pair[0]]['next_seg_link'] is None:
-                if neurons[best_pair[1]]['prev_seg_link'] is not None or \
-                    neurons[best_pair[1]]['next_seg_link'] is not None:
-                    # Neuron 1 links to nothing, but neuron 2 has a link, so
-                    # keep neuron 2, delete 1
-                    print("!!! NEURON 1 LINKS TO NONE !!!")
-            if neurons[best_pair[1]]['prev_seg_link'] is None and \
-                neurons[best_pair[1]]['next_seg_link'] is None:
-                if neurons[best_pair[0]]['prev_seg_link'] is not None or \
-                    neurons[best_pair[0]]['next_seg_link'] is not None:
-                    # Neuron 2 links to nothing, but neuron 1 has a link, so
-                    # keep neuron 1, delete 2
-                    print("!!! NEURON 2 LINKS TO NONE !!!")
+            # if neurons[best_pair[0]]['prev_seg_link'] is None and \
+            #     neurons[best_pair[0]]['next_seg_link'] is None:
+            #     if neurons[best_pair[1]]['prev_seg_link'] is not None or \
+            #         neurons[best_pair[1]]['next_seg_link'] is not None:
+            #         # Neuron 1 links to nothing, but neuron 2 has a link, so
+            #         # keep neuron 2, delete 1
+            #         print("!!! NEURON 1 LINKS TO NONE !!!")
+            # if neurons[best_pair[1]]['prev_seg_link'] is None and \
+            #     neurons[best_pair[1]]['next_seg_link'] is None:
+            #     if neurons[best_pair[0]]['prev_seg_link'] is not None or \
+            #         neurons[best_pair[0]]['next_seg_link'] is not None:
+            #         # Neuron 2 links to nothing, but neuron 1 has a link, so
+            #         # keep neuron 1, delete 2
+            #         print("!!! NEURON 2 LINKS TO NONE !!!")
 
             print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
             if delete_1:

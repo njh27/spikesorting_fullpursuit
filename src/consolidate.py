@@ -959,8 +959,10 @@ class WorkItemSummary(object):
                         # used in curr_seg
                         self.sort_data[chan][next_seg][1][fake_select] = best_pair[0]
                         leftover_labels.remove(best_pair[1])
+                        main_labels.remove(best_pair[0])
                     else:
                         # These mutually closest failed so do not repeat
+                        main_labels.remove(best_pair[0])
                         previously_compared_pairs.append(best_pair)
 
                 # Assign units in next segment that do not match any in the
@@ -1409,7 +1411,7 @@ class WorkItemSummary(object):
                 # or are their best remaining copies
                 adjusted_n1_score = (1-neuron_1['fraction_mua']) * neuron_1['snr'] * (neuron_1['spike_indices'].shape[0] + (neuron_2['fraction_mua'] - neuron_1['fraction_mua'])*neuron_2['spike_indices'].shape[0])
                 adjusted_n2_score = (1-neuron_2['fraction_mua']) * neuron_2['snr'] * (neuron_2['spike_indices'].shape[0] + (neuron_1['fraction_mua'] - neuron_2['fraction_mua'])*neuron_1['spike_indices'].shape[0])
-                print("!!!ADJUSTED SCORES n1", adjusted_n1_score, "n2", adjusted_n2_score)
+                print("Adjusted scores n1", adjusted_n1_score, "n2", adjusted_n2_score)
                 print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
 
                 if (delete_2 and adjusted_n1_score < adjusted_n2_score) or \

@@ -1509,14 +1509,16 @@ class WorkItemSummary(object):
                 for vp in violation_partners:
                     vp.discard(best_pair[0])
                 if seg > 0:
-                    # Reassign anything linking to this unit to link to 2 instead
+                    # Reassign any unit in previous segment with a next link
+                    # to this unit to None
                     for p_ind, prev_n in enumerate(self.neuron_summary_by_seg[seg-1]):
                         if prev_n['next_seg_link'] is None:
                             continue
                         if prev_n['next_seg_link'] == best_pair[0]:
                                 prev_n['next_seg_link'] = None
                 if seg < self.n_segments - 1:
-                    # Reassign anything linking to this unit to link to 2 instead
+                    # Reassign any unit in next segment with a previous link
+                    # to this unit to None
                     for next_n in self.neuron_summary_by_seg[seg+1]:
                         if next_n['prev_seg_link'] is None:
                             continue
@@ -1534,14 +1536,16 @@ class WorkItemSummary(object):
                 for vp in violation_partners:
                     vp.discard(best_pair[1])
                 if seg > 0:
-                    # Reassign anything linking to this unit to link to 2 instead
+                    # Reassign any unit in previous segment with a next link
+                    # to this unit to None
                     for p_ind, prev_n in enumerate(self.neuron_summary_by_seg[seg-1]):
                         if prev_n['next_seg_link'] is None:
                             continue
                         if prev_n['next_seg_link'] == best_pair[1]:
                                 prev_n['next_seg_link'] = None
                 if seg < self.n_segments - 1:
-                    # Reassign anything linking to this unit to link to 2 instead
+                    # Reassign any unit in next segment with a previous link
+                    # to this unit to None
                     for next_n in self.neuron_summary_by_seg[seg+1]:
                         if next_n['prev_seg_link'] is None:
                             continue

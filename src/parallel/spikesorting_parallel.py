@@ -502,6 +502,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 crossings, neuron_labels, settings['clip_width'],
                                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
+                    time.sleep(.5) # Sleep half a second to let openCL objects close before releasing lock
             exit_type = "Finished binary pursuit"
         else:
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])

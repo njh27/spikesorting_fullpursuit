@@ -1223,6 +1223,8 @@ class WorkItemSummary(object):
                                                 neuron['duplicate_tol_inds'],
                                                 self.absolute_refractory_period)
                     neuron['threshold'] = self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['channel']]
+                    neuron['quality_score'] = neuron['snr'] * (1-neuron['fraction_mua']) \
+                                                    * (neuron['spike_indices'].shape[0])
                     self.neuron_summary_by_seg[seg].append(neuron)
 
     def get_overlap_ratio(self, seg1, n1_ind, seg2, n2_ind, overlap_time=2.5e-4):
@@ -1287,8 +1289,6 @@ class WorkItemSummary(object):
         quality_scores = np.zeros(len(neurons))
         violation_partners = [set() for x in range(0, len(neurons))]
         for neuron1_ind, neuron1 in enumerate(neurons):
-            quality_scores[neuron1_ind] = neuron1['snr'] * (1-neuron1['fraction_mua']) \
-                                            * (neuron1['spike_indices'].shape[0])
             violation_partners[neuron1_ind].add(neuron1_ind)
             # Loop through all pairs of units and compute overlap and expected
             for neuron2_ind in range(neuron1_ind+1, len(neurons)):
@@ -1347,9 +1347,6 @@ class WorkItemSummary(object):
             # We now need to choose one of the pair to delete.
             neuron_1 = neurons[best_pair[0]]
             neuron_2 = neurons[best_pair[1]]
-            n_total_spikes = neuron_1['spike_indices'].shape[0] + neuron_2['spike_indices'].shape[0]
-            neuron_1_score = quality_scores[best_pair[0]]
-            neuron_2_score = quality_scores[best_pair[1]]
             delete_1 = False
             delete_2 = False
             """First doing the MUA and spike number checks because at this point
@@ -1380,47 +1377,40 @@ class WorkItemSummary(object):
                     delete_1 = True
                 else:
                     delete_2 = True
-            # elif neuron_1['fraction_mua'] < 1e-4 and neuron_2['fraction_mua'] < 1e-4:
-            #     # Both MUA negligible so choose most spikes
-            #     print("Both MUA negligible so choosing most spikes")
-            #     if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
-            #         delete_2 = True
-            #     else:
-            #         delete_1 = True
-            elif neuron_1_score > neuron_2_score:
+            elif neuron_1['quality_score'] > neuron_2['quality_score']:
                 # Neuron 1 has higher MUA weighted spikes
                 print('Neuron 1 has higher MUA weighted spikes')
                 # print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_2 = True
-            elif neuron_2_score > neuron_1_score:
+            elif neuron_1['quality_score'] < neuron_2['quality_score']:
                 # Neuron 2 has higher MUA weighted spikes
                 print('Neuron 2 has higher MUA weighted spikes')
                 # print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_1 = True
 
             combined_violations = violation_partners[best_pair[0]].union(violation_partners[best_pair[1]])
-            max_other_n1 = neuron_1_score
+            max_other_n1 = neuron_1['quality_score']
             other_n1 = combined_violations - violation_partners[best_pair[1]]
             for v_ind in other_n1:
                 if quality_scores[v_ind] > max_other_n1:
                     max_other_n1 = quality_scores[v_ind]
-            max_other_n2 = neuron_2_score
+            max_other_n2 = neuron_2['quality_score']
             other_n2 = combined_violations - violation_partners[best_pair[0]]
             for v_ind in other_n2:
                 if quality_scores[v_ind] > max_other_n2:
                     max_other_n2 = quality_scores[v_ind]
             print("Max other n1", max_other_n1, "n2", max_other_n2)
-            diff_score_1 = max_other_n1 - neuron_1_score
-            diff_score_2 = max_other_n2 - neuron_2_score
+            diff_score_1 = max_other_n1 - neuron_1['quality_score']
+            diff_score_2 = max_other_n2 - neuron_2['quality_score']
             print("Diff scores n1", diff_score_1, "n2", diff_score_2)
 
             if len(combined_violations) == 2 or (diff_score_1 == 0 and diff_score_2 == 0):
                 # This implies that these two units only violate with each other
                 # or are their best remaining copies
-                adjusted_n1_score = (1-neuron_1['fraction_mua']) * neuron_1['snr'] * (neuron_1['spike_indices'].shape[0] + neuron_2['fraction_mua']*neuron_2['spike_indices'].shape[0])
-                adjusted_n2_score = (1-neuron_2['fraction_mua']) * neuron_2['snr'] * (neuron_2['spike_indices'].shape[0] + neuron_1['fraction_mua']*neuron_1['spike_indices'].shape[0])
+                adjusted_n1_score = (1-neuron_1['fraction_mua']) * neuron_1['snr'] * (neuron_1['spike_indices'].shape[0] + (neuron_2['fraction_mua'] - neuron_1['fraction_mua'])*neuron_2['spike_indices'].shape[0])
+                adjusted_n2_score = (1-neuron_2['fraction_mua']) * neuron_2['snr'] * (neuron_2['spike_indices'].shape[0] + (neuron_1['fraction_mua'] - neuron_2['fraction_mua'])*neuron_1['spike_indices'].shape[0])
                 print("!!!ADJUSTED SCORES n1", adjusted_n1_score, "n2", adjusted_n2_score)
-                print("original scores n1", neuron_1_score, "n2", neuron_2_score)
+                print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
 
                 if (delete_2 and adjusted_n1_score < adjusted_n2_score) or \
                     (delete_1 and adjusted_n2_score < adjusted_n1_score):
@@ -1430,10 +1420,10 @@ class WorkItemSummary(object):
                 #     and (neuron_2['spike_indices'].shape[0] > neuron_1['spike_indices'].shape[0])):
                     # We are about to select the unit that has the most spikes and the most MUA,
                     # which can be dangerous in the case of super mixtures.
+
+                    # Need to union with compliment so spikes are not double
+                    # counted, which will reduce the rate based MUA
                     max_duplicate_tol_inds = max(neuron_1['duplicate_tol_inds'], neuron_2['duplicate_tol_inds'])
-                    neuron_2_compliment = np.in1d(neuron_1['spike_indices'], neuron_2['spike_indices'], invert=True)
-                    union_spikes = np.hstack((neuron_1['spike_indices'][neuron_2_compliment], neuron_2['spike_indices']))
-                    union_spikes.sort()
                     neuron_2_compliment = np.in1d(neuron_1['spike_indices'], neuron_2['spike_indices'], invert=True)
                     union_spikes = np.hstack((neuron_1['spike_indices'][neuron_2_compliment], neuron_2['spike_indices']))
                     union_spikes.sort()
@@ -1454,12 +1444,6 @@ class WorkItemSummary(object):
                                              self.sort_info['sampling_rate'],
                                              max_duplicate_tol_inds,
                                              self.absolute_refractory_period)
-
-                    # adjusted_n1_score = (1-neuron_1['fraction_mua']) * neuron_1['snr'] * (neuron_1['spike_indices'].shape[0] + neuron_2['fraction_mua']*neuron_2['spike_indices'].shape[0])
-                    # adjusted_n2_score = (1-neuron_2['fraction_mua']) * neuron_2['snr'] * (neuron_2['spike_indices'].shape[0] + neuron_1['fraction_mua']*neuron_1['spike_indices'].shape[0])
-                    # print("!!!ADJUSTED SCORES n1", adjusted_n1_score, "n2", adjusted_n2_score)
-                    # print("original scores n1", neuron_1_score, "n2", neuron_2_score)
-
 
                     print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
                     if union_fraction_mua_rate > overlap_ratio_threshold * min(fraction_mua_rate_1, fraction_mua_rate_2) \
@@ -1484,6 +1468,8 @@ class WorkItemSummary(object):
                         #     delete_1 = False
                         #     delete_2 = True
 
+                """THIS IS COMPLETELY MAKING DECISIONS UNITL WE GET TO END. GUESS WE SHOULD
+                PUT AN ELSE STATEMENT ABOVE FOR USING QUALITY SCORES"""
             elif diff_score_1 > diff_score_2:
                 # Neuron 1 has a better copy somewhere so delete it
                 if not delete_1:
@@ -1526,13 +1512,6 @@ class WorkItemSummary(object):
                         if prev_n['next_seg_link'] is None:
                             continue
                         if prev_n['next_seg_link'] == best_pair[0]:
-                            # if neurons[best_pair[1]]['prev_seg_link'] is None:
-                            #     curr_intersection = self.get_overlap_ratio(
-                            #             seg-1, p_ind, seg, best_pair[1], overlap_time)
-                            #     if curr_intersection > self.min_overlapping_spikes:
-                            #         prev_n['next_seg_link'] = best_pair[1]
-                            #         neurons[best_pair[1]]['prev_seg_link'] = p_ind
-                            # else:
                                 prev_n['next_seg_link'] = None
                 if seg < self.n_segments - 1:
                     # Reassign anything linking to this unit to link to 2 instead
@@ -1558,13 +1537,6 @@ class WorkItemSummary(object):
                         if prev_n['next_seg_link'] is None:
                             continue
                         if prev_n['next_seg_link'] == best_pair[1]:
-                            # if neurons[best_pair[0]]['prev_seg_link'] is None:
-                            #     curr_intersection = self.get_overlap_ratio(
-                            #             seg-1, p_ind, seg, best_pair[0], overlap_time)
-                            #     if curr_intersection > self.min_overlapping_spikes:
-                            #         prev_n['next_seg_link'] = best_pair[0]
-                            #         neurons[best_pair[0]]['prev_seg_link'] = p_ind
-                            # else:
                                 prev_n['next_seg_link'] = None
                 if seg < self.n_segments - 1:
                     # Reassign anything linking to this unit to link to 2 instead
@@ -1595,6 +1567,7 @@ class WorkItemSummary(object):
     def make_overlapping_links(self, overlap_time):
         """
         """
+        overlap_inds = int(round(overlap_time * self.sort_info['sampling_rate']))
         for seg in range(0, self.n_segments-1):
             n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
                             if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
@@ -1604,49 +1577,82 @@ class WorkItemSummary(object):
                     bad_n1.append(n_ind)
                 elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] > self.max_mua_ratio:
                     bad_n1.append(n_ind)
+                elif self.neuron_summary_by_seg[seg][n_ind]['snr'] < self.min_snr:
+                    bad_n1.append(n_ind)
             for dn in bad_n1:
                 n1_remaining.remove(dn)
             while len(n1_remaining) > 0:
-                max_overlap_mua = -1.
-                best_n1_weighted_spikes = -1.
+                best_n1_score = 0.
+                best_n1_ind = 0
                 for n1_ind in n1_remaining:
                     # Choose the best n1_remaining
-                    if self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] < 0:
-                        n1_weighted_spikes = (self.neuron_summary_by_seg[seg][n1_ind]['snr']
-                                              * self.neuron_summary_by_seg[seg][n1_ind]['spike_indices'].shape[0])
+                    if self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] == -1:
+                        # Invalid MUA so pick on SNR
+                        n1_score = self.neuron_summary_by_seg[seg][n1_ind]['snr']
                     else:
-                        n1_weighted_spikes = (self.neuron_summary_by_seg[seg][n1_ind]['snr']
-                                             * ((1 - self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'])
-                                             * self.neuron_summary_by_seg[seg][n1_ind]['spike_indices'].shape[0]))
-                    if n1_weighted_spikes > best_n1_weighted_spikes:
-                        best_n1_weighted_spikes = n1_weighted_spikes
+                        n1_score = self.neuron_summary_by_seg[seg][n1_ind]['quality_score']
+                    if n1_score > best_n1_score:
+                        best_n1_score = n1_score
                         best_n1_ind = n1_ind
                 n1_ind = best_n1_ind
+                n1 = self.neuron_summary_by_seg[seg][n1_ind]
 
+                best_n2_score = 0.
                 for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
                     # Choose the best n2 match for n1 that satisfies thresholds
                     if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
-                        if self.neuron_summary_by_seg[seg][n1_ind]['channel'] not in n2['neighbors']:
+                        if n1['channel'] not in n2['neighbors']:
                             continue
                         if n2['fraction_mua'] > self.max_mua_ratio:
+                            continue
+                        if n2['snr'] < self.min_snr:
                             continue
                         curr_overlap = self.get_overlap_ratio(
                                 seg, n1_ind, seg+1, n2_ind, overlap_time)
                         if curr_overlap < self.min_overlapping_spikes:
                             continue
-                        if n2['fraction_mua'] < 0 and self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] < 0:
-                            curr_overlap_mua = n2['snr'] * n2['spike_indices'].shape[0]
-                            # curr_overlap_mua += n1_weighted_spikes
-                        elif n2['fraction_mua'] < 0 or self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] < 0:
+
+                        # Need to union with compliment so spikes are not double
+                        # counted, which will reduce the rate based MUA
+                        n2_compliment = np.in1d(n1['spike_indices'], n2['spike_indices'], invert=True)
+                        union_spikes = np.hstack((n1['spike_indices'][n2_compliment], n2['spike_indices']))
+                        union_spikes.sort()
+                        union_fraction_mua_rate = calc_fraction_mua(
+                                                         union_spikes,
+                                                         self.sort_info['sampling_rate'],
+                                                         overlap_inds,
+                                                         self.absolute_refractory_period)
+                        # Need to get fraction MUA by rate, rather than peak,
+                        # for comparison here
+                        fraction_mua_rate_1 = calc_fraction_mua(
+                                                 n1['spike_indices'],
+                                                 self.sort_info['sampling_rate'],
+                                                 overlap_inds,
+                                                 self.absolute_refractory_period)
+                        fraction_mua_rate_2 = calc_fraction_mua(
+                                                 n2['spike_indices'],
+                                                 self.sort_info['sampling_rate'],
+                                                 overlap_inds,
+                                                 self.absolute_refractory_period)
+                        if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) / self.min_overlapping_spikes \
+                            and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
+                            continue
+
+                        # If we made it here, the overlap is sufficient to link
+                        # Now we must choose the best n2 to make it here
+                        if n2['fraction_mua'] == -1 and n1['fraction_mua'] == -1:
+                            # Both invalid MUA, so pick on SNR
+                            n2_score = n2['snr']
+                        elif n2['fraction_mua'] == -1 or n1['fraction_mua'] == -1:
+                            # Only one unit has invalid MUA so don't link
                             continue
                         else:
-                            curr_overlap_mua = n2['snr']*((1 - n2['fraction_mua']) * n2['spike_indices'].shape[0])
-                            # curr_overlap_mua += n1_weighted_spikes
-                        if curr_overlap_mua > max_overlap_mua:
-                            max_overlap_mua = curr_overlap_mua
+                            n2_score = n2['quality_score']
+                        if n2_score > best_n2_score:
+                            best_n2_score = n2_score
                             max_overlap_pair = [n1_ind, n2_ind]
 
-                if max_overlap_mua > 0:
+                if best_n2_score > 0:
                     # Found a match that satisfies thresholds so link them
                     self.neuron_summary_by_seg[seg][max_overlap_pair[0]]['next_seg_link'] = max_overlap_pair[1]
                     self.neuron_summary_by_seg[seg+1][max_overlap_pair[1]]['prev_seg_link'] = max_overlap_pair[0]
@@ -1654,7 +1660,6 @@ class WorkItemSummary(object):
                 else:
                     # Best remaining n1 could not find an n2 match so remove it
                     n1_remaining.remove(n1_ind)
-                    # break
 
     def stitch_neurons_across_channels(self):
         start_seg = 0

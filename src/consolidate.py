@@ -1359,16 +1359,10 @@ class WorkItemSummary(object):
             low MUA can indicate good isolation, or perhaps that the unit has a
             very small number of spikes. So we first consider MUA and spike
             count jointly before deferring to SNR. """
-            # if neuron_1['snr'] < self.min_snr or neuron_2['snr'] < self.min_snr:
-            #     if neuron_1['snr'] < neuron_2['snr']:
-            #         delete_1 = True
-            #     else:
-            #         delete_2 = True
             if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
                 print("Both units had BAD MUA")
                 # MUA calculation was invalid so just use SNR
                 if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):
-                    print("neuron 1 has higher SNR", neuron_1['snr'] , neuron_2['snr'])
                     delete_2 = True
                 else:
                     delete_1 = True
@@ -1380,14 +1374,8 @@ class WorkItemSummary(object):
                 else:
                     delete_2 = True
             elif neuron_1['quality_score'] > neuron_2['quality_score']:
-                # Neuron 1 has higher MUA weighted spikes
-                print('Neuron 1 has higher MUA weighted spikes')
-                # print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_2 = True
             elif neuron_1['quality_score'] < neuron_2['quality_score']:
-                # Neuron 2 has higher MUA weighted spikes
-                print('Neuron 2 has higher MUA weighted spikes')
-                # print("MUA", neuron_1['fraction_mua'], neuron_2['fraction_mua'], "spikes", neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
                 delete_1 = True
 
             combined_violations = violation_partners[best_pair[0]].union(violation_partners[best_pair[1]])
@@ -1401,27 +1389,18 @@ class WorkItemSummary(object):
             for v_ind in other_n2:
                 if quality_scores[v_ind] > max_other_n2:
                     max_other_n2 = quality_scores[v_ind]
-            print("Max other n1", max_other_n1, "n2", max_other_n2)
             diff_score_1 = max_other_n1 - neuron_1['quality_score']
             diff_score_2 = max_other_n2 - neuron_2['quality_score']
-            print("Diff scores n1", diff_score_1, "n2", diff_score_2)
 
             if len(combined_violations) == 2 or (diff_score_1 == 0 and diff_score_2 == 0):
                 # This implies that these two units only violate with each other
                 # or are their best remaining copies
                 adjusted_n1_score = (1-neuron_1['fraction_mua']) * neuron_1['snr'] * (neuron_1['spike_indices'].shape[0] + (neuron_2['fraction_mua'] - neuron_1['fraction_mua'])*neuron_2['spike_indices'].shape[0])
                 adjusted_n2_score = (1-neuron_2['fraction_mua']) * neuron_2['snr'] * (neuron_2['spike_indices'].shape[0] + (neuron_1['fraction_mua'] - neuron_2['fraction_mua'])*neuron_1['spike_indices'].shape[0])
-                print("Adjusted scores n1", adjusted_n1_score, "n2", adjusted_n2_score)
-                print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
-
                 if (delete_2 and adjusted_n1_score < adjusted_n2_score) or \
                     (delete_1 and adjusted_n2_score < adjusted_n1_score):
-                # if ((delete_2 and neuron_1['fraction_mua'] > neuron_2['fraction_mua'])
-                #     and (neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0])) \
-                #     or ((delete_1 and neuron_2['fraction_mua'] > neuron_1['fraction_mua'])
-                #     and (neuron_2['spike_indices'].shape[0] > neuron_1['spike_indices'].shape[0])):
-                    # We are about to select the unit that has the most spikes and the most MUA,
-                    # which can be dangerous in the case of super mixtures.
+                    print("Adjusted scores n1", adjusted_n1_score, "n2", adjusted_n2_score)
+                    print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
 
                     # Need to union with compliment so spikes are not double
                     # counted, which will reduce the rate based MUA
@@ -1461,14 +1440,6 @@ class WorkItemSummary(object):
                         else:
                             delete_1 = False
                             delete_2 = True
-                        # print("CHOOSING ON SNR AND MUA ONLY")
-                        # if (1-neuron_1['fraction_mua']) * neuron_1['snr'] \
-                        #     < (1-neuron_2['fraction_mua']) * neuron_2['snr']:
-                        #     delete_1 = True
-                        #     delete_2 = False
-                        # else:
-                        #     delete_1 = False
-                        #     delete_2 = True
 
                 """THIS IS COMPLETELY MAKING DECISIONS UNITL WE GET TO END. GUESS WE SHOULD
                 PUT AN ELSE STATEMENT ABOVE FOR USING QUALITY SCORES"""

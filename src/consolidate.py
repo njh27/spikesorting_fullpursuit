@@ -1614,32 +1614,6 @@ class WorkItemSummary(object):
                         if curr_overlap < self.min_overlapping_spikes:
                             continue
 
-                        # Need to union with compliment so spikes are not double
-                        # counted, which will reduce the rate based MUA
-                        n2_compliment = np.in1d(n1['spike_indices'], n2['spike_indices'], invert=True)
-                        union_spikes = np.hstack((n1['spike_indices'][n2_compliment], n2['spike_indices']))
-                        union_spikes.sort()
-                        union_fraction_mua_rate = calc_fraction_mua(
-                                                         union_spikes,
-                                                         self.sort_info['sampling_rate'],
-                                                         overlap_inds,
-                                                         self.absolute_refractory_period)
-                        # Need to get fraction MUA by rate, rather than peak,
-                        # for comparison here
-                        fraction_mua_rate_1 = calc_fraction_mua(
-                                                 n1['spike_indices'],
-                                                 self.sort_info['sampling_rate'],
-                                                 overlap_inds,
-                                                 self.absolute_refractory_period)
-                        fraction_mua_rate_2 = calc_fraction_mua(
-                                                 n2['spike_indices'],
-                                                 self.sort_info['sampling_rate'],
-                                                 overlap_inds,
-                                                 self.absolute_refractory_period)
-                        if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) / self.min_overlapping_spikes \
-                            and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
-                            continue
-
                         # If we made it here, the overlap is sufficient to link
                         # Now we must choose the best n2 to make it here
                         if n2['fraction_mua'] == -1 and n1['fraction_mua'] == -1:

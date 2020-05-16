@@ -151,7 +151,8 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
         memory_usage_per_second = (n_neighbor_chans * Probe.sampling_rate * np.dtype(np.float32).itemsize +
                                    Probe.sampling_rate * (np.dtype(np.uint32).itemsize +
                                    np.dtype(np.uint32).itemsize) / template_samples_per_chan)
-        num_seconds_per_chunk = (gpu_memory_size - constant_memory_usage) / memory_usage_per_second
+        num_seconds_per_chunk = (gpu_memory_size - constant_memory_usage) \
+                                / (templates.shape[0] * n_neighbor_chans * memory_usage_per_second)
         # Do not exceed a the length of a buffer in bytes that can be addressed
         # Note: there is also a max allocation size,
         # device.get_info(cl.device_info.MAX_MEM_ALLOC_SIZE)

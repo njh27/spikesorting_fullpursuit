@@ -151,6 +151,8 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
         memory_usage_per_second = (n_neighbor_chans * Probe.sampling_rate * np.dtype(np.float32).itemsize +
                                    Probe.sampling_rate * (np.dtype(np.uint32).itemsize +
                                    np.dtype(np.uint32).itemsize) / template_samples_per_chan)
+        # Need to further normalize this by the number of templates and channels
+        # More templates and channels slows the GPU algorithm and GPU can timeout
         num_seconds_per_chunk = (gpu_memory_size - constant_memory_usage) \
                                 / (templates.shape[0] * n_neighbor_chans * memory_usage_per_second)
         # Do not exceed a the length of a buffer in bytes that can be addressed

@@ -1644,7 +1644,9 @@ class WorkItemSummary(object):
                         #     max_overlap_pair = [n1_ind, n2_ind]
 
                         template_SSE = self.get_shifted_neighborhood_SSE(n1, n2)
-                        if (curr_overlap > max_overlap_ratio) and (template_SSE < min_SSE):
+                        if (template_SSE < min_SSE):
+                            # Could also pick on overlap, but doing both here
+                            # will result in first n2 tested having the advantage...
                             max_overlap_ratio = curr_overlap
                             min_SSE = template_SSE
                             max_overlap_pair = [n1_ind, n2_ind]

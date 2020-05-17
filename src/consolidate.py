@@ -1153,6 +1153,44 @@ class WorkItemSummary(object):
             if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels)
             self.is_stitched = True
 
+    def get_shifted_neighborhood_SSE(self, neuron1, neuron2):
+        """
+        """
+        # Find the shared part of each unit's neighborhood and number of samples
+        neighbor_overlap_bool = np.in1d(neuron1['neighbors'], neuron2['neighbors'])
+        overlap_chans = neuron1['neighbors'][neighbor_overlap_bool]
+        n_samples_per_chan = self.sort_info['n_samples_per_chan']
+
+        # Build a template for each unit that has the intersection of
+        # neighborhood channels
+        overlap_template_1 = np.zeros(overlap_chans.shape[0] * n_samples_per_chan)
+        overlap_template_2 = np.zeros(overlap_chans.shape[0] * n_samples_per_chan)
+        for n_chan in range(0, overlap_chans.shape[0]):
+            n1_neighbor_ind = next((idx[0] for idx, val in np.ndenumerate(neuron1['neighbors']) if val == overlap_chans[n_chan]))
+            overlap_template_1[n_chan*n_samples_per_chan:(n_chan+1)*n_samples_per_chan] = \
+                        neuron1['template'][n1_neighbor_ind*n_samples_per_chan:(n1_neighbor_ind+1)*n_samples_per_chan]
+            n2_neighbor_ind = next((idx[0] for idx, val in np.ndenumerate(neuron2['neighbors']) if val == overlap_chans[n_chan]))
+            overlap_template_2[n_chan*n_samples_per_chan:(n_chan+1)*n_samples_per_chan] = \
+                        neuron2['template'][n2_neighbor_ind*n_samples_per_chan:(n2_neighbor_ind+1)*n_samples_per_chan]
+
+        # Align templates based on peak cross correlation
+        cross_corr = np.correlate(overlap_template_1, overlap_template_2, mode='full')
+        max_corr_ind = np.argmax(cross_corr)
+        shift = max_corr_ind - cross_corr.shape[0]//2
+        # Align and truncate templates and compute SSE
+        if shift > 0:
+            overlap_template_1 = overlap_template_1[shift:]
+            overlap_template_2 = overlap_template_2[:-1*shift]
+        elif shift < 0:
+            overlap_template_1 = overlap_template_1[:shift]
+            overlap_template_2 = overlap_template_2[-1*shift:]
+        else:
+            # Already aligned
+            pass
+        # Must normalize distance per data point else reward big shifts
+        SSE = np.sum((overlap_template_1 - overlap_template_2) ** 2) / overlap_template_1.shape[0]
+        return SSE
+
     def summarize_neurons_by_seg(self):
         """ Make a neuron summary for each unit in each segment and add them to
         a new class attribute 'neuron_summary_by_seg'.
@@ -1575,6 +1613,8 @@ class WorkItemSummary(object):
                 n1 = self.neuron_summary_by_seg[seg][n1_ind]
 
                 best_n2_score = 0.
+                min_SSE = np.inf
+                max_overlap_ratio = -np.inf
                 for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
                     # Choose the best n2 match for n1 that satisfies thresholds
                     if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
@@ -1589,21 +1629,27 @@ class WorkItemSummary(object):
                         if curr_overlap < self.min_overlapping_spikes:
                             continue
 
-                        # If we made it here, the overlap is sufficient to link
-                        # Now we must choose the best n2 to make it here
-                        if n2['fraction_mua'] == -1 and n1['fraction_mua'] == -1:
-                            # Both invalid MUA, so pick on SNR
-                            n2_score = n2['snr']
-                        elif n2['fraction_mua'] == -1 or n1['fraction_mua'] == -1:
-                            # Only one unit has invalid MUA so don't link
-                            continue
-                        else:
-                            n2_score = n2['quality_score']
-                        if n2_score > best_n2_score:
-                            best_n2_score = n2_score
+                        # # If we made it here, the overlap is sufficient to link
+                        # # Now we must choose the best n2 to make it here
+                        # if n2['fraction_mua'] == -1 and n1['fraction_mua'] == -1:
+                        #     # Both invalid MUA, so pick on SNR
+                        #     n2_score = n2['snr']
+                        # elif n2['fraction_mua'] == -1 or n1['fraction_mua'] == -1:
+                        #     # Only one unit has invalid MUA so don't link
+                        #     continue
+                        # else:
+                        #     n2_score = n2['quality_score']
+                        # if n2_score > best_n2_score:
+                        #     best_n2_score = n2_score
+                        #     max_overlap_pair = [n1_ind, n2_ind]
+
+                        template_SSE = self.get_shifted_neighborhood_SSE(n1, n2)
+                        if (curr_overlap > max_overlap_ratio) and (template_SSE < min_SSE):
+                            max_overlap_ratio = curr_overlap
+                            min_SSE = template_SSE
                             max_overlap_pair = [n1_ind, n2_ind]
 
-                if best_n2_score > 0:
+                if max_overlap_ratio > 0:
                     # Found a match that satisfies thresholds so link them
                     self.neuron_summary_by_seg[seg][max_overlap_pair[0]]['next_seg_link'] = max_overlap_pair[1]
                     self.neuron_summary_by_seg[seg+1][max_overlap_pair[1]]['prev_seg_link'] = max_overlap_pair[0]

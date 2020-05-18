@@ -248,12 +248,12 @@ def compute_spike_trains(spike_indices_list, bin_width_samples, min_max_samples)
     return spike_trains_list if len(spike_trains_list) > 1 else spike_trains_list[0]
 
 
-def calculate_expected_overlap(n1, n2, overlap_time, sampling_rate):
+def calculate_expected_overlap(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
     """ Returns the expected number of overlapping spikes between neuron 1 and
     neuron 2 within a time window 'overlap_time' assuming independent spiking.
     As usual, spike_indices within each neuron must be sorted. """
-    first_index = max(n1['spike_indices'][0], n2['spike_indices'][0])
-    last_index = min(n1['spike_indices'][-1], n2['spike_indices'][-1])
+    first_index = max(spike_inds_1[0], spike_inds_2[0])
+    last_index = min(spike_inds_1[-1], spike_inds_2[-1])
     num_ms = int(np.ceil((last_index - first_index) / (sampling_rate / 1000)))
     if num_ms <= 0:
         # Neurons never fire at the same time, so expected overlap is 0
@@ -261,12 +261,12 @@ def calculate_expected_overlap(n1, n2, overlap_time, sampling_rate):
 
     # Find spike indices from each neuron that fall within the same time window
     # Should be impossible to return None because of num_ms check above
-    n1_start = next((idx[0] for idx, val in np.ndenumerate(n1['spike_indices']) if val >= first_index), None)
-    n1_stop = next((idx[0] for idx, val in np.ndenumerate(n1['spike_indices'][::-1]) if val <= last_index), None)
-    n1_stop = n1['spike_indices'].shape[0] - n1_stop - 1 # Not used as slice so -1
-    n2_start = next((idx[0] for idx, val in np.ndenumerate(n2['spike_indices']) if val >= first_index), None)
-    n2_stop = next((idx[0] for idx, val in np.ndenumerate(n2['spike_indices'][::-1]) if val <= last_index), None)
-    n2_stop = n2['spike_indices'].shape[0] - n2_stop - 1 # Not used as slice so -1
+    n1_start = next((idx[0] for idx, val in np.ndenumerate(spike_inds_1) if val >= first_index), None)
+    n1_stop = next((idx[0] for idx, val in np.ndenumerate(spike_inds_1[::-1]) if val <= last_index), None)
+    n1_stop = spike_inds_1.shape[0] - n1_stop - 1 # Not used as slice so -1
+    n2_start = next((idx[0] for idx, val in np.ndenumerate(spike_inds_2) if val >= first_index), None)
+    n2_stop = next((idx[0] for idx, val in np.ndenumerate(spike_inds_2[::-1]) if val <= last_index), None)
+    n2_stop = spike_inds_2.shape[0] - n2_stop - 1 # Not used as slice so -1
 
     # Infer number of spikes in overlapping window based on first and last index
     n1_count = n1_stop - n1_start
@@ -715,7 +715,7 @@ class WorkItemSummary(object):
                         curr_chan_inds, self.sort_info['check_components'],
                         self.sort_info['max_components'],
                         add_peak_valley=self.sort_info['add_peak_valley'],
-                        use_weights=True)
+                        use_weights=False)
         elif method.lower() == 'projection':
             # Projection onto templates, weighted by number of spikes
             t1 = np.mean(clips_1, axis=0) * (clips_1.shape[0] / clips.shape[0])
@@ -870,7 +870,7 @@ class WorkItemSummary(object):
                     else:
                         is_merged, _, _ = self.merge_test_two_units(
                                 clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                                method='template_pca', merge_only=True,
+                                method='channel_template_pca', merge_only=True,
                                 curr_chan_inds=curr_chan_inds)
 
                     if is_merged:
@@ -895,8 +895,16 @@ class WorkItemSummary(object):
                                                  self.sort_info['sampling_rate'],
                                                  self.duplicate_tol_inds,
                                                  self.absolute_refractory_period)
-                        print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
-                        if union_fraction_mua_rate > fraction_mua_rate_1 + fraction_mua_rate_2:
+                        # Add in chance overlaps for independent firing
+                        expected_hits = calculate_expected_overlap(self.sort_data[chan][seg][0][select_1],
+                                            self.sort_data[chan][seg][0][select_2],
+                                            self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0],
+                                            self.sort_info['sampling_rate'])
+                        # NOTE: Should this be expected hits minus remaining number of spikes?
+                        expected_ratio = expected_hits / min(np.count_nonzero(select_1), np.count_nonzero(select_2))
+                        print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2, 'Expected ratio', expected_ratio)
+
+                        if union_fraction_mua_rate > (fraction_mua_rate_1 + fraction_mua_rate_2) * (1 + expected_ratio):
                             is_merged = False
 
                     if self.verbose: print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
@@ -1458,11 +1466,10 @@ class WorkItemSummary(object):
                 overlap_ratio[neuron1_ind, neuron2_ind] = self.get_overlap_ratio(
                                         seg, neuron1_ind, seg, neuron2_ind, overlap_time)
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
-                expected_hits = calculate_expected_overlap(neuron1, neuron2,
+                expected_hits = calculate_expected_overlap(neuron1['spike_indices'], neuron2['spike_indices'],
                                     overlap_time, self.sort_info['sampling_rate'])
-                # NOTE: Should this be expected hits minus remaining number of spikes?
-                expected_misses = min(neuron1['spike_indices'].shape[0], neuron2['spike_indices'].shape[0]) - expected_hits
-                expected_ratio[neuron1_ind, neuron2_ind] = expected_hits / (expected_hits + expected_misses)
+                # Expected hits over hits plus misses
+                expected_ratio[neuron1_ind, neuron2_ind] = expected_hits / min(neuron1['spike_indices'].shape[0], neuron2['spike_indices'].shape[0])
                 expected_ratio[neuron2_ind, neuron1_ind] = expected_ratio[neuron1_ind, neuron2_ind]
                 if (overlap_ratio[neuron1_ind, neuron2_ind] >=
                         overlap_ratio_threshold * expected_ratio[neuron1_ind, neuron2_ind]):
@@ -2144,10 +2151,10 @@ class WorkItemSummary(object):
                 overlap_ratio[neuron1_ind, neuron2_ind] = max(num_hits / (num_hits + n1_misses),
                                                               num_hits / (num_hits + n2_misses))
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
-                expected_hits = calculate_expected_overlap(neuron1, neuron2,
+                expected_hits = calculate_expected_overlap(neuron1['spike_indices'], neuron2['spike_indices'],
                                     overlap_time, self.sort_info['sampling_rate'])
-                expected_misses = min(neuron1['spike_indices'].shape[0], neuron2['spike_indices'].shape[0]) - expected_hits
-                expected_ratio[neuron1_ind, neuron2_ind] = expected_hits / (expected_hits + expected_misses)
+                # Expected hits over hits plus misses
+                expected_ratio[neuron1_ind, neuron2_ind] = expected_hits / min(neuron1['spike_indices'].shape[0], neuron2['spike_indices'].shape[0])
                 expected_ratio[neuron2_ind, neuron1_ind] = expected_ratio[neuron1_ind, neuron2_ind]
 
         neurons_remaining_indices = [x for x in range(0, len(neurons))]

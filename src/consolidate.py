@@ -810,12 +810,13 @@ class WorkItemSummary(object):
             # Never found a match
             best_pair = []
             best_shift = 0
-            best_l1_clips = None
-            best_l2_clips = None
+            clips_1 = None
+            clips_2 = None
+            return best_pair, best_shift, clips_1, clips_2, curr_chan_inds
         # Align and truncate clips for best match pair
         shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(best_shift)
-        clips_1 = np.zeros((clips_1.shape[0], shift_samples_per_chan * self.work_items[chan][seg1]['neighbors'].shape[0]))
-        clips_2 = np.zeros((clips_2.shape[0], shift_samples_per_chan * self.work_items[chan][seg2]['neighbors'].shape[0]))
+        clips_1 = np.zeros((best_l1_clips.shape[0], shift_samples_per_chan * self.work_items[chan][seg1]['neighbors'].shape[0]))
+        clips_2 = np.zeros((best_l2_clips.shape[0], shift_samples_per_chan * self.work_items[chan][seg2]['neighbors'].shape[0]))
         # Get clips for each channel, shift them, and assign for output, which
         # will be clips that have each channel individually aligned and
         # truncated
@@ -836,8 +837,51 @@ class WorkItemSummary(object):
                 # No need to shift (or didn't find any pairs)
                 pass
             if self.work_items[chan][seg1]['neighbors'][chan_ind] == chan:
-                curr_chan_inds = np.arange(chan_ind*shift_samples_per_chan, (chan_ind+1)*shift_samples_per_chan)
+                curr_chan_inds = np.arange(chan_ind*shift_samples_per_chan, (chan_ind+1)*shift_samples_per_chan, dtype=np.int64)
         return best_pair, best_shift, clips_1, clips_2, curr_chan_inds
+
+    def sharpen_segments(self):
+        """
+        """
+        for chan in range(0, self.n_chans):
+            main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][0]['chan_neighbor_ind'],
+                        self.sort_info['n_samples_per_chan'] * (self.work_items[chan][0]['chan_neighbor_ind'] + 1)]
+            curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
+            for seg in range(0, self.n_segments):
+                if len(self.sort_data[chan][seg][0]) == 0:
+                    # No data in this segment
+                    continue
+                seg_labels = np.unique(self.sort_data[chan][seg][1]).tolist()
+                previously_compared_pairs = []
+                while len(seg_labels) > 1:
+                    best_pair, best_shift, clips_1, clips_2, curr_chan_inds = \
+                                    self.find_nearest_shifted_pair(
+                                    chan, seg, seg, seg_labels, seg_labels,
+                                    self.sort_data[chan][seg][1],
+                                    curr_chan_inds, previously_compared_pairs)
+                    if len(best_pair) == 0:
+                        break
+                    if clips_1.shape[0] == 1 or clips_2.shape[0] == 1:
+                        # Don't mess around with only 1 spike, if they are
+                        # nearest each other they can merge
+                        ismerged = True
+                    else:
+                        is_merged, _, _ = self.merge_test_two_units(
+                                clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
+                                method='channel_template_pca', merge_only=True,
+                                curr_chan_inds=curr_chan_inds)
+                    if self.verbose: print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", best_pair)
+
+                    if is_merged:
+                        # Combine these into whichever label
+                        select = self.sort_data[chan][seg][1] == best_pair[1]
+                        self.sort_data[chan][seg][1][select] = best_pair[0]
+                        seg_labels.remove(best_pair[1])
+                    else:
+                        # These mutually closest failed so do not repeat either
+                        seg_labels.remove(best_pair[0])
+                        seg_labels.remove(best_pair[1])
+                    previously_compared_pairs.append(best_pair)
 
     def find_nearest_joint_pair(self, templates, labels, curr_chan_inds,
                                 previously_compared_pairs):
@@ -884,6 +928,9 @@ class WorkItemSummary(object):
             print("Neurons are already stitched. Repeated stitching can change results.")
             print("Skipped stitching")
             return
+
+        self.sharpen_segments()
+
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
             print("Start stitching channel", chan)
@@ -1197,18 +1244,32 @@ class WorkItemSummary(object):
         cross_corr = np.correlate(overlap_template_1, overlap_template_2, mode='full')
         max_corr_ind = np.argmax(cross_corr)
         shift = max_corr_ind - cross_corr.shape[0]//2
-        # Align and truncate templates and compute SSE
-        if shift > 0:
-            overlap_template_1 = overlap_template_1[shift:]
-            overlap_template_2 = overlap_template_2[:-1*shift]
-        elif shift < 0:
-            overlap_template_1 = overlap_template_1[:shift]
-            overlap_template_2 = overlap_template_2[-1*shift:]
-        else:
-            # Already aligned
-            pass
+
+        # Align and truncate templates to compute SSE
+        shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(shift)
+        shift_template_1 = np.zeros(shift_samples_per_chan * overlap_chans.shape[0])
+        shift_template_2 = np.zeros(shift_samples_per_chan * overlap_chans.shape[0])
+        # Get clips for each channel, shift them, and assign for output, which
+        # will be clips that have each channel individually aligned and
+        # truncated
+        for chan_ind in range(0, overlap_chans.shape[0]):
+            chan_temp_1 = overlap_template_1[chan_ind*self.sort_info['n_samples_per_chan']:(chan_ind+1)*self.sort_info['n_samples_per_chan']]
+            chan_temp_2 = overlap_template_2[chan_ind*self.sort_info['n_samples_per_chan']:(chan_ind+1)*self.sort_info['n_samples_per_chan']]
+            if shift > 0:
+                shift_template_1[chan_ind*shift_samples_per_chan:(chan_ind+1)*shift_samples_per_chan] = \
+                                chan_temp_1[shift:]
+                shift_template_2[chan_ind*shift_samples_per_chan:(chan_ind+1)*shift_samples_per_chan] = \
+                                chan_temp_2[:-1*shift]
+            elif shift < 0:
+                shift_template_1[chan_ind*shift_samples_per_chan:(chan_ind+1)*shift_samples_per_chan] = \
+                                chan_temp_1[:shift]
+                shift_template_2[chan_ind*shift_samples_per_chan:(chan_ind+1)*shift_samples_per_chan] = \
+                                chan_temp_2[-1*shift:]
+            else:
+                # Already aligned
+                pass
         # Must normalize distance per data point else reward big shifts
-        SSE = np.sum((overlap_template_1 - overlap_template_2) ** 2) / overlap_template_1.shape[0]
+        SSE = np.sum((shift_template_1 - shift_template_2) ** 2) / shift_template_1.shape[0]
         return SSE
 
     def summarize_neurons_by_seg(self):

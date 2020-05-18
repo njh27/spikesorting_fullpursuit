@@ -877,7 +877,33 @@ class WorkItemSummary(object):
                         select_1 = self.sort_data[chan][seg][1] == best_pair[0]
                         select_2 = self.sort_data[chan][seg][1] == best_pair[1]
                         union_spikes = np.hstack((self.sort_data[chan][seg][0][select_1], self.sort_data[chan][seg][0][select_2]))
-                        union_spikes.sort()
+                        union_waveforms = np.vstack((self.sort_data[chan][seg][2][select_1, :], self.sort_data[chan][seg][2][select_2, :]))
+                        union_new_spike_bool = np.hstack((self.sort_data[chan][seg][3][select_1], self.sort_data[chan][seg][3][select_2]))
+                        spike_order = np.argsort(union_spikes, kind='stable')
+                        union_spikes = union_spikes[spike_order]
+                        union_waveforms = union_waveforms[spike_order, :]
+                        union_new_spike_bool = union_new_spike_bool[spike_order]
+
+                        # Keep duplicates found in binary pursuit since it can reject
+                        # false positives
+                        keep_bool = keep_binary_pursuit_duplicates(union_spikes,
+                                        union_new_spike_bool,
+                                        tol_inds=self.duplicate_tol_inds)
+                        union_spikes = union_spikes[keep_bool]
+                        union_new_spike_bool = union_new_spike_bool[keep_bool]
+                        union_waveforms = union_waveforms[keep_bool, :]
+
+                        # Remove any identical index duplicates (either from error or
+                        # from combining overlapping segments), preferentially keeping
+                        # the waveform best aligned to the template
+                        union_template = np.mean(union_waveforms, axis=0)
+                        keep_bool = remove_spike_event_duplicates(union_spikes,
+                                        union_waveforms, union_template,
+                                        tol_inds=self.duplicate_tol_inds)
+                        union_spikes = union_spikes[keep_bool]
+                        union_new_spike_bool = union_new_spike_bool[keep_bool]
+                        union_waveforms = union_waveforms[keep_bool, :]
+
                         union_fraction_mua_rate = calc_fraction_mua(
                                                          union_spikes,
                                                          self.sort_info['sampling_rate'],
@@ -898,7 +924,7 @@ class WorkItemSummary(object):
                         # Add in chance overlaps for independent firing
                         expected_hits = calculate_expected_overlap(self.sort_data[chan][seg][0][select_1],
                                             self.sort_data[chan][seg][0][select_2],
-                                            self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0],
+                                            np.amax(np.abs(self.sort_info['clip_width'])),
                                             self.sort_info['sampling_rate'])
                         # NOTE: Should this be expected hits minus remaining number of spikes?
                         expected_ratio = expected_hits / min(np.count_nonzero(select_1), np.count_nonzero(select_2))

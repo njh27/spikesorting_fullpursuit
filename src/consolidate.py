@@ -931,9 +931,9 @@ class WorkItemSummary(object):
                                             self.sort_info['sampling_rate'])
                         # NOTE: Should this be expected hits minus remaining number of spikes?
                         expected_ratio = expected_hits / min(np.count_nonzero(select_1), np.count_nonzero(select_2))
-                        print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2, 'MUA threshold', max(fraction_mua_rate_1, fraction_mua_rate_2) + expected_ratio, 'Expected ratio', expected_ratio)
+                        # print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2, 'MUA threshold', max(fraction_mua_rate_1, fraction_mua_rate_2) + expected_ratio, 'Expected ratio', expected_ratio)
 
-                        if union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2) + expected_ratio:
+                        if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + expected_ratio:
                             is_merged = False
 
                     if self.verbose: print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)

@@ -710,6 +710,11 @@ class WorkItemSummary(object):
                         curr_chan_inds, self.sort_info['check_components'],
                         self.sort_info['max_components'],
                         add_peak_valley=self.sort_info['add_peak_valley'])
+        elif method.lower() == 'channel_template_pca':
+            scores = preprocessing.compute_template_pca_by_channel(clips, neuron_labels,
+                        curr_chan_inds, self.sort_info['check_components'],
+                        self.sort_info['max_components'],
+                        add_peak_valley=self.sort_info['add_peak_valley'])
         elif method.lower() == 'projection':
             # Projection onto templates, weighted by number of spikes
             t1 = np.mean(clips_1, axis=0) * (clips_1.shape[0] / clips.shape[0])
@@ -808,16 +813,31 @@ class WorkItemSummary(object):
             best_l1_clips = None
             best_l2_clips = None
         # Align and truncate clips for best match pair
-        if best_shift > 0:
-            best_l1_clips = best_l1_clips[:, best_shift:]
-            best_l2_clips = best_l2_clips[:, :-1*best_shift]
-        elif best_shift < 0:
-            best_l1_clips = best_l1_clips[:, :best_shift]
-            best_l2_clips = best_l2_clips[:, -1*best_shift:]
-        else:
-            # No need to shift (or didn't find any pairs)
-            pass
-        return best_pair, best_shift, best_l1_clips, best_l2_clips
+        shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(best_shift)
+        clips_1 = np.zeros((clips_1.shape[0], shift_samples_per_chan * self.work_items[chan][seg1]['neighbors'].shape[0]))
+        clips_2 = np.zeros((clips_2.shape[0], shift_samples_per_chan * self.work_items[chan][seg2]['neighbors'].shape[0]))
+        # Get clips for each channel, shift them, and assign for output, which
+        # will be clips that have each channel individually aligned and
+        # truncated
+        for chan_ind in range(0, self.work_items[chan][seg1]['neighbors'].shape[0]):
+            chan_clips_1 = best_l1_clips[:, chan_ind*self.sort_info['n_samples_per_chan']:(chan_ind+1)*self.sort_info['n_samples_per_chan']]
+            chan_clips_2 = best_l2_clips[:, chan_ind*self.sort_info['n_samples_per_chan']:(chan_ind+1)*self.sort_info['n_samples_per_chan']]
+            if best_shift > 0:
+                clips_1[:, chan_ind*shift_samples_per_chan:(chan_ind+1)*shift_samples_per_chan] = \
+                                chan_clips_1[:, best_shift:]
+                clips_2[:, chan_ind*shift_samples_per_chan:(chan_ind+1)*shift_samples_per_chan] = \
+                                chan_clips_2[:, :-1*best_shift]
+            elif best_shift < 0:
+                clips_1[:, chan_ind*shift_samples_per_chan:(chan_ind+1)*shift_samples_per_chan] = \
+                                chan_clips_1[:, :best_shift]
+                clips_2[:, chan_ind*shift_samples_per_chan:(chan_ind+1)*shift_samples_per_chan] = \
+                                chan_clips_2[:, -1*best_shift:]
+            else:
+                # No need to shift (or didn't find any pairs)
+                pass
+            if self.work_items[chan][seg1]['neighbors'][chan_ind] == chan:
+                curr_chan_inds = np.arange(chan_ind*shift_samples_per_chan, (chan_ind+1)*shift_samples_per_chan)
+        return best_pair, best_shift, clips_1, clips_2, curr_chan_inds
 
     def find_nearest_joint_pair(self, templates, labels, curr_chan_inds,
                                 previously_compared_pairs):
@@ -935,7 +955,7 @@ class WorkItemSummary(object):
                 main_labels = [x for x in real_labels]
                 previously_compared_pairs = []
                 while len(main_labels) > 0 and len(leftover_labels) > 0:
-                    best_pair, best_shift, clips_1, clips_2 = self.find_nearest_shifted_pair(
+                    best_pair, best_shift, clips_1, clips_2, curr_chan_inds = self.find_nearest_shifted_pair(
                                     chan, curr_seg, next_seg, main_labels,
                                     leftover_labels, next_label_workspace,
                                     curr_chan_inds, previously_compared_pairs)
@@ -948,8 +968,8 @@ class WorkItemSummary(object):
                     else:
                         is_merged, _, _ = self.merge_test_two_units(
                                 clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                                method='template_pca', merge_only=True,
-                                curr_chan_inds=curr_chan_inds + best_shift)
+                                method='channel_template_pca', merge_only=True,
+                                curr_chan_inds=curr_chan_inds)
                     if self.verbose: print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", best_pair)
 
                     if is_merged:

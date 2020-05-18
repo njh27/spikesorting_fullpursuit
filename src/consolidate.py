@@ -813,6 +813,9 @@ class WorkItemSummary(object):
             clips_1 = None
             clips_2 = None
             return best_pair, best_shift, clips_1, clips_2, curr_chan_inds
+        if best_shift == 0:
+            # No shift so just return as is
+            return best_pair, best_shift, best_l1_clips, best_l2_clips, curr_chan_inds
         # Align and truncate clips for best match pair
         shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(best_shift)
         clips_1 = np.zeros((best_l1_clips.shape[0], shift_samples_per_chan * self.work_items[chan][seg1]['neighbors'].shape[0]))
@@ -833,9 +836,6 @@ class WorkItemSummary(object):
                                 chan_clips_1[:, :best_shift]
                 clips_2[:, chan_ind*shift_samples_per_chan:(chan_ind+1)*shift_samples_per_chan] = \
                                 chan_clips_2[:, -1*best_shift:]
-            else:
-                # No need to shift (or didn't find any pairs)
-                pass
             if self.work_items[chan][seg1]['neighbors'][chan_ind] == chan:
                 curr_chan_inds = np.arange(chan_ind*shift_samples_per_chan, (chan_ind+1)*shift_samples_per_chan, dtype=np.int64)
         return best_pair, best_shift, clips_1, clips_2, curr_chan_inds
@@ -1245,6 +1245,12 @@ class WorkItemSummary(object):
         max_corr_ind = np.argmax(cross_corr)
         shift = max_corr_ind - cross_corr.shape[0]//2
 
+        if shift == 0:
+            # Compute SSE on clips as is
+            # Must normalize distance per data point else reward big shifts
+            SSE = np.sum((overlap_template_1 - overlap_template_2) ** 2) / overlap_template_1.shape[0]
+            return SSE
+
         # Align and truncate templates to compute SSE
         shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(shift)
         shift_template_1 = np.zeros(shift_samples_per_chan * overlap_chans.shape[0])
@@ -1265,9 +1271,6 @@ class WorkItemSummary(object):
                                 chan_temp_1[:shift]
                 shift_template_2[chan_ind*shift_samples_per_chan:(chan_ind+1)*shift_samples_per_chan] = \
                                 chan_temp_2[-1*shift:]
-            else:
-                # Already aligned
-                pass
         # Must normalize distance per data point else reward big shifts
         SSE = np.sum((shift_template_1 - shift_template_2) ** 2) / shift_template_1.shape[0]
         return SSE

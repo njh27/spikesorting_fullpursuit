@@ -715,7 +715,7 @@ class WorkItemSummary(object):
                         curr_chan_inds, self.sort_info['check_components'],
                         self.sort_info['max_components'],
                         add_peak_valley=self.sort_info['add_peak_valley'],
-                        use_weights=False)
+                        use_weights=True)
         elif method.lower() == 'projection':
             # Projection onto templates, weighted by number of spikes
             t1 = np.mean(clips_1, axis=0) * (clips_1.shape[0] / clips.shape[0])
@@ -870,8 +870,35 @@ class WorkItemSummary(object):
                     else:
                         is_merged, _, _ = self.merge_test_two_units(
                                 clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                                method='channel_template_pca', merge_only=True,
+                                method='template_pca', merge_only=True,
                                 curr_chan_inds=curr_chan_inds)
+
+                    if is_merged:
+                        select_1 = self.sort_data[chan][seg][1] == best_pair[0]
+                        select_2 = self.sort_data[chan][seg][1] == best_pair[1]
+                        union_spikes = np.hstack((self.sort_data[chan][seg][0][select_1], self.sort_data[chan][seg][0][select_2]))
+                        union_spikes.sort()
+                        union_fraction_mua_rate = calc_fraction_mua(
+                                                         union_spikes,
+                                                         self.sort_info['sampling_rate'],
+                                                         self.duplicate_tol_inds,
+                                                         self.absolute_refractory_period)
+                        # Need to get fraction MUA by rate, rather than peak,
+                        # for comparison here
+                        fraction_mua_rate_1 = calc_fraction_mua(
+                                                 self.sort_data[chan][seg][0][select_1],
+                                                 self.sort_info['sampling_rate'],
+                                                 self.duplicate_tol_inds,
+                                                 self.absolute_refractory_period)
+                        fraction_mua_rate_2 = calc_fraction_mua(
+                                                 self.sort_data[chan][seg][0][select_2],
+                                                 self.sort_info['sampling_rate'],
+                                                 self.duplicate_tol_inds,
+                                                 self.absolute_refractory_period)
+                        print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
+                        if union_fraction_mua_rate > fraction_mua_rate_1 + fraction_mua_rate_2:
+                            is_merged = False
+
                     if self.verbose: print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
 
                     if is_merged:

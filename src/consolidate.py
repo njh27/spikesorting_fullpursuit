@@ -853,7 +853,8 @@ class WorkItemSummary(object):
                     # No data in this segment
                     continue
                 seg_labels = np.unique(self.sort_data[chan][seg][1]).tolist()
-                previously_compared_pairs = []
+                # Do not compare same unit to itself
+                previously_compared_pairs = [[sl, sl] for sl in seg_labels]
                 while len(seg_labels) > 1:
                     best_pair, best_shift, clips_1, clips_2, curr_chan_inds = \
                                     self.find_nearest_shifted_pair(
@@ -871,13 +872,18 @@ class WorkItemSummary(object):
                                 clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                                 method='channel_template_pca', merge_only=True,
                                 curr_chan_inds=curr_chan_inds)
-                    if self.verbose: print("Item", self.work_items[chan][curr_seg]['ID'], "on chan", chan, "seg", curr_seg, "merged", is_merged, "for labels", best_pair)
+                    if self.verbose: print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
 
                     if is_merged:
                         # Combine these into whichever label
                         select = self.sort_data[chan][seg][1] == best_pair[1]
                         self.sort_data[chan][seg][1][select] = best_pair[0]
                         seg_labels.remove(best_pair[1])
+                        print("MERGING IN SHARPEN")
+                        print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
+                        plt.plot(np.mean(clips_1, axis=0))
+                        plt.plot(np.mean(clips_2, axis=0))
+                        plt.show()
                     else:
                         # These mutually closest failed so do not repeat either
                         seg_labels.remove(best_pair[0])

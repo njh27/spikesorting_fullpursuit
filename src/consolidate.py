@@ -943,12 +943,12 @@ class WorkItemSummary(object):
                         select = self.sort_data[chan][seg][1] == best_pair[1]
                         self.sort_data[chan][seg][1][select] = best_pair[0]
                         seg_labels.remove(best_pair[1])
-                        print("MERGING IN SHARPEN")
-                        print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
-                        print("Using a shift value of", best_shift)
-                        plt.plot(np.mean(clips_1, axis=0))
-                        plt.plot(np.mean(clips_2, axis=0))
-                        plt.show()
+                        # print("MERGING IN SHARPEN")
+                        # print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
+                        # print("Using a shift value of", best_shift)
+                        # plt.plot(np.mean(clips_1, axis=0))
+                        # plt.plot(np.mean(clips_2, axis=0))
+                        # plt.show()
                     else:
                         # These mutually closest failed so do not repeat either
                         seg_labels.remove(best_pair[0])

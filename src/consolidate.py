@@ -845,9 +845,9 @@ class WorkItemSummary(object):
         """
         """
         for chan in range(0, self.n_chans):
+            # Main win is fixed for a given channel
             main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][0]['chan_neighbor_ind'],
                         self.sort_info['n_samples_per_chan'] * (self.work_items[chan][0]['chan_neighbor_ind'] + 1)]
-            curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
             for seg in range(0, self.n_segments):
                 if len(self.sort_data[chan][seg][0]) == 0:
                     # No data in this segment
@@ -856,6 +856,8 @@ class WorkItemSummary(object):
                 # Do not compare same unit to itself
                 previously_compared_pairs = [[sl, sl] for sl in seg_labels]
                 while len(seg_labels) > 1:
+                    # Must be reset each iteration
+                    curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
                     best_pair, best_shift, clips_1, clips_2, curr_chan_inds = \
                                     self.find_nearest_shifted_pair(
                                     chan, seg, seg, seg_labels, seg_labels,
@@ -877,7 +879,8 @@ class WorkItemSummary(object):
                         select_1 = self.sort_data[chan][seg][1] == best_pair[0]
                         select_2 = self.sort_data[chan][seg][1] == best_pair[1]
                         union_spikes = np.hstack((self.sort_data[chan][seg][0][select_1], self.sort_data[chan][seg][0][select_2]))
-                        union_waveforms = np.vstack((self.sort_data[chan][seg][2][select_1, :], self.sort_data[chan][seg][2][select_2, :]))
+                        # union_waveforms = np.vstack((self.sort_data[chan][seg][2][select_1, :], self.sort_data[chan][seg][2][select_2, :]))
+                        union_waveforms = np.vstack((clips_1, clips_2))
                         union_new_spike_bool = np.hstack((self.sort_data[chan][seg][3][select_1], self.sort_data[chan][seg][3][select_2]))
                         spike_order = np.argsort(union_spikes, kind='stable')
                         union_spikes = union_spikes[spike_order]
@@ -942,6 +945,7 @@ class WorkItemSummary(object):
                         seg_labels.remove(best_pair[1])
                         print("MERGING IN SHARPEN")
                         print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
+                        print("Using a shift value of", best_shift)
                         plt.plot(np.mean(clips_1, axis=0))
                         plt.plot(np.mean(clips_2, axis=0))
                         plt.show()
@@ -1024,9 +1028,9 @@ class WorkItemSummary(object):
                 # Need at least 2 remaining segments to stitch
                 jump_to_end = True
             else:
+                # Main win is fixed for a given channel
                 main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][start_seg]['chan_neighbor_ind'],
                             self.sort_info['n_samples_per_chan'] * (self.work_items[chan][start_seg]['chan_neighbor_ind'] + 1)]
-                curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
                 split_memory_dicts = [{} for x in range(0, self.n_segments)]
             # Go through each segment as the "current segment" and set the labels
             # in the next segment according to the scheme in current
@@ -1070,6 +1074,8 @@ class WorkItemSummary(object):
                 main_labels = [x for x in real_labels]
                 previously_compared_pairs = []
                 while len(main_labels) > 0 and len(leftover_labels) > 0:
+                    # Must be reset each iteration
+                    curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
                     best_pair, best_shift, clips_1, clips_2, curr_chan_inds = self.find_nearest_shifted_pair(
                                     chan, curr_seg, next_seg, main_labels,
                                     leftover_labels, next_label_workspace,
@@ -1131,6 +1137,8 @@ class WorkItemSummary(object):
                 # temp_labels = temp_labels.tolist()
                 # previously_compared_pairs = []
                 # while len(temp_labels) > 0:
+                #     # Must be reset each iteration
+                #     curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
                 #     best_pair, best_shift = self.find_nearest_joint_pair(
                 #                     joint_templates, temp_labels,
                 #                     curr_chan_inds, previously_compared_pairs)

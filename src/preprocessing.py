@@ -377,7 +377,8 @@ def compute_template_projection(clips, labels, curr_chan_inds, add_peak_valley=F
     return scores
 
 
-def compute_template_pca(clips, labels, curr_chan_inds, check_components, max_components, add_peak_valley=False):
+def compute_template_pca(clips, labels, curr_chan_inds, check_components,
+        max_components, add_peak_valley=False, use_weights=True):
     if add_peak_valley and curr_chan_inds is None:
         raise ValueError("Must supply indices for the main channel if using peak valley")
     # Compute the weights using the PCA for neuron templates
@@ -387,7 +388,9 @@ def compute_template_pca(clips, labels, curr_chan_inds, check_components, max_co
         return None
     templates = np.empty((unique_labels.size, clips.shape[1]))
     for ind, l in enumerate(unique_labels):
-        templates[ind, :] = np.mean(clips[labels == l, :], axis=0) * np.sqrt(u_counts[ind] / labels.size)
+        templates[ind, :] = np.mean(clips[labels == l, :], axis=0)
+        if use_weights:
+            templates[ind, :] *= np.sqrt(u_counts[ind] / labels.size)
 
     # use_components, _ = optimal_reconstruction_pca_order(templates, check_components, max_components)
     if templates.flags['C_CONTIGUOUS']:
@@ -410,7 +413,8 @@ def compute_template_pca(clips, labels, curr_chan_inds, check_components, max_co
     return scores
 
 
-def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_components, max_components, add_peak_valley=False):
+def compute_template_pca_by_channel(clips, labels, curr_chan_inds,
+        check_components, max_components, add_peak_valley=False, use_weights=True):
     if add_peak_valley and curr_chan_inds is None:
         raise ValueError("Must supply indices for the main channel if using peak valley")
     # Compute the weights using the PCA for neuron templates
@@ -420,7 +424,9 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds, check_compone
         return None
     templates = np.empty((unique_labels.size, clips.shape[1]))
     for ind, l in enumerate(unique_labels):
-        templates[ind, :] = np.mean(clips[labels == l, :], axis=0) * np.sqrt(u_counts[ind] / labels.size)
+        templates[ind, :] = np.mean(clips[labels == l, :], axis=0)
+        if use_weights:
+            templates[ind, :] *= np.sqrt(u_counts[ind] / labels.size)
 
     pcs_by_chan = []
     # Do current channel first

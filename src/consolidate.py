@@ -714,7 +714,8 @@ class WorkItemSummary(object):
             scores = preprocessing.compute_template_pca_by_channel(clips, neuron_labels,
                         curr_chan_inds, self.sort_info['check_components'],
                         self.sort_info['max_components'],
-                        add_peak_valley=self.sort_info['add_peak_valley'])
+                        add_peak_valley=self.sort_info['add_peak_valley'],
+                        use_weights=False)
         elif method.lower() == 'projection':
             # Projection onto templates, weighted by number of spikes
             t1 = np.mean(clips_1, axis=0) * (clips_1.shape[0] / clips.shape[0])

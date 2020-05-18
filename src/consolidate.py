@@ -1588,7 +1588,7 @@ class WorkItemSummary(object):
                     max_other_n2 = quality_scores[v_ind]
             diff_score_1 = max_other_n1 - neuron_1['quality_score']
             diff_score_2 = max_other_n2 - neuron_2['quality_score']
-
+            overriding = False
             if len(combined_violations) == 2 or (diff_score_1 == 0 and diff_score_2 == 0):
                 # This implies that these two units only violate with each other
                 # or are their best remaining copies
@@ -1628,6 +1628,7 @@ class WorkItemSummary(object):
                         and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
                         print("!!! OVERRIDING !!!")
                         print("!!! OVERRIDING !!!")
+                        overriding = True
                         # The unit with more spikes and MUA is likely a bad mixture
                         # Choose unit with fewer spikes (also less MUA due to
                         # above IF statement)
@@ -1645,12 +1646,14 @@ class WorkItemSummary(object):
                 if not delete_1:
                         print("!!! OVERRIDING !!!")
                         print("!!! OVERRIDING !!!")
+                        overriding = True
                 delete_1 = True
                 delete_2 = False
             else:
                 if not delete_2:
                         print("!!! OVERRIDING !!!")
                         print("!!! OVERRIDING !!!")
+                        overriding = True
                 delete_1 = False
                 delete_2 = True
 
@@ -1669,10 +1672,11 @@ class WorkItemSummary(object):
             #         # keep neuron 1, delete 2
             #         print("!!! NEURON 2 LINKS TO NONE !!!")
 
-            # print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
             if delete_1:
-                # print("Deleting neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
-                # print("Keeping neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
+                if overriding:
+                    print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
+                    print("Deleting neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
+                    print("Keeping neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
                 neurons_remaining_indices.remove(best_pair[0])
                 for vp in violation_partners:
                     vp.discard(best_pair[0])
@@ -1698,8 +1702,10 @@ class WorkItemSummary(object):
                 neurons[best_pair[0]]['next_seg_link'] = None
                 neurons[best_pair[0]]['deleted_as_redundant'] = True
             if delete_2:
-                # print("Keeping neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
-                # print("Deleting neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
+                if overriding:
+                    print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
+                    print("Keeping neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
+                    print("Deleting neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
                 neurons_remaining_indices.remove(best_pair[1])
                 for vp in violation_partners:
                     vp.discard(best_pair[1])

@@ -1605,13 +1605,21 @@ class WorkItemSummary(object):
                 # or are their best remaining copies
                 adjusted_n1_score = (1-neuron_1['fraction_mua']) * neuron_1['snr'] * (neuron_1['spike_indices'].shape[0] + (neuron_2['fraction_mua'] - neuron_1['fraction_mua'])*neuron_2['spike_indices'].shape[0])
                 adjusted_n2_score = (1-neuron_2['fraction_mua']) * neuron_2['snr'] * (neuron_2['spike_indices'].shape[0] + (neuron_1['fraction_mua'] - neuron_2['fraction_mua'])*neuron_1['spike_indices'].shape[0])
-                if (delete_2 and adjusted_n1_score < adjusted_n2_score) or \
-                    (delete_1 and adjusted_n2_score < adjusted_n1_score):
+                # if (delete_2 and adjusted_n1_score < adjusted_n2_score) or \
+                #     (delete_1 and adjusted_n2_score < adjusted_n1_score):
+                # if (delete_2 and neuron_1['fraction_mua'] > neuron_2['fraction_mua']) or \
+                #     (delete_1 and neuron_2['fraction_mua'] > neuron_1['fraction_mua']):
+                if (delete_2 and (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']) or \
+                    (delete_1 and (1-neuron_1['fraction_mua']) * neuron_1['snr'] > (1-neuron_2['fraction_mua']) * neuron_2['snr']):
+
                     # Need to union with compliment so spikes are not double
                     # counted, which will reduce the rate based MUA
                     max_duplicate_tol_inds = max(neuron_1['duplicate_tol_inds'], neuron_2['duplicate_tol_inds'])
-                    neuron_2_compliment = np.in1d(neuron_1['spike_indices'], neuron_2['spike_indices'], invert=True)
-                    union_spikes = np.hstack((neuron_1['spike_indices'][neuron_2_compliment], neuron_2['spike_indices']))
+                    # neuron_2_compliment = np.in1d(neuron_1['spike_indices'], neuron_2['spike_indices'], invert=True)
+                    overlapping_spike_bool = find_overlapping_spike_bool(
+                            neuron_1['spike_indices'], neuron_2['spike_indices'],
+                            max_duplicate_tol_inds)
+                    union_spikes = np.hstack((neuron_1['spike_indices'], neuron_2['spike_indices'][~overlapping_spike_bool]))
                     union_spikes.sort()
                     union_fraction_mua_rate = calc_fraction_mua(
                                                      union_spikes,
@@ -1637,13 +1645,19 @@ class WorkItemSummary(object):
                     # Expected hits over hits plus misses
                     refractory_expected_ratio = expected_hits / min(neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
 
-                    print("CHECKING OVERRIDE")
-                    print("MUA VALS ARE")
-                    print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
-                    print("Original expected ratio is", expected_ratio[best_pair[0], best_pair[1]])
-                    print("Refractory expected ratio is", refractory_expected_ratio)    
-                    if union_fraction_mua_rate > overlap_ratio_threshold * min(fraction_mua_rate_1, fraction_mua_rate_2) \
+                    # print("CHECKING OVERRIDE")
+                    # print("MUA VALS ARE")
+                    # print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
+                    # print("Original expected ratio is", expected_ratio[best_pair[0], best_pair[1]])
+                    # print("Refractory expected ratio is", refractory_expected_ratio)
+                    # if union_fraction_mua_rate > overlap_ratio_threshold * min(fraction_mua_rate_1, fraction_mua_rate_2) \
+                    #     and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
+                    if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + refractory_expected_ratio \
                         and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
+                        print("!!! OVERRIDING !!!")
+                        print("!!! OVERRIDING !!!")
+                        print("Original expected ratio is", expected_ratio[best_pair[0], best_pair[1]])
+                        print("Refractory expected ratio is", refractory_expected_ratio)
                         print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
                         print("Adjusted scores n1", adjusted_n1_score, "n2", adjusted_n2_score)
                         print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
@@ -1653,7 +1667,7 @@ class WorkItemSummary(object):
                         # The unit with more spikes and MUA is likely a bad mixture
                         # Choose unit with fewer spikes (also less MUA due to
                         # above IF statement)
-                        if neuron_1['spike_indices'].shape[0] > neuron_2['spike_indices'].shape[0]:
+                        if (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']:
                             delete_1 = True
                             delete_2 = False
                         else:

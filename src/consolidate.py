@@ -1607,9 +1607,6 @@ class WorkItemSummary(object):
                 adjusted_n2_score = (1-neuron_2['fraction_mua']) * neuron_2['snr'] * (neuron_2['spike_indices'].shape[0] + (neuron_1['fraction_mua'] - neuron_2['fraction_mua'])*neuron_1['spike_indices'].shape[0])
                 if (delete_2 and adjusted_n1_score < adjusted_n2_score) or \
                     (delete_1 and adjusted_n2_score < adjusted_n1_score):
-                    print("Adjusted scores n1", adjusted_n1_score, "n2", adjusted_n2_score)
-                    print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
-
                     # Need to union with compliment so spikes are not double
                     # counted, which will reduce the rate based MUA
                     max_duplicate_tol_inds = max(neuron_1['duplicate_tol_inds'], neuron_2['duplicate_tol_inds'])
@@ -1633,10 +1630,11 @@ class WorkItemSummary(object):
                                              self.sort_info['sampling_rate'],
                                              max_duplicate_tol_inds,
                                              self.absolute_refractory_period)
-
-                    print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
                     if union_fraction_mua_rate > overlap_ratio_threshold * min(fraction_mua_rate_1, fraction_mua_rate_2) \
                         and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
+                        print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
+                        print("Adjusted scores n1", adjusted_n1_score, "n2", adjusted_n2_score)
+                        print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
                         print("!!! OVERRIDING !!!")
                         print("!!! OVERRIDING !!!")
                         overriding = True

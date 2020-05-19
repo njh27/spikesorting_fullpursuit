@@ -1546,46 +1546,21 @@ class WorkItemSummary(object):
                         best_ratio = overlap_ratio[neuron_1_index, neuron_2_index]
                         best_pair = [neuron_1_index, neuron_2_index]
                         best_expected = expected_ratio[neuron_1_index, neuron_2_index]
-
             if len(best_pair) == 0 or best_ratio == 0:
                 # No more pairs exceed ratio threshold
                 print("Maximum accepted ratio was", max_accepted, "at expected threshold", max_expected)
                 break
-
-
 
             # We now need to choose one of the pair to delete.
             neuron_1 = neurons[best_pair[0]]
             neuron_2 = neurons[best_pair[1]]
             delete_1 = False
             delete_2 = False
-            """First doing the MUA and spike number checks because at this point
-            the stitch segments function has deleted anything with MUA over the
-            input max_mua_ratio. We can then fall back to SNR, since SNR does
-            not always correspond to isolation quality, specifically in the case
-            where other neurons are present on the same channel. Conversely,
-            low MUA can indicate good isolation, or perhaps that the unit has a
-            very small number of spikes. So we first consider MUA and spike
-            count jointly before deferring to SNR. """
-            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
-                print("Both units had BAD MUA")
-                # MUA calculation was invalid so just use SNR
-                if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):
-                    delete_2 = True
-                else:
-                    delete_1 = True
-            elif neuron_1['fraction_mua'] < 0 or neuron_2['fraction_mua'] < 0:
-                # MUA calculation was invalid for one unit so pick the other
-                print("One unit had BAD MUA")
-                if neuron_1['fraction_mua'] < 0:
-                    delete_1 = True
-                else:
-                    delete_2 = True
-            elif neuron_1['quality_score'] > neuron_2['quality_score']:
-                delete_2 = True
-            elif neuron_1['quality_score'] < neuron_2['quality_score']:
-                delete_1 = True
 
+            # We will also consider how good each neuron is relative to the
+            # other neurons that it overlaps with. Basically, if one unit is
+            # a best remaining copy while the other has better units it overlaps
+            # with, we want to preferentially keep the best remaining copy
             combined_violations = violation_partners[best_pair[0]].union(violation_partners[best_pair[1]])
             max_other_n1 = neuron_1['quality_score']
             other_n1 = combined_violations - violation_partners[best_pair[1]]
@@ -1597,29 +1572,66 @@ class WorkItemSummary(object):
             for v_ind in other_n2:
                 if quality_scores[v_ind] > max_other_n2:
                     max_other_n2 = quality_scores[v_ind]
+            # Rate each unit on the difference between its quality and the
+            # quality of its best remaining violation partner
+            # NOTE: diff_score = 0 means this unit is the best remaining
             diff_score_1 = max_other_n1 - neuron_1['quality_score']
             diff_score_2 = max_other_n2 - neuron_2['quality_score']
-            overriding = False
-            if len(combined_violations) == 2 or (diff_score_1 == 0 and diff_score_2 == 0):
+
+            # Check if both or either had a failed MUA calculation ( == -1)
+            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
+                # MUA calculation was invalid so just use SNR
+                if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):
+                    delete_2 = True
+                else:
+                    delete_1 = True
+            elif neuron_1['fraction_mua'] < 0 or neuron_2['fraction_mua'] < 0:
+                # MUA calculation was invalid for one unit so pick the other
+                if neuron_1['fraction_mua'] < 0:
+                    delete_1 = True
+                else:
+                    delete_2 = True
+            elif diff_score_1 > diff_score_2:
+                # Neuron 1 has a better copy somewhere so delete it
+                delete_1 = True
+                delete_2 = False
+            elif diff_score_2 > diff_score_1:
+                # Neuron 2 has a better copy somewhere so delete it
+                delete_1 = False
+                delete_2 = True
+            else:
+                # Both diff scores == 0 so we have to pick one
                 # This implies that these two units only violate with each other
-                # or are their best remaining copies
-                adjusted_n1_score = (1-neuron_1['fraction_mua']) * neuron_1['snr'] * (neuron_1['spike_indices'].shape[0] + (neuron_2['fraction_mua'] - neuron_1['fraction_mua'])*neuron_2['spike_indices'].shape[0])
-                adjusted_n2_score = (1-neuron_2['fraction_mua']) * neuron_2['snr'] * (neuron_2['spike_indices'].shape[0] + (neuron_1['fraction_mua'] - neuron_2['fraction_mua'])*neuron_1['spike_indices'].shape[0])
-                # if (delete_2 and adjusted_n1_score < adjusted_n2_score) or \
-                #     (delete_1 and adjusted_n2_score < adjusted_n1_score):
-                # if (delete_2 and neuron_1['fraction_mua'] > neuron_2['fraction_mua']) or \
-                #     (delete_1 and neuron_2['fraction_mua'] > neuron_1['fraction_mua']):
+                if (diff_score_1 != 0 and diff_score_2 != 0):
+                    raise RuntimeError("DIFF SCORES IN REDUNDANT ARE NOT BOTH EQUAL TO ZERO BUT I THOUGHT THEY SHOULD BE!")
+                # First defer to choosing highest quality score
+                if neuron_1['quality_score'] > neuron_2['quality_score']:
+                    delete_2 = True
+                else:
+                    delete_1 = True
+
+                # Check if quality score is primarily driven by number of spikes rather than SNR and MUA
+                # Spike number is primarily valuable in the case that one unit
+                # is truly a subset of another. If one unit is a mixture, we
+                # need to avoid relying on spike count
                 if (delete_2 and (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']) or \
                     (delete_1 and (1-neuron_1['fraction_mua']) * neuron_1['snr'] > (1-neuron_2['fraction_mua']) * neuron_2['snr']):
-
+                    # We will now check if one unit appears to be a subset of the other
+                    # If these units are truly redundant subsets, then the MUA of
+                    # their union will be <= max(mua1, mua2)
+                    # If instead one unit is largely a mixture containing the
+                    # other, then the MUA of their union should greatly increase
+                    # Note that the if statement above typically only passes
+                    # in the event that one unit has considerably more spikes or
+                    # both units are extremely similar. Because rates can vary,
+                    # we do not use peak MUA here but rather the rate based MUA
+                    max_duplicate_tol_inds = max(neuron_1['duplicate_tol_inds'], neuron_2['duplicate_tol_inds'])
                     # Need to union with compliment so spikes are not double
                     # counted, which will reduce the rate based MUA
-                    max_duplicate_tol_inds = max(neuron_1['duplicate_tol_inds'], neuron_2['duplicate_tol_inds'])
-                    # neuron_2_compliment = np.in1d(neuron_1['spike_indices'], neuron_2['spike_indices'], invert=True)
-                    overlapping_spike_bool = find_overlapping_spike_bool(
+                    neuron_2_compliment = ~find_overlapping_spike_bool(
                             neuron_1['spike_indices'], neuron_2['spike_indices'],
                             max_duplicate_tol_inds)
-                    union_spikes = np.hstack((neuron_1['spike_indices'], neuron_2['spike_indices'][~overlapping_spike_bool]))
+                    union_spikes = np.hstack((neuron_1['spike_indices'], neuron_2['spike_indices'][neuron_2_compliment]))
                     union_spikes.sort()
                     union_fraction_mua_rate = calc_fraction_mua(
                                                      union_spikes,
@@ -1638,84 +1650,34 @@ class WorkItemSummary(object):
                                              self.sort_info['sampling_rate'],
                                              max_duplicate_tol_inds,
                                              self.absolute_refractory_period)
-
-
+                    # Expected mua if these two units were completely independent
                     expected_hits = calculate_expected_overlap(neuron_1['spike_indices'], neuron_2['spike_indices'],
                                         self.absolute_refractory_period, self.sort_info['sampling_rate'])
                     # Expected hits over hits plus misses
                     refractory_expected_ratio = expected_hits / min(neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
-
-                    # print("CHECKING OVERRIDE")
-                    # print("MUA VALS ARE")
-                    # print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
-                    # print("Original expected ratio is", expected_ratio[best_pair[0], best_pair[1]])
-                    # print("Refractory expected ratio is", refractory_expected_ratio)
-                    # if union_fraction_mua_rate > overlap_ratio_threshold * min(fraction_mua_rate_1, fraction_mua_rate_2) \
-                    #     and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
+                    # We will decide not to consider spike count if this looks like
+                    # one unit could be a large mixture. This usually means that
+                    # the union MUA goes up substantially. To accomodate noise,
+                    # require that it exceeds both the minimum MUA plus the MUA
+                    # expected if the units were totally independent, and the
+                    # MUA of either unit alone.
                     if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + refractory_expected_ratio \
                         and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
-                        print("!!! OVERRIDING !!!")
-                        print("!!! OVERRIDING !!!")
-                        print("Original expected ratio is", expected_ratio[best_pair[0], best_pair[1]])
-                        print("Refractory expected ratio is", refractory_expected_ratio)
-                        print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
-                        print("Adjusted scores n1", adjusted_n1_score, "n2", adjusted_n2_score)
-                        print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
-                        print("!!! OVERRIDING !!!")
-                        print("!!! OVERRIDING !!!")
-                        overriding = True
-                        # The unit with more spikes and MUA is likely a bad mixture
-                        # Choose unit with fewer spikes (also less MUA due to
-                        # above IF statement)
+                        # This is a red flag that one unit is likely a large mixture
+                        # and we should ignore spike count
                         if (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']:
+                            # Neuron 2 has better MUA and SNR so pick it
                             delete_1 = True
                             delete_2 = False
                         else:
+                            # Neuron 1 has better MUA and SNR so pick it
                             delete_1 = False
                             delete_2 = True
 
-                """THIS IS COMPLETELY MAKING DECISIONS UNITL WE GET TO END. GUESS WE SHOULD
-                PUT AN ELSE STATEMENT ABOVE FOR USING QUALITY SCORES"""
-            elif diff_score_1 > diff_score_2:
-                # Neuron 1 has a better copy somewhere so delete it
-                if not delete_1:
-                        print("!!! OVERRIDING !!!")
-                        print("!!! OVERRIDING !!!")
-                        print("Override on diff scores of", diff_score_1, diff_score_2)
-                        print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
-                        overriding = True
-                delete_1 = True
-                delete_2 = False
-            else:
-                if not delete_2:
-                        print("!!! OVERRIDING !!!")
-                        print("!!! OVERRIDING !!!")
-                        print("Override on diff scores of", diff_score_1, diff_score_2)
-                        print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
-                        overriding = True
-                delete_1 = False
-                delete_2 = True
-
-            # if neurons[best_pair[0]]['prev_seg_link'] is None and \
-            #     neurons[best_pair[0]]['next_seg_link'] is None:
-            #     if neurons[best_pair[1]]['prev_seg_link'] is not None or \
-            #         neurons[best_pair[1]]['next_seg_link'] is not None:
-            #         # Neuron 1 links to nothing, but neuron 2 has a link, so
-            #         # keep neuron 2, delete 1
-            #         print("!!! NEURON 1 LINKS TO NONE !!!")
-            # if neurons[best_pair[1]]['prev_seg_link'] is None and \
-            #     neurons[best_pair[1]]['next_seg_link'] is None:
-            #     if neurons[best_pair[0]]['prev_seg_link'] is not None or \
-            #         neurons[best_pair[0]]['next_seg_link'] is not None:
-            #         # Neuron 2 links to nothing, but neuron 1 has a link, so
-            #         # keep neuron 1, delete 2
-            #         print("!!! NEURON 2 LINKS TO NONE !!!")
-
             if delete_1:
-                if overriding:
-                    print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
-                    print("Deleting neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
-                    print("Keeping neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
+                # print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
+                # print("Deleting neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
+                # print("Keeping neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
                 neurons_remaining_indices.remove(best_pair[0])
                 for vp in violation_partners:
                     vp.discard(best_pair[0])
@@ -1741,10 +1703,9 @@ class WorkItemSummary(object):
                 neurons[best_pair[0]]['next_seg_link'] = None
                 neurons[best_pair[0]]['deleted_as_redundant'] = True
             if delete_2:
-                if overriding:
-                    print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
-                    print("Keeping neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
-                    print("Deleting neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
+                # print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
+                # print("Keeping neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
+                # print("Deleting neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
                 neurons_remaining_indices.remove(best_pair[1])
                 for vp in violation_partners:
                     vp.discard(best_pair[1])

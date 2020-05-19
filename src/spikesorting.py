@@ -228,6 +228,9 @@ def spike_sort_item(Probe, work_item, settings):
                             split_only = False,
                             p_value_cut_thresh=settings['p_value_cut_thresh'])
 
+        curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
+        if settings['verbose']: print("After first sort", curr_num_clusters.size, "different clusters", flush=True)
+
         crossings, neuron_labels, _ = segment.align_templates(Probe, chan, neuron_labels,
                             crossings, clip_width=settings['clip_width'])
         clips, valid_event_indices = segment.get_multichannel_clips(Probe,
@@ -256,10 +259,14 @@ def spike_sort_item(Probe, work_item, settings):
         crossings, neuron_labels = segment.keep_valid_inds(
                 [crossings, neuron_labels], valid_event_indices)
 
+        curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
+        if settings['verbose']: print("After re-sort", curr_num_clusters.size, "different clusters", flush=True)
+
         crossings, any_merged = check_spike_alignment(clips,
                         crossings, neuron_labels, curr_chan_inds, settings)
         if any_merged:
             # Resort based on new clip alignment
+            if settings['verbose']: print("Re-sorting after check spike alignment")
             clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
             crossings = segment.keep_valid_inds([crossings], valid_event_indices)
             scores = preprocessing.compute_pca(clips[:, curr_chan_inds],

@@ -1561,6 +1561,8 @@ class WorkItemSummary(object):
             # other neurons that it overlaps with. Basically, if one unit is
             # a best remaining copy while the other has better units it overlaps
             # with, we want to preferentially keep the best remaining copy
+            # This trimming should work because we choose the most overlapping
+            # pairs for each iteration
             combined_violations = violation_partners[best_pair[0]].union(violation_partners[best_pair[1]])
             max_other_n1 = neuron_1['quality_score']
             other_n1 = combined_violations - violation_partners[best_pair[1]]
@@ -1759,29 +1761,28 @@ class WorkItemSummary(object):
                     bad_n1.append(n_ind)
                 elif self.neuron_summary_by_seg[seg][n_ind]['snr'] < self.min_snr:
                     bad_n1.append(n_ind)
+                # elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] == -1:
+                #     bad_n1.append(n_ind)
             for dn in bad_n1:
                 n1_remaining.remove(dn)
             while len(n1_remaining) > 0:
                 best_n1_score = 0.
                 best_n1_ind = 0
+                # Choose the best n1_remaining
                 for n1_ind in n1_remaining:
-                    # Choose the best n1_remaining
-                    if self.neuron_summary_by_seg[seg][n1_ind]['fraction_mua'] == -1:
-                        # Invalid MUA so pick on SNR
-                        n1_score = self.neuron_summary_by_seg[seg][n1_ind]['snr']
-                    else:
-                        n1_score = self.neuron_summary_by_seg[seg][n1_ind]['quality_score']
-                    if n1_score > best_n1_score:
+                    if self.neuron_summary_by_seg[seg][n1_ind]['quality_score'] > best_n1_score:
                         best_n1_score = n1_score
                         best_n1_ind = n1_ind
                 n1_ind = best_n1_ind
-                n1 = self.neuron_summary_by_seg[seg][n1_ind]
+                n1 = self.neuron_summary_by_seg[seg][best_n1_ind]
 
                 best_n2_score = 0.
                 min_SSE = np.inf
                 max_overlap_ratio = -np.inf
+                # Choose the best n2 match for n1 in the subsequent segment
+                # that satisfies thresholds
                 for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
-                    # Choose the best n2 match for n1 that satisfies thresholds
+                    # Only choose from 'available' units
                     if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
                         if n1['channel'] not in n2['neighbors']:
                             continue
@@ -1794,7 +1795,7 @@ class WorkItemSummary(object):
                         if curr_overlap < self.min_overlapping_spikes:
                             continue
 
-                        # # If we made it here, the overlap is sufficient to link
+                        # Not sure whether to check for these or ignore them...
                         # # Now we must choose the best n2 to make it here
                         # if n2['fraction_mua'] == -1 and n1['fraction_mua'] == -1:
                         #     # Both invalid MUA, so pick on SNR
@@ -1808,10 +1809,10 @@ class WorkItemSummary(object):
                         #     best_n2_score = n2_score
                         #     max_overlap_pair = [n1_ind, n2_ind]
 
+                        # If we made it here, the overlap is sufficient to link
+                        # Link to the closest template match by SSE
                         template_SSE = self.get_shifted_neighborhood_SSE(n1, n2)
-                        if (template_SSE < min_SSE):
-                            # Could also pick on overlap, but doing both here
-                            # will result in first n2 tested having the advantage...
+                        if template_SSE < min_SSE:
                             max_overlap_ratio = curr_overlap
                             min_SSE = template_SSE
                             max_overlap_pair = [n1_ind, n2_ind]
@@ -2114,8 +2115,7 @@ class WorkItemSummary(object):
             n['next_seg_link'] = None
             n['deleted_as_redundant'] = False
 
-        # Remove redundant items across channels and attempt to maintain
-        # linking continuity across channels
+        # Remove redundant items across channels
         self.remove_redundant_neurons_by_seg(overlap_time=overlap_time,
                                 overlap_ratio_threshold=overlap_ratio_threshold)
         # NOTE: This MUST run AFTER remove redundant by seg or else you can

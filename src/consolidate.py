@@ -1630,6 +1630,11 @@ class WorkItemSummary(object):
                                              self.sort_info['sampling_rate'],
                                              max_duplicate_tol_inds,
                                              self.absolute_refractory_period)
+
+                    print("CHECKING OVERRIDE")
+                    print("MUA VALS ARE")
+                    print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
+                    print("Expected ratio is", expected_ratio[best_pair[0], best_pair[1]])        
                     if union_fraction_mua_rate > overlap_ratio_threshold * min(fraction_mua_rate_1, fraction_mua_rate_2) \
                         and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
                         print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)

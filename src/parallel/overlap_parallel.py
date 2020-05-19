@@ -366,7 +366,7 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
         # Evenly split bias across channels. Main channel will have to cross
         # this number, unlike in the GPU version, but this should be low enough
         # to make a difference of not more than a spike here or there
-        spike_biases[unit, :] = 2*std_noise / neighbors.size
+        spike_biases[unit, :] = 2*std_noise[unit] / neighbors.size
     # Free some memory
     del spike_times
     del neighbor_bias

@@ -367,7 +367,9 @@ class TestDataset(object):
         # Enforce test_flag else this will almost surely fail
         par_sort_kwargs['test_flag'] = True
         # Setup electrode TestProbe
-        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
+        # self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
+        # self.Probe = TestSingleElectrode(self.samples_per_second, self.voltage_array)
+        self.Probe = TestTetrode(self.samples_per_second, self.voltage_array)
 
         # Set and save random generator state
         self.random_state = np.random.get_state()

@@ -739,7 +739,8 @@ class WorkItemSummary(object):
 
     def find_nearest_shifted_pair(self, chan, seg1, seg2, labels1, labels2,
                                   l2_workspace, curr_chan_inds,
-                                  previously_compared_pairs):
+                                  previously_compared_pairs,
+                                  max_shift_inds=np.inf):
         """ Alternative to sort_cython.identify_clusters_to_compare that simply
         chooses the nearest template after shifting to optimal alignment.
         Intended as helper function so that neurons do not fail to stitch in the
@@ -789,6 +790,8 @@ class WorkItemSummary(object):
                                           mode='full')
                 max_corr_ind = np.argmax(cross_corr)
                 curr_shift = max_corr_ind - cross_corr.shape[0]//2
+                if np.abs(curr_shift) > max_shift_inds:
+                    continue
                 # Align and truncate template and compute distance
                 if curr_shift > 0:
                     shiftl1 = l1_template[curr_shift:]
@@ -844,6 +847,7 @@ class WorkItemSummary(object):
     def sharpen_segments(self):
         """
         """
+        max_shift_inds = int(round((np.amin(np.abs(self.sort_info['clip_width']))/2) * self.sort_info['sampling_rate']))
         for chan in range(0, self.n_chans):
             # Main win is fixed for a given channel
             main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][0]['chan_neighbor_ind'],
@@ -862,7 +866,8 @@ class WorkItemSummary(object):
                                     self.find_nearest_shifted_pair(
                                     chan, seg, seg, seg_labels, seg_labels,
                                     self.sort_data[chan][seg][1],
-                                    curr_chan_inds, previously_compared_pairs)
+                                    curr_chan_inds, previously_compared_pairs,
+                                    max_shift_inds=max_shift_inds)
                     if len(best_pair) == 0:
                         break
                     if clips_1.shape[0] == 1 or clips_2.shape[0] == 1:
@@ -927,7 +932,7 @@ class WorkItemSummary(object):
                         # Add in chance overlaps for independent firing
                         expected_hits = calculate_expected_overlap(self.sort_data[chan][seg][0][select_1],
                                             self.sort_data[chan][seg][0][select_2],
-                                            np.amax(np.abs(self.sort_info['clip_width'])),
+                                            self.absolute_refractory_period,
                                             self.sort_info['sampling_rate'])
                         # NOTE: Should this be expected hits minus remaining number of spikes?
                         expected_ratio = expected_hits / min(np.count_nonzero(select_1), np.count_nonzero(select_2))
@@ -939,10 +944,16 @@ class WorkItemSummary(object):
                     if self.verbose: print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
 
                     if is_merged:
-                        # Combine these into whichever label
-                        select = self.sort_data[chan][seg][1] == best_pair[1]
-                        self.sort_data[chan][seg][1][select] = best_pair[0]
-                        seg_labels.remove(best_pair[1])
+                        # Combine these into whichever label has more spikes
+                        if np.count_nonzero(select_1) > np.count_nonzero(select_2):
+                            self.sort_data[chan][seg][1][select_2] = best_pair[0]
+                            seg_labels.remove(best_pair[1])
+                            self.sort_data[chan][seg][0][select_2] += -1*best_shift
+                        else:
+                            self.sort_data[chan][seg][1][select_1] = best_pair[1]
+                            seg_labels.remove(best_pair[0])
+                            self.sort_data[chan][seg][0][select_1] += best_shift
+
                         # print("MERGING IN SHARPEN")
                         # print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
                         # print("Using a shift value of", best_shift)

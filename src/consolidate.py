@@ -1655,6 +1655,8 @@ class WorkItemSummary(object):
                 if not delete_1:
                         print("!!! OVERRIDING !!!")
                         print("!!! OVERRIDING !!!")
+                        print("Override on diff scores of", diff_score_1, diff_score_2)
+                        print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
                         overriding = True
                 delete_1 = True
                 delete_2 = False
@@ -1662,6 +1664,8 @@ class WorkItemSummary(object):
                 if not delete_2:
                         print("!!! OVERRIDING !!!")
                         print("!!! OVERRIDING !!!")
+                        print("Override on diff scores of", diff_score_1, diff_score_2)
+                        print("original scores n1", neuron_1['quality_score'], "n2", neuron_2['quality_score'])
                         overriding = True
                 delete_1 = False
                 delete_2 = True

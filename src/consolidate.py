@@ -1631,10 +1631,17 @@ class WorkItemSummary(object):
                                              max_duplicate_tol_inds,
                                              self.absolute_refractory_period)
 
+
+                    expected_hits = calculate_expected_overlap(neuron_1['spike_indices'], neuron_2['spike_indices'],
+                                        self.absolute_refractory_period, self.sort_info['sampling_rate'])
+                    # Expected hits over hits plus misses
+                    refractory_expected_ratio = expected_hits / min(neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
+
                     print("CHECKING OVERRIDE")
                     print("MUA VALS ARE")
                     print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)
-                    print("Expected ratio is", expected_ratio[best_pair[0], best_pair[1]])        
+                    print("Original expected ratio is", expected_ratio[best_pair[0], best_pair[1]])
+                    print("Refractory expected ratio is", refractory_expected_ratio)    
                     if union_fraction_mua_rate > overlap_ratio_threshold * min(fraction_mua_rate_1, fraction_mua_rate_2) \
                         and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
                         print("Union MUA", union_fraction_mua_rate, "n1 mua", fraction_mua_rate_1, "n2 mua", fraction_mua_rate_2)

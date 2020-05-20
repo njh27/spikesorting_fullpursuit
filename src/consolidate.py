@@ -1415,7 +1415,7 @@ class WorkItemSummary(object):
                                                     * (neuron['spike_indices'].shape[0])
                     self.neuron_summary_by_seg[seg].append(neuron)
 
-    def get_overlap_ratio(self, seg1, n1_ind, seg2, n2_ind, overlap_time=2.5e-4):
+    def get_overlap_ratio(self, seg1, n1_ind, seg2, n2_ind, overlap_time):
         """
         """
         # From next seg2 start to seg1 end
@@ -1461,7 +1461,7 @@ class WorkItemSummary(object):
                             num_hits / (num_hits + n2_misses))
         return overlap_ratio
 
-    def remove_redundant_neurons(self, seg, overlap_time=2.5e-4, overlap_ratio_threshold=2):
+    def remove_redundant_neurons(self, seg, overlap_time, overlap_ratio_threshold=2):
         """
         Note that this function does not actually delete anything. It removes
         links between segments for redundant units and it adds a flag under
@@ -1470,8 +1470,6 @@ class WorkItemSummary(object):
         to link neurons together later and is not worth the book keeping trouble.
         """
         neurons = self.neuron_summary_by_seg[seg]
-        max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
-
         overlap_ratio = np.zeros((len(neurons), len(neurons)))
         expected_ratio = np.zeros((len(neurons), len(neurons)))
         quality_scores = np.zeros(len(neurons))
@@ -1485,6 +1483,8 @@ class WorkItemSummary(object):
                     continue # If they are on the same channel, do nothing
                 # if neuron1['channel'] not in neuron2['neighbors']:
                 #     continue # If they are not in same neighborhood, do nothing
+                """ THESE ARE JUST IGNORING THE OVERLAP TIME INPUT AT THE MOMENT"""
+                overlap_time = max(neuron1['duplicate_tol_inds'], neuron2['duplicate_tol_inds']) / self.sort_info['sampling_rate']
                 overlap_ratio[neuron1_ind, neuron2_ind] = self.get_overlap_ratio(
                                         seg, neuron1_ind, seg, neuron2_ind, overlap_time)
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
@@ -1719,6 +1719,7 @@ class WorkItemSummary(object):
             return
         else:
             self.last_overlap_ratio_threshold = overlap_ratio_threshold
+        print("""!!! THESE ARE JUST IGNORING THE OVERLAP TIME INPUT AT THE MOMENT in remove_redundant_neurons""")
         for seg in range(0, self.n_segments):
             self.neuron_summary_by_seg[seg] = self.remove_redundant_neurons(
                                     seg, overlap_time, overlap_ratio_threshold)
@@ -1726,7 +1727,6 @@ class WorkItemSummary(object):
     def make_overlapping_links(self, overlap_time):
         """
         """
-        overlap_inds = int(round(overlap_time * self.sort_info['sampling_rate']))
         max_shift_inds = int(round((np.amin(np.abs(self.sort_info['clip_width']))/2) * self.sort_info['sampling_rate']))
         for seg in range(0, self.n_segments-1):
             n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
@@ -1735,10 +1735,10 @@ class WorkItemSummary(object):
             for n_ind in n1_remaining:
                 if self.neuron_summary_by_seg[seg][n_ind]['deleted_as_redundant']:
                     bad_n1.append(n_ind)
-                elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] > self.max_mua_ratio:
-                    bad_n1.append(n_ind)
-                elif self.neuron_summary_by_seg[seg][n_ind]['snr'] < self.min_snr:
-                    bad_n1.append(n_ind)
+                # elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] > self.max_mua_ratio:
+                #     bad_n1.append(n_ind)
+                # elif self.neuron_summary_by_seg[seg][n_ind]['snr'] < self.min_snr:
+                #     bad_n1.append(n_ind)
                 # elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] == -1:
                 #     bad_n1.append(n_ind)
             for dn in bad_n1:
@@ -1762,19 +1762,20 @@ class WorkItemSummary(object):
                 # Choose the best n2 match for n1 in the subsequent segment
                 # that satisfies thresholds
                 for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
+                    # Only choose from neighborhood
+                    if n1['channel'] not in n2['neighbors']:
+                        continue
                     # Only choose from 'available' units
                     # print("Checking n2 from channel", n2['channel'], "in segment", seg)
                     # print("This n2 has previous link", n2['prev_seg_link'], "and deleted redundant", n2['deleted_as_redundant'])
                     # print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
                     if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
-                        if n1['channel'] not in n2['neighbors']:
-                            continue
-                        if n2['fraction_mua'] > self.max_mua_ratio:
-                            continue
-                        if n2['snr'] < self.min_snr:
-                            continue
+                        # if n2['fraction_mua'] > self.max_mua_ratio:
+                        #     continue
+                        # if n2['snr'] < self.min_snr:
+                        #     continue
                         curr_overlap = self.get_overlap_ratio(
-                                seg, n1_ind, seg+1, n2_ind, overlap_time)
+                                seg, n1_ind, seg+1, n2_ind, n1['duplicate_tol_inds']/self.sort_info['sampling_rate'])
                         if curr_overlap < self.min_overlapping_spikes:
                             continue
 
@@ -2089,8 +2090,8 @@ class WorkItemSummary(object):
                 # Current seg neurons can't link with neurons in next seg
                 continue
             # For the next seg, we will discover their previous seg link.
-            # prev_seg_link is used by remove redundant neurons to match segments
-            # across channels that otherwise have links broken by redundancy
+            # prev_seg_link is used by make_overlapping_links to match segments
+            # across channels that otherwise have links broken
             for n in self.neuron_summary_by_seg[next_seg]:
                 n['prev_seg_link'] = None
             # Use stitching labels to link segments within channel

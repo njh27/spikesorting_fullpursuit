@@ -1176,7 +1176,7 @@ class WorkItemSummary(object):
                 #     else:
                 #         ismerged, labels_1, labels_2 = self.merge_test_two_units(
                 #                 clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                #                 method='template_pca', split_only=True,
+                #                 method='channel_template_pca', split_only=True,
                 #                 curr_chan_inds=curr_chan_inds)
                 #     if ismerged:
                 #         # This can happen if the split cutpoint forces
@@ -1306,7 +1306,7 @@ class WorkItemSummary(object):
             if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels)
             self.is_stitched = True
 
-    def get_shifted_neighborhood_SSE(self, neuron1, neuron2):
+    def get_shifted_neighborhood_SSE(self, neuron1, neuron2, max_shift_inds):
         """
         """
         # Find the shared part of each unit's neighborhood and number of samples
@@ -1330,7 +1330,9 @@ class WorkItemSummary(object):
         cross_corr = np.correlate(overlap_template_1, overlap_template_2, mode='full')
         max_corr_ind = np.argmax(cross_corr)
         shift = max_corr_ind - cross_corr.shape[0]//2
-
+        if np.abs(shift) > max_shift_inds:
+            # Best alignment is too far
+            return np.inf
         if shift == 0:
             # Compute SSE on clips as is
             # Must normalize distance per data point else reward big shifts
@@ -1749,6 +1751,7 @@ class WorkItemSummary(object):
         """
         """
         overlap_inds = int(round(overlap_time * self.sort_info['sampling_rate']))
+        max_shift_inds = int(round((np.amin(np.abs(self.sort_info['clip_width']))/2) * self.sort_info['sampling_rate']))
         for seg in range(0, self.n_segments-1):
             n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
                             if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
@@ -1818,7 +1821,7 @@ class WorkItemSummary(object):
 
                         # If we made it here, the overlap is sufficient to link
                         # Link to the closest template match by SSE
-                        template_SSE = self.get_shifted_neighborhood_SSE(n1, n2)
+                        template_SSE = self.get_shifted_neighborhood_SSE(n1, n2, max_shift_inds)
                         # print("n2 has SSE of", template_SSE, "vs min of", min_SSE)
                         if template_SSE < min_SSE:
                             max_overlap_ratio = curr_overlap

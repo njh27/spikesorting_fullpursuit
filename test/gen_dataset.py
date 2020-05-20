@@ -90,17 +90,31 @@ class TestDataset(object):
     """
     def __init__(self, num_channels, duration, random_seed=None,
                  neuron_templates=None, frequency_range=(500, 8000),
-                 samples_per_second=40000, amplitude=1, percent_shared_noise=0):
+                 samples_per_second=40000, amplitude=1, percent_shared_noise=0,
+                 electrode_type='Probe'):
         self.num_channels = num_channels
         self.duration = duration
         self.frequency_range = frequency_range
         self.samples_per_second = samples_per_second
+
+        if electrode_type.lower() == 'probe':
+            self.Probe = TestProbe(self.samples_per_second,
+                            np.zeros((self.num_channels, int(self.samples_per_second*self.duration))),
+                            self.num_channels)
+        elif electrode_type.lower() == 'tetrode':
+            self.Probe = TestTetrode(self.samples_per_second,
+                            np.zeros((self.num_channels, int(self.samples_per_second*self.duration))))
+        elif electrode_type.lower() == 'single':
+            self.Probe = TestSingleElectrode(self.samples_per_second,
+                            np.zeros((self.num_channels, int(self.samples_per_second*self.duration))))
+        else:
+            raise ValueError('Electrode type must be probe, tetrode, or single.')
+
         self.amplitude = amplitude
         if neuron_templates is not None:
             self.neuron_templates = neuron_templates
         else:
             self.neuron_templates = self.get_default_templates()
-        self.voltage_array = None
         self.actual_IDs = []
         self.percent_shared_noise = percent_shared_noise
         if self.percent_shared_noise > 1:
@@ -166,7 +180,7 @@ class TestDataset(object):
         return bandlimited_noise
 
     def gen_noise_voltage_array(self):
-        noise_voltage_array = np.zeros((self.num_channels, self.samples_per_second*self.duration))
+        noise_voltage_array = np.zeros((self.num_channels, int(self.samples_per_second*self.duration)))
         if self.percent_shared_noise > 0:
             # Make a shared array
             shared_noise = self.percent_shared_noise * self.gen_bandlimited_noise()
@@ -205,7 +219,7 @@ class TestDataset(object):
                 if chan_scaling_factors[neuron][chan] <= 0:
                     continue
                 voltage_array[chan, :] += signal.fftconvolve(spiketrain, convolve_kernel, mode='same')
-        self.voltage_array = voltage_array
+        self.Probe.set_new_voltage(voltage_array)
 
     def gen_dynamic_test_dataset(self, firing_rates, template_inds, chan_scaling_factors, refractory_wins=1.5e-3):
         """
@@ -287,7 +301,7 @@ class TestDataset(object):
             print("Removing", np.count_nonzero(remove_IDs), "neuron", neuron, "spikes for scale factors less than", scaled_spike_thresh)
             self.actual_IDs[neuron] = self.actual_IDs[neuron][~remove_IDs]
             self.actual_IDs[neuron] += half_temp_width # Re-center the spike times
-        self.voltage_array = voltage_array
+        self.Probe.set_new_voltage(voltage_array)
 
     def sort_test_dataset(self, kwargs):
 
@@ -304,9 +318,6 @@ class TestDataset(object):
         for key in kwargs:
             spike_sort_kwargs[key] = kwargs[key]
 
-        # self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        # self.Probe = TestSingleElectrode(self.samples_per_second, self.voltage_array)
-        self.Probe = TestTetrode(self.samples_per_second, self.voltage_array)
         sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **spike_sort_kwargs)
 
         return sort_data, work_items, sort_info
@@ -328,7 +339,6 @@ class TestDataset(object):
         for key in kwargs:
             spike_sort_kwargs[key] = kwargs[key]
 
-        self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
         sort_data, work_items, sort_info = spikesorting_parallel.spike_sort_parallel(self.Probe, **spike_sort_kwargs)
 
         return sort_data, work_items, sort_info
@@ -366,10 +376,6 @@ class TestDataset(object):
 
         # Enforce test_flag else this will almost surely fail
         par_sort_kwargs['test_flag'] = True
-        # Setup electrode TestProbe
-        # self.Probe = TestProbe(self.samples_per_second, self.voltage_array, self.num_channels)
-        # self.Probe = TestSingleElectrode(self.samples_per_second, self.voltage_array)
-        self.Probe = TestTetrode(self.samples_per_second, self.voltage_array)
 
         # Set and save random generator state
         self.random_state = np.random.get_state()

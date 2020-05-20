@@ -228,24 +228,23 @@ def remove_spike_event_duplicates_across_chans(combined_neuron):
     return keep_bool
 
 
-def compute_spike_trains(spike_indices_list, bin_width_samples, min_max_samples):
-
-    if type(spike_indices_list) is not list:
-        spike_indices_list = [spike_indices_list]
-    if type(min_max_samples) is not list:
-        min_max_samples = [0, min_max_samples]
+def compute_spike_trains(spike_indices, bin_width_samples, min_max_indices):
+    """ Turns input spike indices into a binary spike train such that each
+    element of output is True if 1 or more spikes occured in that time bin and
+    False otherwise. """
+    if len(min_max_indices) == 1:
+        min_max_indices = [0, min_max_indices]
     bin_width_samples = int(bin_width_samples)
-    train_len = int(np.ceil((min_max_samples[1] - min_max_samples[0] + bin_width_samples/2) / bin_width_samples) + 1) # Add one because it's a time/samples slice
-    spike_trains_list = [[] for x in range(0, len(spike_indices_list))]
+    train_len = int(np.ceil((min_max_indices[1] - min_max_indices[0] + bin_width_samples/2) / bin_width_samples) + 1) # Add one because it's a time/samples slice
 
-    for ind, unit in enumerate(spike_indices_list):
-        unit_select = np.logical_and(unit >= min_max_samples[0], unit <= min_max_samples[1])
-        # Convert the spike indices to units of bin_width_samples
-        spikes = (np.floor((unit[unit_select] + bin_width_samples/2 - min_max_samples[0]) / bin_width_samples)).astype(np.int64)
-        spike_trains_list[ind] = np.zeros(train_len, dtype=np.bool)
-        spike_trains_list[ind][spikes] = True
+    # Select spikes in desired index range
+    select = np.logical_and(spike_indices >= min_max_indices[0], spike_indices <= min_max_indices[1])
+    # Convert the spike indices to units of bin_width_samples
+    spikes = (np.floor((spike_indices[select] + bin_width_samples/2 - min_max_indices[0]) / bin_width_samples)).astype(np.int64)
+    spike_train = np.zeros(train_len, dtype=np.bool)
+    spike_train[spikes] = True
 
-    return spike_trains_list if len(spike_trains_list) > 1 else spike_trains_list[0]
+    return spike_train
 
 
 def calculate_expected_overlap(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
@@ -1771,7 +1770,7 @@ class WorkItemSummary(object):
                 # Choose the best n1_remaining
                 for n1_ind in n1_remaining:
                     if self.neuron_summary_by_seg[seg][n1_ind]['quality_score'] > best_n1_score:
-                        best_n1_score = n1_score
+                        best_n1_score = self.neuron_summary_by_seg[seg][n1_ind]['quality_score']
                         best_n1_ind = n1_ind
                 n1_ind = best_n1_ind
                 n1 = self.neuron_summary_by_seg[seg][best_n1_ind]
@@ -1779,10 +1778,15 @@ class WorkItemSummary(object):
                 best_n2_score = 0.
                 min_SSE = np.inf
                 max_overlap_ratio = -np.inf
+                # print("Chose best n1 from channel", n1['channel'], "in segment", seg)
+                # print("This n1 has quality", n1['quality_score'], "MUA", n1['fraction_mua'], 'snr', n1['snr'], "n spikes", n1['spike_indices'].shape[0])
                 # Choose the best n2 match for n1 in the subsequent segment
                 # that satisfies thresholds
                 for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
                     # Only choose from 'available' units
+                    # print("Checking n2 from channel", n2['channel'], "in segment", seg)
+                    # print("This n2 has previous link", n2['prev_seg_link'], "and deleted redundant", n2['deleted_as_redundant'])
+                    # print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
                     if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
                         if n1['channel'] not in n2['neighbors']:
                             continue
@@ -1809,9 +1813,13 @@ class WorkItemSummary(object):
                         #     best_n2_score = n2_score
                         #     max_overlap_pair = [n1_ind, n2_ind]
 
+                        # print("This n2 from channel", n2['channel'], "in segment", seg, "has enough overlap")
+                        # print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
+
                         # If we made it here, the overlap is sufficient to link
                         # Link to the closest template match by SSE
                         template_SSE = self.get_shifted_neighborhood_SSE(n1, n2)
+                        # print("n2 has SSE of", template_SSE, "vs min of", min_SSE)
                         if template_SSE < min_SSE:
                             max_overlap_ratio = curr_overlap
                             min_SSE = template_SSE

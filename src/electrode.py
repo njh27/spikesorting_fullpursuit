@@ -39,8 +39,24 @@ class AbstractProbe(object):
             raise ValueError("Input voltage must be only one of fname_voltage OR voltage_array, but not both.")
         else:
             # Set placeholder voltage with correct number of electrode rows and dims
+            # Can be overwritten later with set_new_voltage()
             self.voltage = np.empty((num_electrodes, 0))
 
+        # Voltage array must have one row for each channel with columns as samples
+        if self.voltage.ndim != 2:
+            self.voltage = np.expand_dims(self.voltage, 0)
+        if self.num_electrodes != self.voltage.shape[0]:
+            self.voltage = self.voltage.T
+        if (self.num_electrodes != self.voltage.shape[0]) or (self.voltage.ndim < 1):
+            raise ValueError("None of the voltage data dimensions match the input number of electrodes")
+        self.n_samples = self.voltage.shape[1]
+
+    def set_new_voltage(self, new_voltage_array):
+        """ Reassigns voltage to new_voltage_array and updates dims/samples
+        accordingly. """
+        if not isinstance(new_voltage_array, np.ndarray):
+            raise ValueError("Input new_voltage_array must be numpy ndarray")
+        self.voltage = new_voltage_array
         # Voltage array must have one row for each channel with columns as samples
         if self.voltage.ndim != 2:
             self.voltage = np.expand_dims(self.voltage, 0)

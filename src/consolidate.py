@@ -1724,7 +1724,7 @@ class WorkItemSummary(object):
             self.neuron_summary_by_seg[seg] = self.remove_redundant_neurons(
                                     seg, overlap_time, overlap_ratio_threshold)
 
-    def make_overlapping_links(self, overlap_time):
+    def make_overlapping_links(self, overlap_time, verbose=False):
         """
         """
         max_shift_inds = int(round((np.amin(np.abs(self.sort_info['clip_width']))/2) * self.sort_info['sampling_rate']))
@@ -1757,8 +1757,8 @@ class WorkItemSummary(object):
                 best_n2_score = 0.
                 min_SSE = np.inf
                 max_overlap_ratio = -np.inf
-                # print("Chose best n1 from channel", n1['channel'], "in segment", seg)
-                # print("This n1 has quality", n1['quality_score'], "MUA", n1['fraction_mua'], 'snr', n1['snr'], "n spikes", n1['spike_indices'].shape[0])
+                if verbose: print("Chose best n1 from channel", n1['channel'], "in segment", seg)
+                if verbose: print("This n1 has quality", n1['quality_score'], "MUA", n1['fraction_mua'], 'snr', n1['snr'], "n spikes", n1['spike_indices'].shape[0])
                 # Choose the best n2 match for n1 in the subsequent segment
                 # that satisfies thresholds
                 for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
@@ -1766,9 +1766,9 @@ class WorkItemSummary(object):
                     if n1['channel'] not in n2['neighbors']:
                         continue
                     # Only choose from 'available' units
-                    # print("Checking n2 from channel", n2['channel'], "in segment", seg)
-                    # print("This n2 has previous link", n2['prev_seg_link'], "and deleted redundant", n2['deleted_as_redundant'])
-                    # print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
+                    if verbose: print("Checking n2 from channel", n2['channel'], "in segment", seg)
+                    if verbose: print("This n2 has previous link", n2['prev_seg_link'], "and deleted redundant", n2['deleted_as_redundant'])
+                    if verbose: print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
                     if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
                         # if n2['fraction_mua'] > self.max_mua_ratio:
                         #     continue
@@ -1793,16 +1793,16 @@ class WorkItemSummary(object):
                         #     best_n2_score = n2_score
                         #     max_overlap_pair = [n1_ind, n2_ind]
 
-                        # print("This n2 from channel", n2['channel'], "in segment", seg, "has enough overlap")
-                        # print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
+                        if verbose: print("This n2 from channel", n2['channel'], "in segment", seg, "has enough overlap")
+                        if verbose: print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
 
                         # If we made it here, the overlap is sufficient to link
                         # Link to the closest template match by SSE
                         template_SSE = self.get_shifted_neighborhood_SSE(n1, n2, max_shift_inds)
-                        # print("n2 has SSE of", template_SSE, "vs min of", min_SSE)
                         # Weight template SSE by overlap to include both terms
                         # (lower numbers are better)
                         template_SSE *= (1 - curr_overlap)
+                        if verbose: print("n2 has SSE of", template_SSE, "vs min of", min_SSE)
                         if template_SSE < min_SSE:
                             max_overlap_ratio = curr_overlap
                             min_SSE = template_SSE

@@ -1799,6 +1799,9 @@ class WorkItemSummary(object):
                         # Link to the closest template match by SSE
                         template_SSE = self.get_shifted_neighborhood_SSE(n1, n2, max_shift_inds)
                         # print("n2 has SSE of", template_SSE, "vs min of", min_SSE)
+                        # Weight template SSE by overlap to include both terms
+                        # (lower numbers are better)
+                        template_SSE *= (1 - curr_overlap)
                         if template_SSE < min_SSE:
                             max_overlap_ratio = curr_overlap
                             min_SSE = template_SSE

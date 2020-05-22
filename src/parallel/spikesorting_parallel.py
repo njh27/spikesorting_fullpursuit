@@ -679,6 +679,9 @@ def spike_sort_parallel(Probe, **kwargs):
         raise ValueError("Probe get_neighbors() method must return a numpy ndarray of dtype np.int64.")
     # Get our settings
     settings = spike_sorting_settings_parallel(**kwargs)
+    # For convenience, necessary to define clip width as negative for first entry
+    if settings['clip_width'][0] > 0:
+        settings['clip_width'] *= -1
     manager = mp.Manager()
     if not settings['use_GPU'] and settings['do_binary_pursuit']:
         use_GPU_message = ("Using CPU binary pursuit to find " \

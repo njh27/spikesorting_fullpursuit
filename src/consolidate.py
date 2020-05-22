@@ -586,7 +586,7 @@ class WorkItemSummary(object):
                             self.sort_data[chan][seg][2][unit_select, :],
                             np.mean(self.sort_data[chan][seg][2][unit_select, :], axis=0),
                             self.sort_data[chan][seg][3][unit_select],
-                            self.half_clip_inds)
+                            2*self.half_clip_inds)
                 # NOTE: If all items are deleted, data will become empty numpy array
                 # rather than the empty list style of original input
                 self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][keep_bool]

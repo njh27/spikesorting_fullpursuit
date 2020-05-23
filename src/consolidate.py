@@ -378,7 +378,7 @@ class WorkItemSummary(object):
     true for a reasonable choice of clip width
     """
     def __init__(self, sort_data, work_items, sort_info,
-                 absolute_refractory_period=10e-4,
+                 absolute_refractory_period=12e-4,
                  max_mua_ratio=0.2, min_snr=1.5, min_overlapping_spikes=.5,
                  overlap_indices=None, skip_organization=False, verbose=False):
         if not skip_organization:

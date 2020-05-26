@@ -2095,9 +2095,10 @@ class WorkItemSummary(object):
         segments. Requires that there be
         overlap between segments, and enough overlap to be useful.
         The overlap time is the window used to consider spikes the same"""
-        if self.overlap_indices == 0:
+        print("len seg summaries BEFORE", len(self.neuron_summary_by_seg))
+        if self.overlap_indices == 0 and self.n_segments > 1:
             raise RuntimeError("Cannot do across channel summary without overlap between segments")
-        elif self.overlap_indices < self.sort_info['sampling_rate']:
+        elif self.overlap_indices < self.sort_info['sampling_rate'] and self.n_segments > 1:
             summary_message = "Summarizing neurons for multiple data segments" \
                                 "with less than 1 second of overlapping data."
             warnings.warn(summary_message, RuntimeWarning, stacklevel=2)
@@ -2180,12 +2181,14 @@ class WorkItemSummary(object):
         neuron_summary = []
         for n in neurons:
             neuron_summary.append(self.join_neuron_dicts(n))
+        print("len seg summaries AFTER", len(self.neuron_summary_by_seg))
         return neuron_summary
 
     def summarize_neurons_within_channel(self, min_segs_per_unit=1):
         """ Creates output neurons list by combining segment-wise neurons across
         segments within each channel using stitch_segments. Requires that there
         be overlap between segments, and enough overlap to be useful. """
+        print("len seg summaries BEFORE", len(self.neuron_summary_by_seg))
         if not self.is_stitched and self.n_segments > 1:
             summary_message = "Summarizing neurons for multiple data segments" \
                                 "without first stitching will result in" \
@@ -2259,6 +2262,7 @@ class WorkItemSummary(object):
         neuron_summary = []
         for n in neurons:
             neuron_summary.append(self.join_neuron_dicts(n))
+        print("len seg summaries AFTER", len(self.neuron_summary_by_seg))
         return neuron_summary
 
     def remove_redundant_within_channel_summaries(self, neurons, overlap_ratio_threshold=2):

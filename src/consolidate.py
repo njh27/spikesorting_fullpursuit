@@ -1911,7 +1911,6 @@ class WorkItemSummary(object):
             print("Joine neuron dicst is returning empty")
             return {}
         combined_neuron = {}
-        combined_neuron['summary_type'] = 'across_channels'
         combined_neuron['sort_info'] = self.sort_info
         # Since a neuron can exist over multiple channels, we need to discover
         # all the channels that are present and track which channel data
@@ -2179,6 +2178,8 @@ class WorkItemSummary(object):
         neuron_summary = []
         for n in neurons:
             neuron_summary.append(self.join_neuron_dicts(n))
+            # Indicate origin of summary for each neuron
+            neuron_summary[-1]['summary_type'] = 'across_channels'
         return neuron_summary
 
     def summarize_neurons_within_channel(self, min_segs_per_unit=1):
@@ -2258,6 +2259,8 @@ class WorkItemSummary(object):
         neuron_summary = []
         for n in neurons:
             neuron_summary.append(self.join_neuron_dicts(n))
+            # Indicate origin of summary for each neuron
+            neuron_summary[-1]['summary_type'] = 'within_channel'
         return neuron_summary
 
     def remove_redundant_within_channel_summaries(self, neurons, overlap_ratio_threshold=2):

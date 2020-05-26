@@ -247,6 +247,46 @@ def compute_spike_trains(spike_indices, bin_width_samples, min_max_indices):
     return spike_train
 
 
+def calc_overlap_ratio(neuron_1, neuron_2, overlap_time):
+    """
+    """
+    # Overlap time is the time that their spikes coexist
+    overlap_win = [max(neuron_1['spike_indices'][0], neuron_2['spike_indices'][0]),
+                   min(neuron_1['spike_indices'][-1], neuron_2['spike_indices'][-1])]
+    max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
+    n_total_samples = overlap_win[1] - overlap_win[0]
+
+    n1_spikes = neuron_1['spike_indices']
+    n2_spikes = neuron_2['spike_indices']
+    n1_start = next((idx[0] for idx, val in np.ndenumerate(n1_spikes)
+                         if val >= overlap_win[0]), None)
+    if n1_start is None:
+        # neuron 1 has no spikes in the overlap
+        return 0.
+    n2_start = next((idx[0] for idx, val in np.ndenumerate(n2_spikes)
+                         if val >= overlap_win[0]), None)
+    if n2_start is None:
+        # neuron 2 has no spikes in the overlap
+        return 0.
+    n1_stop = next((idx[0] for idx, val in np.ndenumerate(n1_spikes)
+                        if val >= overlap_win[1]), None)
+    n2_stop = next((idx[0] for idx, val in np.ndenumerate(n1_spikes)
+                        if val >= overlap_win[1]), None)
+
+    n1_spike_train = compute_spike_trains(n1_spikes[n1_start:],
+                                          max_samples, overlap_win)
+    n_n1_spikes = np.count_nonzero(n1_spike_train)
+    n2_spike_train = compute_spike_trains(n2_spikes[:n2_stop],
+                                          max_samples, overlap_win)
+    n_n2_spikes = np.count_nonzero(n2_spike_train)
+    num_hits = np.count_nonzero(np.logical_and(n1_spike_train, n2_spike_train))
+    n1_misses = np.count_nonzero(np.logical_and(n1_spike_train, ~n2_spike_train))
+    n2_misses = np.count_nonzero(np.logical_and(n2_spike_train, ~n1_spike_train))
+    overlap_ratio = max(num_hits / (num_hits + n1_misses),
+                        num_hits / (num_hits + n2_misses))
+    return overlap_ratio
+
+
 def calculate_expected_overlap(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
     """ Returns the expected number of overlapping spikes between neuron 1 and
     neuron 2 within a time window 'overlap_time' assuming independent spiking.
@@ -405,7 +445,8 @@ class WorkItemSummary(object):
                 stitch_overlap_only = False
                 self.overlap_indices = 0
         else:
-            self.overlap_indices = 0
+            self.overlap_indices = np.inf
+        self.stitch_overlap_only = stitch_overlap_only
         self.min_overlapping_spikes = min_overlapping_spikes
         self.is_stitched = False # Repeated stitching can change results so track
         self.last_overlap_ratio_threshold = np.inf # Track how much overlap deleted units
@@ -760,7 +801,7 @@ class WorkItemSummary(object):
             # Only compare clips within specified overlap, if these are in a
             # different segment. If same segment use all clips
             if seg1 != seg2:
-                if stitch_overlap_only:
+                if self.stitch_overlap_only:
                     start_edge = self.neuron_summary_seg_inds[seg1][1] - self.overlap_indices
                 else:
                     start_edge = self.neuron_summary_seg_inds[seg1][0]
@@ -779,7 +820,7 @@ class WorkItemSummary(object):
                 l2_select = l2_workspace == l2
                 clips_2 = self.sort_data[chan][seg2][2][l2_select, :]
                 if seg1 != seg2:
-                    if stitch_overlap_only:
+                    if self.stitch_overlap_only:
                         # Stop at end of seg1 as this is end of overlap!
                         stop_edge = self.neuron_summary_seg_inds[seg1][1]
                     else:
@@ -2054,6 +2095,12 @@ class WorkItemSummary(object):
         segments. Requires that there be
         overlap between segments, and enough overlap to be useful.
         The overlap time is the window used to consider spikes the same"""
+        if self.overlap_indices == 0:
+            raise RuntimeError("Cannot do across channel summary without overlap between segments")
+        elif self.overlap_indices < self.sort_info['sampling_rate']:
+            summary_message = "Summarizing neurons for multiple data segments" \
+                                "with less than 1 second of overlapping data."
+            warnings.warn(summary_message, RuntimeWarning, stacklevel=2)
         if not self.is_stitched and self.n_segments > 1:
             summary_message = "Summarizing neurons for multiple data segments" \
                                 "without first stitching will result in" \
@@ -2135,14 +2182,7 @@ class WorkItemSummary(object):
             neuron_summary.append(self.join_neuron_dicts(n))
         return neuron_summary
 
-    def remove_redundant_within_channel_summaries(self, neurons, overlap_ratio_threshold=2):
-        """
-        """
-
-        return neurons
-
-    def summarize_neurons_within_channel(self, overlap_ratio_threshold=2,
-                                            min_segs_per_unit=1):
+    def summarize_neurons_within_channel(self, min_segs_per_unit=1):
         """ Creates output neurons list by combining segment-wise neurons across
         segments within each channel using stitch_segments. Requires that there
         be overlap between segments, and enough overlap to be useful. """
@@ -2219,147 +2259,243 @@ class WorkItemSummary(object):
         neuron_summary = []
         for n in neurons:
             neuron_summary.append(self.join_neuron_dicts(n))
-
-        print("Redundant removal turned OFF")
-        # neuron_summary = self.remove_redundant_within_channel_summaries(neuron_summary,
-        #                                 overlap_time, overlap_ratio_threshold)
-
         return neuron_summary
 
-    def get_sort_data_by_chan(self):
-        """ Returns all sorter data concatenated by channel across all segments,
-        thus removing the concept of segment-wise sorting and giving all data
-        by channel. """
-        crossings, labels, waveforms, new_waveforms = [], [], [], []
-        thresholds = []
-        for chan in range(0, self.n_chans):
-            seg_crossings, seg_labels, seg_waveforms, seg_new = [], [], [], []
-            seg_thresholds =[]
-            for seg in range(0, self.n_segments):
-                seg_crossings.append(self.sort_data[chan][seg][0])
-                seg_labels.append(self.sort_data[chan][seg][1])
-                # Waveforms is 2D so can't stack with empty
-                if len(self.sort_data[chan][seg][2]) > 0:
-                    seg_waveforms.append(self.sort_data[chan][seg][2])
-                seg_new.append(self.sort_data[chan][seg][3])
-                seg_thresholds.append(self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['chan_neighbor_ind']])
-            # stacking with [] casts as float, so ensure maintained types
-            crossings.append(np.hstack(seg_crossings).astype(np.int64))
-            labels.append(np.hstack(seg_labels).astype(np.int64))
-            if len(seg_waveforms) > 0:
-                waveforms.append(np.vstack(seg_waveforms).astype(np.float64))
+    def remove_redundant_within_channel_summaries(self, neurons, overlap_ratio_threshold=2):
+        """
+        Removes redundant complete summaries as in 'remove_redundant_neurons' but
+        for summaries created by 'summarize_neurons_within_channel'.
+        """
+        # Since we are comparing across channels, we need to consider potentially
+        # large alignment differences in the overlap_time
+        overlap_time = self.half_clip_inds / self.sort_info['sampling_rate']
+        overlap_ratio = np.zeros((len(neurons), len(neurons)))
+        expected_ratio = np.zeros((len(neurons), len(neurons)))
+        quality_scores = np.zeros(len(neurons))
+        violation_partners = [set() for x in range(0, len(neurons))]
+        for neuron1_ind, neuron1 in enumerate(neurons):
+            violation_partners[neuron1_ind].add(neuron1_ind)
+            neuron1['deleted_as_redundant'] = False
+            # Loop through all pairs of units and compute overlap and expected
+            for neuron2_ind in range(neuron1_ind+1, len(neurons)):
+                neuron2 = neurons[neuron2_ind]
+                if neuron1['channel'] == neuron2['channel']:
+                    continue # If they are on the same channel, do nothing
+                # if neuron1['channel'] not in neuron2['neighbors']:
+                #     continue # If they are not in same neighborhood, do nothing
+                overlap_ratio[neuron1_ind, neuron2_ind] = calc_overlap_ratio(neuron1, neuron2, overlap_time)
+                overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
+                expected_hits = calculate_expected_overlap(neuron1['spike_indices'], neuron2['spike_indices'],
+                                    overlap_time, self.sort_info['sampling_rate'])
+                # Expected hits over hits plus misses
+                expected_ratio[neuron1_ind, neuron2_ind] = expected_hits / min(neuron1['spike_indices'].shape[0], neuron2['spike_indices'].shape[0])
+                expected_ratio[neuron2_ind, neuron1_ind] = expected_ratio[neuron1_ind, neuron2_ind]
+                if (overlap_ratio[neuron1_ind, neuron2_ind] >=
+                        overlap_ratio_threshold * expected_ratio[neuron1_ind, neuron2_ind]):
+                    # Overlap is higher than chance and at least one of these will be removed
+                    violation_partners[neuron1_ind].add(neuron2_ind)
+                    violation_partners[neuron2_ind].add(neuron1_ind)
+
+        neurons_remaining_indices = [x for x in range(0, len(neurons))]
+        max_accepted = 0.
+        max_expected = 0.
+        while True:
+            # Look for our next best pair
+            best_ratio = -np.inf
+            best_expected = -np.inf
+            best_pair = []
+            for i in range(0, len(neurons_remaining_indices)):
+                for j in range(i+1, len(neurons_remaining_indices)):
+                    neuron_1_index = neurons_remaining_indices[i]
+                    neuron_2_index = neurons_remaining_indices[j]
+                    if (overlap_ratio[neuron_1_index, neuron_2_index] <
+                        overlap_ratio_threshold * expected_ratio[neuron_1_index, neuron_2_index]):
+                        # Overlap not high enough to merit deletion of one
+                        # But track our proximity to input threshold
+                        if overlap_ratio[neuron_1_index, neuron_2_index] > max_accepted:
+                            max_accepted = overlap_ratio[neuron_1_index, neuron_2_index]
+                            max_expected = overlap_ratio_threshold * expected_ratio[neuron_1_index, neuron_2_index]
+                        continue
+                    if overlap_ratio[neuron_1_index, neuron_2_index] > best_ratio:
+                        best_ratio = overlap_ratio[neuron_1_index, neuron_2_index]
+                        best_pair = [neuron_1_index, neuron_2_index]
+                        best_expected = expected_ratio[neuron_1_index, neuron_2_index]
+            if len(best_pair) == 0 or best_ratio == 0:
+                # No more pairs exceed ratio threshold
+                print("Maximum accepted ratio was", max_accepted, "at expected threshold", max_expected)
+                break
+
+            # We now need to choose one of the pair to delete.
+            neuron_1 = neurons[best_pair[0]]
+            neuron_2 = neurons[best_pair[1]]
+            delete_1 = False
+            delete_2 = False
+
+            # We will also consider how good each neuron is relative to the
+            # other neurons that it overlaps with. Basically, if one unit is
+            # a best remaining copy while the other has better units it overlaps
+            # with, we want to preferentially keep the best remaining copy
+            # This trimming should work because we choose the most overlapping
+            # pairs for each iteration
+            combined_violations = violation_partners[best_pair[0]].union(violation_partners[best_pair[1]])
+            max_other_n1 = neuron_1['quality_score']
+            other_n1 = combined_violations - violation_partners[best_pair[1]]
+            for v_ind in other_n1:
+                if quality_scores[v_ind] > max_other_n1:
+                    max_other_n1 = quality_scores[v_ind]
+            max_other_n2 = neuron_2['quality_score']
+            other_n2 = combined_violations - violation_partners[best_pair[0]]
+            for v_ind in other_n2:
+                if quality_scores[v_ind] > max_other_n2:
+                    max_other_n2 = quality_scores[v_ind]
+            # Rate each unit on the difference between its quality and the
+            # quality of its best remaining violation partner
+            # NOTE: diff_score = 0 means this unit is the best remaining
+            diff_score_1 = max_other_n1 - neuron_1['quality_score']
+            diff_score_2 = max_other_n2 - neuron_2['quality_score']
+
+            # Check if both or either had a failed MUA calculation ( == -1)
+            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
+                # MUA calculation was invalid so just use SNR
+                if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):
+                    delete_2 = True
+                else:
+                    delete_1 = True
+            elif neuron_1['fraction_mua'] < 0 or neuron_2['fraction_mua'] < 0:
+                # MUA calculation was invalid for one unit so pick the other
+                if neuron_1['fraction_mua'] < 0:
+                    delete_1 = True
+                else:
+                    delete_2 = True
+            elif diff_score_1 > diff_score_2:
+                # Neuron 1 has a better copy somewhere so delete it
+                delete_1 = True
+                delete_2 = False
+            elif diff_score_2 > diff_score_1:
+                # Neuron 2 has a better copy somewhere so delete it
+                delete_1 = False
+                delete_2 = True
             else:
-                waveforms.append([])
-            new_waveforms.append(np.hstack(seg_new).astype(np.bool))
-            thresholds.append(np.hstack(seg_thresholds).astype(np.float64))
-        return crossings, labels, waveforms, new_waveforms, thresholds
+                # Both diff scores == 0 so we have to pick one
+                if (diff_score_1 != 0 and diff_score_2 != 0):
+                    raise RuntimeError("DIFF SCORES IN REDUNDANT ARE NOT BOTH EQUAL TO ZERO BUT I THOUGHT THEY SHOULD BE!")
+                # First defer to choosing highest quality score
+                if neuron_1['quality_score'] > neuron_2['quality_score']:
+                    delete_2 = True
+                else:
+                    delete_1 = True
 
-    def summarize_neurons_without_overlap(self, overlap_ratio_threshold=2):
-        """
-        Return a summarized version of the threshold_crossings, labels, etc. for a given
-        set of crossings, neuron labels, and waveforms organized by channel.
-        This method does not rely on stitching/overlap between segments. It
-        simply...
-        This function returns a list of dictionarys (with symbol look-ups)
-        with all essential information about the recording session and sorting.
-        The dictionary contains:
-        channel: The channel on which the neuron was recorded
-        neighbors: The neighborhood of the channel on which the neuron was recorded
-        clip_width: The clip width used for sorting the neuron
-        sampling_rate: The sampling rate of the recording
-        filter_band: The filter band used to filter the data before sorting
-        spike_indices: The indices (sample number) in the voltage trace of the threshold crossings
-         waveforms: The waveform clips across the entire neighborhood for the sorted neuron
-         template: The template for the neuron as the mean of all waveforms.
-         new_spike_bool: A logical index into waveforms/spike_indices of added secret spikes
-            (only if the index 'new_waveforms' is input)
-         mean_firing_rate: The mean firing rate of the neuron over the entire recording
-        peak_valley: The peak valley of the template on the channel from which the neuron arises
-        """
-        print("!!! THIS ISN'T UPDATED TO SUMMARIZE WITHOUT STITCHING OVERLAP !!!")
-        if not self.is_stitched and self.n_segments > 1:
-            summary_message = "Summarizing neurons for multiple data segments" \
-                                "without first stitching will result in" \
-                                "duplicate units discontinuous throughout the" \
-                                "sorting time period. Call 'stitch_segments()' " \
-                                "first to combine data across time segments."
-            warnings.warn(summary_message, RuntimeWarning, stacklevel=2)
-        # Put the sort data segments into our conventional sorter items by
-        # channel independent of segment/work item
-        crossings, labels, waveforms, new_waveforms, thresholds = self.get_sort_data_by_chan()
-        neuron_summary = []
-        for channel in range(0, len(crossings)):
-            if len(crossings[channel]) == 0:
-                # This channel has no spikes
-                continue
-            for ind, neuron_label in enumerate(np.unique(labels[channel])):
-                neuron = {}
-                neuron['summary_type'] = 'single_channel'
-                neuron['sort_info'] = self.sort_info
-                neuron["channel"] = [channel]
-                # Work items are sorted by channel so just grab neighborhood
-                # for the first segment
-                neuron['neighbors'] = {channel: self.work_items[channel][0]['neighbors']}
-                neuron['chan_neighbor_ind'] = {channel: self.work_items[channel][0]['chan_neighbor_ind']}
-                # Thresholds is average over all segments
-                neuron['threshold'] = {channel: np.mean(thresholds[channel])}
-                neuron['main_win'] = {channel: [self.sort_info['n_samples_per_chan'] * neuron['chan_neighbor_ind'][channel],
-                                      self.sort_info['n_samples_per_chan'] * (neuron['chan_neighbor_ind'][channel] + 1)]}
+                # Check if quality score is primarily driven by number of spikes rather than SNR and MUA
+                # Spike number is primarily valuable in the case that one unit
+                # is truly a subset of another. If one unit is a mixture, we
+                # need to avoid relying on spike count
+                if (delete_2 and (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']) or \
+                    (delete_1 and (1-neuron_1['fraction_mua']) * neuron_1['snr'] > (1-neuron_2['fraction_mua']) * neuron_2['snr']):
+                    # We will now check if one unit appears to be a subset of the other
+                    # If these units are truly redundant subsets, then the MUA of
+                    # their union will be <= max(mua1, mua2)
+                    # If instead one unit is largely a mixture containing the
+                    # other, then the MUA of their union should greatly increase
+                    # Note that the if statement above typically only passes
+                    # in the event that one unit has considerably more spikes or
+                    # both units are extremely similar. Because rates can vary,
+                    # we do not use peak MUA here but rather the rate based MUA
+                    # Need to union with compliment so spikes are not double
+                    # counted, which will reduce the rate based MUA
+                    neuron_2_compliment = ~find_overlapping_spike_bool(
+                            neuron_1['spike_indices'], neuron_2['spike_indices'],
+                            self.half_clip_inds)
+                    union_spikes = np.hstack((neuron_1['spike_indices'], neuron_2['spike_indices'][neuron_2_compliment]))
+                    union_spikes.sort()
+                    union_fraction_mua_rate = calc_fraction_mua(
+                                                     union_spikes,
+                                                     self.sort_info['sampling_rate'],
+                                                     self.half_clip_inds,
+                                                     self.absolute_refractory_period)
+                    # Need to get fraction MUA by rate, rather than peak,
+                    # for comparison here
+                    fraction_mua_rate_1 = calc_fraction_mua(
+                                             neuron_1['spike_indices'],
+                                             self.sort_info['sampling_rate'],
+                                             self.half_clip_inds,
+                                             self.absolute_refractory_period)
+                    fraction_mua_rate_2 = calc_fraction_mua(
+                                             neuron_2['spike_indices'],
+                                             self.sort_info['sampling_rate'],
+                                             self.half_clip_inds,
+                                             self.absolute_refractory_period)
+                    # Expected mua if these two units were completely independent
+                    expected_hits = calculate_expected_overlap(neuron_1['spike_indices'], neuron_2['spike_indices'],
+                                        self.absolute_refractory_period - self.half_clip_inds/self.sort_info['sampling_rate'],
+                                        self.sort_info['sampling_rate'])
+                    # Expected hits over hits plus misses
+                    refractory_expected_ratio = expected_hits / min(neuron_1['spike_indices'].shape[0], neuron_2['spike_indices'].shape[0])
+                    # We will decide not to consider spike count if this looks like
+                    # one unit could be a large mixture. This usually means that
+                    # the union MUA goes up substantially. To accomodate noise,
+                    # require that it exceeds both the minimum MUA plus the MUA
+                    # expected if the units were totally independent, and the
+                    # MUA of either unit alone.
+                    if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + refractory_expected_ratio \
+                        and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
+                        # This is a red flag that one unit is likely a large mixture
+                        # and we should ignore spike count
+                        if (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']:
+                            # Neuron 2 has better MUA and SNR so pick it
+                            delete_1 = True
+                            delete_2 = False
+                        else:
+                            # Neuron 1 has better MUA and SNR so pick it
+                            delete_1 = False
+                            delete_2 = True
 
-                neuron["spike_indices"] = crossings[channel][labels[channel] == neuron_label]
-                neuron['waveforms'] = waveforms[channel][labels[channel] == neuron_label, :]
-                neuron["new_spike_bool"] = new_waveforms[channel][labels[channel] == neuron_label]
+            if delete_1:
+                neurons_remaining_indices.remove(best_pair[0])
+                for vp in violation_partners:
+                    vp.discard(best_pair[0])
+                # Do not delete this yet since we want to keep remaining indices order
+                neurons[best_pair[0]]['deleted_as_redundant'] = True
+            if delete_2:
+                neurons_remaining_indices.remove(best_pair[1])
+                for vp in violation_partners:
+                    vp.discard(best_pair[1])
+                # Do not delete this yet since we want to keep remaining indices order
+                neurons[best_pair[1]]['deleted_as_redundant'] = True
 
-                # NOTE: This still needs to be done even though segments
-                # were ordered because of overlap!
-                # Ensure spike times are ordered. Must use 'stable' sort for
-                # output to be repeatable because overlapping segments and
-                # binary pursuit can return slightly different dupliate spikes
-                spike_order = np.argsort(neuron["spike_indices"], kind='stable')
-                neuron["spike_indices"] = neuron["spike_indices"][spike_order]
-                neuron['waveforms'] = neuron['waveforms'][spike_order, :]
-                neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
+        for check_n in reversed(range(0, len(neurons))):
+            if neurons[check_n]['deleted_as_redundant']:
+                del neurons[check_n]
+            else:
+                del neurons[check_n]['deleted_as_redundant']
+        return neurons
 
-                # Remove duplicates found in binary pursuit
-                keep_bool = keep_binary_pursuit_duplicates(neuron["spike_indices"],
-                                neuron["new_spike_bool"],
-                                tol_inds=self.half_clip_inds)
-                neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
-                neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
-
-                # Remove any identical index duplicates (either from error or
-                # from combining overlapping segments), preferentially keeping
-                # the waveform best aligned to the template
-                neuron["template"] = {channel: np.mean(neuron['waveforms'], axis=0)}
-                # Set duplicate tolerance as half spike width since within
-                # channel summary shouldn't be off by this
-                neuron['duplicate_tol_inds'] = calc_spike_half_width(
-                    neuron['waveforms'][:, neuron['main_win'][0]:neuron['main_win'][1]],
-                    self.sort_info['sampling_rate']) + 1
-                keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
-                                neuron['waveforms'], neuron["template"][channel],
-                                tol_inds=neuron['duplicate_tol_inds'])
-                neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
-                neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
-                neuron["template"] = {channel: np.mean(neuron['waveforms'], axis=0)}
-
-                background_noise_std = neuron['threshold'][channel] / self.sort_info['sigma']
-                main_template = neuron["template"][channel][neuron['main_win'][channel][0]:neuron['main_win'][channel][1]]
-                temp_range = np.amax(main_template) - np.amin(main_template)
-                neuron['snr'] = {channel: temp_range / (3 * background_noise_std)}
-
-                neuron['fraction_mua'] = calc_fraction_mua_to_peak(
-                                neuron["spike_indices"],
-                                self.sort_info['sampling_rate'],
-                                neuron['duplicate_tol_inds'],
-                                self.absolute_refractory_period)
-                neuron_summary.append(neuron)
-        print("Redundant removal turned OFF")
-        # neuron_summary = self.remove_redundant_within_channel_summaries(neuron_summary,
-        #                                 overlap_time, overlap_ratio_threshold)
-        return neuron_summary
+    # def get_sort_data_by_chan(self):
+    #     """ Returns all sorter data concatenated by channel across all segments,
+    #     thus removing the concept of segment-wise sorting and giving all data
+    #     by channel. """
+    #     crossings, labels, waveforms, new_waveforms = [], [], [], []
+    #     thresholds = []
+    #     for chan in range(0, self.n_chans):
+    #         seg_crossings, seg_labels, seg_waveforms, seg_new = [], [], [], []
+    #         seg_thresholds =[]
+    #         for seg in range(0, self.n_segments):
+    #             seg_crossings.append(self.sort_data[chan][seg][0])
+    #             seg_labels.append(self.sort_data[chan][seg][1])
+    #             # Waveforms is 2D so can't stack with empty
+    #             if len(self.sort_data[chan][seg][2]) > 0:
+    #                 seg_waveforms.append(self.sort_data[chan][seg][2])
+    #             seg_new.append(self.sort_data[chan][seg][3])
+    #             seg_thresholds.append(self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['chan_neighbor_ind']])
+    #         # stacking with [] casts as float, so ensure maintained types
+    #         crossings.append(np.hstack(seg_crossings).astype(np.int64))
+    #         labels.append(np.hstack(seg_labels).astype(np.int64))
+    #         if len(seg_waveforms) > 0:
+    #             waveforms.append(np.vstack(seg_waveforms).astype(np.float64))
+    #         else:
+    #             waveforms.append([])
+    #         new_waveforms.append(np.hstack(seg_new).astype(np.bool))
+    #         thresholds.append(np.hstack(seg_thresholds).astype(np.float64))
+    #     return crossings, labels, waveforms, new_waveforms, thresholds
 
 
 def calc_m_overlap_ab(clips_a, clips_b, N=100, k_neighbors=10):

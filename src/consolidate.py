@@ -247,13 +247,12 @@ def compute_spike_trains(spike_indices, bin_width_samples, min_max_indices):
     return spike_train
 
 
-def calc_overlap_ratio(neuron_1, neuron_2, overlap_time):
+def calc_overlap_ratio(neuron_1, neuron_2, overlap_time, max_samples):
     """
     """
     # Overlap time is the time that their spikes coexist
     overlap_win = [max(neuron_1['spike_indices'][0], neuron_2['spike_indices'][0]),
                    min(neuron_1['spike_indices'][-1], neuron_2['spike_indices'][-1])]
-    max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
     n_total_samples = overlap_win[1] - overlap_win[0]
 
     n1_spikes = neuron_1['spike_indices']
@@ -2095,7 +2094,6 @@ class WorkItemSummary(object):
         segments. Requires that there be
         overlap between segments, and enough overlap to be useful.
         The overlap time is the window used to consider spikes the same"""
-        print("len seg summaries BEFORE", len(self.neuron_summary_by_seg))
         if self.overlap_indices == 0 and self.n_segments > 1:
             raise RuntimeError("Cannot do across channel summary without overlap between segments")
         elif self.overlap_indices < self.sort_info['sampling_rate'] and self.n_segments > 1:
@@ -2181,14 +2179,12 @@ class WorkItemSummary(object):
         neuron_summary = []
         for n in neurons:
             neuron_summary.append(self.join_neuron_dicts(n))
-        print("len seg summaries AFTER", len(self.neuron_summary_by_seg))
         return neuron_summary
 
     def summarize_neurons_within_channel(self, min_segs_per_unit=1):
         """ Creates output neurons list by combining segment-wise neurons across
         segments within each channel using stitch_segments. Requires that there
         be overlap between segments, and enough overlap to be useful. """
-        print("len seg summaries BEFORE", len(self.neuron_summary_by_seg))
         if not self.is_stitched and self.n_segments > 1:
             summary_message = "Summarizing neurons for multiple data segments" \
                                 "without first stitching will result in" \
@@ -2262,7 +2258,6 @@ class WorkItemSummary(object):
         neuron_summary = []
         for n in neurons:
             neuron_summary.append(self.join_neuron_dicts(n))
-        print("len seg summaries AFTER", len(self.neuron_summary_by_seg))
         return neuron_summary
 
     def remove_redundant_within_channel_summaries(self, neurons, overlap_ratio_threshold=2):
@@ -2279,7 +2274,10 @@ class WorkItemSummary(object):
         violation_partners = [set() for x in range(0, len(neurons))]
         for neuron1_ind, neuron1 in enumerate(neurons):
             violation_partners[neuron1_ind].add(neuron1_ind)
+            # Initialize some items to neuron dictionary that we will use then remove
             neuron1['deleted_as_redundant'] = False
+            neuron1['quality_score'] = neuron1['snr'][neuron1['channel'][0]] * (1-neuron1['fraction_mua']) \
+                                            * (neuron1['spike_indices'].shape[0])
             # Loop through all pairs of units and compute overlap and expected
             for neuron2_ind in range(neuron1_ind+1, len(neurons)):
                 neuron2 = neurons[neuron2_ind]
@@ -2287,7 +2285,9 @@ class WorkItemSummary(object):
                     continue # If they are on the same channel, do nothing
                 # if neuron1['channel'] not in neuron2['neighbors']:
                 #     continue # If they are not in same neighborhood, do nothing
-                overlap_ratio[neuron1_ind, neuron2_ind] = calc_overlap_ratio(neuron1, neuron2, overlap_time)
+                overlap_ratio[neuron1_ind, neuron2_ind] = calc_overlap_ratio(
+                        neuron1, neuron2, overlap_time,
+                        int(round(overlap_time * self.sort_info['sampling_rate'])))
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
                 expected_hits = calculate_expected_overlap(neuron1['spike_indices'], neuron2['spike_indices'],
                                     overlap_time, self.sort_info['sampling_rate'])
@@ -2332,6 +2332,9 @@ class WorkItemSummary(object):
             # We now need to choose one of the pair to delete.
             neuron_1 = neurons[best_pair[0]]
             neuron_2 = neurons[best_pair[1]]
+            # Make SNR indexing simpler since these are all single channel
+            chan1 = neuron_1['channel'][0]
+            chan2 = neuron_2['channel'][0]
             delete_1 = False
             delete_2 = False
 
@@ -2361,7 +2364,7 @@ class WorkItemSummary(object):
             # Check if both or either had a failed MUA calculation ( == -1)
             if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
                 # MUA calculation was invalid so just use SNR
-                if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):
+                if (neuron_1['snr'][chan1]*neuron_1['spike_indices'].shape[0] > neuron_2['snr'][chan2]*neuron_2['spike_indices'].shape[0]):
                     delete_2 = True
                 else:
                     delete_1 = True
@@ -2393,8 +2396,8 @@ class WorkItemSummary(object):
                 # Spike number is primarily valuable in the case that one unit
                 # is truly a subset of another. If one unit is a mixture, we
                 # need to avoid relying on spike count
-                if (delete_2 and (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']) or \
-                    (delete_1 and (1-neuron_1['fraction_mua']) * neuron_1['snr'] > (1-neuron_2['fraction_mua']) * neuron_2['snr']):
+                if (delete_2 and (1-neuron_2['fraction_mua']) * neuron_2['snr'][chan2] > (1-neuron_1['fraction_mua']) * neuron_1['snr'][chan1]) or \
+                    (delete_1 and (1-neuron_1['fraction_mua']) * neuron_1['snr'][chan1] > (1-neuron_2['fraction_mua']) * neuron_2['snr'][chan2]):
                     # We will now check if one unit appears to be a subset of the other
                     # If these units are truly redundant subsets, then the MUA of
                     # their union will be <= max(mua1, mua2)
@@ -2444,7 +2447,7 @@ class WorkItemSummary(object):
                         and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
                         # This is a red flag that one unit is likely a large mixture
                         # and we should ignore spike count
-                        if (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']:
+                        if (1-neuron_2['fraction_mua']) * neuron_2['snr'][chan2] > (1-neuron_1['fraction_mua']) * neuron_1['snr'][chan1]:
                             # Neuron 2 has better MUA and SNR so pick it
                             delete_1 = True
                             delete_2 = False
@@ -2471,6 +2474,7 @@ class WorkItemSummary(object):
                 del neurons[check_n]
             else:
                 del neurons[check_n]['deleted_as_redundant']
+                del neurons[check_n]['quality_score']
         return neurons
 
     # def get_sort_data_by_chan(self):

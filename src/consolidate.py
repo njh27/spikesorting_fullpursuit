@@ -1775,7 +1775,7 @@ class WorkItemSummary(object):
         """
         # Now looking for overlaps not only between channels, but between segments
         # so use the largest reasonable overlap time window
-        overlap_time = self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]
+        overlap_time = self.half_clip_inds/self.sort_info['sampling_rate'] #self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]
         for seg in range(0, self.n_segments-1):
             n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
                             if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
@@ -1848,14 +1848,17 @@ class WorkItemSummary(object):
                         # Link to the closest template match by SSE
                         # Templates aligned over all channels, so no need to have
                         # super wide shift limit
-                        template_SSE = self.get_shifted_neighborhood_SSE(n1, n2, self.half_clip_inds)
-                        # Weight template SSE by overlap to include both terms
-                        # (lower numbers are better)
-                        template_SSE *= (1 - curr_overlap)
-                        if verbose: print("n2 has SSE of", template_SSE, "vs min of", min_SSE)
-                        if template_SSE < min_SSE:
+                        # template_SSE = self.get_shifted_neighborhood_SSE(n1, n2, self.half_clip_inds)
+                        # # Weight template SSE by overlap to include both terms
+                        # # (lower numbers are better)
+                        # template_SSE *= (1 - curr_overlap)
+                        # if verbose: print("n2 has SSE of", template_SSE, "vs min of", min_SSE)
+                        # if template_SSE < min_SSE:
+                        #     max_overlap_ratio = curr_overlap
+                        #     min_SSE = template_SSE
+                        #     max_overlap_pair = [n1_ind, n2_ind]
+                        if curr_overlap > max_overlap_ratio:
                             max_overlap_ratio = curr_overlap
-                            min_SSE = template_SSE
                             max_overlap_pair = [n1_ind, n2_ind]
 
                 if max_overlap_ratio > 0:

@@ -1465,6 +1465,23 @@ class WorkItemSummary(object):
         overlap_ratio = calc_overlap_ratio(n1_spikes, n2_spikes, max_samples)
         return overlap_ratio
 
+    def check_links(self, seg, neuron):
+        """ Check if the neuron is fully linked on both ends. """
+        is_linked = True
+        if seg == self.n_segments - 1:
+            # Last segment can't have next link
+            if neuron['prev_seg_link'] is None:
+                is_linked = False
+        elif seg == 0:
+            # First segment can't have previous link
+            if neuron['next_seg_link'] is None:
+                is_linked = False
+        else:
+            # Need to check both links
+            if neuron['prev_seg_link'] is None or neuron['next_seg_link'] is None:
+                is_linked = False
+        return is_linked
+
     def remove_redundant_neurons(self, seg, overlap_ratio_threshold=2):
         """
         Note that this function does not actually delete anything. It removes
@@ -1586,28 +1603,28 @@ class WorkItemSummary(object):
                 delete_1 = False
                 delete_2 = True
             else:
-                if neuron_1['next_seg_link'] is not None and neuron_2['next_seg_link'] is None:
-                    if neuron_1['prev_seg_link'] is not None and neuron_2['prev_seg_link'] is None:
-                        # Neuron 1 is linked next and prev while neuron 2 has no links
-                        # so defer to segment stitching and delete neuron 2
-                        print("Deleting based on LINKS ONLY")
-                        neurons_remaining_indices.remove(best_pair[1])
-                        for vp in violation_partners:
-                            vp.discard(best_pair[1])
-                        neurons[best_pair[1]]['deleted_as_redundant'] = True
-                        continue
-                if neuron_2['next_seg_link'] is not None and neuron_1['next_seg_link'] is None:
-                    if neuron_2['prev_seg_link'] is not None and neuron_1['prev_seg_link'] is None:
-                        # Neuron 2 is linked next and prev while neuron 1 has no links
-                        # so defer to segment stitching and delete neuron 1
-                        print("Deleting based on LINKS ONLY")
-                        neurons_remaining_indices.remove(best_pair[0])
-                        for vp in violation_partners:
-                            vp.discard(best_pair[0])
-                        neurons[best_pair[0]]['deleted_as_redundant'] = True
-                        continue
+                is_linked_1 = self.check_links(seg, neuron_1)
+                is_linked_2 = self.check_links(seg, neuron_2)
+                if is_linked_1 and not is_linked_2:
+                    # Neuron 1 is linked while neuron 2 has no links
+                    # so defer to segment stitching and delete neuron 2
+                    print("Deleting based on LINKS ONLY")
+                    neurons_remaining_indices.remove(best_pair[1])
+                    for vp in violation_partners:
+                        vp.discard(best_pair[1])
+                    neurons[best_pair[1]]['deleted_as_redundant'] = True
+                    continue
+                if is_linked_2 and not is_linked_1:
+                    # Neuron 2 is linked while neuron 1 has no links
+                    # so defer to segment stitching and delete neuron 1
+                    print("Deleting based on LINKS ONLY")
+                    neurons_remaining_indices.remove(best_pair[0])
+                    for vp in violation_partners:
+                        vp.discard(best_pair[0])
+                    neurons[best_pair[0]]['deleted_as_redundant'] = True
+                    continue
 
-                # Both diff scores == 0 so we have to pick one
+                # Both diff scores == 0 and both are linked so we have to pick one
                 if (diff_score_1 != 0 and diff_score_2 != 0):
                     raise RuntimeError("DIFF SCORES IN REDUNDANT ARE NOT BOTH EQUAL TO ZERO BUT I THOUGHT THEY SHOULD BE!")
                 # First defer to choosing highest quality score

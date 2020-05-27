@@ -1582,6 +1582,27 @@ class WorkItemSummary(object):
             delete_1 = False
             delete_2 = False
 
+            if neuron_1['next_seg_link'] is not None and neuron_2['next_seg_link'] is None:
+                if neuron_1['prev_seg_link'] is not None and neuron_2['next_seg_link'] is None:
+                    # Neuron 1 is linked next and prev while neuron 2 has no links
+                    # so defer to segment stitching and delete neuron 2
+                    print("Deleting based on LINKS ONLY")
+                    neurons_remaining_indices.remove(best_pair[1])
+                    for vp in violation_partners:
+                        vp.discard(best_pair[1])
+                    neurons[best_pair[1]]['deleted_as_redundant'] = True
+                    continue
+            if neuron_2['next_seg_link'] is not None and neuron_1['next_seg_link'] is None:
+                if neuron_2['prev_seg_link'] is not None and neuron_1['next_seg_link'] is None:
+                    # Neuron 1 is linked next and prev while neuron 2 has no links
+                    # so defer to segment stitching and delete neuron 2
+                    print("Deleting based on LINKS ONLY")
+                    neurons_remaining_indices.remove(best_pair[0])
+                    for vp in violation_partners:
+                        vp.discard(best_pair[0])
+                    neurons[best_pair[0]]['deleted_as_redundant'] = True
+                    continue
+
             # We will also consider how good each neuron is relative to the
             # other neurons that it overlaps with. Basically, if one unit is
             # a best remaining copy while the other has better units it overlaps

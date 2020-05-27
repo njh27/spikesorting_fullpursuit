@@ -1608,7 +1608,6 @@ class WorkItemSummary(object):
                 if is_linked_1 and not is_linked_2:
                     # Neuron 1 is linked while neuron 2 has no links
                     # so defer to segment stitching and delete neuron 2
-                    print("Deleting based on LINKS ONLY")
                     neurons_remaining_indices.remove(best_pair[1])
                     for vp in violation_partners:
                         vp.discard(best_pair[1])
@@ -1617,7 +1616,6 @@ class WorkItemSummary(object):
                 if is_linked_2 and not is_linked_1:
                     # Neuron 2 is linked while neuron 1 has no links
                     # so defer to segment stitching and delete neuron 1
-                    print("Deleting based on LINKS ONLY")
                     neurons_remaining_indices.remove(best_pair[0])
                     for vp in violation_partners:
                         vp.discard(best_pair[0])
@@ -1792,13 +1790,11 @@ class WorkItemSummary(object):
                         # Only choose from neighborhood
                         if n1['channel'] not in n2['neighbors']:
                             continue
-                        print(n2['prev_seg_link'], n2['deleted_as_redundant'])
                         # Only choose from n2 with no previous link and not redundant
                         if n2['prev_seg_link'] is not None or n2['deleted_as_redundant']:
                             continue
                         curr_overlap = self.get_overlap_ratio(
                                 seg, n1_ind, seg+1, n2_ind, overlap_time)
-                        print("current overlap", curr_overlap)
                         if curr_overlap < self.min_overlapping_spikes:
                             continue
                         if curr_overlap > max_overlap_ratio:

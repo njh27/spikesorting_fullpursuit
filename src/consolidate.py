@@ -1772,7 +1772,7 @@ class WorkItemSummary(object):
         """
         # Now looking for overlaps not only between channels, but between segments
         # so use the largest reasonable overlap time window
-        overlap_time = self.half_clip_inds/self.sort_info['sampling_rate'] #self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]
+        overlap_time = self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]
         for seg in range(0, self.n_segments-1):
             n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
                             if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
@@ -1780,92 +1780,134 @@ class WorkItemSummary(object):
             for n_ind in n1_remaining:
                 if self.neuron_summary_by_seg[seg][n_ind]['deleted_as_redundant']:
                     bad_n1.append(n_ind)
-                # elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] > self.max_mua_ratio:
-                #     bad_n1.append(n_ind)
-                # elif self.neuron_summary_by_seg[seg][n_ind]['snr'] < self.min_snr:
-                #     bad_n1.append(n_ind)
-                # elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] == -1:
-                #     bad_n1.append(n_ind)
             for dn in bad_n1:
                 n1_remaining.remove(dn)
             while len(n1_remaining) > 0:
-                best_n1_score = 0.
-                best_n1_ind = 0
-                # Choose the best n1_remaining
-                for n1_ind in n1_remaining:
-                    if self.neuron_summary_by_seg[seg][n1_ind]['quality_score'] > best_n1_score:
-                        best_n1_score = self.neuron_summary_by_seg[seg][n1_ind]['quality_score']
-                        best_n1_ind = n1_ind
-                n1_ind = best_n1_ind
-                n1 = self.neuron_summary_by_seg[seg][best_n1_ind]
-
-                best_n2_score = 0.
-                min_SSE = np.inf
                 max_overlap_ratio = -np.inf
-                if verbose: print("Chose best n1 from channel", n1['channel'], "in segment", seg)
-                if verbose: print("This n1 has quality", n1['quality_score'], "MUA", n1['fraction_mua'], 'snr', n1['snr'], "n spikes", n1['spike_indices'].shape[0])
-                # Choose the best n2 match for n1 in the subsequent segment
-                # that satisfies thresholds
-                for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
-                    # Only choose from neighborhood
-                    if n1['channel'] not in n2['neighbors']:
-                        continue
-                    # Only choose from 'available' units
-                    if verbose: print("Checking n2 from channel", n2['channel'], "in segment", seg)
-                    if verbose: print("This n2 has previous link", n2['prev_seg_link'], "and deleted redundant", n2['deleted_as_redundant'])
-                    if verbose: print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
-                    if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
-                        # if n2['fraction_mua'] > self.max_mua_ratio:
-                        #     continue
-                        # if n2['snr'] < self.min_snr:
-                        #     continue
+                max_overlap_pair = []
+                # Choose the n1/n2 pair with most overlap and link if over threshold
+                for n1_ind in n1_remaining:
+                    n1 = self.neuron_summary_by_seg[seg][n1_ind]
+                    for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
+                        # Only choose from neighborhood
+                        if n1['channel'] not in n2['neighbors']:
+                            continue
+                        print(n2['prev_seg_link'], n2['deleted_as_redundant'])
+                        # Only choose from n2 with no previous link and not redundant
+                        if n2['prev_seg_link'] is not None or n2['deleted_as_redundant']:
+                            continue
                         curr_overlap = self.get_overlap_ratio(
                                 seg, n1_ind, seg+1, n2_ind, overlap_time)
+                        print("current overlap", curr_overlap)
                         if curr_overlap < self.min_overlapping_spikes:
                             continue
-
-                        # Not sure whether to check for these or ignore them...
-                        # # Now we must choose the best n2 to make it here
-                        # if n2['fraction_mua'] == -1 and n1['fraction_mua'] == -1:
-                        #     # Both invalid MUA, so pick on SNR
-                        #     n2_score = n2['snr']
-                        # elif n2['fraction_mua'] == -1 or n1['fraction_mua'] == -1:
-                        #     # Only one unit has invalid MUA so don't link
-                        #     continue
-                        # else:
-                        #     n2_score = n2['quality_score']
-                        # if n2_score > best_n2_score:
-                        #     best_n2_score = n2_score
-                        #     max_overlap_pair = [n1_ind, n2_ind]
-
-                        if verbose: print("This n2 from channel", n2['channel'], "in segment", seg, "has enough overlap")
-                        if verbose: print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
-
-                        # If we made it here, the overlap is sufficient to link
-                        # Link to the closest template match by SSE
-                        # Templates aligned over all channels, so no need to have
-                        # super wide shift limit
-                        # template_SSE = self.get_shifted_neighborhood_SSE(n1, n2, self.half_clip_inds)
-                        # # Weight template SSE by overlap to include both terms
-                        # # (lower numbers are better)
-                        # template_SSE *= (1 - curr_overlap)
-                        # if verbose: print("n2 has SSE of", template_SSE, "vs min of", min_SSE)
-                        # if template_SSE < min_SSE:
-                        #     max_overlap_ratio = curr_overlap
-                        #     min_SSE = template_SSE
-                        #     max_overlap_pair = [n1_ind, n2_ind]
                         if curr_overlap > max_overlap_ratio:
                             max_overlap_ratio = curr_overlap
                             max_overlap_pair = [n1_ind, n2_ind]
-
                 if max_overlap_ratio > 0:
                     # Found a match that satisfies thresholds so link them
                     self.neuron_summary_by_seg[seg][max_overlap_pair[0]]['next_seg_link'] = max_overlap_pair[1]
                     self.neuron_summary_by_seg[seg+1][max_overlap_pair[1]]['prev_seg_link'] = max_overlap_pair[0]
                     n1_remaining.remove(max_overlap_pair[0])
                 else:
-                    # Best remaining n1 could not find an n2 match so remove it
-                    n1_remaining.remove(n1_ind)
+                    # Maximum overlap is less than minimum required so done
+                    break
+        # # Now looking for overlaps not only between channels, but between segments
+        # # so use the largest reasonable overlap time window
+        # overlap_time = self.half_clip_inds/self.sort_info['sampling_rate'] #self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]
+        # for seg in range(0, self.n_segments-1):
+        #     n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
+        #                     if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
+        #     bad_n1 = []
+        #     for n_ind in n1_remaining:
+        #         if self.neuron_summary_by_seg[seg][n_ind]['deleted_as_redundant']:
+        #             bad_n1.append(n_ind)
+        #         # elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] > self.max_mua_ratio:
+        #         #     bad_n1.append(n_ind)
+        #         # elif self.neuron_summary_by_seg[seg][n_ind]['snr'] < self.min_snr:
+        #         #     bad_n1.append(n_ind)
+        #         # elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] == -1:
+        #         #     bad_n1.append(n_ind)
+        #     for dn in bad_n1:
+        #         n1_remaining.remove(dn)
+        #     while len(n1_remaining) > 0:
+        #         best_n1_score = 0.
+        #         best_n1_ind = 0
+        #         # Choose the best n1_remaining
+        #         for n1_ind in n1_remaining:
+        #             if self.neuron_summary_by_seg[seg][n1_ind]['quality_score'] > best_n1_score:
+        #                 best_n1_score = self.neuron_summary_by_seg[seg][n1_ind]['quality_score']
+        #                 best_n1_ind = n1_ind
+        #         n1_ind = best_n1_ind
+        #         n1 = self.neuron_summary_by_seg[seg][best_n1_ind]
+        #
+        #         best_n2_score = 0.
+        #         min_SSE = np.inf
+        #         max_overlap_ratio = -np.inf
+        #         if verbose: print("Chose best n1 from channel", n1['channel'], "in segment", seg)
+        #         if verbose: print("This n1 has quality", n1['quality_score'], "MUA", n1['fraction_mua'], 'snr', n1['snr'], "n spikes", n1['spike_indices'].shape[0])
+        #         # Choose the best n2 match for n1 in the subsequent segment
+        #         # that satisfies thresholds
+        #         for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
+        #             # Only choose from neighborhood
+        #             if n1['channel'] not in n2['neighbors']:
+        #                 continue
+        #             # Only choose from 'available' units
+        #             if verbose: print("Checking n2 from channel", n2['channel'], "in segment", seg)
+        #             if verbose: print("This n2 has previous link", n2['prev_seg_link'], "and deleted redundant", n2['deleted_as_redundant'])
+        #             if verbose: print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
+        #             if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
+        #                 # if n2['fraction_mua'] > self.max_mua_ratio:
+        #                 #     continue
+        #                 # if n2['snr'] < self.min_snr:
+        #                 #     continue
+        #                 curr_overlap = self.get_overlap_ratio(
+        #                         seg, n1_ind, seg+1, n2_ind, overlap_time)
+        #                 if curr_overlap < self.min_overlapping_spikes:
+        #                     continue
+        #
+        #                 # Not sure whether to check for these or ignore them...
+        #                 # # Now we must choose the best n2 to make it here
+        #                 # if n2['fraction_mua'] == -1 and n1['fraction_mua'] == -1:
+        #                 #     # Both invalid MUA, so pick on SNR
+        #                 #     n2_score = n2['snr']
+        #                 # elif n2['fraction_mua'] == -1 or n1['fraction_mua'] == -1:
+        #                 #     # Only one unit has invalid MUA so don't link
+        #                 #     continue
+        #                 # else:
+        #                 #     n2_score = n2['quality_score']
+        #                 # if n2_score > best_n2_score:
+        #                 #     best_n2_score = n2_score
+        #                 #     max_overlap_pair = [n1_ind, n2_ind]
+        #
+        #                 if verbose: print("This n2 from channel", n2['channel'], "in segment", seg, "has enough overlap")
+        #                 if verbose: print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
+        #
+        #                 # If we made it here, the overlap is sufficient to link
+        #                 # Link to the closest template match by SSE
+        #                 # Templates aligned over all channels, so no need to have
+        #                 # super wide shift limit
+        #                 # template_SSE = self.get_shifted_neighborhood_SSE(n1, n2, self.half_clip_inds)
+        #                 # # Weight template SSE by overlap to include both terms
+        #                 # # (lower numbers are better)
+        #                 # template_SSE *= (1 - curr_overlap)
+        #                 # if verbose: print("n2 has SSE of", template_SSE, "vs min of", min_SSE)
+        #                 # if template_SSE < min_SSE:
+        #                 #     max_overlap_ratio = curr_overlap
+        #                 #     min_SSE = template_SSE
+        #                 #     max_overlap_pair = [n1_ind, n2_ind]
+        #                 if curr_overlap > max_overlap_ratio:
+        #                     max_overlap_ratio = curr_overlap
+        #                     max_overlap_pair = [n1_ind, n2_ind]
+        #
+        #         if max_overlap_ratio > 0:
+        #             # Found a match that satisfies thresholds so link them
+        #             self.neuron_summary_by_seg[seg][max_overlap_pair[0]]['next_seg_link'] = max_overlap_pair[1]
+        #             self.neuron_summary_by_seg[seg+1][max_overlap_pair[1]]['prev_seg_link'] = max_overlap_pair[0]
+        #             n1_remaining.remove(max_overlap_pair[0])
+        #         else:
+        #             # Best remaining n1 could not find an n2 match so remove it
+        #             n1_remaining.remove(n1_ind)
 
     def stitch_neurons(self):
         start_seg = 0
@@ -2222,8 +2264,6 @@ class WorkItemSummary(object):
                 # Current seg neurons can't link with neurons in next seg
                 continue
             # For the next seg, we will discover their previous seg link.
-            # prev_seg_link is used by make_overlapping_links to match segments
-            # across channels that otherwise have links broken
             for n in self.neuron_summary_by_seg[next_seg]:
                 n['prev_seg_link'] = None
             # Use stitching labels to link segments within channel

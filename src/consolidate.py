@@ -594,7 +594,7 @@ class WorkItemSummary(object):
                             min_removed_mua = mua_ratio
                             min_removed_mua_chan = chan
                             min_removed_mua_seg = seg
-                        # Can skip computing SNR, but will not track max
+                        # Will skip computing SNR, but will not track max
                         # removed accurately
                         continue
                     select = self.sort_data[chan][seg][1] == l

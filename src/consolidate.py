@@ -266,7 +266,7 @@ def calc_overlap_ratio(n1_spikes, n2_spikes, max_samples):
     # Used as slice, so strictly >, not >=
     n1_stop = next((idx[0] for idx, val in np.ndenumerate(n1_spikes)
                         if val > overlap_win[1]), None)
-    n2_stop = next((idx[0] for idx, val in np.ndenumerate(n1_spikes)
+    n2_stop = next((idx[0] for idx, val in np.ndenumerate(n2_spikes)
                         if val > overlap_win[1]), None)
 
     n1_spike_train = compute_spike_trains(n1_spikes[n1_start:n1_stop],

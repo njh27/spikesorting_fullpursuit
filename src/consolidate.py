@@ -1603,24 +1603,25 @@ class WorkItemSummary(object):
                 delete_1 = False
                 delete_2 = True
             else:
-                is_linked_1 = self.check_links(seg, neuron_1)
-                is_linked_2 = self.check_links(seg, neuron_2)
-                if is_linked_1 and not is_linked_2:
-                    # Neuron 1 is linked while neuron 2 has no links
-                    # so defer to segment stitching and delete neuron 2
-                    neurons_remaining_indices.remove(best_pair[1])
-                    for vp in violation_partners:
-                        vp.discard(best_pair[1])
-                    neurons[best_pair[1]]['deleted_as_redundant'] = True
-                    continue
-                if is_linked_2 and not is_linked_1:
-                    # Neuron 2 is linked while neuron 1 has no links
-                    # so defer to segment stitching and delete neuron 1
-                    neurons_remaining_indices.remove(best_pair[0])
-                    for vp in violation_partners:
-                        vp.discard(best_pair[0])
-                    neurons[best_pair[0]]['deleted_as_redundant'] = True
-                    continue
+                # if seg != 0 and seg != self.n_segments - 1:
+                #     is_linked_1 = self.check_links(seg, neuron_1)
+                #     is_linked_2 = self.check_links(seg, neuron_2)
+                #     if is_linked_1 and not is_linked_2:
+                #         # Neuron 1 is linked while neuron 2 has no links
+                #         # so defer to segment stitching and delete neuron 2
+                #         neurons_remaining_indices.remove(best_pair[1])
+                #         for vp in violation_partners:
+                #             vp.discard(best_pair[1])
+                #         neurons[best_pair[1]]['deleted_as_redundant'] = True
+                #         continue
+                #     if is_linked_2 and not is_linked_1:
+                #         # Neuron 2 is linked while neuron 1 has no links
+                #         # so defer to segment stitching and delete neuron 1
+                #         neurons_remaining_indices.remove(best_pair[0])
+                #         for vp in violation_partners:
+                #             vp.discard(best_pair[0])
+                #         neurons[best_pair[0]]['deleted_as_redundant'] = True
+                #         continue
 
                 # Both diff scores == 0 and both are linked so we have to pick one
                 if (diff_score_1 != 0 and diff_score_2 != 0):

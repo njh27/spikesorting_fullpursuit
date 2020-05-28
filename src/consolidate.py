@@ -64,6 +64,20 @@ def delete_neurons_by_min_duration(neurons, min_duration):
     return neurons
 
 
+def delete_neurons_by_min_firing rate(neurons, min_firing_rate):
+    """ Deletes any units whose firing rate is less than min_firing_rate. """
+    neurons_to_delete = []
+    for n_ind, n in enumerate(neurons):
+        n_duration = (n['spike_indices'][-1] - n['spike_indices'][0]) \
+                      / (n['sort_info']['sampling_rate'])
+        if n['spike_indices'].shape[0] / n_duration < min_firing_rate:
+            neurons_to_delete.append(n_ind)
+    for dn in reversed(neurons_to_delete):
+        del neurons[dn]
+
+    return neurons
+
+
 def merge_units(neurons, n1_ind, n2_ind):
     """ Merge the units corresponding to input indices and outputs the combined
     unit in the lowest index, deleting the neuron from the highest index."""

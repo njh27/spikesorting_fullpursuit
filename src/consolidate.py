@@ -22,13 +22,9 @@ def delete_neurons_by_snr_mua(neurons, snr_thresh=2.0, mua_thresh=0.10, operator
             if n['fraction_mua'] < mua_thresh:
                 continue
             # has bad mua if made it here so check SNR
-            bad_snr = False
-            for chan in n['channel']:
-                if n['snr'][chan] < snr_thresh:
-                    bad_snr = True
-                    break
-            if bad_snr:
-                neurons_to_delete.append(n_ind)
+            if n['snr']['average'] > snr_thresh:
+                continue
+            neurons_to_delete.append(n_ind)
     elif operator.lower() == 'or':
         for n_ind, n in enumerate(neurons):
             bad_snr = False
@@ -36,10 +32,8 @@ def delete_neurons_by_snr_mua(neurons, snr_thresh=2.0, mua_thresh=0.10, operator
                 bad_snr = True
             else:
                 # has good mua if made it here so check SNR
-                for chan in n['channel']:
-                    if n['snr'][chan] < snr_thresh:
-                        bad_snr = True
-                        break
+                if n['snr']['average'] < snr_thresh:
+                    bad_snr = True
             if bad_snr:
                 neurons_to_delete.append(n_ind)
     else:

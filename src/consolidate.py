@@ -50,6 +50,20 @@ def delete_neurons_by_snr_mua(neurons, snr_thresh=2.0, mua_thresh=0.10, operator
     return neurons
 
 
+def delete_neurons_by_min_duration(neurons, min_duration):
+    """ Deletes any units whose spikes span less than min_duration, in minutes. """
+    neurons_to_delete = []
+    for n_ind, n in enumerate(neurons):
+        n_duration = (n['spike_indices'][-1] - n['spike_indices'][0]) \
+                      / (n['sort_info']['sampling_rate'] * 60)
+        if n_duration < min_duration:
+            neurons_to_delete.append(n_ind)
+    for dn in reversed(neurons_to_delete):
+        del neurons[dn]
+
+    return neurons
+
+
 def merge_units(neurons, n1_ind, n2_ind):
     """ Merge the units corresponding to input indices and outputs the combined
     unit in the lowest index, deleting the neuron from the highest index."""

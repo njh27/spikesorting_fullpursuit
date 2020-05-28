@@ -1464,8 +1464,11 @@ class WorkItemSummary(object):
         return overlap_ratio
 
     def check_any_links(self, neuron):
-        """ Check if neuron has at least one link."""
-        if neuron['prev_seg_link'] is None and neuron['next_seg_link'] is None:
+        """ Check if neuron has at least one link. If there is only 1 segment
+        returns True. """
+        if (neuron['prev_seg_link'] is None) and \
+            (neuron['next_seg_link'] is None) and \
+            (self.n_segments > 1):
             any_link = False
         else:
             # has at least 1 link
@@ -1473,8 +1476,11 @@ class WorkItemSummary(object):
         return any_link
 
     def check_links(self, seg, neuron):
-        """ Check if the neuron is fully linked on both ends. """
+        """ Check if the neuron is fully linked on both ends. If there is only
+        1 segment returns True. """
         is_linked = True
+        if self.n_segments == 1:
+            return is_linked
         if seg == self.n_segments - 1:
             # Last segment can't have next link
             if neuron['prev_seg_link'] is None:

@@ -1586,8 +1586,20 @@ class WorkItemSummary(object):
             diff_score_1 = max_other_n1 - neuron_1['quality_score']
             diff_score_2 = max_other_n2 - neuron_2['quality_score']
 
-            # Check if both or either had a failed MUA calculation ( == -1)
-            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
+            is_linked_1 = self.check_links(seg, neuron_1)
+            is_linked_2 = self.check_links(seg, neuron_2)
+            any_link_1 = self.check_any_links(neuron_1)
+            any_link_2 = self.check_any_links(neuron_2)
+            if is_linked_1 and not any_link_2:
+                # Neuron 1 is fully linked while neuron 2 has no links
+                # so defer to segment stitching and delete neuron 2
+                delete_2 = True
+            elif is_linked_2 and not any_link_1:
+                # Neuron 2 is fully linked while neuron 1 has no links
+                # so defer to segment stitching and delete neuron 1
+                delete_1 = True
+                # Check if both or either had a failed MUA calculation ( == -1)
+            elif neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
                 # MUA calculation was invalid so just use SNR
                 if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):
                     delete_2 = True
@@ -1608,18 +1620,18 @@ class WorkItemSummary(object):
                 delete_1 = False
                 delete_2 = True
             else:
-                is_linked_1 = self.check_links(seg, neuron_1)
-                is_linked_2 = self.check_links(seg, neuron_2)
-                any_link_1 = self.check_any_links(neuron_1)
-                any_link_2 = self.check_any_links(neuron_2)
-                if is_linked_1 and not any_link_2:
-                    # Neuron 1 is fully linked while neuron 2 has no links
-                    # so defer to segment stitching and delete neuron 2
-                    delete_2 = True
-                if is_linked_2 and not any_link_1:
-                    # Neuron 2 is fully linked while neuron 1 has no links
-                    # so defer to segment stitching and delete neuron 1
-                    delete_1 = True
+                # is_linked_1 = self.check_links(seg, neuron_1)
+                # is_linked_2 = self.check_links(seg, neuron_2)
+                # any_link_1 = self.check_any_links(neuron_1)
+                # any_link_2 = self.check_any_links(neuron_2)
+                # if is_linked_1 and not any_link_2:
+                #     # Neuron 1 is fully linked while neuron 2 has no links
+                #     # so defer to segment stitching and delete neuron 2
+                #     delete_2 = True
+                # if is_linked_2 and not any_link_1:
+                #     # Neuron 2 is fully linked while neuron 1 has no links
+                #     # so defer to segment stitching and delete neuron 1
+                #     delete_1 = True
 
                 if not delete_1 and not delete_2:
                     # Both diff scores == 0 and both are linked so we have to pick one

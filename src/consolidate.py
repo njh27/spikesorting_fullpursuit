@@ -64,7 +64,7 @@ def delete_neurons_by_min_duration(neurons, min_duration):
     return neurons
 
 
-def delete_neurons_by_min_firing rate(neurons, min_firing_rate):
+def delete_neurons_by_min_firing_rate(neurons, min_firing_rate):
     """ Deletes any units whose firing rate is less than min_firing_rate. """
     neurons_to_delete = []
     for n_ind, n in enumerate(neurons):

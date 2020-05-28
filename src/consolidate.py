@@ -1463,6 +1463,15 @@ class WorkItemSummary(object):
         overlap_ratio = calc_overlap_ratio(n1_spikes, n2_spikes, max_samples)
         return overlap_ratio
 
+    def check_any_links(self, neuron):
+        """ Check if neuron has at least one link."""
+        if neuron['prev_seg_link'] is None and neuron['next_seg_link'] is None:
+            any_link = False
+        else:
+            # has at least 1 link
+            any_link = True
+        return any_link
+
     def check_links(self, seg, neuron):
         """ Check if the neuron is fully linked on both ends. """
         is_linked = True
@@ -1601,12 +1610,14 @@ class WorkItemSummary(object):
             else:
                 is_linked_1 = self.check_links(seg, neuron_1)
                 is_linked_2 = self.check_links(seg, neuron_2)
-                if is_linked_1 and not is_linked_2:
-                    # Neuron 1 is linked while neuron 2 has no links
+                any_link_1 = self.check_any_links(neuron_1)
+                any_link_2 = self.check_any_links(neuron_2)
+                if is_linked_1 and not any_link_2:
+                    # Neuron 1 is fully linked while neuron 2 has no links
                     # so defer to segment stitching and delete neuron 2
                     delete_2 = True
-                if is_linked_2 and not is_linked_1:
-                    # Neuron 2 is linked while neuron 1 has no links
+                if is_linked_2 and not any_link_1:
+                    # Neuron 2 is fully linked while neuron 1 has no links
                     # so defer to segment stitching and delete neuron 1
                     delete_1 = True
 

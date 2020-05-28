@@ -1463,37 +1463,37 @@ class WorkItemSummary(object):
         overlap_ratio = calc_overlap_ratio(n1_spikes, n2_spikes, max_samples)
         return overlap_ratio
 
-    def check_any_links(self, neuron):
+    def any_linked(self, neuron):
         """ Check if neuron has at least one link. If there is only 1 segment
         returns True. """
         if (neuron['prev_seg_link'] is None) and \
             (neuron['next_seg_link'] is None) and \
             (self.n_segments > 1):
-            any_link = False
+            is_any_linked = False
         else:
             # has at least 1 link
-            any_link = True
-        return any_link
+            is_any_linked = True
+        return is_any_linked
 
-    def check_links(self, seg, neuron):
+    def all_linked(self, seg, neuron):
         """ Check if the neuron is fully linked on both ends. If there is only
         1 segment returns True. """
-        is_linked = True
+        is_all_linked = True
         if self.n_segments == 1:
-            return is_linked
+            return is_all_linked
         if seg == self.n_segments - 1:
             # Last segment can't have next link
             if neuron['prev_seg_link'] is None:
-                is_linked = False
+                is_all_linked = False
         elif seg == 0:
             # First segment can't have previous link
             if neuron['next_seg_link'] is None:
-                is_linked = False
+                is_all_linked = False
         else:
             # Need to check both links
             if neuron['prev_seg_link'] is None or neuron['next_seg_link'] is None:
-                is_linked = False
-        return is_linked
+                is_all_linked = False
+        return is_all_linked
 
     def remove_redundant_neurons(self, seg, overlap_ratio_threshold=2):
         """
@@ -1592,20 +1592,8 @@ class WorkItemSummary(object):
             diff_score_1 = max_other_n1 - neuron_1['quality_score']
             diff_score_2 = max_other_n2 - neuron_2['quality_score']
 
-            is_linked_1 = self.check_links(seg, neuron_1)
-            is_linked_2 = self.check_links(seg, neuron_2)
-            any_link_1 = self.check_any_links(neuron_1)
-            any_link_2 = self.check_any_links(neuron_2)
-            if is_linked_1 and not any_link_2:
-                # Neuron 1 is fully linked while neuron 2 has no links
-                # so defer to segment stitching and delete neuron 2
-                delete_2 = True
-            elif is_linked_2 and not any_link_1:
-                # Neuron 2 is fully linked while neuron 1 has no links
-                # so defer to segment stitching and delete neuron 1
-                delete_1 = True
-                # Check if both or either had a failed MUA calculation ( == -1)
-            elif neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
+            # Check if both or either had a failed MUA calculation ( == -1)
+            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
                 # MUA calculation was invalid so just use SNR
                 if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):
                     delete_2 = True
@@ -1625,91 +1613,85 @@ class WorkItemSummary(object):
                 # Neuron 2 has a better copy somewhere so delete it
                 delete_1 = False
                 delete_2 = True
+            elif self.all_linked(seg, neuron_1) and not self.any_linked(neuron_2):
+                # Neuron 1 is fully linked while neuron 2 has no links
+                # so defer to segment stitching and delete neuron 2
+                delete_2 = True
+            elif self.all_linked(seg, neuron_2) and not self.any_linked(neuron_1):
+                # Neuron 2 is fully linked while neuron 1 has no links
+                # so defer to segment stitching and delete neuron 1
+                delete_1 = True
             else:
-                # is_linked_1 = self.check_links(seg, neuron_1)
-                # is_linked_2 = self.check_links(seg, neuron_2)
-                # any_link_1 = self.check_any_links(neuron_1)
-                # any_link_2 = self.check_any_links(neuron_2)
-                # if is_linked_1 and not any_link_2:
-                #     # Neuron 1 is fully linked while neuron 2 has no links
-                #     # so defer to segment stitching and delete neuron 2
-                #     delete_2 = True
-                # if is_linked_2 and not any_link_1:
-                #     # Neuron 2 is fully linked while neuron 1 has no links
-                #     # so defer to segment stitching and delete neuron 1
-                #     delete_1 = True
+                # Both diff scores == 0 and both are linked so we have to pick one
+                if (diff_score_1 != 0 and diff_score_2 != 0):
+                    raise RuntimeError("DIFF SCORES IN REDUNDANT ARE NOT BOTH EQUAL TO ZERO BUT I THOUGHT THEY SHOULD BE!")
+                # First defer to choosing highest quality score
+                if neuron_1['quality_score'] > neuron_2['quality_score']:
+                    delete_2 = True
+                else:
+                    delete_1 = True
 
-                if not delete_1 and not delete_2:
-                    # Both diff scores == 0 and both are linked so we have to pick one
-                    if (diff_score_1 != 0 and diff_score_2 != 0):
-                        raise RuntimeError("DIFF SCORES IN REDUNDANT ARE NOT BOTH EQUAL TO ZERO BUT I THOUGHT THEY SHOULD BE!")
-                    # First defer to choosing highest quality score
-                    if neuron_1['quality_score'] > neuron_2['quality_score']:
-                        delete_2 = True
-                    else:
-                        delete_1 = True
-
-                    # Check if quality score is primarily driven by number of spikes rather than SNR and MUA
-                    # Spike number is primarily valuable in the case that one unit
-                    # is truly a subset of another. If one unit is a mixture, we
-                    # need to avoid relying on spike count
-                    if (delete_2 and (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']) or \
-                        (delete_1 and (1-neuron_1['fraction_mua']) * neuron_1['snr'] > (1-neuron_2['fraction_mua']) * neuron_2['snr']):
-                        # We will now check if one unit appears to be a subset of the other
-                        # If these units are truly redundant subsets, then the MUA of
-                        # their union will be <= max(mua1, mua2)
-                        # If instead one unit is largely a mixture containing the
-                        # other, then the MUA of their union should greatly increase
-                        # Note that the if statement above typically only passes
-                        # in the event that one unit has considerably more spikes or
-                        # both units are extremely similar. Because rates can vary,
-                        # we do not use peak MUA here but rather the rate based MUA
-                        # Need to union with compliment so spikes are not double
-                        # counted, which will reduce the rate based MUA
-                        neuron_2_compliment = ~find_overlapping_spike_bool(
-                                neuron_1['spike_indices'], neuron_2['spike_indices'],
-                                self.half_clip_inds)
-                        union_spikes = np.hstack((neuron_1['spike_indices'], neuron_2['spike_indices'][neuron_2_compliment]))
-                        union_spikes.sort()
-                        union_fraction_mua_rate = calc_fraction_mua(
-                                                         union_spikes,
-                                                         self.sort_info['sampling_rate'],
-                                                         self.half_clip_inds,
-                                                         self.absolute_refractory_period)
-                        # Need to get fraction MUA by rate, rather than peak,
-                        # for comparison here
-                        fraction_mua_rate_1 = calc_fraction_mua(
-                                                 neuron_1['spike_indices'],
-                                                 self.sort_info['sampling_rate'],
-                                                 self.half_clip_inds,
-                                                 self.absolute_refractory_period)
-                        fraction_mua_rate_2 = calc_fraction_mua(
-                                                 neuron_2['spike_indices'],
-                                                 self.sort_info['sampling_rate'],
-                                                 self.half_clip_inds,
-                                                 self.absolute_refractory_period)
-                        # Expected mua if these two units were completely independent
-                        refractory_expected_ratio = calc_expected_overlap_ratio(neuron_1['spike_indices'], neuron_2['spike_indices'],
-                                            self.absolute_refractory_period - self.half_clip_inds/self.sort_info['sampling_rate'],
-                                            self.sort_info['sampling_rate'])
-                        # We will decide not to consider spike count if this looks like
-                        # one unit could be a large mixture. This usually means that
-                        # the union MUA goes up substantially. To accomodate noise,
-                        # require that it exceeds both the minimum MUA plus the MUA
-                        # expected if the units were totally independent, and the
-                        # MUA of either unit alone.
-                        if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + refractory_expected_ratio \
-                            and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
-                            # This is a red flag that one unit is likely a large mixture
-                            # and we should ignore spike count
-                            if (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']:
-                                # Neuron 2 has better MUA and SNR so pick it
-                                delete_1 = True
-                                delete_2 = False
-                            else:
-                                # Neuron 1 has better MUA and SNR so pick it
-                                delete_1 = False
-                                delete_2 = True
+                # Check if quality score is primarily driven by number of spikes rather than SNR and MUA
+                # Spike number is primarily valuable in the case that one unit
+                # is truly a subset of another. If one unit is a mixture, we
+                # need to avoid relying on spike count
+                if (delete_2 and (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']) or \
+                    (delete_1 and (1-neuron_1['fraction_mua']) * neuron_1['snr'] > (1-neuron_2['fraction_mua']) * neuron_2['snr']):
+                    # We will now check if one unit appears to be a subset of the other
+                    # If these units are truly redundant subsets, then the MUA of
+                    # their union will be <= max(mua1, mua2)
+                    # If instead one unit is largely a mixture containing the
+                    # other, then the MUA of their union should greatly increase
+                    # Note that the if statement above typically only passes
+                    # in the event that one unit has considerably more spikes or
+                    # both units are extremely similar. Because rates can vary,
+                    # we do not use peak MUA here but rather the rate based MUA
+                    # Need to union with compliment so spikes are not double
+                    # counted, which will reduce the rate based MUA
+                    neuron_2_compliment = ~find_overlapping_spike_bool(
+                            neuron_1['spike_indices'], neuron_2['spike_indices'],
+                            self.half_clip_inds)
+                    union_spikes = np.hstack((neuron_1['spike_indices'], neuron_2['spike_indices'][neuron_2_compliment]))
+                    union_spikes.sort()
+                    union_fraction_mua_rate = calc_fraction_mua(
+                                                     union_spikes,
+                                                     self.sort_info['sampling_rate'],
+                                                     self.half_clip_inds,
+                                                     self.absolute_refractory_period)
+                    # Need to get fraction MUA by rate, rather than peak,
+                    # for comparison here
+                    fraction_mua_rate_1 = calc_fraction_mua(
+                                             neuron_1['spike_indices'],
+                                             self.sort_info['sampling_rate'],
+                                             self.half_clip_inds,
+                                             self.absolute_refractory_period)
+                    fraction_mua_rate_2 = calc_fraction_mua(
+                                             neuron_2['spike_indices'],
+                                             self.sort_info['sampling_rate'],
+                                             self.half_clip_inds,
+                                             self.absolute_refractory_period)
+                    # Expected mua if these two units were completely independent
+                    refractory_expected_ratio = calc_expected_overlap_ratio(neuron_1['spike_indices'], neuron_2['spike_indices'],
+                                        self.absolute_refractory_period - self.half_clip_inds/self.sort_info['sampling_rate'],
+                                        self.sort_info['sampling_rate'])
+                    # We will decide not to consider spike count if this looks like
+                    # one unit could be a large mixture. This usually means that
+                    # the union MUA goes up substantially. To accomodate noise,
+                    # require that it exceeds both the minimum MUA plus the MUA
+                    # expected if the units were totally independent, and the
+                    # MUA of either unit alone.
+                    if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + refractory_expected_ratio \
+                        and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
+                        # This is a red flag that one unit is likely a large mixture
+                        # and we should ignore spike count
+                        if (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']:
+                            # Neuron 2 has better MUA and SNR so pick it
+                            delete_1 = True
+                            delete_2 = False
+                        else:
+                            # Neuron 1 has better MUA and SNR so pick it
+                            delete_1 = False
+                            delete_2 = True
 
             if delete_1:
                 # print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)

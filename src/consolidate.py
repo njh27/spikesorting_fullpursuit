@@ -51,12 +51,10 @@ def delete_neurons_by_snr_mua(neurons, snr_thresh=2.0, mua_thresh=0.10, operator
 
 
 def delete_neurons_by_min_duration(neurons, min_duration):
-    """ Deletes any units whose spikes span less than min_duration, in minutes. """
+    """ Deletes any units whose spikes span less than min_duration, in seconds. """
     neurons_to_delete = []
     for n_ind, n in enumerate(neurons):
-        n_duration = (n['spike_indices'][-1] - n['spike_indices'][0]) \
-                      / (n['sort_info']['sampling_rate'] * 60)
-        if n_duration < min_duration:
+        if n['duration_s'] < min_duration:
             neurons_to_delete.append(n_ind)
     for dn in reversed(neurons_to_delete):
         del neurons[dn]
@@ -68,9 +66,7 @@ def delete_neurons_by_min_firing_rate(neurons, min_firing_rate):
     """ Deletes any units whose firing rate is less than min_firing_rate. """
     neurons_to_delete = []
     for n_ind, n in enumerate(neurons):
-        n_duration = (n['spike_indices'][-1] - n['spike_indices'][0]) \
-                      / (n['sort_info']['sampling_rate'])
-        if n['spike_indices'].shape[0] / n_duration < min_firing_rate:
+        if n['firing_rate'] < min_firing_rate:
             neurons_to_delete.append(n_ind)
     for dn in reversed(neurons_to_delete):
         del neurons[dn]
@@ -223,6 +219,11 @@ def combine_two_neurons(neuron1, neuron2):
         del combined_neuron['chan_neighbor_ind'][chan_num] # dictionaries so
         del combined_neuron['channel_selector'][chan_num] #  use value
         del combined_neuron['main_windows'][chan_num]
+    # Weighted average SNR over both units
+    combined_neuron['snr']['average'] = np.mean(snr_by_unit)
+    combined_neuron['duration_s'] = (combined_neuron['spike_indices'][-1] - combined_neuron['spike_indices'][0]) \
+                                   / (combined_neuron['sort_info']['sampling_rate'])
+    combined_neuron['firing_rate'] = combined_neuron['spike_indices'].shape[0] / combined_neuron['duration_s']
     combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(
                     combined_neuron["spike_indices"],
                     combined_neuron['sort_info']['sampling_rate'],
@@ -2329,6 +2330,11 @@ class WorkItemSummary(object):
             del combined_neuron['chan_neighbor_ind'][chan_num] # dictionaries so
             del combined_neuron['channel_selector'][chan_num] #  use value
             del combined_neuron['main_windows'][chan_num]
+        # Weighted average SNR over all segments
+        combined_neuron['snr']['average'] = np.mean(snr_by_unit)
+        combined_neuron['duration_s'] = (combined_neuron['spike_indices'][-1] - combined_neuron['spike_indices'][0]) \
+                                       / (combined_neuron['sort_info']['sampling_rate'])
+        combined_neuron['firing_rate'] = combined_neuron['spike_indices'].shape[0] / combined_neuron['duration_s']
         combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(
                         combined_neuron["spike_indices"],
                         self.sort_info['sampling_rate'],

@@ -13,6 +13,197 @@ import matplotlib.pyplot as plt
 
 
 
+def delete_neurons_by_snr_mua(neurons, snr_thresh=2.0, mua_thresh=0.10, operator='and'):
+    """ Delete neurons above SNR threshold and/or above MUA threshold.
+    All others are deleted in output list. """
+    neurons_to_delete = []
+    if operator.lower() == 'and':
+        for n_ind, n in enumerate(neurons):
+            if n['fraction_mua'] < mua_thresh:
+                continue
+            # has bad mua if made it here so check SNR
+            bad_snr = False
+            for chan in n['channel']:
+                if n['snr'][chan] < snr_thresh:
+                    bad_snr = True
+                    break
+            if bad_snr:
+                neurons_to_delete.append(n_ind)
+    elif operator.lower() == 'or':
+        for n_ind, n in enumerate(neurons):
+            bad_snr = False
+            if n['fraction_mua'] > mua_thresh:
+                bad_snr = True
+            else:
+                # has good mua if made it here so check SNR
+                for chan in n['channel']:
+                    if n['snr'][chan] < snr_thresh:
+                        bad_snr = True
+                        break
+            if bad_snr:
+                neurons_to_delete.append(n_ind)
+    else:
+        raise ValueError("Input operator type must be 'and' or 'or'.")
+    for dn in reversed(neurons_to_delete):
+        del neurons[dn]
+
+    return neurons
+
+
+def merge_units(neurons, n1_ind, n2_ind):
+    """ Merge the units corresponding to input indices and outputs the combined
+    unit in the lowest index, deleting the neuron from the highest index."""
+    if n1_ind < 0 or n2_ind < 0:
+        raise ValueError("Neuron indices must be input as positive integers")
+    if n1_ind > n2_ind:
+        n1_ind, n2_ind = n2_ind, n1_ind
+    if n1_ind == n2_ind:
+        print("Indices are the same unit so already combined")
+        return neurons
+
+    neurons[n1_ind] = combine_two_neurons(neurons[n1_ind], neurons[n2_ind])
+    del neurons[n2_ind]
+
+    return neurons
+
+
+def combine_two_neurons(neuron1, neuron2):
+    """
+    """
+    combined_neuron = {}
+    combined_neuron['sort_info'] = neuron1['sort_info']
+    # Start with values set to neuron1 and merge neuron2 into them
+    combined_neuron['channel'] = [x for x in neuron1['channel']] # Needs to copy
+    combined_neuron['neighbors'] = neuron1['neighbors']
+    combined_neuron['chan_neighbor_ind'] = neuron1['chan_neighbor_ind']
+    combined_neuron['main_windows'] = neuron1['main_windows']
+    n_total_spikes = neuron1['spike_indices'].shape[0] + neuron2['spike_indices'].shape[0]
+    max_clip_samples = max(neuron1['waveforms'].shape[1], neuron2['waveforms'].shape[1])
+    half_clip_inds = int(round(np.amax(np.abs(neuron1['sort_info']['clip_width'])) * neuron1['sort_info']['sampling_rate']))
+    combined_neuron['duplicate_tol_inds'] = max(neuron1['duplicate_tol_inds'], neuron2['duplicate_tol_inds'])
+    # Merge neuron2 data channel-wise
+    for chan in neuron2['channel']:
+        if chan not in combined_neuron['channel']:
+            combined_neuron["channel"].append(chan)
+            combined_neuron['neighbors'][chan] = neuron2['neighbors'][chan]
+            combined_neuron['chan_neighbor_ind'][chan] = neuron2['chan_neighbor_ind'][chan]
+            combined_neuron['main_windows'][chan] = neuron2['main_windows'][chan]
+
+    channel_selector = []
+    indices_by_unit = []
+    waveforms_by_unit = []
+    new_spike_bool_by_unit = []
+    snr_by_unit = []
+    for unit in [neuron1, neuron2]:
+        n_unit_events = unit['spike_indices'].shape[0]
+        if n_unit_events == 0:
+            continue
+        indices_by_unit.append(unit['spike_indices'])
+        waveforms_by_unit.append(unit['waveforms'])
+        new_spike_bool_by_unit.append(unit['new_spike_bool'])
+        # Make and append a bunch of book keeping numpy arrays by channel
+        chan_select = np.zeros(n_unit_events)
+        snr_unit = np.zeros(n_unit_events)
+        for chan in unit['channel']:
+            chan_select[unit['channel_selector'][chan]] = chan
+            snr_unit[unit['channel_selector'][chan]] = unit['snr'][chan]
+        channel_selector.append(chan_select)
+        # NOTE: redundantly piling this up makes it easy to track and gives
+        # a weighted SNR as its final result
+        snr_by_unit.append(snr_unit)
+
+    # Now combine everything into one
+    channel_selector = np.hstack(channel_selector)
+    snr_by_unit = np.hstack(snr_by_unit)
+    combined_neuron["spike_indices"] = np.hstack(indices_by_unit)
+    # Need to account for fact that different channels can have different
+    # neighborhood sizes. So make all waveforms start from beginning, and
+    # remainder zeroed out if it has no data
+    combined_neuron['waveforms'] = np.zeros((combined_neuron["spike_indices"].shape[0], max_clip_samples))
+    wave_start_ind = 0
+    for waves in waveforms_by_unit:
+        combined_neuron['waveforms'][wave_start_ind:waves.shape[0]+wave_start_ind, 0:waves.shape[1]] = waves
+        wave_start_ind += waves.shape[0]
+    combined_neuron["new_spike_bool"] = np.hstack(new_spike_bool_by_unit)
+
+    # Cleanup some memory that wasn't overwritten during concatenation
+    del indices_by_unit
+    del waveforms_by_unit
+    del new_spike_bool_by_unit
+
+    # NOTE: This still needs to be done even though segments
+    # were ordered because of overlap!
+    # Ensure everything is ordered. Must use 'stable' sort for
+    # output to be repeatable because overlapping segments and
+    # binary pursuit can return slightly different dupliate spikes
+    spike_order = np.argsort(combined_neuron["spike_indices"], kind='stable')
+    combined_neuron["spike_indices"] = combined_neuron["spike_indices"][spike_order]
+    combined_neuron['waveforms'] = combined_neuron['waveforms'][spike_order, :]
+    combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][spike_order]
+    channel_selector = channel_selector[spike_order]
+    snr_by_unit = snr_by_unit[spike_order]
+
+    # Remove duplicates found in binary pursuit
+    keep_bool = keep_binary_pursuit_duplicates(combined_neuron["spike_indices"],
+                    combined_neuron["new_spike_bool"],
+                    tol_inds=half_clip_inds)
+    combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
+    combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]
+    combined_neuron['waveforms'] = combined_neuron['waveforms'][keep_bool, :]
+    channel_selector = channel_selector[keep_bool]
+    snr_by_unit = snr_by_unit[keep_bool]
+
+    # Get each spike's channel of origin and the waveforms on main channel
+    combined_neuron['channel_selector'] = {}
+    combined_neuron["template"] = {}
+    for chan in combined_neuron['channel']:
+        chan_select = channel_selector == chan
+        combined_neuron['channel_selector'][chan] = chan_select
+        combined_neuron["template"][chan] = np.mean(
+            combined_neuron['waveforms'][chan_select, :], axis=0)
+
+    # Remove any identical index duplicates (either from error or
+    # from combining overlapping segments), preferentially keeping
+    # the waveform most similar to its channel's template
+    keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
+    combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
+    combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]
+    combined_neuron['waveforms'] = combined_neuron['waveforms'][keep_bool, :]
+    for chan in combined_neuron['channel']:
+        combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
+    channel_selector = channel_selector[keep_bool]
+    snr_by_unit = snr_by_unit[keep_bool]
+
+    # Recompute things of interest like SNR and templates by channel as the
+    # average over all data from that channel and store for output
+    combined_neuron["template"] = {}
+    combined_neuron["snr"] = {}
+    chans_to_remove = []
+    for chan in combined_neuron['channel']:
+        if snr_by_unit[combined_neuron['channel_selector'][chan]].size == 0:
+            # Spikes contributing from this channel have been removed so
+            # remove all its data below
+            chans_to_remove.append(chan)
+        else:
+            combined_neuron["template"][chan] = np.mean(
+                combined_neuron['waveforms'][combined_neuron['channel_selector'][chan], :], axis=0)
+            combined_neuron['snr'][chan] = np.mean(snr_by_unit[combined_neuron['channel_selector'][chan]])
+    for chan_ind in reversed(range(0, len(chans_to_remove))):
+        chan_num = chans_to_remove[chan_ind]
+        del combined_neuron['channel'][chan_ind] # A list so use index
+        del combined_neuron['neighbors'][chan_num] # Rest of these are all
+        del combined_neuron['chan_neighbor_ind'][chan_num] # dictionaries so
+        del combined_neuron['channel_selector'][chan_num] #  use value
+        del combined_neuron['main_windows'][chan_num]
+    combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(
+                    combined_neuron["spike_indices"],
+                    combined_neuron['sort_info']['sampling_rate'],
+                    combined_neuron['duplicate_tol_inds'],
+                    combined_neuron['sort_info']['absolute_refractory_period'])
+
+    return combined_neuron
+
+
 def zero_symmetric_ccg(spikes_1, spikes_2, samples_window=40, d_samples=40, return_trains=False):
     """ Returns the cross correlogram of
         spikes_2 relative to spikes_1 at each lag from -samples_window to
@@ -1613,14 +1804,14 @@ class WorkItemSummary(object):
                 # Neuron 2 has a better copy somewhere so delete it
                 delete_1 = False
                 delete_2 = True
-            elif self.all_linked(seg, neuron_1) and not self.any_linked(neuron_2):
-                # Neuron 1 is fully linked while neuron 2 has no links
-                # so defer to segment stitching and delete neuron 2
-                delete_2 = True
-            elif self.all_linked(seg, neuron_2) and not self.any_linked(neuron_1):
-                # Neuron 2 is fully linked while neuron 1 has no links
-                # so defer to segment stitching and delete neuron 1
-                delete_1 = True
+            # elif self.all_linked(seg, neuron_1) and not self.any_linked(neuron_2):
+            #     # Neuron 1 is fully linked while neuron 2 has no links
+            #     # so defer to segment stitching and delete neuron 2
+            #     delete_2 = True
+            # elif self.all_linked(seg, neuron_2) and not self.any_linked(neuron_1):
+            #     # Neuron 2 is fully linked while neuron 1 has no links
+            #     # so defer to segment stitching and delete neuron 1
+            #     delete_1 = True
             else:
                 # Both diff scores == 0 and both are linked so we have to pick one
                 if (diff_score_1 != 0 and diff_score_2 != 0):
@@ -1948,6 +2139,7 @@ class WorkItemSummary(object):
             return {}
         combined_neuron = {}
         combined_neuron['sort_info'] = self.sort_info
+        combined_neuron['sort_info']['absolute_refractory_period'] = self.absolute_refractory_period
         # Since a neuron can exist over multiple channels, we need to discover
         # all the channels that are present and track which channel data
         # correspond to
@@ -1975,10 +2167,6 @@ class WorkItemSummary(object):
             chan_align_peak[x['channel']][1] += 1
 
         waveform_clip_center = int(round(np.abs(self.sort_info['clip_width'][0] * self.sort_info['sampling_rate']))) + 1
-        chan_to_ind_map = {}
-        for ind, chan in enumerate(combined_neuron['channel']):
-            chan_to_ind_map[chan] = ind
-
         channel_selector = []
         indices_by_unit = []
         waveforms_by_unit = []
@@ -1987,7 +2175,7 @@ class WorkItemSummary(object):
         segment_by_unit = []
         snr_by_unit = []
         for unit in unit_dicts_list:
-            n_unit_events = unit['spike_indices'].size
+            n_unit_events = unit['spike_indices'].shape[0]
             if n_unit_events == 0:
                 continue
             # First adjust all spike indices to where they would have been if
@@ -2007,6 +2195,8 @@ class WorkItemSummary(object):
             channel_selector.append(np.full(n_unit_events, unit['channel']))
             threshold_by_unit.append(np.full(n_unit_events, unit['threshold']))
             segment_by_unit.append(np.full(n_unit_events, unit['segment']))
+            # NOTE: redundantly piling this up makes it easy to track and gives
+            # a weighted SNR as its final result
             snr_by_unit.append(np.full(n_unit_events, unit['snr']))
 
         # Now combine everything into one
@@ -2057,7 +2247,6 @@ class WorkItemSummary(object):
         snr_by_unit = snr_by_unit[keep_bool]
 
         # Get each spike's channel of origin and the waveforms on main channel
-        # main_waveforms = np.zeros((combined_neuron['waveforms'].shape[0], self.sort_info['n_samples_per_chan']))
         combined_neuron['channel_selector'] = {}
         combined_neuron["template"] = {}
         for chan in combined_neuron['channel']:
@@ -2079,8 +2268,7 @@ class WorkItemSummary(object):
 
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping
-        # the waveform with largest peak-value to threshold ratio on its main
-        # channel
+        # the waveform most similar to its channel's template
         keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
         combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]

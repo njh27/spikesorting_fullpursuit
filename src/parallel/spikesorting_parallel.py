@@ -218,11 +218,7 @@ def allocate_cpus_by_chan(samples_over_thresh):
     cpu_alloc = []
     median_crossings = np.median(samples_over_thresh)
     for magnitude in samples_over_thresh:
-        if magnitude > 10*median_crossings:
-            cpu_alloc.append(6)
-        elif magnitude > 5*median_crossings:
-            cpu_alloc.append(4)
-        elif magnitude > median_crossings:
+        if magnitude > 5*median_crossings:
             cpu_alloc.append(2)
         else:
             cpu_alloc.append(1)

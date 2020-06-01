@@ -1167,7 +1167,7 @@ class WorkItemSummary(object):
                         # We are unioning spikes that may need sharpened due
                         # to alignment problem so use full spike width tol inds
                         spike_half_width = calc_spike_half_width(
-                            union_waveforms[curr_chan_inds],
+                            union_waveforms[:, curr_chan_inds],
                             self.sort_info['sampling_rate']) + 1
                         keep_bool = remove_spike_event_duplicates(union_spikes,
                                         union_waveforms, union_template,

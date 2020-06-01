@@ -552,8 +552,8 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
     refractory_inds = int(round(absolute_refractory_period * sampling_rate))
     bin_width = refractory_inds - duplicate_tol_inds
     if bin_width <= 0:
-        print("duplicate_tol_inds encompasses absolute_refractory_period so fraction MUA cannot be computed.")
-        return -1.
+        print("LINE 555: duplicate_tol_inds encompasses absolute_refractory_period so fraction MUA cannot be computed.")
+        return np.nan
     check_inds = int(round(check_window * sampling_rate))
     bin_edges = np.arange(duplicate_tol_inds, check_inds + bin_width, bin_width)
     counts, xval = np.histogram(all_isis, bin_edges)
@@ -580,8 +580,8 @@ def calc_isi_violation_rate(spike_indices, sampling_rate,
     all_isis = np.diff(spike_indices)
     duplicate_time = duplicate_tol_inds / sampling_rate
     if absolute_refractory_period - duplicate_time <= 0:
-        print("duplicate_tol_inds encompasses absolute_refractory_period so fraction MUA cannot be computed.")
-        return -1.
+        print("LINE 583: duplicate_tol_inds encompasses absolute_refractory_period so fraction MUA cannot be computed.")
+        return np.nan
     num_isi_violations = np.count_nonzero(all_isis / sampling_rate < absolute_refractory_period)
     n_duplicates = np.count_nonzero(all_isis <= duplicate_tol_inds)
     # Remove duplicate spikes from this computation and adjust the number
@@ -871,8 +871,8 @@ class WorkItemSummary(object):
                                 self.sort_info['sampling_rate']) + 1
         refractory_adjustment = duplicate_tol_inds / self.sort_info['sampling_rate']
         if self.absolute_refractory_period - refractory_adjustment <= 0:
-            print("duplicate_tol_inds encompasses absolute_refractory_period. MUA can't be calculated for this unit.")
-            return -1.
+            print("LINE 874: duplicate_tol_inds encompasses absolute_refractory_period. MUA can't be calculated for this unit.")
+            return np.nan
         index_isi = np.diff(unit_spikes)
         num_isi_violations = np.count_nonzero(
             index_isi / self.sort_info['sampling_rate']
@@ -929,8 +929,8 @@ class WorkItemSummary(object):
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
         bin_width = refractory_inds - duplicate_tol_inds
         if bin_width <= 0:
-            print("duplicate_tol_inds encompasses absolute_refractory_period so fraction MUA cannot be computed.")
-            return -1.
+            print("LINE 932: duplicate_tol_inds encompasses absolute_refractory_period so fraction MUA cannot be computed.")
+            return np.nan
         check_inds = int(round(check_window * self.sort_info['sampling_rate']))
         bin_edges = np.arange(duplicate_tol_inds, check_inds + bin_width, bin_width)
         counts, xval = np.histogram(all_isis, bin_edges)
@@ -1272,7 +1272,7 @@ class WorkItemSummary(object):
                     break
                 start_seg += 1
             start_new_seg = False
-            if start_seg >= len(self.sort_data[chan])-1:
+            if start_seg >= len(self.sort_data[chan]) - 1:
                 # Need at least 2 remaining segments to stitch
                 jump_to_end = True
             else:
@@ -1281,7 +1281,7 @@ class WorkItemSummary(object):
                             self.sort_info['n_samples_per_chan'] * (self.work_items[chan][start_seg]['chan_neighbor_ind'] + 1)]
             # Go through each segment as the "current segment" and set the labels
             # in the next segment according to the scheme in current
-            for curr_seg in range(start_seg, len(self.sort_data[chan])-1):
+            for curr_seg in range(start_seg, len(self.sort_data[chan]) - 1):
                 if jump_to_end:
                     break
                 next_seg = curr_seg + 1
@@ -1806,16 +1806,16 @@ class WorkItemSummary(object):
             diff_score_1 = max_other_n1 - neuron_1['quality_score']
             diff_score_2 = max_other_n2 - neuron_2['quality_score']
 
-            # Check if both or either had a failed MUA calculation ( == -1)
-            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
+            # Check if both or either had a failed MUA calculation
+            if np.isnan(neuron_1['fraction_mua']) and np.isnan(neuron_2['fraction_mua']):
                 # MUA calculation was invalid so just use SNR
                 if (neuron_1['snr']*neuron_1['spike_indices'].shape[0] > neuron_2['snr']*neuron_2['spike_indices'].shape[0]):
                     delete_2 = True
                 else:
                     delete_1 = True
-            elif neuron_1['fraction_mua'] < 0 or neuron_2['fraction_mua'] < 0:
+            elif np.isnan(neuron_1['fraction_mua']) or np.isnan(neuron_2['fraction_mua']):
                 # MUA calculation was invalid for one unit so pick the other
-                if neuron_1['fraction_mua'] < 0:
+                if np.isnan(neuron_1['fraction_mua']):
                     delete_1 = True
                 else:
                     delete_2 = True
@@ -2034,7 +2034,7 @@ class WorkItemSummary(object):
         #         #     bad_n1.append(n_ind)
         #         # elif self.neuron_summary_by_seg[seg][n_ind]['snr'] < self.min_snr:
         #         #     bad_n1.append(n_ind)
-        #         # elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] == -1:
+        #         # elif np.isnan(self.neuron_summary_by_seg[seg][n_ind]['fraction_mua']):
         #         #     bad_n1.append(n_ind)
         #     for dn in bad_n1:
         #         n1_remaining.remove(dn)
@@ -2076,10 +2076,10 @@ class WorkItemSummary(object):
         #
         #                 # Not sure whether to check for these or ignore them...
         #                 # # Now we must choose the best n2 to make it here
-        #                 # if n2['fraction_mua'] == -1 and n1['fraction_mua'] == -1:
+        #                 # if np.isnan(n2['fraction_mua']) and np.isnan(n1['fraction_mua']):
         #                 #     # Both invalid MUA, so pick on SNR
         #                 #     n2_score = n2['snr']
-        #                 # elif n2['fraction_mua'] == -1 or n1['fraction_mua'] == -1:
+        #                 # elif np.isnan(n2['fraction_mua']) or np.isnan(n1['fraction_mua']):
         #                 #     # Only one unit has invalid MUA so don't link
         #                 #     continue
         #                 # else:
@@ -2610,16 +2610,16 @@ class WorkItemSummary(object):
             diff_score_1 = max_other_n1 - neuron_1['quality_score']
             diff_score_2 = max_other_n2 - neuron_2['quality_score']
 
-            # Check if both or either had a failed MUA calculation ( == -1)
-            if neuron_1['fraction_mua'] < 0 and neuron_2['fraction_mua'] < 0:
+            # Check if both or either had a failed MUA calculation
+            if np.isnan(neuron_1['fraction_mua']) and np.isnan(neuron_2['fraction_mua']):
                 # MUA calculation was invalid so just use SNR
                 if (neuron_1['snr'][chan1]*neuron_1['spike_indices'].shape[0] > neuron_2['snr'][chan2]*neuron_2['spike_indices'].shape[0]):
                     delete_2 = True
                 else:
                     delete_1 = True
-            elif neuron_1['fraction_mua'] < 0 or neuron_2['fraction_mua'] < 0:
+            elif np.isnan(neuron_1['fraction_mua']) or np.isnan(neuron_2['fraction_mua']):
                 # MUA calculation was invalid for one unit so pick the other
-                if neuron_1['fraction_mua'] < 0:
+                if np.isnan(neuron_1['fraction_mua']):
                     delete_1 = True
                 else:
                     delete_2 = True

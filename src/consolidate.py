@@ -2166,12 +2166,19 @@ class WorkItemSummary(object):
         combined_neuron['neighbors'] = {}
         combined_neuron['chan_neighbor_ind'] = {}
         combined_neuron['main_windows'] = {}
+        combined_neuron['duplicate_tol_inds'] = 0
         chan_align_peak = {}
         n_total_spikes = 0
         n_peak = 0
         max_clip_samples = 0
         for x in unit_dicts_list:
             n_total_spikes += x['spike_indices'].shape[0]
+            # Duplicates across segments and channels can be very different, at least
+            # up to a full spike width. So choose to use the largest estimated spike
+            # width from any of the composite neuron summaries. Input units use
+            # half spike width as duplicate tol inds so double it.
+            if 2 * x['duplicate_tol_inds'] > combined_neuron['duplicate_tol_inds']:
+                combined_neuron['duplicate_tol_inds'] = 2 * x['duplicate_tol_inds']
             if x['channel'] not in combined_neuron['channel']:
                 combined_neuron["channel"].append(x['channel'])
                 combined_neuron['neighbors'][x['channel']] = x['neighbors']
@@ -2274,15 +2281,15 @@ class WorkItemSummary(object):
             combined_neuron["template"][chan] = np.mean(
                 combined_neuron['waveforms'][chan_select, :], axis=0)
 
-        if len(combined_neuron['channel']) == 1:
-            # All data on same channel so use minimal duplicate tolerance
-            for c in combined_neuron['channel']:
-                c_main_win = combined_neuron['main_windows'][c]
-            combined_neuron['duplicate_tol_inds'] = 2 * calc_spike_half_width(
-                combined_neuron['waveforms'][:, c_main_win[0]:c_main_win[1]]) + 1
-        else:
-            # Duplicates across channels can be very different so use large tol
-            combined_neuron['duplicate_tol_inds'] = self.half_clip_inds
+        # if len(combined_neuron['channel']) == 1:
+        #     # All data on same channel so use minimal duplicate tolerance
+        #     for c in combined_neuron['channel']:
+        #         c_main_win = combined_neuron['main_windows'][c]
+        #     combined_neuron['duplicate_tol_inds'] = 2 * calc_spike_half_width(
+        #         combined_neuron['waveforms'][:, c_main_win[0]:c_main_win[1]]) + 1
+        # else:
+        #     # Duplicates across channels can be very different so use large tol
+        #     combined_neuron['duplicate_tol_inds'] = self.half_clip_inds
 
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping

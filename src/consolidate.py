@@ -86,8 +86,8 @@ def merge_units(neurons, n1_ind, n2_ind):
 
 
 def combine_two_neurons(neuron1, neuron2):
-    """
-    """
+    """ Perfrom the combining of two neuron dictionaries into one. Intended as
+    the workhorse function for merge_units rather than called directly. """
     combined_neuron = {}
     combined_neuron['sort_info'] = neuron1['sort_info']
     # Start with values set to neuron1 and merge neuron2 into them

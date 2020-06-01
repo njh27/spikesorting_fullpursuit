@@ -992,15 +992,25 @@ if __name__ == '__main__':
         raw_voltage = load_voltage_parallel(pl2_reader, 'SPKC')
         # t_t_start = int(40000 * 60 * 10)
         # t_t_stop =  int(40000 * 60 * 15)
-        SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=raw_voltage)#[:, t_t_start:t_t_stop])
+        if raw_voltage.shape[0] == 32:
+            SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=raw_voltage)#[:, t_t_start:t_t_stop])
+        elif raw_voltage.shape[0] == 1:
+            SProbe = electrode.SingleElectrode(pl2_reader.info['timestamp_frequency'], voltage_array=raw_voltage)
+        else:
+            raise ValueError("Cannot determine which type of electrode to use")
     else:
         with open(use_voltage_file, 'rb') as fp:
             voltage_array = pickle.load(fp)
         SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=voltage_array)
 
     filt_voltage = filter_parallel(SProbe, low_cutoff=spike_sort_args['filter_band'][0], high_cutoff=spike_sort_args['filter_band'][1])
-    SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=filt_voltage)
-    # SProbe = electrode.SingleTetrode(pl2_reader.info['timestamp_frequency'], voltage_array=filt_voltage)
+    if filt_voltage.shape[0] == 32:
+        SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=filt_voltage)
+    elif filt_voltage.shape[0] == 1:
+        SProbe = electrode.SingleElectrode(pl2_reader.info['timestamp_frequency'], voltage_array=filt_voltage)
+    else:
+        raise ValueError("Cannot determine which type of electrode to use")
+        
     SProbe.filter_band = spike_sort_args['filter_band']
     print("Start sorting")
     sort_data, work_items, sorter_info = spike_sort_parallel(SProbe, **spike_sort_args)

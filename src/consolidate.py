@@ -524,7 +524,7 @@ def calc_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampli
     return expected_overlap_ratio
 
 
-def calc_spike_half_width(clips, sampling_rate):
+def calc_spike_half_width(clips):
     """ Computes half width of spike as number of indices between peak and valley. """
     template = np.mean(clips, axis=0)
     peak_ind = np.argmax(template)
@@ -867,8 +867,7 @@ class WorkItemSummary(object):
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
         # Within channel alignment shouldn't be off by more than about half spike width
         duplicate_tol_inds = calc_spike_half_width(
-                                self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]],
-                                self.sort_info['sampling_rate']) + 1
+                                self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]]) + 1
         refractory_adjustment = duplicate_tol_inds / self.sort_info['sampling_rate']
         if self.absolute_refractory_period - refractory_adjustment <= 0:
             print("LINE 874: duplicate_tol_inds encompasses absolute_refractory_period. MUA can't be calculated for this unit.")
@@ -923,8 +922,7 @@ class WorkItemSummary(object):
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
         # Within channel alignment shouldn't be off by more than about half spike width
         duplicate_tol_inds = calc_spike_half_width(
-                                self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]],
-                                self.sort_info['sampling_rate']) + 1
+                                self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]]) + 1
         all_isis = np.diff(unit_spikes)
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
         bin_width = refractory_inds - duplicate_tol_inds
@@ -1167,8 +1165,7 @@ class WorkItemSummary(object):
                         # We are unioning spikes that may need sharpened due
                         # to alignment problem so use full spike width tol inds
                         spike_half_width = calc_spike_half_width(
-                            union_waveforms[:, curr_chan_inds],
-                            self.sort_info['sampling_rate']) + 1
+                            union_waveforms[:, curr_chan_inds]) + 1
                         keep_bool = remove_spike_event_duplicates(union_spikes,
                                         union_waveforms, union_template,
                                         tol_inds=2*spike_half_width)
@@ -1632,8 +1629,7 @@ class WorkItemSummary(object):
                     # Set duplicate tolerance as half spike width since within
                     # channel summary shouldn't be off by this
                     neuron['duplicate_tol_inds'] = calc_spike_half_width(
-                        neuron['waveforms'][:, neuron['main_win'][0]:neuron['main_win'][1]],
-                        self.sort_info['sampling_rate']) + 1
+                        neuron['waveforms'][:, neuron['main_win'][0]:neuron['main_win'][1]]) + 1
                     # Keep duplicates found in binary pursuit since it can reject
                     # false positives
                     keep_bool = keep_binary_pursuit_duplicates(neuron["spike_indices"],
@@ -2283,8 +2279,7 @@ class WorkItemSummary(object):
             for c in combined_neuron['channel']:
                 c_main_win = combined_neuron['main_windows'][c]
             combined_neuron['duplicate_tol_inds'] = calc_spike_half_width(
-                combined_neuron['waveforms'][:, c_main_win[0]:c_main_win[1]],
-                self.sort_info['sampling_rate']) + 1
+                combined_neuron['waveforms'][:, c_main_win[0]:c_main_win[1]]) + 1
         else:
             # Duplicates across channels can be very different so use large tol
             combined_neuron['duplicate_tol_inds'] = self.half_clip_inds

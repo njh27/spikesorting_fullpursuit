@@ -2278,7 +2278,7 @@ class WorkItemSummary(object):
             # All data on same channel so use minimal duplicate tolerance
             for c in combined_neuron['channel']:
                 c_main_win = combined_neuron['main_windows'][c]
-            combined_neuron['duplicate_tol_inds'] = calc_spike_half_width(
+            combined_neuron['duplicate_tol_inds'] = 2 * calc_spike_half_width(
                 combined_neuron['waveforms'][:, c_main_win[0]:c_main_win[1]]) + 1
         else:
             # Duplicates across channels can be very different so use large tol

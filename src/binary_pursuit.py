@@ -233,17 +233,22 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             # Essentially all we are doing is copying each of our arrays to the graphics card.
             voltage_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=chunk_voltage)
 
+            # Set arguments that are the same whether we subtract spikes to
+            # get the residual or whether there are no spikes. These will all
+            # be used later in the event new spikes are added.
+            compute_residual_kernel.set_arg(0, voltage_buffer) # location where chunk voltage is stored
+            compute_residual_kernel.set_arg(1, np.uint32(stop_index - start_index)) # length of chunk voltage array
+            compute_residual_kernel.set_arg(2, n_neighbor_chans) # Number of neighboring channels
+            compute_residual_kernel.set_arg(3, template_buffer) # location where our templates are stored
+            compute_residual_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of neurons (`rows` in templates)
+            compute_residual_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each channel of templates
+
             # Only get residual if there are spikes, else it's same as voltage
             if chunk_crossings.shape[0] > 0:
                 crossings_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=chunk_crossings)
                 spike_labels_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=chunk_labels)
 
-                compute_residual_kernel.set_arg(0, voltage_buffer) # location where chunk voltage is stored
-                compute_residual_kernel.set_arg(1, np.uint32(stop_index - start_index)) # length of chunk voltage array
-                compute_residual_kernel.set_arg(2, n_neighbor_chans) # Number of neighboring channels
-                compute_residual_kernel.set_arg(3, template_buffer) # location where our templates are stored
-                compute_residual_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of neurons (`rows` in templates)
-                compute_residual_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each channel of templates
+                # These args are specific to this calculation of residual
                 compute_residual_kernel.set_arg(6, crossings_buffer) # Buffer of our spike indices
                 compute_residual_kernel.set_arg(7, spike_labels_buffer) # Buffer of our 0 indexed spike labels
                 compute_residual_kernel.set_arg(8, np.uint32(chunk_crossings.shape[0])) # Number of crossings
@@ -293,9 +298,10 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                 residual_voltage = np.empty(chunk_voltage.shape[0], dtype=np.float32)
                 cl.enqueue_copy(queue, residual_voltage, voltage_buffer, wait_for=residual_events) #dest, source
             else:
+                # Need this stuff later no matter what
                 next_wait_event = None
                 residual_voltage = chunk_voltage
-                
+
             # Compute the template_sum_squared and bias terms
             spike_biases = np.zeros(templates.shape[0], dtype=np.float32)
             # Compute bias separately for each neuron

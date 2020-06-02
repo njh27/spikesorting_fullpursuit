@@ -194,6 +194,35 @@ class Dense32Probe(AbstractProbe):
         return np.int64(neighbors)
 
 
+class BoydenLab32ChanProbe(AbstractProbe):
+
+    def __init__(self, sampling_rate, fname_voltage=None, voltage_array=None):
+        AbstractProbe.__init__(self, sampling_rate, 32, fname_voltage=fname_voltage, voltage_array=voltage_array)
+
+    def get_neighbors(self, channel):
+        # These are organized into stereotrodes separated by 10 microns?
+        # Our neighbors are within 50 linear microns, so,
+        # our same stereotrode, the 4 stereotrodes above us, and the 4
+        # stereotrodes below us. Boyden lab probe has only a single channel on
+        # top and bottom row of electrodes.
+
+        if channel > self.num_electrodes - 1 or channel < 0:
+            raise ValueError("Invalid electrode channel")
+
+        row_number = (channel + 1) // 2
+        total_rows = 16 # zero indexed
+        start_row = max(0, row_number - 4)
+        end_row = min(total_rows, row_number + 5)
+        if start_row == 0:
+            neighbors = np.arange(start_row * 2, end_row * 2 + 1)
+        elif end_row == 16:
+            neighbors = np.arange(start_row * 2 - 1, end_row * 2)
+        else:
+            neighbors = np.arange(start_row * 2 - 1, end_row * 2 - 1)
+
+        return np.int64(neighbors)
+
+
 class Dense128Probe(AbstractProbe):
 
     def __init__(self, sampling_rate, fname_voltage=None, voltage_array=None):

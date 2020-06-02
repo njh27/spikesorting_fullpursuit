@@ -232,64 +232,70 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             # Create our buffers on the graphics cards.
             # Essentially all we are doing is copying each of our arrays to the graphics card.
             voltage_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=chunk_voltage)
-            crossings_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=chunk_crossings)
-            spike_labels_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=chunk_labels)
 
-            compute_residual_kernel.set_arg(0, voltage_buffer) # location where chunk voltage is stored
-            compute_residual_kernel.set_arg(1, np.uint32(stop_index - start_index)) # length of chunk voltage array
-            compute_residual_kernel.set_arg(2, n_neighbor_chans) # Number of neighboring channels
-            compute_residual_kernel.set_arg(3, template_buffer) # location where our templates are stored
-            compute_residual_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of neurons (`rows` in templates)
-            compute_residual_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each channel of templates
-            compute_residual_kernel.set_arg(6, crossings_buffer) # Buffer of our spike indices
-            compute_residual_kernel.set_arg(7, spike_labels_buffer) # Buffer of our 0 indexed spike labels
-            compute_residual_kernel.set_arg(8, np.uint32(chunk_crossings.shape[0])) # Number of crossings
+            # Only get residual if there are spikes, else it's same as voltage
+            if chunk_crossings.shape[0] > 0:
+                crossings_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=chunk_crossings)
+                spike_labels_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=chunk_labels)
 
-            num_kernels = chunk_crossings.shape[0]
-            # Enqueue kernels in groups of max_compute_units * local_work_size
-            # Until we exceed num_kernels. On non-interactive systems, we could just
-            # enqueue `local_work_size * Integer(ceil(num_kernels / local_work_size))`
-            # but this can fail the watch-dog timeout on some Windows systems, forcing
-            # us to schedule in smaller units to let the operating system use the
-            # card
-            total_work_size_resid = np.uint32(resid_local_work_size * np.ceil(num_kernels / resid_local_work_size))
-            residual_events = []
-            n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
-            next_wait_event = None
-            for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
-                residual_event = cl.enqueue_nd_range_kernel(queue,
-                                       compute_residual_kernel,
-                                       (n_to_enqueue, ), (resid_local_work_size, ),
-                                       global_work_offset=(enqueue_step, ),
-                                       wait_for=next_wait_event)
-                next_wait_event = [residual_event]
+                compute_residual_kernel.set_arg(0, voltage_buffer) # location where chunk voltage is stored
+                compute_residual_kernel.set_arg(1, np.uint32(stop_index - start_index)) # length of chunk voltage array
+                compute_residual_kernel.set_arg(2, n_neighbor_chans) # Number of neighboring channels
+                compute_residual_kernel.set_arg(3, template_buffer) # location where our templates are stored
+                compute_residual_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of neurons (`rows` in templates)
+                compute_residual_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each channel of templates
+                compute_residual_kernel.set_arg(6, crossings_buffer) # Buffer of our spike indices
+                compute_residual_kernel.set_arg(7, spike_labels_buffer) # Buffer of our 0 indexed spike labels
+                compute_residual_kernel.set_arg(8, np.uint32(chunk_crossings.shape[0])) # Number of crossings
 
-            # Set up the binary pursuit OpenCL kernel
-            # We can process the voltage trace in small blocks (equal to the template width) by minimizing the RMSE
-            # at each interval. For a given index, i, we can add a spike for neuron, n,
-            # if:
-            #  1) addition of the spike reduces the log-likelihood, which is based
-            #     on the Pillow formula:
-            #       0.5 * sum((R).^2) - 0.5 * sum((R - template).^2)
-            #     where 'R' is the voltage residuals (all other spikes removed).
-            #       0.5 * sum(R.^2) - 0.5 * sum(R.^2) + 1 * sum(R .* template) - 0.5 * sum(template.^2)
-            #     which is equavalent to
-            #       sum(R .* template) - 0.5 * sum(template.^2)
-            #     where the last two terms can be computed without a dependence on index i.
-            #     NOTE: This formation assumes that the voltage has been scaled by 1/sqrt(sigma) where sigma
-            #     is the variance of the residual voltage with the majority of spikes removed. An alternative
-            #     definition (which is used here when the voltage has not been scaled) is:
-            #       sum(R .* template) - 0.5 * sum(template.^2)
-            #  2) the addition of the spike is the largest for the current neuron at
-            #     the current timepoint
-            #  3) this is the best addition within the template width for any other spike.
-            #     That is, we could not add add a spike at an index earlier (by the spike
-            #     template width) or later (by the spike template width) that would be
-            #     a better addition than the current spike.
+                num_kernels = chunk_crossings.shape[0]
+                # Enqueue kernels in groups of max_compute_units * local_work_size
+                # Until we exceed num_kernels. On non-interactive systems, we could just
+                # enqueue `local_work_size * Integer(ceil(num_kernels / local_work_size))`
+                # but this can fail the watch-dog timeout on some Windows systems, forcing
+                # us to schedule in smaller units to let the operating system use the
+                # card
+                total_work_size_resid = np.uint32(resid_local_work_size * np.ceil(num_kernels / resid_local_work_size))
+                residual_events = []
+                n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
+                next_wait_event = None
+                for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
+                    residual_event = cl.enqueue_nd_range_kernel(queue,
+                                           compute_residual_kernel,
+                                           (n_to_enqueue, ), (resid_local_work_size, ),
+                                           global_work_offset=(enqueue_step, ),
+                                           wait_for=next_wait_event)
+                    next_wait_event = [residual_event]
 
-            residual_voltage = np.empty(chunk_voltage.shape[0], dtype=np.float32)
-            cl.enqueue_copy(queue, residual_voltage, voltage_buffer, wait_for=residual_events) #dest, source
+                # Set up the binary pursuit OpenCL kernel
+                # We can process the voltage trace in small blocks (equal to the template width) by minimizing the RMSE
+                # at each interval. For a given index, i, we can add a spike for neuron, n,
+                # if:
+                #  1) addition of the spike reduces the log-likelihood, which is based
+                #     on the Pillow formula:
+                #       0.5 * sum((R).^2) - 0.5 * sum((R - template).^2)
+                #     where 'R' is the voltage residuals (all other spikes removed).
+                #       0.5 * sum(R.^2) - 0.5 * sum(R.^2) + 1 * sum(R .* template) - 0.5 * sum(template.^2)
+                #     which is equavalent to
+                #       sum(R .* template) - 0.5 * sum(template.^2)
+                #     where the last two terms can be computed without a dependence on index i.
+                #     NOTE: This formation assumes that the voltage has been scaled by 1/sqrt(sigma) where sigma
+                #     is the variance of the residual voltage with the majority of spikes removed. An alternative
+                #     definition (which is used here when the voltage has not been scaled) is:
+                #       sum(R .* template) - 0.5 * sum(template.^2)
+                #  2) the addition of the spike is the largest for the current neuron at
+                #     the current timepoint
+                #  3) this is the best addition within the template width for any other spike.
+                #     That is, we could not add add a spike at an index earlier (by the spike
+                #     template width) or later (by the spike template width) that would be
+                #     a better addition than the current spike.
 
+                residual_voltage = np.empty(chunk_voltage.shape[0], dtype=np.float32)
+                cl.enqueue_copy(queue, residual_voltage, voltage_buffer, wait_for=residual_events) #dest, source
+            else:
+                next_wait_event = None
+                residual_voltage = chunk_voltage
+                
             # Compute the template_sum_squared and bias terms
             spike_biases = np.zeros(templates.shape[0], dtype=np.float32)
             # Compute bias separately for each neuron
@@ -308,8 +314,9 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             # Delete stuff no longer needed for this chunk
             del residual_voltage
             del neighbor_bias
-            crossings_buffer.release()
-            spike_labels_buffer.release()
+            if chunk_crossings.shape[0] > 0:
+                crossings_buffer.release()
+                spike_labels_buffer.release()
 
             num_kernels = np.ceil(chunk_voltage.shape[0] / templates.shape[1])
             total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(num_kernels / pursuit_local_work_size))

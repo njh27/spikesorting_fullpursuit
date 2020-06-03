@@ -392,7 +392,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         return
     try:
         # Print this process' errors and output to a file
-        if not settings['test_flag']:
+        if not settings['test_flag'] and settings['log_dir'] is not None:
             # Move stdout to the log_dir file
             if sys.platform == 'win32':
                 sys.stdout = open(settings['log_dir'] + "\\SpikeSortItem" + str(work_item['ID']) + ".out", "w")
@@ -1010,7 +1010,7 @@ if __name__ == '__main__':
         SProbe = electrode.SingleElectrode(pl2_reader.info['timestamp_frequency'], voltage_array=filt_voltage)
     else:
         raise ValueError("Cannot determine which type of electrode to use")
-        
+
     SProbe.filter_band = spike_sort_args['filter_band']
     print("Start sorting")
     sort_data, work_items, sorter_info = spike_sort_parallel(SProbe, **spike_sort_args)

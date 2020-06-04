@@ -12,7 +12,7 @@ setup(name='SpikeSorting',
       author='Nathan Hall',
       author_email='nathan.hall@duke.edu',
       url='https://',
-      packages=['src', 'test'],
+      packages=['spikesorting'],
       ext_modules=cythonize(ext, annotate=False, language_level=3),
       include_dirs=[np.get_include()],
       requires=pkg_req

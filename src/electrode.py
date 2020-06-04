@@ -194,7 +194,7 @@ class Dense32Probe(AbstractProbe):
         return np.int64(neighbors)
 
 
-class BoydenLab32ChanProbe(AbstractProbe):
+class DistanceBasedProbe(AbstractProbe):
 
     def __init__(self, sampling_rate, xy_layout, voltage_array=None):
         AbstractProbe.__init__(self, sampling_rate, 32, fname_voltage=None, voltage_array=voltage_array)

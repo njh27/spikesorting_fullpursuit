@@ -917,10 +917,7 @@ def spike_sort_parallel(Probe, **kwargs):
 
 
 if __name__ == '__main__':
-    import os
     import sys
-    from shutil import rmtree
-
     # python.exe spikesorting_python\src\parallel\spikesorting_parallel.py C:\Nate\LearnDirTunePurk_Yoda_46.pl2 C:\Nate\sorted_yoda_46.pickle
 
     proc = psutil.Process()  # get self pid
@@ -930,91 +927,87 @@ if __name__ == '__main__':
     mp.set_start_method('spawn', force=True)
     __spec__ = "ModuleSpec(name='builtins', loader=<class '_frozen_importlib.BuiltinImporter'>)"
 
-    fname_PL2 = sys.argv[1]
-    if len(sys.argv) < 2:
-        last_slash = [pos for pos, char in enumerate(fname_PL2) if char == '\\'][-1]+1
-        first_ = [pos for pos, char in enumerate(fname_PL2) if char == '_'][0]+1
-        save_fname = fname_PL2[0:last_slash] + 'sorted_' + fname_PL2[first_:-4]
-    else:
-        save_fname = sys.argv[2]
-    if not '.pickle' in save_fname[-7:]:
-        save_fname = save_fname + '.pickle'
-    log_dir = save_fname[0:-7] + '_std_logs'
-    # if os.path.exists(log_dir):
-    #     rmtree(log_dir)
-    #     time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
-    # os.makedirs(log_dir)
-    print("Sorting data from PL2 file: ", fname_PL2)
-    print("Output will be saved as: ", save_fname)
-
-    """ Using a filter band less than about 300 Hz for high pass and/or less than
-    about 6000 Hz for low pass can really influence the ZCA and ruin everything.
-    A good clip width usually has little discontinuity but not excessive.
-    sigma is usually better either high or low - about 2.75-3.25 or 4.0-4.5+.
-    Basically if you get an up and down noise cluster out, then sorter can
-    distinguish the noise from spikes. Otherwise the noise is in one of the
-    clusters. With high thresholds you will want binary pursuit enable to find
-    the remaining missed spikes.
-    """
-    # Run 49 at sigma 4, width 6-8 fitler 1000-8000
-    spike_sort_args = {'sigma': 4.,
-                       'clip_width': [-6e-4, 8e-4], 'filter_band': (1000, 8000),
-                       'p_value_cut_thresh': 0.05, 'check_components': None,
-                       'max_components': 10,
-                       'min_firing_rate': 2., 'do_binary_pursuit': True,
-                       'segment_duration': 300,
-                       'segment_overlap': 150,
-                       'add_peak_valley': False, 'do_branch_PCA': True,
-                       'use_GPU': True, 'max_gpu_memory': None,
-                       'save_1_cpu': False, 'use_rand_init': True,
-                       'cleanup_neurons': False,
-                       'verbose': True, 'test_flag': False, 'log_dir': log_dir,
-                       'do_ZCA_transform': True}
-
-    # use_voltage_file = 'C:\\Users\\plexon\\Documents\\Python Scripts\\voltage_49_1min'
-    use_voltage_file = None
-
-    if use_voltage_file is None:
-        spike_sort_args['do_ZCA_transform'] = True
-    else:
-        spike_sort_args['do_ZCA_transform'] = False
-
-    if spike_sort_args['cleanup_neurons']:
-        print("CLEANUP IS ON WON'T BE ABLE TO TEST !")
-    sys.path.append('c:\\users\\plexon\\documents\\python scripts')
-    import PL2_read
-    pl2_reader = PL2_read.PL2Reader(fname_PL2)
-
-    if use_voltage_file is None or not use_voltage_file:
-        if not spike_sort_args['do_ZCA_transform']:
-            print("!!! WARNING !!!: ZCA transform is OFF but data is being loaded from PL2 file.")
-        print("Reading voltage from file")
-        raw_voltage = load_voltage_parallel(pl2_reader, 'SPKC')
-        # t_t_start = int(40000 * 60 * 10)
-        # t_t_stop =  int(40000 * 60 * 15)
-        if raw_voltage.shape[0] == 32:
-            SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=raw_voltage)#[:, t_t_start:t_t_stop])
-        elif raw_voltage.shape[0] == 1:
-            SProbe = electrode.SingleElectrode(pl2_reader.info['timestamp_frequency'], voltage_array=raw_voltage)
-        else:
-            raise ValueError("Cannot determine which type of electrode to use")
-    else:
-        with open(use_voltage_file, 'rb') as fp:
-            voltage_array = pickle.load(fp)
-        SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=voltage_array)
-
-    filt_voltage = filter_parallel(SProbe, low_cutoff=spike_sort_args['filter_band'][0], high_cutoff=spike_sort_args['filter_band'][1])
-    if filt_voltage.shape[0] == 32:
-        SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=filt_voltage)
-    elif filt_voltage.shape[0] == 1:
-        SProbe = electrode.SingleElectrode(pl2_reader.info['timestamp_frequency'], voltage_array=filt_voltage)
-    else:
-        raise ValueError("Cannot determine which type of electrode to use")
-
-    SProbe.filter_band = spike_sort_args['filter_band']
-    print("Start sorting")
-    sort_data, work_items, sorter_info = spike_sort_parallel(SProbe, **spike_sort_args)
-
-    print("Saving neurons file as", save_fname)
-    with open(save_fname, 'wb') as fp:
-        pickle.dump((sort_data, work_items, sorter_info), fp, protocol=-1)
+    # fname_PL2 = sys.argv[1]
+    # if len(sys.argv) < 2:
+    #     last_slash = [pos for pos, char in enumerate(fname_PL2) if char == '\\'][-1]+1
+    #     first_ = [pos for pos, char in enumerate(fname_PL2) if char == '_'][0]+1
+    #     save_fname = fname_PL2[0:last_slash] + 'sorted_' + fname_PL2[first_:-4]
+    # else:
+    #     save_fname = sys.argv[2]
+    # if not '.pickle' in save_fname[-7:]:
+    #     save_fname = save_fname + '.pickle'
+    # log_dir = save_fname[0:-7] + '_std_logs' # Set default log name to match save name
+    # print("Sorting data from PL2 file: ", fname_PL2)
+    # print("Output will be saved as: ", save_fname)
+#
+#     """ Using a filter band less than about 300 Hz for high pass and/or less than
+#     about 6000 Hz for low pass can really influence the ZCA and ruin everything.
+#     A good clip width usually has little discontinuity but not excessive.
+#     sigma is usually better either high or low - about 2.75-3.25 or 4.0-4.5+.
+#     Basically if you get an up and down noise cluster out, then sorter can
+#     distinguish the noise from spikes. Otherwise the noise is in one of the
+#     clusters. With high thresholds you will want binary pursuit enable to find
+#     the remaining missed spikes.
+#     """
+#     # Run 49 at sigma 4, width 6-8 fitler 1000-8000
+#     spike_sort_args = {'sigma': 4.,
+#                        'clip_width': [-6e-4, 8e-4], 'filter_band': (1000, 8000),
+#                        'p_value_cut_thresh': 0.05, 'check_components': None,
+#                        'max_components': 10,
+#                        'min_firing_rate': 2., 'do_binary_pursuit': True,
+#                        'segment_duration': 300,
+#                        'segment_overlap': 150,
+#                        'add_peak_valley': False, 'do_branch_PCA': True,
+#                        'use_GPU': True, 'max_gpu_memory': None,
+#                        'save_1_cpu': False, 'use_rand_init': True,
+#                        'cleanup_neurons': False,
+#                        'verbose': True, 'test_flag': False, 'log_dir': log_dir,
+#                        'do_ZCA_transform': True}
+#
+#     # use_voltage_file = 'C:\\Users\\plexon\\Documents\\Python Scripts\\voltage_49_1min'
+#     use_voltage_file = None
+#
+#     if use_voltage_file is None:
+#         spike_sort_args['do_ZCA_transform'] = True
+#     else:
+#         spike_sort_args['do_ZCA_transform'] = False
+#
+#     if spike_sort_args['cleanup_neurons']:
+#         print("CLEANUP IS ON WON'T BE ABLE TO TEST !")
+#     sys.path.append('c:\\users\\plexon\\documents\\python scripts')
+#     import PL2_read
+#     pl2_reader = PL2_read.PL2Reader(fname_PL2)
+#
+#     if use_voltage_file is None or not use_voltage_file:
+#         if not spike_sort_args['do_ZCA_transform']:
+#             print("!!! WARNING !!!: ZCA transform is OFF but data is being loaded from PL2 file.")
+#         print("Reading voltage from file")
+#         raw_voltage = load_voltage_parallel(pl2_reader, 'SPKC')
+#         # t_t_start = int(40000 * 60 * 10)
+#         # t_t_stop =  int(40000 * 60 * 15)
+#         if raw_voltage.shape[0] == 32:
+#             SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=raw_voltage)#[:, t_t_start:t_t_stop])
+#         elif raw_voltage.shape[0] == 1:
+#             SProbe = electrode.SingleElectrode(pl2_reader.info['timestamp_frequency'], voltage_array=raw_voltage)
+#         else:
+#             raise ValueError("Cannot determine which type of electrode to use")
+#     else:
+#         with open(use_voltage_file, 'rb') as fp:
+#             voltage_array = pickle.load(fp)
+#         SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=voltage_array)
+#
+#     filt_voltage = filter_parallel(SProbe, low_cutoff=spike_sort_args['filter_band'][0], high_cutoff=spike_sort_args['filter_band'][1])
+#     if filt_voltage.shape[0] == 32:
+#         SProbe = electrode.SProbe16by2(pl2_reader.info['timestamp_frequency'], voltage_array=filt_voltage)
+#     elif filt_voltage.shape[0] == 1:
+#         SProbe = electrode.SingleElectrode(pl2_reader.info['timestamp_frequency'], voltage_array=filt_voltage)
+#     else:
+#         raise ValueError("Cannot determine which type of electrode to use")
+#
+#     SProbe.filter_band = spike_sort_args['filter_band']
+#     print("Start sorting")
+#     sort_data, work_items, sorter_info = spike_sort_parallel(SProbe, **spike_sort_args)
+#
+#     print("Saving neurons file as", save_fname)
+#     with open(save_fname, 'wb') as fp:
+#         pickle.dump((sort_data, work_items, sorter_info), fp, protocol=-1)

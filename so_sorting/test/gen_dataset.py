@@ -1,10 +1,10 @@
 import numpy as np
 from scipy import signal
 from scipy import stats
-from spikesorting_python.src import electrode
-from spikesorting_python.src import spikesorting
-from spikesorting_python.src.parallel import spikesorting_parallel
-from spikesorting_python.src import consolidate
+from so_sorting.src import electrode
+from so_sorting.src import spikesorting
+from so_sorting.src.parallel import spikesorting_parallel
+from so_sorting.src import consolidate
 import matplotlib.pyplot as plt
 
 

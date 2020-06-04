@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.signal import fftconvolve
 from scipy import stats
-from spikesorting_python.src.parallel import segment_parallel
-from spikesorting_python.src import consolidate
+from so_sorting.src import segment
+from so_sorting.src import consolidate
 
 
 
@@ -52,7 +52,7 @@ def reassign_simultaneous_spiking_clusters(clips, neuron_labels, event_indices, 
     # by iterating over nested loops like the 'k' loop below, but it is not clear
     # if this would be useful.
 
-    templates, template_labels = segment_parallel.calculate_templates(clips, neuron_labels)
+    templates, template_labels = segment.calculate_templates(clips, neuron_labels)
     if template_labels.size < 3:
         # We can't search for combined combinations without at least 3 clusters
         return neuron_labels
@@ -206,7 +206,7 @@ def remove_overlapping_spikes(event_indices, clips, neuron_labels, templates,
 #     # Find overlapping spikes, excluding equal values
 #     overlapping_spike_bool = consolidate.find_overlapping_spike_bool(event_indices, event_indices, max_samples=max_samples, except_equal=True)
 #     # Also find any duplicate values and keep only one of them
-#     repeats_bool = np.ones_like(event_indices, dtype='bool')
+#     repeats_bool = np.ones(event_indices.size, dtype='bool')
 #     repeats_bool[np.unique(event_indices, return_index=True)[1]] = False
 #     removed_index = np.logical_or(overlapping_spike_bool, repeats_bool)
 #     event_indices = event_indices[~removed_index]
@@ -214,9 +214,9 @@ def remove_overlapping_spikes(event_indices, clips, neuron_labels, templates,
 #     return event_indices, removed_index
 
 
-def find_multichannel_max_neuron(probe_dict, neighbors, neighbor_voltage,
-        check_time, indices, labels, templates, template_labels, chan_win,
-        spike_biases, template_error, new_indices, new_labels):
+def find_multichannel_max_neuron(Probe, channel, neighbors, check_time, indices,
+        labels, templates, template_labels, chan_win, spike_biases,
+        template_error, new_indices, new_labels):
     """ This assumes templates are not normalized and can thus be directly
     subtracted from voltage. This function could be far more efficient if we
     tracked our current location in the spike event indices array instead
@@ -226,7 +226,7 @@ def find_multichannel_max_neuron(probe_dict, neighbors, neighbor_voltage,
     # Window big enough to cover all spikes possibly overlapping with check_time
     min_t = samples_per_chan + int(np.abs(chan_win[0]))
     max_t = samples_per_chan + int(chan_win[1])
-    if (probe_dict['n_samples'] < (check_time + max_t)) or (check_time < min_t):
+    if (Probe.n_samples < (check_time + max_t)) or (check_time < min_t):
         return np.zeros(template_labels.size, dtype=np.float32)
     residual_window = [-1*min_t, max_t]
 
@@ -235,7 +235,7 @@ def find_multichannel_max_neuron(probe_dict, neighbors, neighbor_voltage,
     spike_times = np.zeros((residual_window[1] - residual_window[0]) + 1, dtype=np.bool)
     events_in_window = np.logical_and(indices >= check_time + residual_window[0], indices <= check_time + residual_window[1])
     new_events_in_window = [True if (x >= check_time + residual_window[0] and x <= check_time + residual_window[1]) else False for x in new_indices]
-    residual_voltage = np.copy(np.float32(neighbor_voltage[:, (check_time + residual_window[0]):(check_time + residual_window[1] + 1)]))
+    residual_voltage = np.copy(np.float32(Probe.get_voltage(neighbors, slice(check_time + residual_window[0], check_time + residual_window[1] + 1, 1))))
 
     for label_ind, temp in enumerate(templates):
         curr_spikes = indices[np.logical_and(events_in_window, labels == template_labels[label_ind])]
@@ -266,8 +266,8 @@ def find_multichannel_max_neuron(probe_dict, neighbors, neighbor_voltage,
     return delta_likelihood
 
 
-def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
-        neighbor_voltage, neuron_labels, event_indices, clip_width):
+def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
+        clip_width):
     """
     This function is slow and not efficient in time or memory consumption. The
     GPU version should be preferred.
@@ -285,10 +285,11 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
     channels is still the correct bias term. This would effectively eliminate
     the master channel threshold and give the same results as the GPU verison.
     However, this will only increase the computation time of this function."""
+    neighbors = np.array(Probe.get_neighbors(channel)).astype(np.int64)
     # Need to find the indices of the current channel within the multichannel template
-    chan_win, clip_width = segment_parallel.time_window_to_samples(clip_width, probe_dict['sampling_rate'])
-    _, chan_neighbor_ind, clip_samples, samples_per_chan, curr_chan_inds = segment_parallel.get_windows_and_indices(
-            clip_width, probe_dict['sampling_rate'], channel, neighbors)
+    chan_win, clip_width = segment.time_window_to_samples(clip_width, Probe.sampling_rate)
+    _, chan_neighbor_ind, clip_samples, samples_per_chan, curr_chan_inds = segment.get_windows_and_indices(
+            clip_width, Probe.sampling_rate, channel, neighbors)
     default_multi_check = True if neighbors.size > 1 else False
     # Remove any spikes within 1 clip width of each other
     event_order = np.argsort(event_indices)
@@ -296,34 +297,34 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
     neuron_labels = neuron_labels[event_order]
 
     # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
-    multi_clips, valid_inds = segment_parallel.get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width=clip_width)
-    event_indices, neuron_labels = segment_parallel.keep_valid_inds([event_indices, neuron_labels], valid_inds)
+    multi_clips, valid_inds = segment.get_multichannel_clips(Probe, neighbors, event_indices, clip_width=clip_width)
+    event_indices, neuron_labels = segment.keep_valid_inds([event_indices, neuron_labels], valid_inds)
     multi_clips = np.float32(multi_clips)
 
-    multi_templates, template_labels = segment_parallel.calculate_templates(multi_clips, neuron_labels)
+    multi_templates, template_labels = segment.calculate_templates(multi_clips, neuron_labels)
 
     keep_bool = remove_overlapping_spikes(event_indices, multi_clips, neuron_labels, multi_templates,
                                   template_labels, clip_samples[1]-clip_samples[0])
     event_indices = event_indices[keep_bool]
     neuron_labels = neuron_labels[keep_bool]
     multi_clips = multi_clips[keep_bool, :]
-    multi_templates, template_labels = segment_parallel.calculate_templates(multi_clips, neuron_labels)
+    multi_templates, template_labels = segment.calculate_templates(multi_clips, neuron_labels)
 
     multi_templates = [np.float32(x) for x in multi_templates]
     clips = multi_clips[:, curr_chan_inds]
     templates = [t[curr_chan_inds] for t in multi_templates]
 
     # Compute residual voltage by subtracting all known spikes
-    spike_times = np.zeros(probe_dict['n_samples'], dtype='byte')
+    spike_times = np.zeros(Probe.n_samples, dtype='byte')
     spike_biases = np.zeros((template_labels.shape[0], neighbors.size), dtype=np.float32)
     template_error = np.zeros((template_labels.size, neighbors.size), dtype=np.float32)
-    neighbor_bias = np.zeros((template_labels.shape[0], probe_dict['n_samples']), dtype=np.float32)
+    neighbor_bias = np.zeros((template_labels.shape[0], Probe.n_samples), dtype=np.float32)
     # Looping here is convoluted trying to get residual for main channel last
     for chan_ind, chan in enumerate(neighbors):
         if chan == channel:
             # Wait to do main channel last so we can keep residual voltage
             continue
-        residual_voltage = np.copy(np.float32(neighbor_voltage[chan_ind, :]))
+        residual_voltage = np.copy(np.float32(Probe.get_voltage(chan)))
         temp_win = [chan_ind * samples_per_chan,
                     chan_ind * samples_per_chan + samples_per_chan]
         n = 0
@@ -343,7 +344,7 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
             template_error[n, chan_ind] = -0.5 * np.dot(
                 temp[temp_win[0]:temp_win[1]], temp[temp_win[0]:temp_win[1]])
             n += 1
-    residual_voltage = np.copy(np.float32(neighbor_voltage[chan_neighbor_ind, :]))
+    residual_voltage = np.copy(np.float32(Probe.get_voltage(channel)))
     n = 0
     for temp_label, temp in zip(template_labels, multi_templates):
         spike_times[:] = 0  # Reset to zero each iteration
@@ -406,9 +407,8 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
                     if not single_chan_peaks[ct]:
                         continue
                     check_time = int(ct + t + chan_win[0])
-                    delta_likelihood[:, ct] = find_multichannel_max_neuron(probe_dict,
-                                        neighbors, neighbor_voltage, check_time,
-                                        event_indices, neuron_labels,
+                    delta_likelihood[:, ct] = find_multichannel_max_neuron(Probe, channel,
+                                        neighbors, check_time, event_indices, neuron_labels,
                                         multi_templates, template_labels,
                                         chan_win, spike_biases, template_error,
                                         new_event_indices, new_event_labels)

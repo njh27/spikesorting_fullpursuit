@@ -7,14 +7,14 @@ import mkl
 import numpy as np
 import multiprocessing as mp
 import psutil
-from spikesorting_python.src.parallel import segment_parallel
-from spikesorting_python.src import sort
-from spikesorting_python.src.parallel import overlap_parallel
-from spikesorting_python.src.parallel import binary_pursuit_parallel
-from spikesorting_python.src import consolidate
-from spikesorting_python.src import electrode
-from spikesorting_python.src import preprocessing
-from spikesorting_python.src import consolidate
+from so_sorting.src.parallel import segment_parallel
+from so_sorting.src import sort
+from so_sorting.src.parallel import overlap_parallel
+from so_sorting.src.parallel import binary_pursuit_parallel
+from so_sorting.src import consolidate
+from so_sorting.src import electrode
+from so_sorting.src import preprocessing
+from so_sorting.src import consolidate
 from scipy import signal
 import time
 from traceback import print_tb
@@ -918,7 +918,7 @@ def spike_sort_parallel(Probe, **kwargs):
 
 if __name__ == '__main__':
     import sys
-    # python.exe spikesorting_python\src\parallel\spikesorting_parallel.py C:\Nate\LearnDirTunePurk_Yoda_46.pl2 C:\Nate\sorted_yoda_46.pickle
+    # python.exe spikesorting\src\parallel\spikesorting_parallel.py C:\Nate\LearnDirTunePurk_Yoda_46.pl2 C:\Nate\sorted_yoda_46.pickle
 
     proc = psutil.Process()  # get self pid
     proc.cpu_affinity(cpus=list(range(psutil.cpu_count())))

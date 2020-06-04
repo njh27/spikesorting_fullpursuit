@@ -1,10 +1,10 @@
 import numpy as np
-from spikesorting_python.src import segment
-from spikesorting_python.src import preprocessing
-from spikesorting_python.src import sort
-from spikesorting_python.src import overlap
-from spikesorting_python.src import binary_pursuit
-from spikesorting_python.src import consolidate
+from so_sorting.src import segment
+from so_sorting.src import preprocessing
+from so_sorting.src import sort
+from so_sorting.src import overlap
+from so_sorting.src import binary_pursuit
+from so_sorting.src import consolidate
 import warnings
 import copy
 
@@ -418,7 +418,7 @@ def spike_sort(Probe, **kwargs):
                          'min_firing_rate': 1, do_binary_pursuit=True,
                          'cleanup_neurons': False, 'verbose': True}
     Probe = TestProbe(samples_per_second, voltage_array, num_channels=4)
-    neurons = SpikeSorting.spike_sort(Probe, **spike_sort_kwargs)
+    neurons = so_sorting.spike_sort(Probe, **spike_sort_kwargs)
     """
     # Check that Probe neighborhood function is appropriate. Otherwise it can
     # generate seemingly mysterious errors

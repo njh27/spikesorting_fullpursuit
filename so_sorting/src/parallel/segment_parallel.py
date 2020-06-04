@@ -1,8 +1,8 @@
 import numpy as np
 from scipy import signal
 import copy
-from spikesorting_python.src import sort
-from spikesorting_python.src import consolidate
+from so_sorting.src import sort
+from so_sorting.src import consolidate
 
 
 

@@ -1,8 +1,8 @@
 import numpy as np
-from spikesorting_python.src import segment
-from spikesorting_python.src.sort import merge_clusters
-from spikesorting_python.src import preprocessing
-from spikesorting_python.src.c_cython import sort_cython
+from so_sorting.src import segment
+from so_sorting.src.sort import merge_clusters
+from so_sorting.src import preprocessing
+from so_sorting.src.c_cython import sort_cython
 from scipy import stats
 from scipy.optimize import nnls, lsq_linear
 import copy

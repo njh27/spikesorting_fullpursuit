@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import signal
-from spikesorting_python.src import preprocessing
+from so_sorting.src import preprocessing
 
 
 """ Translation of David's Julia code into Python. """

@@ -1,52 +1,37 @@
 import numpy as np
-from scipy import signal
+from scipy.signal import filtfilt, butter
 from so_sorting.src import preprocessing
 
-
-""" Translation of David's Julia code into Python. """
 
 
 class AbstractProbe(object):
     """ An abstract probe encapsulates a large number of recording devices.
     Each of the instantiations of this abstract type can have a number of
-    electrodes and/or a geometry.
+    electrodes. Geometry must be specified for each subclass using the
+    'get_neighbors' method specification.
     All AbstractProbes must implement several functions:
      sampling_rate() returns the sampling rate of the file
      num_electrodes() which returns the number of total electrodes (N)
-     voltage(, [channel]) which returns the voltage trace for a given electrode
+     voltage_array which is an N x samples numpy array of raw recording.
      get_neighbors(index) # Returns a list of neighboring channels, which must
-     include the input channel! """
+     include the input channel and be a numpy array of integers! """
 
-    def __init__(self, sampling_rate, num_electrodes, fname_voltage=None, voltage_array=None):
+    def __init__(self, sampling_rate, num_electrodes, voltage_array=None):
         self.sampling_rate = int(sampling_rate)
         self.num_electrodes = num_electrodes
-        # self.reader = SpikeReader
-        self.fname_voltage = None
         self.filter_band = [None, None]
 
-        if voltage_array is not None and fname_voltage is None:
-            # If voltage array is given use it even if a filename is input
-            if not isinstance(voltage_array, np.ndarray):
-                raise ValueError("Input voltage_array must be numpy ndarray")
+        if voltage_array is not None:
             self.voltage = voltage_array
-        elif fname_voltage is not None and voltage_array is None:
-            # Only a filename is given so memory map it
-            if fname_voltage[-4:] != ".npy":
-                fname_voltage = fname_voltage + ".npy"
-            self.voltage = np.load(fname_voltage, mmap_mode='r+', allow_pickle=False, fix_imports=False)
-            self.fname_voltage = fname_voltage
-        elif voltage_array is not None and fname_voltage is not None:
-            raise ValueError("Input voltage must be only one of fname_voltage OR voltage_array, but not both.")
         else:
-            # Set placeholder voltage with correct number of electrode rows and dims
+            # Set placeholder voltage with correct number of electrode rows
             # Can be overwritten later with set_new_voltage()
             self.voltage = np.empty((num_electrodes, 0))
 
         # Voltage array must have one row for each channel with columns as samples
-        if self.voltage.ndim != 2:
+        if self.voltage.ndim == 1:
+            # One dimensional voltage must be converted to 2 dimensions
             self.voltage = np.expand_dims(self.voltage, 0)
-        if self.num_electrodes != self.voltage.shape[0]:
-            self.voltage = self.voltage.T
         if (self.num_electrodes != self.voltage.shape[0]) or (self.voltage.ndim < 1):
             raise ValueError("None of the voltage data dimensions match the input number of electrodes")
         self.n_samples = self.voltage.shape[1]
@@ -58,10 +43,8 @@ class AbstractProbe(object):
             raise ValueError("Input new_voltage_array must be numpy ndarray")
         self.voltage = new_voltage_array
         # Voltage array must have one row for each channel with columns as samples
-        if self.voltage.ndim != 2:
+        if self.voltage.ndim == 1:
             self.voltage = np.expand_dims(self.voltage, 0)
-        if self.num_electrodes != self.voltage.shape[0]:
-            self.voltage = self.voltage.T
         if (self.num_electrodes != self.voltage.shape[0]) or (self.voltage.ndim < 1):
             raise ValueError("None of the voltage data dimensions match the input number of electrodes")
         self.n_samples = self.voltage.shape[1]
@@ -83,34 +66,38 @@ class AbstractProbe(object):
         self.voltage[channels, time_samples] = new_voltage
 
     def get_neighbors(channel):
+        """ Should be defined by any subclass electrode/probe to account for
+        their specific geometry. Must return numpy array of integers. """
         pass
 
-    def bandpass_filter(self, low_cutoff=300, high_cutoff=6000):
-
+    def bandpass_filter(self, low_cutoff=1000, high_cutoff=8000):
+        """ One pole bandpass forward backward butterworth filter on each channel. """
         if self.filter_band[0] is not None and self.filter_band[1] is not None:
             if low_cutoff <= self.filter_band[0] and high_cutoff >= self.filter_band[1]:
                 # Don't keep doing costly filtering if it won't have any effect
+                print("Voltage has already been filtered within input frequency band. Skipping filtering.")
                 return
         low_cutoff = low_cutoff / (self.sampling_rate / 2)
         high_cutoff = high_cutoff / (self.sampling_rate / 2)
-        b_filt, a_filt = signal.butter(1, [low_cutoff, high_cutoff], btype='band')
+        b_filt, a_filt = butter(1, [low_cutoff, high_cutoff], btype='band')
         for chan in range(0, self.num_electrodes):
-            self.set_voltage(chan, signal.filtfilt(b_filt, a_filt, self.get_voltage(chan), axis=0, padlen=None))
+            self.set_voltage(chan, filtfilt(b_filt, a_filt, self.get_voltage(chan), axis=0, padlen=None))
 
+        # Update Probe filter band values
         if self.filter_band[0] is None:
-            self.filter_band[0] = -np.inf
-        if low_cutoff > self.filter_band[0]:
+            self.filter_band[0] = low_cutoff
+        elif low_cutoff > self.filter_band[0]:
             self.filter_band[0] = low_cutoff
         if self.filter_band[1] is None:
-            self.filter_band[1] = np.inf
-        if high_cutoff < self.filter_band[1]:
+            self.filter_band[1] = high_cutoff
+        elif high_cutoff < self.filter_band[1]:
             self.filter_band[1] = high_cutoff
 
 
 class SProbe16by2(AbstractProbe):
 
-    def __init__(self, sampling_rate, fname_voltage=None, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 32, fname_voltage=fname_voltage, voltage_array=voltage_array)
+    def __init__(self, sampling_rate, voltage_array=None):
+        AbstractProbe.__init__(self, sampling_rate, 32, voltage_array=voltage_array)
 
     def get_neighbors(self, channel):
         # These are organized into stereotrodes. Our neighbors are the channels on
@@ -131,8 +118,8 @@ class SProbe16by2(AbstractProbe):
 
 class SingleElectrode(AbstractProbe):
 
-    def __init__(self, sampling_rate, fname_voltage=None, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 1, fname_voltage=fname_voltage, voltage_array=voltage_array)
+    def __init__(self, sampling_rate, voltage_array=None):
+        AbstractProbe.__init__(self, sampling_rate, 1, voltage_array=voltage_array)
 
     def get_neighbors(self, channel):
         if channel > self.num_electrodes - 1 or channel < 0:
@@ -143,8 +130,8 @@ class SingleElectrode(AbstractProbe):
 
 class SingleTetrode(AbstractProbe):
 
-    def __init__(self, sampling_rate, fname_voltage=None, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 4, fname_voltage=fname_voltage, voltage_array=voltage_array)
+    def __init__(self, sampling_rate, voltage_array=None):
+        AbstractProbe.__init__(self, sampling_rate, 4, voltage_array=voltage_array)
 
     def get_neighbors(self, channel):
         # These are organized into stereotrodes. Our neighbors are the channels on
@@ -159,45 +146,13 @@ class SingleTetrode(AbstractProbe):
         return np.int64(neighbors)
 
 
-class Dense32Probe(AbstractProbe):
-
-    def __init__(self, sampling_rate, fname_voltage=None, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 32, fname_voltage=fname_voltage, voltage_array=voltage_array)
-
-    def get_neighbors(self, channel):
-
-        if channel > self.num_electrodes - 1 or channel < 0:
-            raise ValueError("Invalid electrode channel")
-
-        middle_channel_numbers = [22, 9, 23, 8, 17, 14, 16, 15, 30, 1, 31, 0]
-        coordinates = []
-        for row in range(0, len(middle_channel_numbers)):
-            coordinates.append([0, 25*row])
-        left_channel_numbers = [29, 28, 18, 27, 19, 26, 20, 25, 21, 24]
-        for row in range(0, len(left_channel_numbers)):
-            coordinates.append([-18, 25*row + 12.5])
-        right_channel_numbers = [2, 3, 13, 4, 12, 5, 11, 6, 10, 7]
-        for row in range(0, len(right_channel_numbers)):
-            coordinates.append([18, 25*row + 12.5])
-        coordinates = np.array(coordinates)
-        all_channel_numbers = middle_channel_numbers
-        all_channel_numbers.extend(left_channel_numbers)
-        all_channel_numbers.extend(right_channel_numbers)
-        all_channel_numbers = np.array(all_channel_numbers)
-
-        distance_mat = np.empty((coordinates.shape[0], coordinates.shape[0]))
-        for xy in range(coordinates.shape[0]):
-            distance_mat[xy, :] = np.sqrt(np.sum((coordinates - coordinates[xy, :]) ** 2, axis=1))
-
-        neighbors = all_channel_numbers[distance_mat[np.argwhere(all_channel_numbers == channel)[0][0], :] <= 50]
-
-        return np.int64(neighbors)
-
-
 class DistanceBasedProbe(AbstractProbe):
 
-    def __init__(self, sampling_rate, xy_layout, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 32, fname_voltage=None, voltage_array=voltage_array)
+    def __init__(self, sampling_rate, num_electrodes, xy_layout, voltage_array=None):
+        """ xy_layout is 2D numpy array where each row represents its
+        corresonding electrode number and each column gives the x, y coordinates
+        of that electrode in micrometers. """
+        AbstractProbe.__init__(self, sampling_rate, num_electrodes, voltage_array=voltage_array)
 
         self.distance_mat = np.zeros((xy_layout.shape[0], xy_layout.shape[0]))
         for n_trode in range(0, xy_layout.shape[0]):
@@ -207,142 +162,23 @@ class DistanceBasedProbe(AbstractProbe):
                 self.distance_mat[n_pair, n_trode] = self.distance_mat[n_trode, n_pair]
 
     def get_neighbors(self, channel):
+        """ Neighbors returned as all electrodes with 75 microns of input channel. """
         if channel > self.num_electrodes - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
-        # neighbors = []
-        # neighbors.append(np.flatnonzero(self.distance_mat[channel, :] == 0))
-        # rings = np.arange(50, 125, 50)
-        # tol = 5
-        # for r in rings:
-        #
-        #     neighbors.append(np.flatnonzero(np.logical_and(self.distance_mat[channel, :] <= r+tol, self.distance_mat[channel, :] >= r-tol)))
-        # neighbors = np.hstack(neighbors)
-
         neighbors = np.flatnonzero(self.distance_mat[channel, :] < 75)
         neighbors.sort()
         return np.int64(neighbors)
 
 
-class Dense128Probe(AbstractProbe):
-
-    def __init__(self, sampling_rate, fname_voltage=None, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 128, fname_voltage=fname_voltage, voltage_array=voltage_array)
-
-    def get_neighbors(self, channel):
-
-        if channel > self.num_electrodes - 1 or channel < 0:
-            raise ValueError("Invalid electrode channel")
-
-        all_channel_numbers = [ 20,  16,  23,  17,  22,  19,  25,  18,  24,  21,  27,  15,  26,
-        14,  29,  13,  28,  12,  31,  11,  30,  10,  33,   9,  32,   8,
-        35,   7,  34,   6,  37,   5,  36,   4,  39,   3,  57,  58,  59,
-        60,  61,  62,  63,   0,   1,   2,  38,  56,  41,  55,  40,  54,
-        43,  53,  42,  52,  45,  51,  44,  50,  47,  49,  46,  48, 110,
-        112, 111, 113, 108, 114,  81,  79,  80,  78,  83,  77,  82,  76,
-        85,  75,  84,  74,  65,  64,  66,  67,  68,  69,  70,  71,  72,
-        73,  87, 127,  86, 126,  89, 125,  88, 124,  91, 123,  90, 122,
-        93, 121,  92, 120,  95, 119,  94, 118,  97, 117,  96, 116,  99,
-        115,  98, 105, 101, 104, 100, 107, 103, 106, 102, 109]
-        coordinates = []
-        for y in range(0, 32):
-            for x in range(0, 4):
-                coordinates.append([x * 22.5, -y * 22.5])
-        coordinates = np.array(coordinates)
-        all_channel_numbers = np.array(all_channel_numbers)
-
-        distance_mat = np.empty((coordinates.shape[0], coordinates.shape[0]))
-        for xy in range(coordinates.shape[0]):
-            distance_mat[xy, :] = np.sqrt(np.sum((coordinates - coordinates[xy, :]) ** 2, axis=1))
-
-        neighbors = all_channel_numbers[distance_mat[np.argwhere(all_channel_numbers == channel)[0][0], :] <= 40]
-
-        return np.int64(neighbors.sort())
-
-
 class SProbe24by1(AbstractProbe):
 
-    def __init__(self, sampling_rate, fname_voltage=None, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 24, fname_voltage=fname_voltage, voltage_array=voltage_array)
+    def __init__(self, sampling_rate, voltage_array=None):
+        AbstractProbe.__init__(self, sampling_rate, 24, voltage_array=voltage_array)
 
     def get_neighbors(self, channel):
-        # These are organized into stereotrodes. Our neighbors are the channels on
-        # our same stereotrode, the two stereotrodes above us, and the two
-        # stereotrodes below us.
-
         if channel > self.num_electrodes - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
-
         start_electrode = max(0, channel - 1)
         stop_electrode = min(24, channel + 2)
         neighbors = np.arange(start_electrode, stop_electrode)
-
         return np.int64(neighbors)
-
-
-def voltage_from_PL2(PL2Reader):
-    include_chans = []
-    for cc in range(0, len(PL2Reader.info['analog_channels'])):
-        if PL2Reader.info['analog_channels'][cc]['source_name'].upper() == 'SPKC' and bool(PL2Reader.info['analog_channels'][cc]['enabled']):
-            include_chans.append(cc)
-
-    voltage = np.empty((len(include_chans), PL2Reader.info['analog_channels'][include_chans[0]]['num_values']), dtype='int16', order='C')
-    v_index = 0
-    for chan in include_chans:
-        PL2Reader.load_analog_channel(chan, convert_to_mv=False, out=voltage[v_index, :])
-        v_index += 1
-
-    return voltage
-
-
-def voltage_to_npy(PL2Reader, save_fname=None):
-    """ This reads in all enabled analog channels with 'source_name' = 'SPKC' and saves
-        them in a single numpy array of size n_samples x channels in column major order.
-        Data are saved in the order they are found, which should be their neighboring
-        locations. Default saves in same place as PL2 file. """
-
-    if save_fname is None:
-        save_fname = PL2Reader.filename[0:-4]
-
-    include_chans = []
-    for cc in range(0, len(PL2Reader.info['analog_channels'])):
-        if PL2Reader.info['analog_channels'][cc]['source_name'].upper() == 'SPKC' and bool(PL2Reader.info['analog_channels'][cc]['enabled']):
-            include_chans.append(cc)
-
-    voltage = np.empty((PL2Reader.info['analog_channels'][include_chans[0]]['num_values'], len(include_chans)), dtype='int16', order='C')
-    v_index = 0
-    for chan in include_chans:
-        PL2Reader.load_analog_channel(chan, convert_to_mv=False, out=voltage[:, v_index])
-        v_index += 1
-
-    np.save(save_fname, voltage, allow_pickle=False, fix_imports=False)
-
-
-def compute_full_contiguous_zca(PL2Reader, low_cutoff=200, high_cutoff=8000):
-    """
-    """
-
-    include_chans = []
-    for cc in range(0, len(PL2Reader.info['analog_channels'])):
-        if PL2Reader.info['analog_channels'][cc]['source_name'].upper() == 'SPKC' and bool(PL2Reader.info['analog_channels'][cc]['enabled']):
-            include_chans.append(cc)
-
-    # Read data
-    voltage = np.empty((len(include_chans), PL2Reader.info['analog_channels'][include_chans[0]]['num_values']), dtype='int16', order='C')
-    v_index = 0
-    for chan in include_chans:
-        PL2Reader.load_analog_channel(chan, convert_to_mv=False, out=voltage[v_index, :])
-        v_index += 1
-
-    # Filter data, if filter ranges are not beyond Plexon hardware
-    if low_cutoff > 250 or high_cutoff < 8000:
-        low_cutoff = low_cutoff / (PL2Reader.info['timestamp_frequency'] / 2)
-        high_cutoff = high_cutoff / (PL2Reader.info['timestamp_frequency'] / 2)
-        b_filt, a_filt = signal.butter(1, [low_cutoff, high_cutoff], btype='band')
-        for chan in range(0, voltage.shape[0]):
-            voltage[chan, :] = signal.filtfilt(b_filt, a_filt, voltage[chan, :], padlen=None)
-
-    zca_matrix = preprocessing.get_zca_matrix(voltage, rowvar=True)
-    zca_data = np.empty((voltage.shape[0], voltage.shape[1]), dtype='float64', order='C')
-    zca_data = np.matmul(zca_matrix, voltage, out=zca_data)
-
-    return zca_data

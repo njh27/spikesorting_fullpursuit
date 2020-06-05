@@ -319,7 +319,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
     exit_type = None
     def wrap_up():
         data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels, new_inds]
-        with open('temp_clips' + str(work_item['ID']) + '.pickle', 'wb') as fp:
+        with open('temp_clips/temp_clips' + str(work_item['ID']) + '.pickle', 'wb') as fp:
             pickle.dump(clips, fp, protocol=-1)
         data_dict['completed_items'].append(work_item['ID'])
         data_dict['exits_dict'][work_item['ID']] = exit_type
@@ -632,6 +632,9 @@ def spike_sort_parallel(Probe, **kwargs):
             rmtree(settings['log_dir'])
             time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
         os.makedirs(settings['log_dir'])
+    # Clear out room for temp clips in current directory
+    if os.path.exists('temp_clips'):
+        rmtree('temp_clips')
 
     # Convert segment duration and overlaps to indices from their values input
     # in seconds and adjust as needed
@@ -822,9 +825,9 @@ def spike_sort_parallel(Probe, **kwargs):
     sort_data = []
     for wi_ind, w_item in enumerate(work_items):
         if w_item['ID'] in data_dict['results_dict'].keys():
-            with open('temp_clips' + str(w_item['ID']) + '.pickle', 'rb') as fp:
+            with open('temp_clips/temp_clips' + str(w_item['ID']) + '.pickle', 'rb') as fp:
                 waveforms = pickle.load(fp)
-            os.remove('temp_clips' + str(w_item['ID']) + '.pickle')
+            os.remove('temp_clips/temp_clips' + str(w_item['ID']) + '.pickle')
             # Append list of crossings, labels, waveforms, new_waveforms
             sort_data.append([data_dict['results_dict'][w_item['ID']][0],
                               data_dict['results_dict'][w_item['ID']][1],
@@ -840,6 +843,8 @@ def spike_sort_parallel(Probe, **kwargs):
         else:
             # This work item found nothing (or raised an exception)
             sort_data.append([[], [], [], [], w_item['ID']])
+    if os.path.exists('temp_clips'):
+        rmtree('temp_clips')
     sort_info = settings
     curr_chan_win, _ = segment_parallel.time_window_to_samples(
                                     settings['clip_width'], Probe.sampling_rate)

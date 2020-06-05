@@ -209,14 +209,16 @@ class DistanceBasedProbe(AbstractProbe):
     def get_neighbors(self, channel):
         if channel > self.num_electrodes - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
-        neighbors = []
-        neighbors.append(np.flatnonzero(self.distance_mat[channel, :] == 0))
-        rings = np.arange(50, 125, 50)
-        tol = 5
-        for r in rings:
+        # neighbors = []
+        # neighbors.append(np.flatnonzero(self.distance_mat[channel, :] == 0))
+        # rings = np.arange(50, 125, 50)
+        # tol = 5
+        # for r in rings:
+        #
+        #     neighbors.append(np.flatnonzero(np.logical_and(self.distance_mat[channel, :] <= r+tol, self.distance_mat[channel, :] >= r-tol)))
+        # neighbors = np.hstack(neighbors)
 
-            neighbors.append(np.flatnonzero(np.logical_and(self.distance_mat[channel, :] <= r+tol, self.distance_mat[channel, :] >= r-tol)))
-        neighbors = np.hstack(neighbors)
+        neighbors = np.flatnonzero(self.distance_mat[channel, :] < 75)
         neighbors.sort()
         return np.int64(neighbors)
 

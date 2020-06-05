@@ -251,30 +251,15 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
     crossings, neuron_labels, clips, new_inds = [], [], [], []
     exit_type = None
     def wrap_up():
-        # Another 'try' here to avoid silent hangups in child processes
-        try:
-            data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels, new_inds]
-            with open(settings['tmp_clips_dir'] + '/temp_clips' + str(work_item['ID']) + '.pickle', 'wb') as fp:
-                pickle.dump(clips, fp, protocol=-1)
-            data_dict['completed_items'].append(work_item['ID'])
-            data_dict['exits_dict'][work_item['ID']] = exit_type
-            data_dict['completed_items_queue'].put(work_item['ID'])
-            for cpu in use_cpus:
-                data_dict['cpu_queue'].put(cpu)
-            return
-        except Exception as err:
-            exit_type = err
-            print_tb(err.__traceback__)
-            if settings['test_flag']:
-                raise # Reraise any exceptions in test mode only
-            # return all dictionary data as empty default
-            data_dict['results_dict'][work_item['ID']] = [[], [], []]
-            data_dict['completed_items'].append(work_item['ID'])
-            data_dict['exits_dict'][work_item['ID']] = exit_type
-            data_dict['completed_items_queue'].put(work_item['ID'])
-            for cpu in use_cpus:
-                data_dict['cpu_queue'].put(cpu)
-            return
+        data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels, new_inds]
+        with open(settings['tmp_clips_dir'] + '/temp_clips' + str(work_item['ID']) + '.pickle', 'wb') as fp:
+            pickle.dump(clips, fp, protocol=-1)
+        data_dict['completed_items'].append(work_item['ID'])
+        data_dict['exits_dict'][work_item['ID']] = exit_type
+        data_dict['completed_items_queue'].put(work_item['ID'])
+        for cpu in use_cpus:
+            data_dict['cpu_queue'].put(cpu)
+        return
     try:
         # Print this process' errors and output to a file
         if not settings['test_flag'] and settings['log_dir'] is not None:
@@ -664,7 +649,7 @@ def spike_sort_parallel(Probe, **kwargs):
         thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
         samples_over_thresh.extend(seg_over_thresh)
         # Allocate shared voltage buffer. List is appended in SEGMENT ORDER
-        init_dict['segment_voltages'].append([mp.RawArray('d', seg_voltage.size), seg_voltage.shape])
+        init_dict['segment_voltages'].append([mp.RawArray(np.ctypeslib.ctypes.c_double, seg_voltage.size), seg_voltage.shape])
         np_view = np.frombuffer(init_dict['segment_voltages'][x][0]).reshape(seg_voltage.shape) # Create numpy view
         np.copyto(np_view, seg_voltage) # Copy segment voltage to voltage buffer
         for chan in range(0, Probe.num_electrodes):

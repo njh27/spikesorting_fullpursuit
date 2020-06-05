@@ -204,7 +204,7 @@ def spike_sort_item(Probe, work_item, settings):
     if settings['verbose']: print("Getting clips")
     clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
     crossings = segment.keep_valid_inds([crossings], valid_event_indices)
-
+    
     if settings['verbose']: print("Start initial clustering and merge")
     # Do initial single channel sort. Start with single channel only because
     # later branching can split things out using multichannel info, but it

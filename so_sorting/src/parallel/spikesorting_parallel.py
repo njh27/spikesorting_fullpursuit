@@ -26,17 +26,10 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['verbose'] = False
     settings['test_flag'] = False # Indicates a test run of parallel code that does NOT spawn multiple processes
     settings['log_dir'] = None # Directory where output logs will be saved as text files
-    # settings['verbose_merge'] = False
-    # settings['threshold_type'] = "absolute"
-    # settings['sharpen'] = True
+    settings['tmp_clips_dir'] = None # Directory where spike clips will be stored for transfer between processes (deleted at completion)
     settings['clip_width'] = [-6e-4, 10e-4]# Width of clip in seconds
-    # settings['compute_noise'] = False # Estimate noise per cluster
-    # settings['remove_false_positives'] = True # Remove false positives? Requires compute_noise = true
     settings['do_branch_PCA'] = True # Use branch pca method to split clusters
-    # settings['preprocess'] = True
     settings['filter_band'] = (300, 6000)
-    # settings['compute_lfp'] = False
-    # settings['lfp_filter'] = (25, 500)
     settings['do_ZCA_transform'] = True
     settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
     settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
@@ -51,7 +44,6 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
     settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
     settings['cleanup_neurons'] = False # Remove garbage at the end
-    # settings['random_seed'] = None # The random seed to use (or nothing, if unspecified)
 
     for k in kwargs.keys():
         if k not in settings:
@@ -70,65 +62,6 @@ def init_pool_dict(volt_array, volt_shape, init_dict=None):
         for k in init_dict.keys():
             pool_dict[k] = init_dict[k]
     return
-
-
-# def zca_one_chan(chan):
-#
-#     mkl.set_num_threads(1)
-#     voltage = np.frombuffer(pool_dict['share_voltage']).reshape(pool_dict['share_voltage_shape'])
-#     zca_data = np.matmul(pool_dict['zca_matrix'][chan, :], voltage)
-#     result_voltage = np.frombuffer(pool_dict['result_voltage']).reshape(pool_dict['share_voltage_shape'])
-#     np.copyto(result_voltage[chan, :], zca_data)
-#     return None
-#
-#
-# def zca_parallel(shared_voltage, result_voltage, Probe, zca_matrix):
-#     init_dict = {'zca_matrix': zca_matrix, 'result_voltage': result_voltage}
-#     zca_results = []
-#     with mp.Pool(processes=psutil.cpu_count(logical=True), initializer=init_pool_dict, initargs=(shared_voltage, Probe.voltage.shape, init_dict)) as pool:
-#         try:
-#             for chan in range(0, Probe.num_electrodes):
-#                 zca_results.append(pool.apply_async(zca_one_chan, args=(chan,)))
-#         finally:
-#             pool.close()
-#             pool.join()
-#     # zca_voltage = np.vstack([x.get() for x in zca_results])
-#     X_np = np.frombuffer(shared_voltage).reshape(Probe.voltage.shape)
-#     result_voltage = np.frombuffer(result_voltage).reshape(Probe.voltage.shape)
-#     print("Copying ZCA results to main voltage")
-#     np.copyto(X_np, result_voltage)
-
-
-# def thresh_and_size_one_chan(chan, sigma):
-#
-#     mkl.set_num_threads(1)
-#     voltage = np.frombuffer(pool_dict['share_voltage']).reshape(pool_dict['share_voltage_shape'])
-#     abs_voltage = np.abs(voltage[chan, :])
-#     threshold = np.nanmedian(abs_voltage) / 0.6745
-#     threshold *= sigma
-#     n_crossings = np.count_nonzero(abs_voltage > threshold)
-#
-#     return n_crossings, threshold, chan
-#
-#
-# def get_thresholds_and_work_order(shared_voltage, Probe, sigma):
-#     order_results = []
-#     with mp.Pool(processes=psutil.cpu_count(logical=True), initializer=init_pool_dict, initargs=(shared_voltage, Probe.voltage.shape)) as pool:
-#         try:
-#             for chan in range(0, Probe.num_electrodes):
-#                 order_results.append(pool.apply_async(thresh_and_size_one_chan, args=(chan, sigma)))
-#         finally:
-#             pool.close()
-#             pool.join()
-#
-#     crossings_per_s = np.empty(Probe.num_electrodes, dtype=np.int64)
-#     thresholds = np.empty(Probe.num_electrodes)
-#     for or_ind in range(0, len(order_results)):
-#         data = order_results[or_ind].get()
-#         crossings_per_s[or_ind] = data[0] / (Probe.n_samples / Probe.sampling_rate)
-#         thresholds[or_ind] = data[1]
-#
-#     return thresholds, crossings_per_s
 
 
 def single_thresholds_and_samples(voltage, sigma):
@@ -318,15 +251,30 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
     crossings, neuron_labels, clips, new_inds = [], [], [], []
     exit_type = None
     def wrap_up():
-        data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels, new_inds]
-        with open('temp_clips/temp_clips' + str(work_item['ID']) + '.pickle', 'wb') as fp:
-            pickle.dump(clips, fp, protocol=-1)
-        data_dict['completed_items'].append(work_item['ID'])
-        data_dict['exits_dict'][work_item['ID']] = exit_type
-        data_dict['completed_items_queue'].put(work_item['ID'])
-        for cpu in use_cpus:
-            data_dict['cpu_queue'].put(cpu)
-        return
+        # Another 'try' here to avoid silent hangups in child processes
+        try:
+            data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels, new_inds]
+            with open(settings['tmp_clips_dir'] + '/temp_clips' + str(work_item['ID']) + '.pickle', 'wb') as fp:
+                pickle.dump(clips, fp, protocol=-1)
+            data_dict['completed_items'].append(work_item['ID'])
+            data_dict['exits_dict'][work_item['ID']] = exit_type
+            data_dict['completed_items_queue'].put(work_item['ID'])
+            for cpu in use_cpus:
+                data_dict['cpu_queue'].put(cpu)
+            return
+        except Exception as err:
+            exit_type = err
+            print_tb(err.__traceback__)
+            if settings['test_flag']:
+                raise # Reraise any exceptions in test mode only
+            # return all dictionary data as empty default
+            data_dict['results_dict'][work_item['ID']] = [[], [], []]
+            data_dict['completed_items'].append(work_item['ID'])
+            data_dict['exits_dict'][work_item['ID']] = exit_type
+            data_dict['completed_items_queue'].put(work_item['ID'])
+            for cpu in use_cpus:
+                data_dict['cpu_queue'].put(cpu)
+            return
     try:
         # Print this process' errors and output to a file
         if not settings['test_flag'] and settings['log_dir'] is not None:
@@ -563,7 +511,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         else:
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
-            new_inds = np.zeros(crossings.size, dtype='bool')
+            new_inds = np.zeros(crossings.size, dtype=np.bool)
 
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
         # Map labels starting at zero and put labels in order
@@ -575,7 +523,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if settings['verbose']: print("Successfully completed item ", str(work_item['ID']), flush=True)
         exit_type = "Success"
     except Exception as err:
-        exit_type = err #exit_type + "--Then FAILED TO COMPLETE!"
+        exit_type = err
         print_tb(err.__traceback__)
         if settings['test_flag']:
             raise # Reraise any exceptions in test mode only
@@ -594,11 +542,17 @@ def init_data_dict(init_dict=None):
 
 
 def spike_sort_parallel(Probe, **kwargs):
-    """
+    """ Perform spike sorting algorithm using python multiprocessing module.
     See 'spike_sorting_settings_parallel' above for a list of allowable kwargs.
 
+    Note: The temporary directory to store spike clips is created manually, not
+    using the python tempfile module. Multiprocessing and tempfile seem to have
+    some problems across platforms. For certain errors or keyboard interrupts
+    the file may not be appropriately deleted. Before using the directory, the
+    temp directory is deleted if it exists, so subsequent successful runs of
+    sorting using the same directory will remove the temp directory.
     See also:
-    Documentation in spikesorting 'spike_sort()'
+    '
     """
     # Check that Probe neighborhood function is appropriate. Otherwise it can
     # generate seemingly mysterious errors
@@ -632,9 +586,12 @@ def spike_sort_parallel(Probe, **kwargs):
             rmtree(settings['log_dir'])
             time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
         os.makedirs(settings['log_dir'])
+    if settings['tmp_clips_dir'] is None:
+        settings['tmp_clips_dir'] = os.getcwd() + '/tmp_clips'
     # Clear out room for temp clips in current directory
-    if os.path.exists('temp_clips'):
-        rmtree('temp_clips')
+    if os.path.exists(settings['tmp_clips_dir']):
+        rmtree(settings['tmp_clips_dir'])
+    os.mkdir(settings['tmp_clips_dir'])
 
     # Convert segment duration and overlaps to indices from their values input
     # in seconds and adjust as needed
@@ -825,9 +782,9 @@ def spike_sort_parallel(Probe, **kwargs):
     sort_data = []
     for wi_ind, w_item in enumerate(work_items):
         if w_item['ID'] in data_dict['results_dict'].keys():
-            with open('temp_clips/temp_clips' + str(w_item['ID']) + '.pickle', 'rb') as fp:
+            with open(settings['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle', 'rb') as fp:
                 waveforms = pickle.load(fp)
-            os.remove('temp_clips/temp_clips' + str(w_item['ID']) + '.pickle')
+            os.remove(settings['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle')
             # Append list of crossings, labels, waveforms, new_waveforms
             sort_data.append([data_dict['results_dict'][w_item['ID']][0],
                               data_dict['results_dict'][w_item['ID']][1],
@@ -843,8 +800,8 @@ def spike_sort_parallel(Probe, **kwargs):
         else:
             # This work item found nothing (or raised an exception)
             sort_data.append([[], [], [], [], w_item['ID']])
-    if os.path.exists('temp_clips'):
-        rmtree('temp_clips')
+    if os.path.exists(settings['tmp_clips_dir']):
+        rmtree(settings['tmp_clips_dir'])
     sort_info = settings
     curr_chan_win, _ = segment_parallel.time_window_to_samples(
                                     settings['clip_width'], Probe.sampling_rate)

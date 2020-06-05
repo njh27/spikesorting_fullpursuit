@@ -37,9 +37,9 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
     zca_thresholds = np.copy(thresholds)
     # convert cushion to zero centered window
     thresh_cushion = (thresh_cushion * 2 + 1)
-    volt_thresh_bool = np.zeros(voltage_data.shape, dtype='bool')
+    volt_thresh_bool = np.zeros(voltage_data.shape, dtype=np.bool)
     for chan_v in range(0, volt_thresh_bool.shape[0]):
-        volt_thresh_bool[chan_v, :] = np.rint(signal.fftconvolve(np.abs(voltage_data[chan_v, :]) > zca_thresholds[chan_v], np.ones(thresh_cushion), mode='same')).astype('bool')
+        volt_thresh_bool[chan_v, :] = np.rint(signal.fftconvolve(np.abs(voltage_data[chan_v, :]) > zca_thresholds[chan_v], np.ones(thresh_cushion), mode='same')).astype(np.bool)
     sigma = np.empty((voltage_data.shape[0], voltage_data.shape[0]))
     for i in range(0, voltage_data.shape[0]):
         # Compute i variance for diagonal elements of sigma

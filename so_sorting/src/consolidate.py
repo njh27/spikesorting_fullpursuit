@@ -2726,34 +2726,6 @@ class WorkItemSummary(object):
                 del neurons[check_n]['quality_score']
         return neurons
 
-    # def get_sort_data_by_chan(self):
-    #     """ Returns all sorter data concatenated by channel across all segments,
-    #     thus removing the concept of segment-wise sorting and giving all data
-    #     by channel. """
-    #     crossings, labels, waveforms, new_waveforms = [], [], [], []
-    #     thresholds = []
-    #     for chan in range(0, self.n_chans):
-    #         seg_crossings, seg_labels, seg_waveforms, seg_new = [], [], [], []
-    #         seg_thresholds =[]
-    #         for seg in range(0, self.n_segments):
-    #             seg_crossings.append(self.sort_data[chan][seg][0])
-    #             seg_labels.append(self.sort_data[chan][seg][1])
-    #             # Waveforms is 2D so can't stack with empty
-    #             if len(self.sort_data[chan][seg][2]) > 0:
-    #                 seg_waveforms.append(self.sort_data[chan][seg][2])
-    #             seg_new.append(self.sort_data[chan][seg][3])
-    #             seg_thresholds.append(self.work_items[chan][seg]['thresholds'][self.work_items[chan][seg]['chan_neighbor_ind']])
-    #         # stacking with [] casts as float, so ensure maintained types
-    #         crossings.append(np.hstack(seg_crossings).astype(np.int64))
-    #         labels.append(np.hstack(seg_labels).astype(np.int64))
-    #         if len(seg_waveforms) > 0:
-    #             waveforms.append(np.vstack(seg_waveforms).astype(np.float64))
-    #         else:
-    #             waveforms.append([])
-    #         new_waveforms.append(np.hstack(seg_new).astype(np.bool))
-    #         thresholds.append(np.hstack(seg_thresholds).astype(np.float64))
-    #     return crossings, labels, waveforms, new_waveforms, thresholds
-
 
 def calc_m_overlap_ab(clips_a, clips_b, N=100, k_neighbors=10):
     """

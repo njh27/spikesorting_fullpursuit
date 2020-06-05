@@ -199,21 +199,6 @@ def remove_overlapping_spikes(event_indices, clips, neuron_labels, templates,
     return keep_bool
 
 
-# def remove_overlapping_spikes(event_indices, max_samples):
-#     """ DATA MUST BE SORTED IN ORDER OF EVENT INDICES FOR THIS TO WORK.
-#     """
-#
-#     # Find overlapping spikes, excluding equal values
-#     overlapping_spike_bool = consolidate.find_overlapping_spike_bool(event_indices, event_indices, max_samples=max_samples, except_equal=True)
-#     # Also find any duplicate values and keep only one of them
-#     repeats_bool = np.ones_like(event_indices, dtype='bool')
-#     repeats_bool[np.unique(event_indices, return_index=True)[1]] = False
-#     removed_index = np.logical_or(overlapping_spike_bool, repeats_bool)
-#     event_indices = event_indices[~removed_index]
-#
-#     return event_indices, removed_index
-
-
 def find_multichannel_max_neuron(probe_dict, neighbors, neighbor_voltage,
         check_time, indices, labels, templates, template_labels, chan_win,
         spike_biases, template_error, new_indices, new_labels):
@@ -314,7 +299,7 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
     templates = [t[curr_chan_inds] for t in multi_templates]
 
     # Compute residual voltage by subtracting all known spikes
-    spike_times = np.zeros(probe_dict['n_samples'], dtype='byte')
+    spike_times = np.zeros(probe_dict['n_samples'], dtype=np.byte)
     spike_biases = np.zeros((template_labels.shape[0], neighbors.size), dtype=np.float32)
     template_error = np.zeros((template_labels.size, neighbors.size), dtype=np.float32)
     neighbor_bias = np.zeros((template_labels.shape[0], probe_dict['n_samples']), dtype=np.float32)
@@ -489,7 +474,7 @@ def binary_pursuit_secret_spikes(probe_dict, channel, neighbors,
     # Add new found spikes to old ones
     event_indices = np.hstack((event_indices, np.array(new_event_indices, dtype=np.int64)))
     neuron_labels = np.hstack((neuron_labels, new_event_labels))
-    secret_spike_bool = np.zeros(event_indices.size, dtype='bool')
+    secret_spike_bool = np.zeros(event_indices.size, dtype=np.bool)
     if len(new_event_indices) > 0:
         secret_spike_bool[-len(new_event_indices):] = True
 

@@ -15,17 +15,9 @@ def spike_sorting_settings(**kwargs):
 
     settings['sigma'] = 4.0 # Threshold based on  noise level
     settings['verbose'] = False
-    # settings['verbose_merge'] = False
-    # settings['threshold_type'] = "absolute"
-    # settings['sharpen'] = True
     settings['clip_width'] = [-6e-4, 10e-4]# Width of clip in seconds
-    # settings['compute_noise'] = False # Estimate noise per cluster
-    # settings['remove_false_positives'] = True # Remove false positives? Requires compute_noise = true
     settings['do_branch_PCA'] = True # Use branch pca method to split clusters
-    # settings['preprocess'] = True
     settings['filter_band'] = (300, 6000)
-    # settings['compute_lfp'] = False
-    # settings['lfp_filter'] = (25, 500)
     settings['do_ZCA_transform'] = True
     settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
     settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
@@ -39,7 +31,6 @@ def spike_sorting_settings(**kwargs):
     settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
     settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
     settings['cleanup_neurons'] = False # Remove garbage at the end
-    # settings['random_seed'] = None # The random seed to use (or nothing, if unspecified)
 
     for k in kwargs.keys():
         if k not in settings:

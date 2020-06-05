@@ -425,7 +425,7 @@ def get_singlechannel_clips(Probe, channel, event_indices, clip_width):
 
     window, clip_width = time_window_to_samples(clip_width, Probe.sampling_rate)
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
-    valid_event_indices = np.ones_like(event_indices, dtype='bool')
+    valid_event_indices = np.ones_like(event_indices, dtype=np.bool)
     start_ind = 0
     n = event_indices[start_ind]
     while n + window[0] < 0:
@@ -466,7 +466,7 @@ def get_multichannel_clips(Probe, channels, event_indices, clip_width):
 
     window, clip_width = time_window_to_samples(clip_width, Probe.sampling_rate)
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
-    valid_event_indices = np.ones_like(event_indices, dtype='bool')
+    valid_event_indices = np.ones_like(event_indices, dtype=np.bool)
     start_ind = 0
     n = event_indices[start_ind]
 
@@ -515,7 +515,7 @@ def get_adjusted_clips(Probe, channel, neighbors, clips, event_indices, neuron_l
 
     # Get adjusted clips at all spike times
     adjusted_clips = np.empty((event_indices.size, output_samples_per_chan * neighbors.size))
-    spike_times = np.zeros(Probe.n_samples, dtype='byte')
+    spike_times = np.zeros(Probe.n_samples, dtype=np.byte)
     for neigh_ind, chan in enumerate(np.nditer(neighbors)):
         # First get residual voltage for the current channel by subtracting INPUT clips
         input_slice = slice(neigh_ind*input_samples_per_chan, input_samples_per_chan*(neigh_ind+1), 1)

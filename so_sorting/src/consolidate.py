@@ -527,9 +527,9 @@ def calc_ccg_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sa
     first_index = max(spike_inds_1[0], spike_inds_2[0])
     last_index = min(spike_inds_1[-1], spike_inds_2[-1])
     num_ms = int(np.ceil((last_index - first_index) / (sampling_rate / 1000)))
-    if num_ms <= 0:
+    if num_ms <= 0 or overlap_time <= 0:
         # Neurons never fire at the same time, so expected overlap is 0
-        return 0.
+        return 0., 0
 
     # Find spike indices from each neuron that fall within the same time window
     # Should be impossible to return None because of num_ms check above

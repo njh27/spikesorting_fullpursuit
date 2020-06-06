@@ -1905,10 +1905,10 @@ class WorkItemSummary(object):
                     # we do not use peak MUA here but rather the rate based MUA
                     # Need to union with compliment so spikes are not double
                     # counted, which will reduce the rate based MUA
-                    neuron_2_compliment = ~find_overlapping_spike_bool(
+                    neuron_1_compliment = ~find_overlapping_spike_bool(
                             neuron_1['spike_indices'], neuron_2['spike_indices'],
                             self.half_clip_inds)
-                    union_spikes = np.hstack((neuron_1['spike_indices'], neuron_2['spike_indices'][neuron_2_compliment]))
+                    union_spikes = np.hstack((neuron_1['spike_indices'][neuron_1_compliment], neuron_2['spike_indices']))
                     union_spikes.sort()
                     union_fraction_mua_rate = calc_fraction_mua(
                                                      union_spikes,
@@ -2709,10 +2709,10 @@ class WorkItemSummary(object):
                     # we do not use peak MUA here but rather the rate based MUA
                     # Need to union with compliment so spikes are not double
                     # counted, which will reduce the rate based MUA
-                    neuron_2_compliment = ~find_overlapping_spike_bool(
+                    neuron_1_compliment = ~find_overlapping_spike_bool(
                             neuron_1['spike_indices'], neuron_2['spike_indices'],
                             self.half_clip_inds)
-                    union_spikes = np.hstack((neuron_1['spike_indices'], neuron_2['spike_indices'][neuron_2_compliment]))
+                    union_spikes = np.hstack((neuron_1['spike_indices'][neuron_1_compliment], neuron_2['spike_indices']))
                     union_spikes.sort()
                     union_fraction_mua_rate = calc_fraction_mua(
                                                      union_spikes,

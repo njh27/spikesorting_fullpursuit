@@ -1252,8 +1252,6 @@ class WorkItemSummary(object):
                         # plt.show()
                         if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + max_delta:
                             is_merged = False
-                        if is_merged:
-                            print("SOMETHING SHARPENED")
 
                     if self.verbose: print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
 

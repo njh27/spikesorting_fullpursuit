@@ -517,7 +517,7 @@ def calc_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampli
     return expected_overlap_ratio
 
 
-def calc_ccg_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
+def calc_ccg_overlap_ratios(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
     """ Returns the expected number of overlapping spikes between neuron 1 and
     neuron 2 within a time window 'overlap_time'. This is done based on the CCG
     between the two units, comparing the center bin to the nearest neighboring
@@ -529,7 +529,7 @@ def calc_ccg_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sa
     num_ms = int(np.ceil((last_index - first_index) / (sampling_rate / 1000)))
     if num_ms <= 0 or overlap_time <= 0:
         # Neurons never fire at the same time, so expected overlap is 0
-        return 0., 0
+        return 0., 0., 0.
 
     # Find spike indices from each neuron that fall within the same time window
     # Should be impossible to return None because of num_ms check above
@@ -549,24 +549,28 @@ def calc_ccg_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sa
     # overlaps at +/- overlap_time
     overlap_time *= 2
     bin_samples = int(round(overlap_time * sampling_rate))
-    samples_window = bin_samples
-    counts, _ = zero_symmetric_ccg(spike_inds_1, spike_inds_2,
-                                    samples_window, bin_samples)
-    # Find maximal neighboring count
-    if counts[0] >= counts[2]:
-        max_bin = 0
-        min_bin = 2
+    samples_window = 10 * bin_samples
+    counts, x_vals = zero_symmetric_ccg(spike_inds_1, spike_inds_2,
+                                        samples_window, bin_samples)
+    zero_ind = np.flatnonzero(x_vals == 0)[0]
+    # Find maximal neighboring count and use as expected value
+    if counts[zero_ind - 1] >= counts[zero_ind + 1]:
+        expected_bin = zero_ind - 1
     else:
-        max_bin = 2
-        min_bin = 0
-    # Find slope across center bin, useful for thresholding
-    center_slope = (counts[max_bin] - counts[min_bin]) / 2
-    # Need to normalize slope to ratio units
-    center_slope = center_slope / min(n1_count, n2_count)
-    # Overlap ratio assuming the max neighboring bin
-    expected_overlap_ratio = counts[max_bin] / min(n1_count, n2_count)
+        expected_bin = zero_ind + 1
+    # Find maximal change between bins, excluding center
+    max_left = np.amax(np.abs(np.diff(counts[0:zero_ind])))
+    max_right = np.amax(np.abs(np.diff(counts[zero_ind+1:])))
+    delta_max = max(max_left, max_right)
 
-    return expected_overlap_ratio, center_slope
+    # Overlap ratio relative to spikes in overlapping time window
+    n_overlap_spikes = min(n1_count, n2_count)
+    expected_overlap_ratio = counts[expected_bin] / n_overlap_spikes
+    actual_overlap_ratio = counts[zero_ind] / n_overlap_spikes
+    # Normalize delta max also
+    delta_max = delta_max / n_overlap_spikes
+
+    return expected_overlap_ratio, actual_overlap_ratio, delta_max
 
 
 def calc_spike_half_width(clips):
@@ -1235,14 +1239,21 @@ class WorkItemSummary(object):
                                                  self.sort_info['sampling_rate'],
                                                  2*spike_half_width,
                                                  self.absolute_refractory_period)
-                        # Add in chance overlaps for independent firing
-                        expected_ratio, _ = calc_ccg_expected_overlap_ratio(self.sort_data[chan][seg][0][select_1],
+                        # Use the biggest bin over bin change observed in the
+                        # CCG as an error tolerance
+                        _, _, max_delta = calc_ccg_overlap_ratios(self.sort_data[chan][seg][0][select_1],
                                             self.sort_data[chan][seg][0][select_2],
-                                            self.absolute_refractory_period - 2*spike_half_width/self.sort_info['sampling_rate'],
+                                            self.absolute_refractory_period,
                                             self.sort_info['sampling_rate'])
-
-                        if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + expected_ratio:
+                        # print("In sharpen CCG analysis we have", exp, act, max_delta)
+                        # print("with MUAs", union_fraction_mua_rate, fraction_mua_rate_1, fraction_mua_rate_2)
+                        # plt.plot(np.mean(clips_1, axis=0))
+                        # plt.plot(np.mean(clips_2, axis=0))
+                        # plt.show()
+                        if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + max_delta:
                             is_merged = False
+                        if is_merged:
+                            print("SOMETHING SHARPENED")
 
                     if self.verbose: print("Item", self.work_items[chan][seg]['ID'], "on chan", chan, "seg", seg, "merged", is_merged, "for labels", best_pair)
 
@@ -1750,13 +1761,15 @@ class WorkItemSummary(object):
                 is_all_linked = False
         return is_all_linked
 
-    def remove_redundant_neurons(self, seg, overlap_ratio_threshold=2):
+    def remove_redundant_neurons(self, seg, overlap_ratio_threshold=1):
         """
         Note that this function does not actually delete anything. It removes
         links between segments for redundant units and it adds a flag under
         the key 'deleted_as_redundant' to indicate that a segment unit should
         be deleted. Deleting units in this function would ruin the indices used
         to link neurons together later and is not worth the book keeping trouble.
+        Note: overlap_ratio_threshold == np.inf will not delete anything while
+        overlap_ratio_threshold == -np.inf will delete everything except 1 unit.
         """
         # Since we are comparing across channels, we need to consider potentially
         # large alignment differences in the overlap_time
@@ -1764,6 +1777,7 @@ class WorkItemSummary(object):
         neurons = self.neuron_summary_by_seg[seg]
         overlap_ratio = np.zeros((len(neurons), len(neurons)))
         expected_ratio = np.zeros((len(neurons), len(neurons)))
+        delta_ratio = np.zeros((len(neurons), len(neurons)))
         quality_scores = np.zeros(len(neurons))
         violation_partners = [set() for x in range(0, len(neurons))]
         for neuron1_ind, neuron1 in enumerate(neurons):
@@ -1775,17 +1789,21 @@ class WorkItemSummary(object):
                     continue # If they are on the same channel, do nothing
                 # if neuron1['channel'] not in neuron2['neighbors']:
                 #     continue # If they are not in same neighborhood, do nothing
-                """ THESE ARE JUST IGNORING THE OVERLAP TIME INPUT AT THE MOMENT"""
 
-                overlap_ratio[neuron1_ind, neuron2_ind] = self.get_overlap_ratio(
-                                        seg, neuron1_ind, seg, neuron2_ind, overlap_time)
-                overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
-                expected_ratio[neuron1_ind, neuron2_ind], center_slope = calc_ccg_expected_overlap_ratio(
-                                neuron1['spike_indices'], neuron2['spike_indices'],
-                                overlap_time, self.sort_info['sampling_rate'])
-                expected_ratio[neuron1_ind, neuron2_ind] += center_slope
+                exp, act, delta = calc_ccg_overlap_ratios(
+                                                neuron1['spike_indices'],
+                                                neuron2['spike_indices'],
+                                                overlap_time,
+                                                self.sort_info['sampling_rate'])
+                expected_ratio[neuron1_ind, neuron2_ind] = exp
                 expected_ratio[neuron2_ind, neuron1_ind] = expected_ratio[neuron1_ind, neuron2_ind]
+                overlap_ratio[neuron1_ind, neuron2_ind] = act
+                overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
+                delta_ratio[neuron1_ind, neuron2_ind] = delta
+                delta_ratio[neuron2_ind, neuron1_ind] = delta_ratio[neuron1_ind, neuron2_ind]
+
                 if (overlap_ratio[neuron1_ind, neuron2_ind] >=
+                                    overlap_ratio_threshold * delta_ratio[neuron1_ind, neuron2_ind] +
                                     expected_ratio[neuron1_ind, neuron2_ind]):
                     # Overlap is higher than chance and at least one of these will be removed
                     violation_partners[neuron1_ind].add(neuron2_ind)
@@ -1797,24 +1815,23 @@ class WorkItemSummary(object):
         while True:
             # Look for our next best pair
             best_ratio = -np.inf
-            best_expected = -np.inf
             best_pair = []
             for i in range(0, len(neurons_remaining_indices)):
                 for j in range(i+1, len(neurons_remaining_indices)):
                     neuron_1_index = neurons_remaining_indices[i]
                     neuron_2_index = neurons_remaining_indices[j]
                     if (overlap_ratio[neuron_1_index, neuron_2_index] <
+                                overlap_ratio_threshold * delta_ratio[neuron_1_index, neuron_2_index] +
                                 expected_ratio[neuron_1_index, neuron_2_index]):
                         # Overlap not high enough to merit deletion of one
                         # But track our proximity to input threshold
                         if overlap_ratio[neuron_1_index, neuron_2_index] > max_accepted:
                             max_accepted = overlap_ratio[neuron_1_index, neuron_2_index]
-                            max_expected = expected_ratio[neuron_1_index, neuron_2_index]
+                            max_expected = overlap_ratio_threshold * delta_ratio[neuron_1_index, neuron_2_index]  + expected_ratio[neuron_1_index, neuron_2_index]
                         continue
                     if overlap_ratio[neuron_1_index, neuron_2_index] > best_ratio:
                         best_ratio = overlap_ratio[neuron_1_index, neuron_2_index]
                         best_pair = [neuron_1_index, neuron_2_index]
-                        best_expected = expected_ratio[neuron_1_index, neuron_2_index]
             if len(best_pair) == 0 or best_ratio == 0:
                 # No more pairs exceed ratio threshold
                 print("Maximum accepted ratio was", max_accepted, "at expected threshold", max_expected)
@@ -1927,17 +1944,13 @@ class WorkItemSummary(object):
                                              self.sort_info['sampling_rate'],
                                              self.half_clip_inds,
                                              self.absolute_refractory_period)
-                    # Expected mua if these two units were completely independent
-                    refractory_expected_ratio, _ = calc_ccg_expected_overlap_ratio(neuron_1['spike_indices'], neuron_2['spike_indices'],
-                                        self.absolute_refractory_period - self.half_clip_inds/self.sort_info['sampling_rate'],
-                                        self.sort_info['sampling_rate'])
                     # We will decide not to consider spike count if this looks like
                     # one unit could be a large mixture. This usually means that
                     # the union MUA goes up substantially. To accomodate noise,
                     # require that it exceeds both the minimum MUA plus the MUA
                     # expected if the units were totally independent, and the
                     # MUA of either unit alone.
-                    if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + refractory_expected_ratio \
+                    if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + delta_ratio[best_pair[0], best_pair[1]] \
                         and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
                         # This is a red flag that one unit is likely a large mixture
                         # and we should ignore spike count
@@ -2008,7 +2021,7 @@ class WorkItemSummary(object):
                 neurons[best_pair[1]]['deleted_as_redundant'] = True
         return neurons
 
-    def remove_redundant_neurons_by_seg(self, overlap_ratio_threshold=2):
+    def remove_redundant_neurons_by_seg(self, overlap_ratio_threshold=1):
         """ Calls remove_redundant_neurons for each segment. """
         if overlap_ratio_threshold >= self.last_overlap_ratio_threshold:
             print("Redundant neurons already removed at threshold >=", overlap_ratio_threshold, "Further attempts will have no effect.")
@@ -2386,7 +2399,7 @@ class WorkItemSummary(object):
 
         return combined_neuron
 
-    def summarize_neurons_across_channels(self, overlap_ratio_threshold=2,
+    def summarize_neurons_across_channels(self, overlap_ratio_threshold=1,
                                             min_segs_per_unit=1):
         """ Creates output neurons list by combining segment-wise neurons across
         segments and across channels based on stitch_segments and then using
@@ -2560,7 +2573,7 @@ class WorkItemSummary(object):
             neuron_summary[-1]['summary_type'] = 'within_channel'
         return neuron_summary
 
-    def remove_redundant_within_channel_summaries(self, neurons, overlap_ratio_threshold=2):
+    def remove_redundant_within_channel_summaries(self, neurons, overlap_ratio_threshold=1):
         """
         Removes redundant complete summaries as in 'remove_redundant_neurons' but
         for summaries created by 'summarize_neurons_within_channel'.
@@ -2570,6 +2583,7 @@ class WorkItemSummary(object):
         overlap_time = self.half_clip_inds / self.sort_info['sampling_rate']
         overlap_ratio = np.zeros((len(neurons), len(neurons)))
         expected_ratio = np.zeros((len(neurons), len(neurons)))
+        delta_ratio = np.zeros((len(neurons), len(neurons)))
         quality_scores = np.zeros(len(neurons))
         violation_partners = [set() for x in range(0, len(neurons))]
         for neuron1_ind, neuron1 in enumerate(neurons):
@@ -2585,16 +2599,21 @@ class WorkItemSummary(object):
                     continue # If they are on the same channel, do nothing
                 # if neuron1['channel'] not in neuron2['neighbors']:
                 #     continue # If they are not in same neighborhood, do nothing
-                overlap_ratio[neuron1_ind, neuron2_ind] = calc_overlap_ratio(
-                        neuron1['spike_indices'], neuron2['spike_indices'],
-                        int(round(overlap_time * self.sort_info['sampling_rate'])))
-                overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
-                expected_ratio[neuron1_ind, neuron2_ind], center_slope = calc_ccg_expected_overlap_ratio(
-                                neuron1['spike_indices'], neuron2['spike_indices'],
-                                overlap_time, self.sort_info['sampling_rate'])
-                expected_ratio[neuron1_ind, neuron2_ind] += center_slope
+
+                exp, act, delta = calc_ccg_overlap_ratios(
+                                                neuron1['spike_indices'],
+                                                neuron2['spike_indices'],
+                                                overlap_time,
+                                                self.sort_info['sampling_rate'])
+                expected_ratio[neuron1_ind, neuron2_ind] = exp
                 expected_ratio[neuron2_ind, neuron1_ind] = expected_ratio[neuron1_ind, neuron2_ind]
+                overlap_ratio[neuron1_ind, neuron2_ind] = act
+                overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
+                delta_ratio[neuron1_ind, neuron2_ind] = delta
+                delta_ratio[neuron2_ind, neuron1_ind] = delta_ratio[neuron1_ind, neuron2_ind]
+
                 if (overlap_ratio[neuron1_ind, neuron2_ind] >=
+                                    overlap_ratio_threshold * delta_ratio[neuron1_ind, neuron2_ind] +
                                     expected_ratio[neuron1_ind, neuron2_ind]):
                     # Overlap is higher than chance and at least one of these will be removed
                     violation_partners[neuron1_ind].add(neuron2_ind)
@@ -2606,24 +2625,23 @@ class WorkItemSummary(object):
         while True:
             # Look for our next best pair
             best_ratio = -np.inf
-            best_expected = -np.inf
             best_pair = []
             for i in range(0, len(neurons_remaining_indices)):
                 for j in range(i+1, len(neurons_remaining_indices)):
                     neuron_1_index = neurons_remaining_indices[i]
                     neuron_2_index = neurons_remaining_indices[j]
                     if (overlap_ratio[neuron_1_index, neuron_2_index] <
+                                overlap_ratio_threshold * delta_ratio[neuron_1_index, neuron_2_index] +
                                 expected_ratio[neuron_1_index, neuron_2_index]):
                         # Overlap not high enough to merit deletion of one
                         # But track our proximity to input threshold
                         if overlap_ratio[neuron_1_index, neuron_2_index] > max_accepted:
                             max_accepted = overlap_ratio[neuron_1_index, neuron_2_index]
-                            max_expected = expected_ratio[neuron_1_index, neuron_2_index]
+                            max_expected = overlap_ratio_threshold * delta_ratio[neuron_1_index, neuron_2_index] + expected_ratio[neuron_1_index, neuron_2_index]
                         continue
                     if overlap_ratio[neuron_1_index, neuron_2_index] > best_ratio:
                         best_ratio = overlap_ratio[neuron_1_index, neuron_2_index]
                         best_pair = [neuron_1_index, neuron_2_index]
-                        best_expected = expected_ratio[neuron_1_index, neuron_2_index]
             if len(best_pair) == 0 or best_ratio == 0:
                 # No more pairs exceed ratio threshold
                 print("Maximum accepted ratio was", max_accepted, "at expected threshold", max_expected)
@@ -2731,17 +2749,13 @@ class WorkItemSummary(object):
                                              self.sort_info['sampling_rate'],
                                              self.half_clip_inds,
                                              self.absolute_refractory_period)
-                    # Expected mua if these two units were completely independent
-                    refractory_expected_ratio, _ = calc_ccg_expected_overlap_ratio(neuron_1['spike_indices'], neuron_2['spike_indices'],
-                                        self.absolute_refractory_period - self.half_clip_inds/self.sort_info['sampling_rate'],
-                                        self.sort_info['sampling_rate'])
                     # We will decide not to consider spike count if this looks like
                     # one unit could be a large mixture. This usually means that
                     # the union MUA goes up substantially. To accomodate noise,
                     # require that it exceeds both the minimum MUA plus the MUA
                     # expected if the units were totally independent, and the
                     # MUA of either unit alone.
-                    if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + refractory_expected_ratio \
+                    if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + delta_ratio[best_pair[0], best_pair[1]] \
                         and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
                         # This is a red flag that one unit is likely a large mixture
                         # and we should ignore spike count

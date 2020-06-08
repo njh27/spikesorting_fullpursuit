@@ -248,7 +248,7 @@ class TestDataset(object):
             chan_scaling_factors = drift_funs[neuron](index)
             for chan in range(0, self.num_channels):
                 preview_templates[neuron] = np.vstack((preview_templates[neuron],
-                    chan_scaling_factors[chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude))
+                    chan_scaling_factors[chan] * self.neuron_templates[template_inds[neuron], :]))
         w_color = ['b', 'r', 'g']
         for n in range(0, len(preview_templates)):
             use_color = w_color.pop(0)
@@ -288,7 +288,7 @@ class TestDataset(object):
             for chan in range(0, self.num_channels):
                 filt_template = signal.filtfilt(b_filt, a_filt, self.neuron_templates[template_inds[neuron], :], axis=0, padlen=None)
                 self.actual_templates[neuron] = np.vstack((self.actual_templates[neuron],
-                    chan_scaling_factors[chan] * filt_template * self.amplitude))
+                    chan_scaling_factors[chan] * filt_template))
             # Generate one spike train for each neuron
             spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
             spiketrain[0:half_temp_width+2] = False # Ensure spike times will not overlap beginning
@@ -303,7 +303,7 @@ class TestDataset(object):
                 for chan in range(0, self.num_channels):
                     # Apply spike train to every channel this neuron is present on
                     filt_template = signal.filtfilt(b_filt, a_filt, self.neuron_templates[template_inds[neuron], :], axis=0, padlen=None)
-                    scaled_template = chan_scaling_factors[chan] * filt_template * self.amplitude
+                    scaled_template = chan_scaling_factors[chan] * filt_template
                     scaled_template = scaled_template.astype(self.electrode_dtype)
                     voltage_array[chan, spk_ind:(spk_ind+self.neuron_templates.shape[1])] += scaled_template
             print("Removing", np.count_nonzero(remove_IDs), "neuron", neuron, "spikes for scale factors less than", scaled_spike_thresh)

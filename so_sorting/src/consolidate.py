@@ -2179,11 +2179,11 @@ class WorkItemSummary(object):
                 continue
             neurons = [[x] for x in self.neuron_summary_by_seg[start_seg]]
             break
-        if start_seg >= self.n_segments-1:
+        if start_seg == self.n_segments:
+            # No segments with data found
+            return [{}]
+        elif start_seg == self.n_segments - 1:
             # Need at least 2 remaining segments to stitch.
-            if len(self.neuron_summary_by_seg[start_seg]) == 0:
-                # No segments with data found
-                return [{}]
             # With this being the only segment, we are done. Each neuron is a
             # list with data only for the one segment
             neurons = [[n] for n in self.neuron_summary_by_seg[start_seg]]

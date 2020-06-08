@@ -396,7 +396,7 @@ class TestDataset(object):
         for key in single_wis.sort_info.keys():
             assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key]), "key {0} does not match".format(key)
         for key in parallel_wis.sort_info.keys():
-            if key in ['log_dir', 'test_flag', 'save_1_cpu']:
+            if key in ['log_dir', 'test_flag', 'save_1_cpu', 'tmp_clips_dir']:
                 continue
             assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key])
         print("All sort info is the SAME.")

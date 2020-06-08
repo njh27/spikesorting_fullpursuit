@@ -201,7 +201,7 @@ def remove_overlapping_spikes(event_indices, clips, neuron_labels, templates,
 
 def find_multichannel_max_neuron(Probe, channel, neighbors, check_time, indices,
         labels, templates, template_labels, chan_win, spike_biases,
-        template_error, new_indices, new_labels):
+        template_error, bp_bool, bp_labels):
     """ This assumes templates are not normalized and can thus be directly
     subtracted from voltage. This function could be far more efficient if we
     tracked our current location in the spike event indices array instead
@@ -219,18 +219,18 @@ def find_multichannel_max_neuron(Probe, channel, neighbors, check_time, indices,
     # Get residual voltage centered on current time
     spike_times = np.zeros((residual_window[1] - residual_window[0]) + 1, dtype=np.bool)
     events_in_window = np.logical_and(indices >= check_time + residual_window[0], indices <= check_time + residual_window[1])
-    new_events_in_window = [True if (x >= check_time + residual_window[0] and x <= check_time + residual_window[1]) else False for x in new_indices]
+    bp_events_in_window = [True if (x >= check_time + residual_window[0] and x <= check_time + residual_window[1]) else False for x in bp_bool]
     residual_voltage = np.copy(np.float32(Probe.get_voltage(neighbors, slice(check_time + residual_window[0], check_time + residual_window[1] + 1, 1))))
 
     for label_ind, temp in enumerate(templates):
         curr_spikes = indices[np.logical_and(events_in_window, labels == template_labels[label_ind])]
         # Adjust for window
         curr_spikes -= (check_time + residual_window[0])
-        new_curr_spikes = []
-        for ni in range(0, len(new_indices)):
-            if new_events_in_window[ni] and new_labels[ni] == template_labels[label_ind]:
-                new_curr_spikes.append(new_indices[ni] - (check_time + residual_window[0]))
-        curr_spikes = np.hstack((curr_spikes, new_curr_spikes)).astype(np.int64)
+        bp_curr_spikes = []
+        for ni in range(0, len(bp_bool)):
+            if bp_events_in_window[ni] and bp_labels[ni] == template_labels[label_ind]:
+                bp_curr_spikes.append(bp_bool[ni] - (check_time + residual_window[0]))
+        curr_spikes = np.hstack((curr_spikes, bp_curr_spikes)).astype(np.int64)
         spike_times[:] = 0  # Reset to zero each iteration
         spike_times[curr_spikes] = 1
 
@@ -357,8 +357,8 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
     del spike_times
     del neighbor_bias
 
-    new_event_indices = []
-    new_event_labels = []
+    bp_event_indices = []
+    bp_event_labels = []
 
     min_t = int(2 * np.abs(chan_win[0]))
     max_t = int(residual_voltage.size - (4 * chan_win[1]))
@@ -396,7 +396,7 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
                                         neighbors, check_time, event_indices, neuron_labels,
                                         multi_templates, template_labels,
                                         chan_win, spike_biases, template_error,
-                                        new_event_indices, new_event_labels)
+                                        bp_event_indices, bp_event_labels)
             # Enforce AND operation for single and multi
             test_likelihood[:] = 0.
             test_likelihood[single_chan_dl_cross] = delta_likelihood[single_chan_dl_cross]
@@ -424,7 +424,6 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
             # Best spike falls beyond current clip so move t there and repeat on new window
             # Remember we have not added a spike/updated residuals at this point so the
             # update time window is NOT the clip width centered on new t
-
             # Need to remember this t in case it is skipped
             if rollback_t is None:
                 if (np.any(np.any(delta_likelihood[:, 0:(chan_win[1]
@@ -441,10 +440,10 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
             continue
         else:
             # Best spike falls within current window, so add it
-            new_event_time = max_delta_likelihood[max_neuron] + t + chan_win[0]
-            residual_voltage[new_event_time+chan_win[0]:new_event_time+chan_win[1]] -= templates[max_neuron]
-            new_event_indices.append(new_event_time)
-            new_event_labels.append(template_labels[max_neuron])
+            bp_event_time = max_delta_likelihood[max_neuron] + t + chan_win[0]
+            residual_voltage[bp_event_time+chan_win[0]:bp_event_time+chan_win[1]] -= templates[max_neuron]
+            bp_event_indices.append(bp_event_time)
+            bp_event_labels.append(template_labels[max_neuron])
             if rollback_t:
                 # We have now added the spike above, but to get here we previously skipped
                 # a time point that may have a spike and/or dependency on this spike's
@@ -458,7 +457,7 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
             else:
                 # Otherwise move back to the minimum time point that could be
                 # affected by the new spike time
-                t = new_event_time - chan_win[1]
+                t = bp_event_time - chan_win[1]
                 dl_update_start_t = t + chan_win[0]
                 dl_update_stop_t = t + double_chan_win[1]
                 dl_update_start_ind = 0
@@ -472,12 +471,12 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
             dl_update_start_ind = 0
 
     # Add new found spikes to old ones
-    event_indices = np.hstack((event_indices, np.array(new_event_indices, dtype=np.int64)))
-    neuron_labels = np.hstack((neuron_labels, new_event_labels))
-    secret_spike_bool = np.zeros(event_indices.size, dtype=np.bool)
-    if len(new_event_indices) > 0:
-        secret_spike_bool[-len(new_event_indices):] = True
+    event_indices = np.hstack((event_indices, np.array(bp_event_indices, dtype=np.int64)))
+    neuron_labels = np.hstack((neuron_labels, bp_event_labels))
+    binary_pursuit_spike_bool = np.zeros(event_indices.size, dtype=np.bool)
+    if len(bp_event_indices) > 0:
+        binary_pursuit_spike_bool[-len(bp_event_indices):] = True
 
-    print("Found a total of", np.count_nonzero(secret_spike_bool), "secret spikes", flush=True)
+    print("Found a total of", np.count_nonzero(binary_pursuit_spike_bool), "secret spikes", flush=True)
 
-    return event_indices, neuron_labels, secret_spike_bool
+    return event_indices, neuron_labels, binary_pursuit_spike_bool

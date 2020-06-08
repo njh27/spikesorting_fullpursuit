@@ -96,7 +96,7 @@ def combine_two_neurons(neuron1, neuron2):
     combined_neuron['chan_neighbor_ind'] = neuron1['chan_neighbor_ind']
     combined_neuron['main_windows'] = neuron1['main_windows']
     n_total_spikes = neuron1['spike_indices'].shape[0] + neuron2['spike_indices'].shape[0]
-    max_clip_samples = max(neuron1['waveforms'].shape[1], neuron2['waveforms'].shape[1])
+    max_clip_samples = max(neuron1['clips'].shape[1], neuron2['clips'].shape[1])
     half_clip_inds = int(round(np.amax(np.abs(neuron1['sort_info']['clip_width'])) * neuron1['sort_info']['sampling_rate']))
     combined_neuron['duplicate_tol_inds'] = max(neuron1['duplicate_tol_inds'], neuron2['duplicate_tol_inds'])
     # Merge neuron2 data channel-wise
@@ -109,16 +109,16 @@ def combine_two_neurons(neuron1, neuron2):
 
     channel_selector = []
     indices_by_unit = []
-    waveforms_by_unit = []
-    new_spike_bool_by_unit = []
+    clips_by_unit = []
+    bp_spike_bool_by_unit = []
     snr_by_unit = []
     for unit in [neuron1, neuron2]:
         n_unit_events = unit['spike_indices'].shape[0]
         if n_unit_events == 0:
             continue
         indices_by_unit.append(unit['spike_indices'])
-        waveforms_by_unit.append(unit['waveforms'])
-        new_spike_bool_by_unit.append(unit['new_spike_bool'])
+        clips_by_unit.append(unit['clips'])
+        bp_spike_bool_by_unit.append(unit['binary_pursuit_bool'])
         # Make and append a bunch of book keeping numpy arrays by channel
         chan_select = np.zeros(n_unit_events)
         snr_unit = np.zeros(n_unit_events)
@@ -135,19 +135,19 @@ def combine_two_neurons(neuron1, neuron2):
     snr_by_unit = np.hstack(snr_by_unit)
     combined_neuron["spike_indices"] = np.hstack(indices_by_unit)
     # Need to account for fact that different channels can have different
-    # neighborhood sizes. So make all waveforms start from beginning, and
+    # neighborhood sizes. So make all clips start from beginning, and
     # remainder zeroed out if it has no data
-    combined_neuron['waveforms'] = np.zeros((combined_neuron["spike_indices"].shape[0], max_clip_samples))
-    wave_start_ind = 0
-    for waves in waveforms_by_unit:
-        combined_neuron['waveforms'][wave_start_ind:waves.shape[0]+wave_start_ind, 0:waves.shape[1]] = waves
-        wave_start_ind += waves.shape[0]
-    combined_neuron["new_spike_bool"] = np.hstack(new_spike_bool_by_unit)
+    combined_neuron['clips'] = np.zeros((combined_neuron["spike_indices"].shape[0], max_clip_samples))
+    clip_start_ind = 0
+    for clips in clips_by_unit:
+        combined_neuron['clips'][clip_start_ind:clips.shape[0]+clip_start_ind, 0:clips.shape[1]] = clips
+        clip_start_ind += clips.shape[0]
+    combined_neuron["binary_pursuit_bool"] = np.hstack(binary_pursuit_bool_by_unit)
 
     # Cleanup some memory that wasn't overwritten during concatenation
     del indices_by_unit
-    del waveforms_by_unit
-    del new_spike_bool_by_unit
+    del clips_by_unit
+    del binary_pursuit_bool_by_unit
 
     # NOTE: This still needs to be done even though segments
     # were ordered because of overlap!
@@ -156,37 +156,37 @@ def combine_two_neurons(neuron1, neuron2):
     # binary pursuit can return slightly different dupliate spikes
     spike_order = np.argsort(combined_neuron["spike_indices"], kind='stable')
     combined_neuron["spike_indices"] = combined_neuron["spike_indices"][spike_order]
-    combined_neuron['waveforms'] = combined_neuron['waveforms'][spike_order, :]
-    combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][spike_order]
+    combined_neuron['clips'] = combined_neuron['clips'][spike_order, :]
+    combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][spike_order]
     channel_selector = channel_selector[spike_order]
     snr_by_unit = snr_by_unit[spike_order]
 
     # Remove duplicates found in binary pursuit
     keep_bool = keep_binary_pursuit_duplicates(combined_neuron["spike_indices"],
-                    combined_neuron["new_spike_bool"],
+                    combined_neuron["binary_pursuit_bool"],
                     tol_inds=half_clip_inds)
     combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-    combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]
-    combined_neuron['waveforms'] = combined_neuron['waveforms'][keep_bool, :]
+    combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+    combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
     channel_selector = channel_selector[keep_bool]
     snr_by_unit = snr_by_unit[keep_bool]
 
-    # Get each spike's channel of origin and the waveforms on main channel
+    # Get each spike's channel of origin and the clips on main channel
     combined_neuron['channel_selector'] = {}
     combined_neuron["template"] = {}
     for chan in combined_neuron['channel']:
         chan_select = channel_selector == chan
         combined_neuron['channel_selector'][chan] = chan_select
         combined_neuron["template"][chan] = np.mean(
-            combined_neuron['waveforms'][chan_select, :], axis=0)
+            combined_neuron['clips'][chan_select, :], axis=0)
 
     # Remove any identical index duplicates (either from error or
     # from combining overlapping segments), preferentially keeping
     # the waveform most similar to its channel's template
     keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
     combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-    combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]
-    combined_neuron['waveforms'] = combined_neuron['waveforms'][keep_bool, :]
+    combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+    combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
     for chan in combined_neuron['channel']:
         combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
     channel_selector = channel_selector[keep_bool]
@@ -204,7 +204,7 @@ def combine_two_neurons(neuron1, neuron2):
             chans_to_remove.append(chan)
         else:
             combined_neuron["template"][chan] = np.mean(
-                combined_neuron['waveforms'][combined_neuron['channel_selector'][chan], :], axis=0)
+                combined_neuron['clips'][combined_neuron['channel_selector'][chan], :], axis=0)
             combined_neuron['snr'][chan] = np.mean(snr_by_unit[combined_neuron['channel_selector'][chan]])
     for chan_ind in reversed(range(0, len(chans_to_remove))):
         chan_num = chans_to_remove[chan_ind]
@@ -295,7 +295,7 @@ def find_overlapping_spike_bool(spikes_1, spikes_2, overlap_tol):
     return overlap_bool
 
 
-def keep_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds):
+def keep_binary_pursuit_duplicates(event_indices, binary_pursuit_bool, tol_inds):
     """ Preferentially KEEPS spikes found in binary pursuit.
     """
     keep_bool = np.ones(event_indices.size, dtype=np.bool)
@@ -303,11 +303,11 @@ def keep_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds):
     next_index = 1
     while next_index < event_indices.size:
         if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
-            if new_spike_bool[curr_index] and ~new_spike_bool[next_index]:
+            if binary_pursuit_bool[curr_index] and ~binary_pursuit_bool[next_index]:
                 keep_bool[next_index] = False
                 # Move next index, keep current index
                 next_index += 1
-            elif ~new_spike_bool[curr_index] and new_spike_bool[next_index]:
+            elif ~binary_pursuit_bool[curr_index] and binary_pursuit_bool[next_index]:
                 keep_bool[curr_index] = False
                 # Move current index to next, move next index
                 curr_index = next_index
@@ -327,7 +327,7 @@ def keep_binary_pursuit_duplicates(event_indices, new_spike_bool, tol_inds):
 
 
 def remove_binary_pursuit_duplicates(event_indices, clips, unit_template,
-                                     new_spike_bool, tol_inds):
+                                     binary_pursuit_bool, tol_inds):
     """ Preferentially removes overlapping spikes that were both found by binary
     pursuit. This can remove double dipping artifacts as binary pursuit attempts
     to minimize residual error. This only applies for data sorted within the
@@ -339,7 +339,7 @@ def remove_binary_pursuit_duplicates(event_indices, clips, unit_template,
     while next_index < event_indices.size:
         if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
             # Violate window
-            if new_spike_bool[curr_index] and new_spike_bool[next_index]:
+            if binary_pursuit_bool[curr_index] and binary_pursuit_bool[next_index]:
                 # AND both found by binary pursuit
                 temp_sse[0] = np.sum((clips[curr_index, :] - unit_template) ** 2)
                 temp_sse[1] = np.sum((clips[next_index, :] - unit_template) ** 2)
@@ -354,7 +354,7 @@ def remove_binary_pursuit_duplicates(event_indices, clips, unit_template,
                     # Move current index to next, move next index
                     curr_index = next_index
                     next_index += 1
-            elif new_spike_bool[curr_index] and ~new_spike_bool[next_index]:
+            elif binary_pursuit_bool[curr_index] and ~binary_pursuit_bool[next_index]:
                 # Move next index, keep current index
                 next_index += 1
             else:
@@ -417,8 +417,8 @@ def remove_spike_event_duplicates_across_chans(combined_neuron):
                     curr_chan = chan
                 if combined_neuron['channel_selector'][chan][next_index]:
                     next_chan = chan
-            temp_sse[0] = np.sum((combined_neuron['waveforms'][curr_index, :] - combined_neuron['template'][curr_chan]) ** 2)
-            temp_sse[1] = np.sum((combined_neuron['waveforms'][next_index, :] - combined_neuron['template'][next_chan]) ** 2)
+            temp_sse[0] = np.sum((combined_neuron['clips'][curr_index, :] - combined_neuron['template'][curr_chan]) ** 2)
+            temp_sse[1] = np.sum((combined_neuron['clips'][next_index, :] - combined_neuron['template'][next_chan]) ** 2)
             if temp_sse[0] <= temp_sse[1]:
                 # current spike is better or equal
                 keep_bool[next_index] = False
@@ -767,7 +767,7 @@ class WorkItemSummary(object):
             Each element contains a list of the 4 outputs of spike_sort_segment,
             and the ID of the work item that created it, split up by
             individual channels into 'work_items' (or spike_sort_parallel output)
-            "crossings, labels, waveforms, new_waveforms", in this order, for a
+            "crossings, labels, clips, binary_pursuit", in this order, for a
             single segment and a single channel of sorted data.
             len(sort_data) = number segments * channels == len(work_items)
         work_items: list
@@ -1190,37 +1190,36 @@ class WorkItemSummary(object):
                         select_1 = self.sort_data[chan][seg][1] == best_pair[0]
                         select_2 = self.sort_data[chan][seg][1] == best_pair[1]
                         union_spikes = np.hstack((self.sort_data[chan][seg][0][select_1], self.sort_data[chan][seg][0][select_2]))
-                        # union_waveforms = np.vstack((self.sort_data[chan][seg][2][select_1, :], self.sort_data[chan][seg][2][select_2, :]))
-                        union_waveforms = np.vstack((clips_1, clips_2))
-                        union_new_spike_bool = np.hstack((self.sort_data[chan][seg][3][select_1], self.sort_data[chan][seg][3][select_2]))
+                        union_clips = np.vstack((clips_1, clips_2))
+                        union_binary_pursuit_bool = np.hstack((self.sort_data[chan][seg][3][select_1], self.sort_data[chan][seg][3][select_2]))
                         spike_order = np.argsort(union_spikes, kind='stable')
                         union_spikes = union_spikes[spike_order]
-                        union_waveforms = union_waveforms[spike_order, :]
-                        union_new_spike_bool = union_new_spike_bool[spike_order]
+                        union_clips = union_clips[spike_order, :]
+                        union_binary_pursuit_bool = union_binary_pursuit_bool[spike_order]
 
                         # Keep duplicates found in binary pursuit since it can reject
                         # false positives
                         keep_bool = keep_binary_pursuit_duplicates(union_spikes,
-                                        union_new_spike_bool,
+                                        union_binary_pursuit_bool,
                                         tol_inds=self.half_clip_inds)
                         union_spikes = union_spikes[keep_bool]
-                        union_new_spike_bool = union_new_spike_bool[keep_bool]
-                        union_waveforms = union_waveforms[keep_bool, :]
+                        union_binary_pursuit_bool = union_binary_pursuit_bool[keep_bool]
+                        union_clips = union_clips[keep_bool, :]
 
                         # Remove any identical index duplicates (either from error or
                         # from combining overlapping segments), preferentially keeping
                         # the waveform best aligned to the template
-                        union_template = np.mean(union_waveforms, axis=0)
+                        union_template = np.mean(union_clips, axis=0)
                         # We are unioning spikes that may need sharpened due
                         # to alignment problem so use full spike width tol inds
                         spike_half_width = calc_spike_half_width(
-                            union_waveforms[:, curr_chan_inds]) + 1
+                            union_clips[:, curr_chan_inds]) + 1
                         keep_bool = remove_spike_event_duplicates(union_spikes,
-                                        union_waveforms, union_template,
+                                        union_clips, union_template,
                                         tol_inds=2*spike_half_width)
                         union_spikes = union_spikes[keep_bool]
-                        union_new_spike_bool = union_new_spike_bool[keep_bool]
-                        union_waveforms = union_waveforms[keep_bool, :]
+                        union_binary_pursuit_bool = union_binary_pursuit_bool[keep_bool]
+                        union_clips = union_clips[keep_bool, :]
 
                         union_fraction_mua_rate = calc_fraction_mua(
                                                          union_spikes,
@@ -1667,8 +1666,8 @@ class WorkItemSummary(object):
 
                     select_label = self.sort_data[chan][seg][1] == neuron_label
                     neuron["spike_indices"] = self.sort_data[chan][seg][0][select_label]
-                    neuron['waveforms'] = self.sort_data[chan][seg][2][select_label, :]
-                    neuron["new_spike_bool"] = self.sort_data[chan][seg][3][select_label]
+                    neuron['clips'] = self.sort_data[chan][seg][2][select_label, :]
+                    neuron["binary_pursuit_bool"] = self.sort_data[chan][seg][3][select_label]
 
                     # NOTE: This still needs to be done even though segments
                     # were ordered because of overlap!
@@ -1677,35 +1676,35 @@ class WorkItemSummary(object):
                     # binary pursuit can return slightly different dupliate spikes
                     spike_order = np.argsort(neuron["spike_indices"], kind='stable')
                     neuron["spike_indices"] = neuron["spike_indices"][spike_order]
-                    neuron['waveforms'] = neuron['waveforms'][spike_order, :]
-                    neuron["new_spike_bool"] = neuron["new_spike_bool"][spike_order]
+                    neuron['clips'] = neuron['clips'][spike_order, :]
+                    neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][spike_order]
 
                     # Set duplicate tolerance as half spike width since within
                     # channel summary shouldn't be off by this
                     neuron['duplicate_tol_inds'] = calc_spike_half_width(
-                        neuron['waveforms'][:, neuron['main_win'][0]:neuron['main_win'][1]]) + 1
+                        neuron['clips'][:, neuron['main_win'][0]:neuron['main_win'][1]]) + 1
                     # Keep duplicates found in binary pursuit since it can reject
                     # false positives
                     keep_bool = keep_binary_pursuit_duplicates(neuron["spike_indices"],
-                                    neuron["new_spike_bool"],
+                                    neuron["binary_pursuit_bool"],
                                     tol_inds=self.half_clip_inds)
                     neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                    neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
-                    neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
+                    neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][keep_bool]
+                    neuron['clips'] = neuron['clips'][keep_bool, :]
 
                     # Remove any identical index duplicates (either from error or
                     # from combining overlapping segments), preferentially keeping
                     # the waveform best aligned to the template
-                    neuron["template"] = np.mean(neuron['waveforms'], axis=0)
+                    neuron["template"] = np.mean(neuron['clips'], axis=0)
                     keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
-                                    neuron['waveforms'], neuron["template"],
+                                    neuron['clips'], neuron["template"],
                                     tol_inds=neuron['duplicate_tol_inds'])
                     neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                    neuron["new_spike_bool"] = neuron["new_spike_bool"][keep_bool]
-                    neuron['waveforms'] = neuron['waveforms'][keep_bool, :]
+                    neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][keep_bool]
+                    neuron['clips'] = neuron['clips'][keep_bool, :]
 
                     # Recompute template and store output
-                    neuron["template"] = np.mean(neuron['waveforms'], axis=0)
+                    neuron["template"] = np.mean(neuron['clips'], axis=0)
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
                     neuron['fraction_mua'] = calc_fraction_mua_to_peak(
                                                 neuron["spike_indices"],
@@ -2243,8 +2242,8 @@ class WorkItemSummary(object):
                 combined_neuron['chan_neighbor_ind'][x['channel']] = x['chan_neighbor_ind']
                 combined_neuron['main_windows'][x['channel']] = x['main_win']
                 chan_align_peak[x['channel']] = [0, 0] # [Peak votes, total]
-                if x['waveforms'].shape[1] > max_clip_samples:
-                    max_clip_samples = x['waveforms'].shape[1]
+                if x['clips'].shape[1] > max_clip_samples:
+                    max_clip_samples = x['clips'].shape[1]
             if np.amax(x['template'][x['main_win'][0]:x['main_win'][1]]) \
                 > np.amin(x['template'][x['main_win'][0]:x['main_win'][1]]):
                 chan_align_peak[x['channel']][0] += 1
@@ -2253,8 +2252,8 @@ class WorkItemSummary(object):
         waveform_clip_center = int(round(np.abs(self.sort_info['clip_width'][0] * self.sort_info['sampling_rate']))) + 1
         channel_selector = []
         indices_by_unit = []
-        waveforms_by_unit = []
-        new_spike_bool_by_unit = []
+        clips_by_unit = []
+        binary_pursuit_bool_by_unit = []
         threshold_by_unit = []
         segment_by_unit = []
         snr_by_unit = []
@@ -2273,8 +2272,8 @@ class WorkItemSummary(object):
             shift = np.argmax(np.abs(unit['template'][unit['main_win'][0]:unit['main_win'][1]])) - waveform_clip_center
 
             indices_by_unit.append(unit['spike_indices'] + shift)
-            waveforms_by_unit.append(unit['waveforms'])
-            new_spike_bool_by_unit.append(unit['new_spike_bool'])
+            clips_by_unit.append(unit['clips'])
+            binary_pursuit_bool_by_unit.append(unit['binary_pursuit_bool'])
             # Make and append a bunch of book keeping numpy arrays
             channel_selector.append(np.full(n_unit_events, unit['channel']))
             threshold_by_unit.append(np.full(n_unit_events, unit['threshold']))
@@ -2290,19 +2289,19 @@ class WorkItemSummary(object):
         snr_by_unit = np.hstack(snr_by_unit)
         combined_neuron["spike_indices"] = np.hstack(indices_by_unit)
         # Need to account for fact that different channels can have different
-        # neighborhood sizes. So make all waveforms start from beginning, and
+        # neighborhood sizes. So make all clips start from beginning, and
         # remainder zeroed out if it has no data
-        combined_neuron['waveforms'] = np.zeros((combined_neuron["spike_indices"].shape[0], max_clip_samples))
-        wave_start_ind = 0
-        for waves in waveforms_by_unit:
-            combined_neuron['waveforms'][wave_start_ind:waves.shape[0]+wave_start_ind, 0:waves.shape[1]] = waves
-            wave_start_ind += waves.shape[0]
-        combined_neuron["new_spike_bool"] = np.hstack(new_spike_bool_by_unit)
+        combined_neuron['clips'] = np.zeros((combined_neuron["spike_indices"].shape[0], max_clip_samples))
+        clip_start_ind = 0
+        for clips in clips_by_unit:
+            combined_neuron['clips'][clip_start_ind:clips.shape[0]+clip_start_ind, 0:clips.shape[1]] = clips
+            clip_start_ind += clips.shape[0]
+        combined_neuron["binary_pursuit_bool"] = np.hstack(binary_pursuit_bool_by_unit)
 
         # Cleanup some memory that wasn't overwritten during concatenation
         del indices_by_unit
-        del waveforms_by_unit
-        del new_spike_bool_by_unit
+        del clips_by_unit
+        del binary_pursuit_bool_by_unit
 
         # NOTE: This still needs to be done even though segments
         # were ordered because of overlap!
@@ -2311,8 +2310,8 @@ class WorkItemSummary(object):
         # binary pursuit can return slightly different dupliate spikes
         spike_order = np.argsort(combined_neuron["spike_indices"], kind='stable')
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][spike_order]
-        combined_neuron['waveforms'] = combined_neuron['waveforms'][spike_order, :]
-        combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][spike_order]
+        combined_neuron['clips'] = combined_neuron['clips'][spike_order, :]
+        combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][spike_order]
         channel_selector = channel_selector[spike_order]
         threshold_by_unit = threshold_by_unit[spike_order]
         segment_by_unit = segment_by_unit[spike_order]
@@ -2320,31 +2319,31 @@ class WorkItemSummary(object):
 
         # Remove duplicates found in binary pursuit
         keep_bool = keep_binary_pursuit_duplicates(combined_neuron["spike_indices"],
-                        combined_neuron["new_spike_bool"],
+                        combined_neuron["binary_pursuit_bool"],
                         tol_inds=self.half_clip_inds)
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-        combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]
-        combined_neuron['waveforms'] = combined_neuron['waveforms'][keep_bool, :]
+        combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+        combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
         channel_selector = channel_selector[keep_bool]
         threshold_by_unit = threshold_by_unit[keep_bool]
         segment_by_unit = segment_by_unit[keep_bool]
         snr_by_unit = snr_by_unit[keep_bool]
 
-        # Get each spike's channel of origin and the waveforms on main channel
+        # Get each spike's channel of origin and the clips on main channel
         combined_neuron['channel_selector'] = {}
         combined_neuron["template"] = {}
         for chan in combined_neuron['channel']:
             chan_select = channel_selector == chan
             combined_neuron['channel_selector'][chan] = chan_select
             combined_neuron["template"][chan] = np.mean(
-                combined_neuron['waveforms'][chan_select, :], axis=0)
+                combined_neuron['clips'][chan_select, :], axis=0)
 
         # if len(combined_neuron['channel']) == 1:
         #     # All data on same channel so use minimal duplicate tolerance
         #     for c in combined_neuron['channel']:
         #         c_main_win = combined_neuron['main_windows'][c]
         #     combined_neuron['duplicate_tol_inds'] = 2 * calc_spike_half_width(
-        #         combined_neuron['waveforms'][:, c_main_win[0]:c_main_win[1]]) + 1
+        #         combined_neuron['clips'][:, c_main_win[0]:c_main_win[1]]) + 1
         # else:
         #     # Duplicates across channels can be very different so use large tol
         #     combined_neuron['duplicate_tol_inds'] = self.half_clip_inds
@@ -2354,8 +2353,8 @@ class WorkItemSummary(object):
         # the waveform most similar to its channel's template
         keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-        combined_neuron["new_spike_bool"] = combined_neuron["new_spike_bool"][keep_bool]
-        combined_neuron['waveforms'] = combined_neuron['waveforms'][keep_bool, :]
+        combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+        combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
         for chan in combined_neuron['channel']:
             combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
         channel_selector = channel_selector[keep_bool]
@@ -2375,7 +2374,7 @@ class WorkItemSummary(object):
                 chans_to_remove.append(chan)
             else:
                 combined_neuron["template"][chan] = np.mean(
-                    combined_neuron['waveforms'][combined_neuron['channel_selector'][chan], :], axis=0)
+                    combined_neuron['clips'][combined_neuron['channel_selector'][chan], :], axis=0)
                 combined_neuron['snr'][chan] = np.mean(snr_by_unit[combined_neuron['channel_selector'][chan]])
         for chan_ind in reversed(range(0, len(chans_to_remove))):
             chan_num = chans_to_remove[chan_ind]

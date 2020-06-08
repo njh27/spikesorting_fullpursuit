@@ -42,7 +42,7 @@ def spike_sorting_settings(**kwargs):
 
 """
     Wavelet alignment can bounce back and forth based on noise blips if
-    the spike waveform is nearly symmetric in peak/valley. """
+    the spike clip is nearly symmetric in peak/valley. """
 def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
                          settings):
     templates, labels = segment.calculate_templates(clips[:, curr_chan_inds], neuron_labels)
@@ -99,7 +99,7 @@ def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
         if np.all(pseudo_labels == 1) or np.all(pseudo_labels == 2):
             any_merged = True
             if clips_1.shape[0] >= clips_2.shape[0]:
-                # Align all neuron 2 waves with neuron 1 template
+                # Align all neuron 2 clips with neuron 1 template
                 event_indices[select_n_2] += -1*best_shift
                 unit_inds_to_check.remove(best_pair_inds[1])
                 if best_pair_inds[1] in previously_aligned_dict:
@@ -110,7 +110,7 @@ def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
                     previously_aligned_dict[best_pair_inds[0]] = []
                 previously_aligned_dict[best_pair_inds[0]].append(best_pair_inds[1])
             else:
-                # Align all neuron 1 waves with neuron 2 template
+                # Align all neuron 1 clips with neuron 2 template
                 event_indices[select_n_1] += best_shift
                 unit_inds_to_check.remove(best_pair_inds[0])
                 # Check if any previous units are tied to this one and should
@@ -204,7 +204,7 @@ def spike_sort_item(Probe, work_item, settings):
     if settings['verbose']: print("Getting clips")
     clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
     crossings = segment.keep_valid_inds([crossings], valid_event_indices)
-    
+
     if settings['verbose']: print("Start initial clustering and merge")
     # Do initial single channel sort. Start with single channel only because
     # later branching can split things out using multichannel info, but it
@@ -315,7 +315,7 @@ def spike_sort_item(Probe, work_item, settings):
         clips = clips[keep_clips, :]
 
     # Multi channel branch
-    if Probe.num_electrodes > 1 and settings['do_branch_PCA']:
+    if Probe.num_channels > 1 and settings['do_branch_PCA']:
         neuron_labels = branch_pca_2_0(neuron_labels, clips, curr_chan_inds,
                             p_value_cut_thresh=settings['p_value_cut_thresh'],
                             add_peak_valley=settings['add_peak_valley'],
@@ -327,7 +327,7 @@ def spike_sort_item(Probe, work_item, settings):
         if settings['verbose']: print("After MULTI BRANCH", curr_num_clusters.size, "different clusters")
 
     # Multi channel branch by channel
-    if Probe.num_electrodes > 1 and settings['do_branch_PCA']:
+    if Probe.num_channels > 1 and settings['do_branch_PCA']:
         neuron_labels = branch_pca_2_0(neuron_labels, clips, curr_chan_inds,
                             p_value_cut_thresh=settings['p_value_cut_thresh'],
                             add_peak_valley=settings['add_peak_valley'],
@@ -360,20 +360,20 @@ def spike_sort_item(Probe, work_item, settings):
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters")
         if settings['verbose']: print("Doing binary pursuit")
         if not settings['use_GPU']:
-            crossings, neuron_labels, new_inds = overlap.binary_pursuit_secret_spikes(
+            crossings, neuron_labels, bp_bool = overlap.binary_pursuit_secret_spikes(
                                     Probe, chan, neuron_labels, crossings,
                                     settings['clip_width'])
             clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
         else:
-            crossings, neuron_labels, new_inds, clips = binary_pursuit.binary_pursuit(
+            crossings, neuron_labels, bp_bool, clips = binary_pursuit.binary_pursuit(
                 Probe, chan, crossings, neuron_labels, settings['clip_width'],
                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
     else:
-        # Need to get newly aligned clips and new_inds = False
+        # Need to get newly aligned clips and bp_bool = False
         clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
         crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
-        new_inds = np.zeros(crossings.size, dtype=np.bool)
+        bp_bool = np.zeros(crossings.size, dtype=np.bool)
 
     if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters")
     # Adjust crossings for segment start time
@@ -382,7 +382,7 @@ def spike_sort_item(Probe, work_item, settings):
     sort.reorder_labels(neuron_labels)
     if settings['verbose']: print("Done.")
 
-    return crossings, neuron_labels, clips, new_inds
+    return crossings, neuron_labels, clips, bp_bool
 
 
 def spike_sort(Probe, **kwargs):
@@ -491,8 +491,8 @@ def spike_sort(Probe, **kwargs):
         if settings['verbose']: print("Finding voltage and thresholds for segment", x+1, "of", len(segment_onsets))
         # Need to copy or else ZCA transforms will duplicate in overlapping
         # time segments. Copy happens during matrix multiplication
-        # Slice over num_electrodes should keep same shape
-        seg_voltage = Probe.voltage[0:Probe.num_electrodes,
+        # Slice over num_channels should keep same shape
+        seg_voltage = Probe.voltage[0:Probe.num_channels,
                                    segment_onsets[x]:segment_offsets[x]]
         if settings['do_ZCA_transform']:
             if settings['verbose']: print("Doing ZCA transform")
@@ -503,7 +503,7 @@ def spike_sort(Probe, **kwargs):
             seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
         thresholds = segment.median_threshold(seg_voltage, settings['sigma'])
         segment_voltages.append(seg_voltage)
-        for chan in range(0, Probe.num_electrodes):
+        for chan in range(0, Probe.num_channels):
             # Ensure we just get neighbors once in case its complicated
             if x == 0:
                 chan_neighbors.append(Probe.get_neighbors(chan))
@@ -524,20 +524,20 @@ def spike_sort(Probe, **kwargs):
     sort_data = []
     # Put the work items through the sorter
     for wi_ind, w_item in enumerate(work_items):
-        if settings['verbose']: print("Working on item {0}/{1} on electrode {2} segment {3}".format(wi_ind+1, len(work_items), w_item['channel'], w_item['seg_number']))
+        if settings['verbose']: print("Working on item {0}/{1} on channel {2} segment {3}".format(wi_ind+1, len(work_items), w_item['channel'], w_item['seg_number']))
         # Create a probe copy specific to this segment
         segProbe = copy.copy(Probe) # Only shallow copy then reassign stuff that changes
         segProbe.n_samples = w_item['n_samples']
         segProbe.voltage = segment_voltages[w_item['seg_number']]
         w_item['ID'] = wi_ind # Assign ID number in order of deployment
-        crossings, labels, waveforms, new_waveforms = spike_sort_item(segProbe, w_item, settings)
-        sort_data.append([crossings, labels, waveforms, new_waveforms, w_item['ID']])
+        crossings, labels, clips, bp_bool = spike_sort_item(segProbe, w_item, settings)
+        sort_data.append([crossings, labels, clips, bp_bool, w_item['ID']])
 
     sort_info = settings
     curr_chan_win, _ = segment.time_window_to_samples(
                                     settings['clip_width'], Probe.sampling_rate)
     sort_info.update({'n_samples': Probe.n_samples,
-                        'n_channels': Probe.num_electrodes,
+                        'n_channels': Probe.num_channels,
                         'n_samples_per_chan': curr_chan_win[1] - curr_chan_win[0],
                         'sampling_rate': Probe.sampling_rate,
                         'n_segments': len(segment_onsets)})

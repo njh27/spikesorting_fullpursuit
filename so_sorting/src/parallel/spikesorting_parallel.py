@@ -67,10 +67,10 @@ def init_pool_dict(volt_array, volt_shape, init_dict=None):
 def single_thresholds_and_samples(voltage, sigma):
     if voltage.ndim == 1:
         voltage = np.expand_dims(voltage, 0)
-    num_electrodes = voltage.shape[0]
-    thresholds = np.empty((num_electrodes, ))
+    num_channels = voltage.shape[0]
+    thresholds = np.empty((num_channels, ))
     samples_over_thresh = []
-    for chan in range(0, num_electrodes):
+    for chan in range(0, num_channels):
         abs_voltage = np.abs(voltage[chan, :])
         thresholds[chan] = np.nanmedian(abs_voltage) / 0.6745
         samples_over_thresh.append(np.count_nonzero(abs_voltage > thresholds[chan]))
@@ -166,7 +166,7 @@ def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
         if np.all(pseudo_labels == 1) or np.all(pseudo_labels == 2):
             any_merged = True
             if clips_1.shape[0] >= clips_2.shape[0]:
-                # Align all neuron 2 waves with neuron 1 template
+                # Align all neuron 2 clips with neuron 1 template
                 event_indices[select_n_2] += -1*best_shift
                 unit_inds_to_check.remove(best_pair_inds[1])
                 if best_pair_inds[1] in previously_aligned_dict:
@@ -177,7 +177,7 @@ def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
                     previously_aligned_dict[best_pair_inds[0]] = []
                 previously_aligned_dict[best_pair_inds[0]].append(best_pair_inds[1])
             else:
-                # Align all neuron 1 waves with neuron 2 template
+                # Align all neuron 1 clips with neuron 2 template
                 event_indices[select_n_1] += best_shift
                 unit_inds_to_check.remove(best_pair_inds[0])
                 # Check if any previous units are tied to this one and should
@@ -248,10 +248,10 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
     do_ZCA_transform, filter_band is not used here but prevents errors from passing kwargs.
     """
     # Initialize variables in case this exits on error
-    crossings, neuron_labels, clips, new_inds = [], [], [], []
+    crossings, neuron_labels, clips, bp_bool = [], [], [], []
     exit_type = None
     def wrap_up():
-        data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels, new_inds]
+        data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels, bp_bool]
         with open(settings['tmp_clips_dir'] + '/temp_clips' + str(work_item['ID']) + '.pickle', 'wb') as fp:
             pickle.dump(clips, fp, protocol=-1)
         data_dict['completed_items'].append(work_item['ID'])
@@ -300,7 +300,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if crossings.size == 0:
             exit_type = "No crossings over threshold."
             # Raise error to force exit and wrap_up()
-            crossings, neuron_labels, clips, new_inds = [], [], [], []
+            crossings, neuron_labels, clips, bp_bool = [], [], [], []
             raise NoSpikesError
         min_cluster_size = (np.floor(settings['min_firing_rate'] * item_dict['n_samples'] / item_dict['sampling_rate'])).astype(np.int64)
         if min_cluster_size < 1:
@@ -432,7 +432,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             clips = clips[keep_clips, :]
 
         # Multi channel branch
-        if data_dict['num_electrodes'] > 1 and settings['do_branch_PCA']:
+        if data_dict['num_channels'] > 1 and settings['do_branch_PCA']:
             neuron_labels = branch_pca_2_0(neuron_labels, clips, curr_chan_inds,
                                 p_value_cut_thresh=settings['p_value_cut_thresh'],
                                 add_peak_valley=settings['add_peak_valley'],
@@ -444,7 +444,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             if settings['verbose']: print("After MULTI BRANCH", curr_num_clusters.size, "different clusters", flush=True)
 
         # Multi channel branch by channel
-        if data_dict['num_electrodes'] > 1 and settings['do_branch_PCA']:
+        if data_dict['num_channels'] > 1 and settings['do_branch_PCA']:
             neuron_labels = branch_pca_2_0(neuron_labels, clips, curr_chan_inds,
                                 p_value_cut_thresh=settings['p_value_cut_thresh'],
                                 add_peak_valley=settings['add_peak_valley'],
@@ -469,7 +469,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if neuron_labels.size == 0:
             exit_type = "No clusters over min_firing_rate."
             # Raise error to force exit and wrap_up()
-            crossings, neuron_labels, clips, new_inds = [], [], [], []
+            crossings, neuron_labels, clips, bp_bool = [], [], [], []
             raise NoSpikesError
 
         exit_type = "Finished sorting clusters"
@@ -480,7 +480,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
             if settings['verbose']: print("Doing binary pursuit", flush=True)
             if not settings['use_GPU']:
-                crossings, neuron_labels, new_inds = overlap_parallel.binary_pursuit_secret_spikes(
+                crossings, neuron_labels, bp_bool = overlap_parallel.binary_pursuit_secret_spikes(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 neuron_labels, crossings,
                                 settings['clip_width'])
@@ -488,15 +488,16 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
             else:
                 with data_dict['gpu_lock']:
-                    crossings, neuron_labels, new_inds, clips = binary_pursuit_parallel.binary_pursuit(
+                    crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 crossings, neuron_labels, settings['clip_width'],
                                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
             exit_type = "Finished binary pursuit"
         else:
+            # Need to get newly aligned clips and bp_bool = False
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
-            new_inds = np.zeros(crossings.size, dtype=np.bool)
+            bp_bool = np.zeros(crossings.size, dtype=np.bool)
 
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
         # Map labels starting at zero and put labels in order
@@ -562,7 +563,7 @@ def spike_sort_parallel(Probe, **kwargs):
                             "memory than the GPU version. Returned " \
                             "clips will NOT be adjusted.")
         warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
-    init_dict = {'num_electrodes': Probe.num_electrodes, 'sampling_rate': Probe.sampling_rate,
+    init_dict = {'num_channels': Probe.num_channels, 'sampling_rate': Probe.sampling_rate,
                  'results_dict': manager.dict(),
                  'completed_items': manager.list(), 'exits_dict': manager.dict(),
                  'gpu_lock': manager.Lock(), 'filter_band': settings['filter_band']}
@@ -636,8 +637,8 @@ def spike_sort_parallel(Probe, **kwargs):
         if settings['verbose']: print("Finding voltage and thresholds for segment", x+1, "of", len(segment_onsets))
         # Need to copy or else ZCA transforms will duplicate in overlapping
         # time segments. Copy happens during matrix multiplication
-        # Slice over num_electrodes should keep same shape
-        seg_voltage = Probe.voltage[0:Probe.num_electrodes,
+        # Slice over num_channels should keep same shape
+        seg_voltage = Probe.voltage[0:Probe.num_channels,
                                    segment_onsets[x]:segment_offsets[x]]
         if settings['do_ZCA_transform']:
             if settings['verbose']: print("Doing ZCA transform")
@@ -652,7 +653,7 @@ def spike_sort_parallel(Probe, **kwargs):
         init_dict['segment_voltages'].append([mp.RawArray(np.ctypeslib.ctypes.c_double, seg_voltage.size), seg_voltage.shape])
         np_view = np.frombuffer(init_dict['segment_voltages'][x][0]).reshape(seg_voltage.shape) # Create numpy view
         np.copyto(np_view, seg_voltage) # Copy segment voltage to voltage buffer
-        for chan in range(0, Probe.num_electrodes):
+        for chan in range(0, Probe.num_channels):
             # Ensure we just get neighbors once in case its complicated
             if x == 0:
                 chan_neighbors.append(Probe.get_neighbors(chan))
@@ -768,12 +769,12 @@ def spike_sort_parallel(Probe, **kwargs):
     for wi_ind, w_item in enumerate(work_items):
         if w_item['ID'] in data_dict['results_dict'].keys():
             with open(settings['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle', 'rb') as fp:
-                waveforms = pickle.load(fp)
+                clips = pickle.load(fp)
             os.remove(settings['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle')
-            # Append list of crossings, labels, waveforms, new_waveforms
+            # Append list of crossings, labels, clips, binary pursuit spikes
             sort_data.append([data_dict['results_dict'][w_item['ID']][0],
                               data_dict['results_dict'][w_item['ID']][1],
-                              waveforms,
+                              clips,
                               data_dict['results_dict'][w_item['ID']][2],
                               w_item['ID']])
             # I am not sure why, but this has to be added here. It does not work
@@ -791,7 +792,7 @@ def spike_sort_parallel(Probe, **kwargs):
     curr_chan_win, _ = segment_parallel.time_window_to_samples(
                                     settings['clip_width'], Probe.sampling_rate)
     sort_info.update({'n_samples': Probe.n_samples,
-                      'n_channels': Probe.num_electrodes,
+                      'n_channels': Probe.num_channels,
                       'n_samples_per_chan': curr_chan_win[1] - curr_chan_win[0],
                       'sampling_rate': Probe.sampling_rate,
                       'n_segments': len(segment_onsets)})

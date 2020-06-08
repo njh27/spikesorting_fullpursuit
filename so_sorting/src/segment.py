@@ -9,16 +9,16 @@ import matplotlib.pyplot as plt
 """
     threshold(probe)
 
-Determines the per-electrode threshold necessary for the detection of spikes.
+Determines the per-channel threshold necessary for the detection of spikes.
 This function returns a vector of thresholds (one for each channel). These
 represent the absolute value of the threshold.
 """
 def median_threshold(voltage, sigma):
     if voltage.ndim == 1:
         voltage = np.expand_dims(voltage, 0)
-    num_electrodes = voltage.shape[0]
-    thresholds = np.empty((num_electrodes, ))
-    for chan in range(0, num_electrodes):
+    num_channels = voltage.shape[0]
+    thresholds = np.empty((num_channels, ))
+    for chan in range(0, num_channels):
         abs_voltage = np.abs(voltage[chan, :])
         thresholds[chan] = np.nanmedian(abs_voltage) / 0.6745
     thresholds *= sigma
@@ -29,9 +29,9 @@ def median_threshold(voltage, sigma):
 """
     identify_threshold_crossings(Probe, thresholds[, skip, align_window, above_threshold_time])
 
-Identify possible events on each electrode. These events are those that pass
+Identify possible events on each channel. These events are those that pass
 the threshold given for each channel (the length of thresholds should be the
-length of the number of electrodes). We include a blanking period to avoid multiple
+length of the number of channels). We include a blanking period to avoid multiple
 spike detections.
 
 The returned value is a vector of vectors (no a complete matrix). Each vector
@@ -157,10 +157,10 @@ def align_events_with_template(Probe, channel, neuron_labels, event_indices, cli
     neuron_labels = neuron_labels[valid_inds]
     templates, labels = calculate_templates(clips[:, temp_index[0]:temp_index[1]], neuron_labels)
 
-    # Align all waves with their own template
-    for wave in range(0, clips.shape[0]):
-        cross_corr = np.correlate(clips[wave, :], templates[np.nonzero(labels == neuron_labels[wave])[0][0]], mode='valid')
-        event_indices[wave] += np.argmax(cross_corr) - int(temp_index[0])
+    # Align all clips with their own template
+    for c in range(0, clips.shape[0]):
+        cross_corr = np.correlate(clips[c, :], templates[np.nonzero(labels == neuron_labels[c])[0][0]], mode='valid')
+        event_indices[c] += np.argmax(cross_corr) - int(temp_index[0])
 
     return event_indices, neuron_labels, valid_inds
 
@@ -182,21 +182,21 @@ def align_events_with_best_template(Probe, channel, neuron_labels, event_indices
     window = np.abs(window)
     center = max(window)
 
-    # Align all waves with best template
-    for wave in range(0, clips.shape[0]):
+    # Align all clips with best template
+    for c in range(0, clips.shape[0]):
         best_peak = -np.inf
         best_shift = 0
         for temp_ind in range(0, len(templates)):
-            cross_corr = np.correlate(clips[wave, :], templates[temp_ind], mode='full')
+            cross_corr = np.correlate(clips[c, :], templates[temp_ind], mode='full')
             max_ind = np.argmax(cross_corr)
             if cross_corr[max_ind] > best_peak:
                 best_peak = cross_corr[max_ind]
                 shift = max_ind - center - window[0]
                 if shift <= -window[0]//2 or shift >= window[1]//2:
-                    overlaps[wave] = True
+                    overlaps[c] = True
                     continue
                 best_shift = shift
-        event_indices[wave] += best_shift
+        event_indices[c] += best_shift
     event_indices = event_indices[~overlaps]
     neuron_labels = neuron_labels[~overlaps]
 
@@ -291,12 +291,12 @@ def wavelet_align_events(Probe, channel, event_indices, clip_width, band_width):
         central_template = signal.ricker(2 * center+1, scale)
         temp_scales.append(central_template)
 
-    # Align all waves on the mexican hat central template
-    for wave in range(0, clips.shape[0]):
+    # Align all clips on the mexican hat central template
+    for c in range(0, clips.shape[0]):
         best_peak = -np.inf
         # First find the best frequency (here 'template') for this clip
         for temp_ind in range(0, len(temp_scales)):
-            cross_corr = np.convolve(clips[wave, :], temp_scales[temp_ind], mode='full')
+            cross_corr = np.convolve(clips[c, :], temp_scales[temp_ind], mode='full')
             max_ind = np.argmax(cross_corr)
             min_ind = np.argmin(cross_corr)
             if cross_corr[max_ind] > best_peak:
@@ -352,9 +352,9 @@ def wavelet_align_events(Probe, channel, event_indices, clip_width, band_width):
         if shift <= -window[0] or shift >= window[1]:
             # If optimal shift is finding a different spike beyond window,
             # delete this spike as it violates our dead time between spikes
-            overlaps[wave] = True
+            overlaps[c] = True
             continue
-        event_indices[wave] += shift
+        event_indices[c] += shift
     event_indices = event_indices[~overlaps]
 
     return event_indices
@@ -374,16 +374,16 @@ def align_adjusted_clips_with_template(Probe, channel, neighbors, clips, event_i
     templates, labels = calculate_templates(adjusted_clips[:, cc_curr_chan_center_index+curr_chan_win[0]:cc_curr_chan_center_index+curr_chan_win[1]], neuron_labels)
     aligned_adjusted_clips = np.empty((adjusted_clips.shape[0], samples_per_chan * len(neighbors)))
 
-    # Align all waves with their own template
-    for wave in range(0, adjusted_clips.shape[0]):
-        cross_corr = np.correlate(adjusted_clips[wave, cc_curr_chan_inds], templates[np.nonzero(labels == neuron_labels[wave])[0][0]], mode='valid')
+    # Align all clips with their own template
+    for c in range(0, adjusted_clips.shape[0]):
+        cross_corr = np.correlate(adjusted_clips[c, cc_curr_chan_inds], templates[np.nonzero(labels == neuron_labels[c])[0][0]], mode='valid')
         shift = np.argmax(cross_corr) - int(np.abs(curr_chan_win[0]))
-        event_indices[wave] += shift
+        event_indices[c] += shift
         for n in range(0, len(neighbors)):
             n_chan_win = [n*samples_per_chan, (n+1)*samples_per_chan]
             cc_n_chan_win = [n*cc_samples_per_chan + np.abs(cc_curr_chan_win[0]) + curr_chan_win[0] + shift,
                              n*cc_samples_per_chan + np.abs(cc_curr_chan_win[0]) + curr_chan_win[1] + shift]
-            aligned_adjusted_clips[wave, n_chan_win[0]:n_chan_win[1]] = adjusted_clips[wave, cc_n_chan_win[0]:cc_n_chan_win[1]]
+            aligned_adjusted_clips[c, n_chan_win[0]:n_chan_win[1]] = adjusted_clips[c, cc_n_chan_win[0]:cc_n_chan_win[1]]
 
     return aligned_adjusted_clips, event_indices, neuron_labels, valid_event_indices
 
@@ -419,7 +419,7 @@ given set of threshold crossings. We center the clip on the threshold crossing
 index. The width of the segment is passed to the function in units of seconds.
 This is done over all channels on probes, so threshold crossings input in
 event_indices must be a list where each element contains a numpy array of
-threshold crossing indices for the corresponding electrode in the Probe object.
+threshold crossing indices for the corresponding channel in the Probe object.
 event_indices that yield a clip width beyond data boundaries are ignored. """
 def get_singlechannel_clips(Probe, channel, event_indices, clip_width):
 

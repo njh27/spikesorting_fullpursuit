@@ -7,33 +7,33 @@ from so_sorting.src import preprocessing
 class AbstractProbe(object):
     """ An abstract probe encapsulates a large number of recording devices.
     Each of the instantiations of this abstract type can have a number of
-    electrodes. Geometry must be specified for each subclass using the
+    channels. Geometry must be specified for each subclass using the
     'get_neighbors' method specification.
     All AbstractProbes must implement several functions:
      sampling_rate() returns the sampling rate of the file
-     num_electrodes() which returns the number of total electrodes (N)
+     num_channels() which returns the number of total channels (N)
      voltage_array which is an N x samples numpy array of raw recording.
      get_neighbors(index) # Returns a list of neighboring channels, which must
      include the input channel and be a numpy array of integers! """
 
-    def __init__(self, sampling_rate, num_electrodes, voltage_array=None):
+    def __init__(self, sampling_rate, num_channels, voltage_array=None):
         self.sampling_rate = int(sampling_rate)
-        self.num_electrodes = num_electrodes
+        self.num_channels = num_channels
         self.filter_band = [None, None]
 
         if voltage_array is not None:
             self.voltage = voltage_array
         else:
-            # Set placeholder voltage with correct number of electrode rows
-            # Can be overwritten later with set_new_voltage()
-            self.voltage = np.empty((num_electrodes, 0))
+            # Set placeholder voltage with correct number of electrode channel
+            # rows. Can be overwritten later with set_new_voltage()
+            self.voltage = np.empty((num_channels, 0))
 
         # Voltage array must have one row for each channel with columns as samples
         if self.voltage.ndim == 1:
             # One dimensional voltage must be converted to 2 dimensions
             self.voltage = np.expand_dims(self.voltage, 0)
-        if (self.num_electrodes != self.voltage.shape[0]) or (self.voltage.ndim < 1):
-            raise ValueError("None of the voltage data dimensions match the input number of electrodes")
+        if (self.num_channels != self.voltage.shape[0]) or (self.voltage.ndim < 1):
+            raise ValueError("None of the voltage data dimensions match the input number of channels")
         self.n_samples = self.voltage.shape[1]
 
     def set_new_voltage(self, new_voltage_array):
@@ -45,14 +45,14 @@ class AbstractProbe(object):
         # Voltage array must have one row for each channel with columns as samples
         if self.voltage.ndim == 1:
             self.voltage = np.expand_dims(self.voltage, 0)
-        if (self.num_electrodes != self.voltage.shape[0]) or (self.voltage.ndim < 1):
-            raise ValueError("None of the voltage data dimensions match the input number of electrodes")
+        if (self.num_channels != self.voltage.shape[0]) or (self.voltage.ndim < 1):
+            raise ValueError("None of the voltage data dimensions match the input number of channels")
         self.n_samples = self.voltage.shape[1]
 
     def get_voltage(self, channels, time_samples=None):
         """ Returns voltage trace for input channels and time sample indices.  These
             can be either tuples or slices. """
-        # Electrodes are rows and time is columns
+        # Channels are rows and time is columns
         if time_samples is None:
             time_samples = slice(0, self.voltage.shape[1], 1)
         return self.voltage[channels, time_samples]
@@ -60,7 +60,7 @@ class AbstractProbe(object):
     def set_voltage(self, channels, new_voltage, time_samples=None):
         """ Sets voltage trace for input channels and time sample indices.  These
             can be either tuples or slices. """
-        # Electrodes are rows and time is columns
+        # Channels are rows and time is columns
         if time_samples is None:
             time_samples = slice(0, self.voltage.shape[1], 1)
         self.voltage[channels, time_samples] = new_voltage
@@ -80,7 +80,7 @@ class AbstractProbe(object):
         low_cutoff = low_cutoff / (self.sampling_rate / 2)
         high_cutoff = high_cutoff / (self.sampling_rate / 2)
         b_filt, a_filt = butter(1, [low_cutoff, high_cutoff], btype='band')
-        for chan in range(0, self.num_electrodes):
+        for chan in range(0, self.num_channels):
             self.set_voltage(chan, filtfilt(b_filt, a_filt, self.get_voltage(chan), axis=0, padlen=None))
 
         # Update Probe filter band values
@@ -104,7 +104,7 @@ class SProbe16by2(AbstractProbe):
         # our same stereotrode, the two stereotrodes above us, and the two
         # stereotrodes below us.
 
-        if channel > self.num_electrodes - 1 or channel < 0:
+        if channel > self.num_channels - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
 
         stereotrode_number = (channel) // 2
@@ -122,7 +122,7 @@ class SingleElectrode(AbstractProbe):
         AbstractProbe.__init__(self, sampling_rate, 1, voltage_array=voltage_array)
 
     def get_neighbors(self, channel):
-        if channel > self.num_electrodes - 1 or channel < 0:
+        if channel > self.num_channels - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
 
         return np.zeros(1, dtype=np.int64)
@@ -138,7 +138,7 @@ class SingleTetrode(AbstractProbe):
         # our same stereotrode, the two stereotrodes above us, and the two
         # stereotrodes below us.
 
-        if channel > self.num_electrodes - 1 or channel < 0:
+        if channel > self.num_channels - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
 
         neighbors = np.arange(0, 4, 1)
@@ -148,11 +148,11 @@ class SingleTetrode(AbstractProbe):
 
 class DistanceBasedProbe(AbstractProbe):
 
-    def __init__(self, sampling_rate, num_electrodes, xy_layout, voltage_array=None):
+    def __init__(self, sampling_rate, num_channels, xy_layout, voltage_array=None):
         """ xy_layout is 2D numpy array where each row represents its
-        corresonding electrode number and each column gives the x, y coordinates
-        of that electrode in micrometers. """
-        AbstractProbe.__init__(self, sampling_rate, num_electrodes, voltage_array=voltage_array)
+        corresonding channel number and each column gives the x, y coordinates
+        of that channel in micrometers. """
+        AbstractProbe.__init__(self, sampling_rate, num_channels, voltage_array=voltage_array)
 
         self.distance_mat = np.zeros((xy_layout.shape[0], xy_layout.shape[0]))
         for n_trode in range(0, xy_layout.shape[0]):
@@ -162,8 +162,8 @@ class DistanceBasedProbe(AbstractProbe):
                 self.distance_mat[n_pair, n_trode] = self.distance_mat[n_trode, n_pair]
 
     def get_neighbors(self, channel):
-        """ Neighbors returned as all electrodes with 75 microns of input channel. """
-        if channel > self.num_electrodes - 1 or channel < 0:
+        """ Neighbors returned as all channels within 75 microns of input channel. """
+        if channel > self.num_channels - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
         neighbors = np.flatnonzero(self.distance_mat[channel, :] < 75)
         neighbors.sort()
@@ -176,9 +176,9 @@ class SProbe24by1(AbstractProbe):
         AbstractProbe.__init__(self, sampling_rate, 24, voltage_array=voltage_array)
 
     def get_neighbors(self, channel):
-        if channel > self.num_electrodes - 1 or channel < 0:
+        if channel > self.num_channels - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
-        start_electrode = max(0, channel - 1)
-        stop_electrode = min(24, channel + 2)
-        neighbors = np.arange(start_electrode, stop_electrode)
+        start_channel = max(0, channel - 1)
+        stop_channel = min(24, channel + 2)
+        neighbors = np.arange(start_channel, stop_channel)
         return np.int64(neighbors)

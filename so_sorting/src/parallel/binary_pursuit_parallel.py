@@ -481,10 +481,10 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
     event_indices = np.int64(np.hstack(secret_spike_indices))
     neuron_labels = np.int64(np.hstack(secret_spike_labels))
     adjusted_clips = np.float64(np.vstack(adjusted_spike_clips))
-    new_spike_bool = np.hstack(secret_spike_bool)
+    binary_pursuit_spike_bool = np.hstack(secret_spike_bool)
     # Realign events with center of spike
     event_indices += clip_init_samples
 
-    print("Found a total of", np.count_nonzero(new_spike_bool), "secret spikes", flush=True)
+    print("Found a total of", np.count_nonzero(binary_pursuit_spike_bool), "secret spikes", flush=True)
 
-    return event_indices, neuron_labels, new_spike_bool, adjusted_clips
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips

@@ -23,6 +23,11 @@ def get_full_zca_matrix(data, rowvar=True):
     U, S, _ = linalg.svd(sigma)
     zca_matrix = U @ np.diag(1.0 / np.sqrt(S + 1e-9)) @ U.T
 
+    # Scale each of the rows of Z
+    # This ensures that the output of the matrix multiplication (Z * channel voltages)
+    # remains in the same range (doesn't clip ints)
+    zca_matrix = zca_matrix / np.diag(zca_matrix)[:, None]
+
     return zca_matrix
 
 
@@ -69,6 +74,10 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
 
     U, S, _ = linalg.svd(sigma)
     zca_matrix = U @ np.diag(1.0 / np.sqrt(S + 1e-9)) @ U.T
+    # Scale each of the rows of Z
+    # This ensures that the output of the matrix multiplication (Z * channel voltages)
+    # remains in the same range (doesn't clip ints)
+    zca_matrix = zca_matrix / np.diag(zca_matrix)[:, None]
 
     return zca_matrix
 
@@ -217,6 +226,11 @@ def compute_pca(clips, check_components, max_components, add_peak_valley=False,
     if add_peak_valley and curr_chan_inds is None:
         raise ValueError("Must supply indices for the main channel if using peak valley")
     # use_components1, _ = optimal_reconstruction_pca_order(clips, check_components, max_components)
+    # PCA order functions use double precision and are compiled that way, so cast
+    # here and convert back afterward instead of carrying two copies. Scores
+    # will then be output as doubles.
+    clip_dtype = clips.dtype
+    clips = clips.astype(np.float64)
     if clips.flags['C_CONTIGUOUS']:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order(clips, check_components, max_components)
     else:
@@ -232,6 +246,7 @@ def compute_pca(clips, check_components, max_components, add_peak_valley=False,
         peak_valley /= np.amax(np.abs(peak_valley)) # Normalized from -1 to 1
         peak_valley *= np.amax(np.amax(np.abs(scores))) # Normalized to same range as PC scores
         scores = np.hstack((scores, peak_valley))
+    clips = clips.astype(clip_dtype)
 
     return scores
 
@@ -245,6 +260,11 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
     # use_components, _ = optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
     # NOTE: Slicing SWITCHES C and F ordering so check!
     is_c_contiguous = clips[:, curr_chan_inds].flags['C_CONTIGUOUS']
+    # PCA order functions use double precision and are compiled that way, so cast
+    # here and convert back afterward instead of carrying two copies. Scores
+    # will then be output as doubles.
+    clip_dtype = clips.dtype
+    clips = clips.astype(np.float64)
     if is_c_contiguous:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components)
     else:
@@ -282,6 +302,7 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
         # print("Automatic component detection (get by channel) chose", use_components, "PCA components.", flush=True)
         scores = pca_scores(clips[:, ch_inds], use_components, pcs_as_index=True)
         pcs_by_chan.append(scores)
+    clips = clips.astype(clip_dtype)
 
     return np.hstack(pcs_by_chan)
 
@@ -393,6 +414,11 @@ def compute_template_pca(clips, labels, curr_chan_inds, check_components,
             templates[ind, :] *= np.sqrt(u_counts[ind] / labels.size)
 
     # use_components, _ = optimal_reconstruction_pca_order(templates, check_components, max_components)
+    # PCA order functions use double precision and are compiled that way, so cast
+    # here and convert back afterward instead of carrying two copies. Scores
+    # will then be output as doubles.
+    clip_dtype = clips.dtype
+    clips = clips.astype(np.float64)
     if templates.flags['C_CONTIGUOUS']:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order(templates, check_components, max_components)
     else:
@@ -409,6 +435,7 @@ def compute_template_pca(clips, labels, curr_chan_inds, check_components,
         peak_valley /= np.amax(np.abs(peak_valley)) # Normalized from -1 to 1
         peak_valley *= np.amax(np.amax(np.abs(scores))) # Normalized to same range as PC scores
         scores = np.hstack((scores, peak_valley))
+    clips = clips.astype(clip_dtype)
 
     return scores
 
@@ -432,6 +459,11 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds,
     # Do current channel first
     # use_components, _ = optimal_reconstruction_pca_order(templates[:, curr_chan_inds], check_components, max_components)
     is_c_contiguous = templates[:, curr_chan_inds].flags['C_CONTIGUOUS']
+    # PCA order functions use double precision and are compiled that way, so cast
+    # here and convert back afterward instead of carrying two copies. Scores
+    # will then be output as doubles.
+    clip_dtype = clips.dtype
+    clips = clips.astype(np.float64)
     if is_c_contiguous:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order(templates[:, curr_chan_inds], check_components, max_components)
     else:
@@ -470,6 +502,7 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds,
         _, score_mat = pca_scores(templates[:, ch_inds], use_components, pcs_as_index=True, return_V=True)
         scores = clips[:, ch_inds] @ score_mat
         pcs_by_chan.append(scores)
+    clips = clips.astype(clip_dtype)
 
     return np.hstack(pcs_by_chan)
 

@@ -16,17 +16,23 @@ class AbstractProbe(object):
      get_neighbors(index) # Returns a list of neighboring channels, which must
      include the input channel and be a numpy array of integers! """
 
-    def __init__(self, sampling_rate, num_channels, voltage_array=None):
+    def __init__(self, sampling_rate, num_channels, voltage_array=None, voltage_dtype=None):
         self.sampling_rate = int(sampling_rate)
         self.num_channels = num_channels
         self.filter_band = [None, None]
+        if voltage_dtype is None:
+            voltage_dtype = voltage_array.dtype
+        if voltage_array.dtype != voltage_dtype:
+            print("Input voltage array is being cast from", voltage_array.dtype, "to", voltage_type, "because its type did not match the input voltage_type.")
+            voltage_array = voltage_array.astype(voltage_type)
+        self.v_dtype = voltage_dtype
 
         if voltage_array is not None:
             self.voltage = voltage_array
         else:
             # Set placeholder voltage with correct number of electrode channel
             # rows. Can be overwritten later with set_new_voltage()
-            self.voltage = np.empty((num_channels, 0))
+            self.voltage = np.empty((num_channels, 0), dtype=self.v_dtype)
 
         # Voltage array must have one row for each channel with columns as samples
         if self.voltage.ndim == 1:
@@ -97,7 +103,7 @@ class AbstractProbe(object):
 class SProbe16by2(AbstractProbe):
 
     def __init__(self, sampling_rate, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 32, voltage_array=voltage_array)
+        AbstractProbe.__init__(self, sampling_rate, 32, voltage_array=voltage_array, voltage_dtype=None)
 
     def get_neighbors(self, channel):
         # These are organized into stereotrodes. Our neighbors are the channels on
@@ -119,7 +125,7 @@ class SProbe16by2(AbstractProbe):
 class SingleElectrode(AbstractProbe):
 
     def __init__(self, sampling_rate, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 1, voltage_array=voltage_array)
+        AbstractProbe.__init__(self, sampling_rate, 1, voltage_array=voltage_array, voltage_dtype=None)
 
     def get_neighbors(self, channel):
         if channel > self.num_channels - 1 or channel < 0:
@@ -131,7 +137,7 @@ class SingleElectrode(AbstractProbe):
 class SingleTetrode(AbstractProbe):
 
     def __init__(self, sampling_rate, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 4, voltage_array=voltage_array)
+        AbstractProbe.__init__(self, sampling_rate, 4, voltage_array=voltage_array, voltage_dtype=None)
 
     def get_neighbors(self, channel):
         # These are organized into stereotrodes. Our neighbors are the channels on
@@ -152,7 +158,7 @@ class DistanceBasedProbe(AbstractProbe):
         """ xy_layout is 2D numpy array where each row represents its
         corresonding channel number and each column gives the x, y coordinates
         of that channel in micrometers. """
-        AbstractProbe.__init__(self, sampling_rate, num_channels, voltage_array=voltage_array)
+        AbstractProbe.__init__(self, sampling_rate, num_channels, voltage_array=voltage_array, voltage_dtype=None)
 
         self.distance_mat = np.zeros((xy_layout.shape[0], xy_layout.shape[0]))
         for n_trode in range(0, xy_layout.shape[0]):
@@ -173,7 +179,7 @@ class DistanceBasedProbe(AbstractProbe):
 class SProbe24by1(AbstractProbe):
 
     def __init__(self, sampling_rate, voltage_array=None):
-        AbstractProbe.__init__(self, sampling_rate, 24, voltage_array=voltage_array)
+        AbstractProbe.__init__(self, sampling_rate, 24, voltage_array=voltage_array, voltage_dtype=None)
 
     def get_neighbors(self, channel):
         if channel > self.num_channels - 1 or channel < 0:

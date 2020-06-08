@@ -286,11 +286,12 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         # we separately extract the voltage and the neighbors
         item_dict = {'sampling_rate': data_dict['sampling_rate'],
                      'n_samples': work_item['n_samples'],
-                     'thresholds': work_item['thresholds']}
+                     'thresholds': work_item['thresholds'],
+                     'v_dtype': data_dict['v_dtype']}
         chan = work_item['channel']
         seg_volts_buffer = data_dict['segment_voltages'][work_item['seg_number']][0]
         seg_volts_shape = data_dict['segment_voltages'][work_item['seg_number']][1]
-        voltage = np.frombuffer(seg_volts_buffer).reshape(seg_volts_shape)
+        voltage = np.frombuffer(seg_volts_buffer, dtype=item_dict['v_dtype']).reshape(seg_volts_shape)
         neighbors = work_item['neighbors']
 
         skip = np.amax(np.abs(settings['clip_width'])) / 2
@@ -537,6 +538,11 @@ def spike_sort_parallel(Probe, **kwargs):
     the file may not be appropriately deleted. Before using the directory, the
     temp directory is deleted if it exists, so subsequent successful runs of
     sorting using the same directory will remove the temp directory.
+
+    Note: Clips and voltages will be output in the data type Probe.v_dtype.
+    However, most of the arithmetic is computed in np.float64. Clips are cast
+    as np.float64 for determining PCs and cast back when done. All of binary
+    pursuit is conducted as np.float32 for memory and GPU compatibility.
     See also:
     '
     """
@@ -564,7 +570,7 @@ def spike_sort_parallel(Probe, **kwargs):
                             "clips will NOT be adjusted.")
         warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
     init_dict = {'num_channels': Probe.num_channels, 'sampling_rate': Probe.sampling_rate,
-                 'results_dict': manager.dict(),
+                 'results_dict': manager.dict(), 'v_dtype': Probe.v_dtype,
                  'completed_items': manager.list(), 'exits_dict': manager.dict(),
                  'gpu_lock': manager.Lock(), 'filter_band': settings['filter_band']}
     if settings['log_dir'] is not None:
@@ -646,12 +652,13 @@ def spike_sort_parallel(Probe, **kwargs):
             zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                             thresholds, settings['sigma'],
                             zca_cushion, n_samples=1e6)
+            zca_matrix = zca_matrix.astype(Probe.v_dtype)
             seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
         thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
         samples_over_thresh.extend(seg_over_thresh)
         # Allocate shared voltage buffer. List is appended in SEGMENT ORDER
-        init_dict['segment_voltages'].append([mp.RawArray(np.ctypeslib.ctypes.c_double, seg_voltage.size), seg_voltage.shape])
-        np_view = np.frombuffer(init_dict['segment_voltages'][x][0]).reshape(seg_voltage.shape) # Create numpy view
+        init_dict['segment_voltages'].append([mp.RawArray(np.ctypeslib.as_ctypes_type(Probe.v_dtype), seg_voltage.size), seg_voltage.shape])
+        np_view = np.frombuffer(init_dict['segment_voltages'][x][0], dtype=Probe.v_dtype).reshape(seg_voltage.shape) # Create numpy view
         np.copyto(np_view, seg_voltage) # Copy segment voltage to voltage buffer
         for chan in range(0, Probe.num_channels):
             # Ensure we just get neighbors once in case its complicated

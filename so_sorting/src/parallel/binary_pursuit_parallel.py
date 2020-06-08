@@ -31,7 +31,9 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
     minimize the squared error.
 
     The output of this function is a new set of crossing times, labels, and clips.
-    The clips have all other spikes removed.
+    The clips have all other spikes removed. The clips and binary pursuit are all
+    done in np.float32 precision. Output clips are cast to probe_dict['v_dtype']
+    at the end for output.
 
     A couple of notes regarding the OpenCL implementation of the binary pursuit algorithm.
      1. The labels passed into the both the residual computation and the binary pursuit
@@ -480,7 +482,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
 
     event_indices = np.int64(np.hstack(secret_spike_indices))
     neuron_labels = np.int64(np.hstack(secret_spike_labels))
-    adjusted_clips = np.float64(np.vstack(adjusted_spike_clips))
+    adjusted_clips = (np.vstack(adjusted_spike_clips)).astype(probe_dict['v_dtype'])
     binary_pursuit_spike_bool = np.hstack(secret_spike_bool)
     # Realign events with center of spike
     event_indices += clip_init_samples

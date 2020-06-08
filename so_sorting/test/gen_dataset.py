@@ -46,7 +46,7 @@ dict_other_templates = {'upsidedown_47a': np.array(
 class TestSingleElectrode(electrode.AbstractProbe):
 
     def __init__(self, sampling_rate, voltage_array):
-        electrode.AbstractProbe.__init__(self, sampling_rate, 1, voltage_array=voltage_array)
+        electrode.AbstractProbe.__init__(self, sampling_rate, 1, voltage_array=voltage_array, voltage_dtype=None)
 
     def get_neighbors(self, channel):
         """ Test probe neighbor function simple returns an array of all channel numbers.
@@ -57,7 +57,7 @@ class TestSingleElectrode(electrode.AbstractProbe):
 class TestTetrode(electrode.AbstractProbe):
 
     def __init__(self, sampling_rate, voltage_array):
-        electrode.AbstractProbe.__init__(self, sampling_rate, 4, voltage_array=voltage_array)
+        electrode.AbstractProbe.__init__(self, sampling_rate, 4, voltage_array=voltage_array, voltage_dtype=None)
 
     def get_neighbors(self, channel):
         """ Test probe neighbor function simple returns an array of all channel numbers.
@@ -74,7 +74,7 @@ class TestProbe(electrode.AbstractProbe):
         if num_channels is None:
             num_channels = voltage_array.shape[1]
         self.num_channels = num_channels
-        electrode.AbstractProbe.__init__(self, sampling_rate, num_channels, voltage_array=voltage_array)
+        electrode.AbstractProbe.__init__(self, sampling_rate, num_channels, voltage_array=voltage_array, voltage_dtype=None)
 
     def get_neighbors(self, channel):
         """ Test probe neighbor function simple returns an array of all channel numbers.
@@ -86,27 +86,31 @@ class TestProbe(electrode.AbstractProbe):
 
 
 class TestDataset(object):
-    """ Actual IDs are output as the index at (self.neuron_templates.shape[1] // 2)
+    """
+    Any input templates will be subsequently multiplied by 'amplitude' to keep
+    them in scale with the noise.
+    Actual IDs are output as the index at (self.neuron_templates.shape[1] // 2)
     """
     def __init__(self, num_channels, duration, random_seed=None,
                  neuron_templates=None, frequency_range=(500, 8000),
                  samples_per_second=40000, amplitude=1, percent_shared_noise=0,
-                 electrode_type='Probe'):
+                 electrode_type='Probe', electrode_dtype=None):
         self.num_channels = num_channels
         self.duration = duration
         self.frequency_range = frequency_range
         self.samples_per_second = samples_per_second
+        self.electrode_dtype = electrode_dtype
 
         if electrode_type.lower() == 'probe':
             self.Probe = TestProbe(self.samples_per_second,
-                            np.zeros((self.num_channels, int(self.samples_per_second*self.duration))),
+                            np.zeros((self.num_channels, int(self.samples_per_second*self.duration)), dtype=self.electrode_dtype),
                             self.num_channels)
         elif electrode_type.lower() == 'tetrode':
             self.Probe = TestTetrode(self.samples_per_second,
-                            np.zeros((self.num_channels, int(self.samples_per_second*self.duration))))
+                            np.zeros((self.num_channels, int(self.samples_per_second*self.duration)), dtype=self.electrode_dtype))
         elif electrode_type.lower() == 'single':
             self.Probe = TestSingleElectrode(self.samples_per_second,
-                            np.zeros((self.num_channels, int(self.samples_per_second*self.duration))))
+                            np.zeros((self.num_channels, int(self.samples_per_second*self.duration)), dtype=self.electrode_dtype))
         else:
             raise ValueError('Electrode type must be probe, tetrode, or single.')
 
@@ -115,6 +119,7 @@ class TestDataset(object):
             self.neuron_templates = neuron_templates
         else:
             self.neuron_templates = self.get_default_templates()
+        self.neuron_templates = (self.neuron_templates * self.amplitude).astype(self.electrode_dtype)
         self.actual_IDs = []
         self.percent_shared_noise = percent_shared_noise
         if self.percent_shared_noise > 1:
@@ -177,17 +182,18 @@ class TestDataset(object):
         f[-1:-1-Np:-1] = np.conj(f[1:Np+1])
         bandlimited_noise = np.fft.ifft(f).real
         bandlimited_noise = bandlimited_noise * self.amplitude / (3 * np.std(bandlimited_noise))
+        bandlimited_noise = bandlimited_noise.astype(self.electrode_dtype)
         return bandlimited_noise
 
     def gen_noise_voltage_array(self):
-        noise_voltage_array = np.zeros((self.num_channels, int(self.samples_per_second*self.duration)))
+        noise_voltage_array = np.zeros((self.num_channels, int(self.samples_per_second*self.duration)), dtype=self.electrode_dtype)
         if self.percent_shared_noise > 0:
             # Make a shared array
             shared_noise = self.percent_shared_noise * self.gen_bandlimited_noise()
             for i in range (0, self.num_channels):
                 noise_voltage_array[i, :] = shared_noise
         for i in range (0, self.num_channels):
-            noise_voltage_array[i, :] += (1-self.percent_shared_noise) * self.gen_bandlimited_noise()
+            noise_voltage_array[i, :] += ((1-self.percent_shared_noise) * self.gen_bandlimited_noise()).astype(self.electrode_dtype)
         return noise_voltage_array
 
     def gen_test_dataset(self, firing_rates, template_inds, chan_scaling_factors, refractory_wins=1.5e-3):
@@ -204,7 +210,7 @@ class TestDataset(object):
             refractory_wins = np.repeat(refractory_wins, len(firing_rates))
         # Reset neuron actual IDs for each neuron
         self.actual_IDs = [[] for neur in range(0, len(firing_rates))]
-        self.actual_templates = [np.empty((0, self.neuron_templates.shape[1])) for neur in range(0, len(firing_rates))]
+        self.actual_templates = [np.zeros((0, self.neuron_templates.shape[1]), dtype=self.electrode_dtype) for neur in range(0, len(firing_rates))]
         voltage_array = self.gen_noise_voltage_array()
         for neuron in range(0, len(firing_rates)):
             # Generate one spike train for each neuron
@@ -212,13 +218,14 @@ class TestDataset(object):
             self.actual_IDs[neuron] = np.where(spiketrain)[0]
             for chan in range(0, self.num_channels):
                 # Apply spike train to every channel this neuron is present on
-                convolve_kernel = chan_scaling_factors[neuron][chan] * self.neuron_templates[template_inds[neuron], :] * self.amplitude
+                convolve_kernel = chan_scaling_factors[neuron][chan] * self.neuron_templates[template_inds[neuron], :]
                 # Filter the kernel to match the noise band
                 convolve_kernel = signal.filtfilt(b_filt, a_filt, convolve_kernel, axis=0, padlen=None)
+                convolve_kernel = convolve_kernel.astype(self.electrode_dtype)
                 self.actual_templates[neuron] = np.vstack((self.actual_templates[neuron], convolve_kernel))
                 if chan_scaling_factors[neuron][chan] <= 0:
                     continue
-                voltage_array[chan, :] += signal.fftconvolve(spiketrain, convolve_kernel, mode='same')
+                voltage_array[chan, :] += (signal.fftconvolve(spiketrain, convolve_kernel, mode='same')).astype(self.electrode_dtype)
         self.Probe.set_new_voltage(voltage_array)
 
     def gen_dynamic_test_dataset(self, firing_rates, template_inds, chan_scaling_factors, refractory_wins=1.5e-3):
@@ -236,7 +243,7 @@ class TestDataset(object):
             raise ValueError("Input templates and drift functions must all be the same length!")
         if len(drift_funs[0](0)) != self.num_channels:
             raise ValueError("Input drift functions must return a scaling factor for each channel. Expected {0} scaling factors, got {1}.".format(self.num_channels, len(drift_funs[0](0))))
-        preview_templates = [np.empty((0, self.neuron_templates.shape[1])) for neur in range(0, len(template_inds))]
+        preview_templates = [np.empty((0, self.neuron_templates.shape[1]), dtype=self.electrode_dtype) for neur in range(0, len(template_inds))]
         for neuron in range(0, len(template_inds)):
             chan_scaling_factors = drift_funs[neuron](index)
             for chan in range(0, self.num_channels):
@@ -272,7 +279,7 @@ class TestDataset(object):
             refractory_wins = np.repeat(refractory_wins, len(firing_rates))
         # Reset neuron actual IDs for each neuron
         self.actual_IDs = [[] for neur in range(0, len(firing_rates))]
-        self.actual_templates = [np.empty((0, self.neuron_templates.shape[1])) for neur in range(0, len(firing_rates))]
+        self.actual_templates = [np.empty((0, self.neuron_templates.shape[1]), dtype=self.electrode_dtype) for neur in range(0, len(firing_rates))]
         half_temp_width = (self.neuron_templates.shape[1] // 2)
         voltage_array = self.gen_noise_voltage_array()
         for neuron in range(0, len(firing_rates)):
@@ -297,6 +304,7 @@ class TestDataset(object):
                     # Apply spike train to every channel this neuron is present on
                     filt_template = signal.filtfilt(b_filt, a_filt, self.neuron_templates[template_inds[neuron], :], axis=0, padlen=None)
                     scaled_template = chan_scaling_factors[chan] * filt_template * self.amplitude
+                    scaled_template = scaled_template.astype(self.electrode_dtype)
                     voltage_array[chan, spk_ind:(spk_ind+self.neuron_templates.shape[1])] += scaled_template
             print("Removing", np.count_nonzero(remove_IDs), "neuron", neuron, "spikes for scale factors less than", scaled_spike_thresh)
             self.actual_IDs[neuron] = self.actual_IDs[neuron][~remove_IDs]

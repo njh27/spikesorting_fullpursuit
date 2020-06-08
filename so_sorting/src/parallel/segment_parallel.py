@@ -338,7 +338,7 @@ def align_adjusted_clips_with_template(probe_dict, neighbor_voltage, channel, ne
     # Get double wide adjusted clips but do templates and alignment only on current channel
     adjusted_clips, event_indices, neuron_labels, valid_event_indices = get_adjusted_clips(probe_dict, neighbor_voltage, channel, neighbors, clips, event_indices, neuron_labels, clip_width, cc_clip_width)
     templates, labels = calculate_templates(adjusted_clips[:, cc_curr_chan_center_index+curr_chan_win[0]:cc_curr_chan_center_index+curr_chan_win[1]], neuron_labels)
-    aligned_adjusted_clips = np.empty((adjusted_clips.shape[0], samples_per_chan * len(neighbors)))
+    aligned_adjusted_clips = np.empty((adjusted_clips.shape[0], samples_per_chan * len(neighbors)), dtype=probe_dict['v_dtype'])
 
     # Align all clips with their own template
     for c in range(0, adjusted_clips.shape[0]):
@@ -391,7 +391,7 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width)
 
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
-    valid_event_indices = np.ones_like(event_indices, dtype=np.bool)
+    valid_event_indices = np.ones(event_indices.shape[0], dtype=np.bool)
     start_ind = 0
     n = event_indices[start_ind]
     while n + window[0] < 0:
@@ -412,7 +412,7 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width)
             valid_event_indices[:] = False
             return None, valid_event_indices
         n = event_indices[stop_ind]
-    spike_clips = np.empty((np.count_nonzero(valid_event_indices), window[1] - window[0]))
+    spike_clips = np.empty((np.count_nonzero(valid_event_indices), window[1] - window[0]), dtype=probe_dict['v_dtype'])
     for out_ind, spk in enumerate(range(start_ind, stop_ind+1)): # Add 1 to index through last valid index
         spike_clips[out_ind, :] = chan_voltage[event_indices[spk]+window[0]:event_indices[spk]+window[1]]
 
@@ -433,7 +433,7 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
 
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
-    valid_event_indices = np.ones_like(event_indices, dtype=np.bool)
+    valid_event_indices = np.ones(event_indices.shape[0], dtype=np.bool)
     start_ind = 0
     n = event_indices[start_ind]
 
@@ -455,7 +455,7 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
             valid_event_indices[:] = False
             return None, valid_event_indices
         n = event_indices[stop_ind]
-    spike_clips = np.empty((np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]))
+    spike_clips = np.empty((np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]), dtype=probe_dict['v_dtype'])
     for out_ind, spk in enumerate(range(start_ind, stop_ind+1)): # Add 1 to index through last valid index
         chan_ind = 0
         start = 0
@@ -478,7 +478,7 @@ def get_adjusted_clips(probe_dict, neighbor_voltage, channel, neighbors, clips, 
     event_indices, neuron_labels = keep_valid_inds([event_indices, neuron_labels], valid_event_indices)
     clips = clips[valid_event_indices, :]
     templates, labels = calculate_templates(clips, neuron_labels)
-    neighbors = np.array(neighbors)
+    neighbors = np.array(neighbors, dtype=np.int64)
     if neighbor_voltage.ndim == 1:
         # neighbor voltage must be indexable along the rows
         neighbor_voltage = neighbor_voltage.reshape(1, -1)
@@ -486,7 +486,7 @@ def get_adjusted_clips(probe_dict, neighbor_voltage, channel, neighbors, clips, 
         raise ValueError("Neighbors and neighbor_voltage MUST MATCH.")
 
     # Get adjusted clips at all spike times
-    adjusted_clips = np.empty((event_indices.size, output_samples_per_chan * neighbors.size))
+    adjusted_clips = np.empty((event_indices.size, output_samples_per_chan * neighbors.size), dtype=probe_dict['v_dtype'])
     spike_times = np.zeros(probe_dict['n_samples'], dtype=np.byte)
     for neigh_ind in range(0, len(neighbors)):
         # First get residual voltage for the current channel by subtracting INPUT clips

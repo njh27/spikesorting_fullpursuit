@@ -388,6 +388,11 @@ def spike_sort_item(Probe, work_item, settings):
 def spike_sort(Probe, **kwargs):
     """
 
+    Note: Clips and voltages will be output in the data type Probe.v_dtype.
+    However, most of the arithmetic is computed in np.float64. Clips are cast
+    as np.float64 for determining PCs and cast back when done. All of binary
+    pursuit is conducted as np.float32 for memory and GPU compatibility.
+
     See 'spike_sorting_settings' above for a list of allowable kwargs.
     Example:
     import electrode
@@ -500,6 +505,7 @@ def spike_sort(Probe, **kwargs):
             zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                             thresholds, settings['sigma'],
                             zca_cushion, n_samples=1e6)
+            zca_matrix = zca_matrix.astype(Probe.v_dtype)
             seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
         thresholds = segment.median_threshold(seg_voltage, settings['sigma'])
         segment_voltages.append(seg_voltage)

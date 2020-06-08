@@ -137,7 +137,7 @@ def combine_two_neurons(neuron1, neuron2):
     # Need to account for fact that different channels can have different
     # neighborhood sizes. So make all clips start from beginning, and
     # remainder zeroed out if it has no data
-    combined_neuron['clips'] = np.zeros((combined_neuron["spike_indices"].shape[0], max_clip_samples))
+    combined_neuron['clips'] = np.zeros((combined_neuron["spike_indices"].shape[0], max_clip_samples), neuron1['clips'].dtype)
     clip_start_ind = 0
     for clips in clips_by_unit:
         combined_neuron['clips'][clip_start_ind:clips.shape[0]+clip_start_ind, 0:clips.shape[1]] = clips
@@ -178,7 +178,7 @@ def combine_two_neurons(neuron1, neuron2):
         chan_select = channel_selector == chan
         combined_neuron['channel_selector'][chan] = chan_select
         combined_neuron["template"][chan] = np.mean(
-            combined_neuron['clips'][chan_select, :], axis=0)
+            combined_neuron['clips'][chan_select, :], axis=0).astype(neuron1['clips'].dtype)
 
     # Remove any identical index duplicates (either from error or
     # from combining overlapping segments), preferentially keeping
@@ -204,7 +204,8 @@ def combine_two_neurons(neuron1, neuron2):
             chans_to_remove.append(chan)
         else:
             combined_neuron["template"][chan] = np.mean(
-                combined_neuron['clips'][combined_neuron['channel_selector'][chan], :], axis=0)
+                combined_neuron['clips'][combined_neuron['channel_selector'][chan], :],
+                axis=0).astype(neuron1['clips'].dtype)
             combined_neuron['snr'][chan] = np.mean(snr_by_unit[combined_neuron['channel_selector'][chan]])
     for chan_ind in reversed(range(0, len(chans_to_remove))):
         chan_num = chans_to_remove[chan_ind]
@@ -1130,8 +1131,8 @@ class WorkItemSummary(object):
             return best_pair, best_shift, best_l1_clips, best_l2_clips, curr_chan_inds
         # Align and truncate clips for best match pair
         shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(best_shift)
-        clips_1 = np.zeros((best_l1_clips.shape[0], shift_samples_per_chan * self.work_items[chan][seg1]['neighbors'].shape[0]))
-        clips_2 = np.zeros((best_l2_clips.shape[0], shift_samples_per_chan * self.work_items[chan][seg2]['neighbors'].shape[0]))
+        clips_1 = np.zeros((best_l1_clips.shape[0], shift_samples_per_chan * self.work_items[chan][seg1]['neighbors'].shape[0]), dtype=best_l1_clips.dtype)
+        clips_2 = np.zeros((best_l2_clips.shape[0], shift_samples_per_chan * self.work_items[chan][seg2]['neighbors'].shape[0]), dtype=best_l2_clips.dtype)
         # Get clips for each channel, shift them, and assign for output, which
         # will be clips that have each channel individually aligned and
         # truncated
@@ -1595,8 +1596,8 @@ class WorkItemSummary(object):
 
         # Build a template for each unit that has the intersection of
         # neighborhood channels
-        overlap_template_1 = np.zeros(overlap_chans.shape[0] * n_samples_per_chan)
-        overlap_template_2 = np.zeros(overlap_chans.shape[0] * n_samples_per_chan)
+        overlap_template_1 = np.zeros(overlap_chans.shape[0] * n_samples_per_chan, dtype=neuron1['clips'].dtype)
+        overlap_template_2 = np.zeros(overlap_chans.shape[0] * n_samples_per_chan, dtype=neuron2['clips'].dtype)
         for n_chan in range(0, overlap_chans.shape[0]):
             n1_neighbor_ind = next((idx[0] for idx, val in np.ndenumerate(neuron1['neighbors']) if val == overlap_chans[n_chan]))
             overlap_template_1[n_chan*n_samples_per_chan:(n_chan+1)*n_samples_per_chan] = \
@@ -1620,8 +1621,8 @@ class WorkItemSummary(object):
 
         # Align and truncate templates to compute SSE
         shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(shift)
-        shift_template_1 = np.zeros(shift_samples_per_chan * overlap_chans.shape[0])
-        shift_template_2 = np.zeros(shift_samples_per_chan * overlap_chans.shape[0])
+        shift_template_1 = np.zeros(shift_samples_per_chan * overlap_chans.shape[0], dtype=chan_temp_1.dtype)
+        shift_template_2 = np.zeros(shift_samples_per_chan * overlap_chans.shape[0], dtype=chan_temp_2.dtype)
         # Get clips for each channel, shift them, and assign for output, which
         # will be clips that have each channel individually aligned and
         # truncated
@@ -1695,7 +1696,7 @@ class WorkItemSummary(object):
                     # Remove any identical index duplicates (either from error or
                     # from combining overlapping segments), preferentially keeping
                     # the waveform best aligned to the template
-                    neuron["template"] = np.mean(neuron['clips'], axis=0)
+                    neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
                     keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
                                     neuron['clips'], neuron["template"],
                                     tol_inds=neuron['duplicate_tol_inds'])
@@ -1704,7 +1705,7 @@ class WorkItemSummary(object):
                     neuron['clips'] = neuron['clips'][keep_bool, :]
 
                     # Recompute template and store output
-                    neuron["template"] = np.mean(neuron['clips'], axis=0)
+                    neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
                     neuron['fraction_mua'] = calc_fraction_mua_to_peak(
                                                 neuron["spike_indices"],
@@ -2291,7 +2292,7 @@ class WorkItemSummary(object):
         # Need to account for fact that different channels can have different
         # neighborhood sizes. So make all clips start from beginning, and
         # remainder zeroed out if it has no data
-        combined_neuron['clips'] = np.zeros((combined_neuron["spike_indices"].shape[0], max_clip_samples))
+        combined_neuron['clips'] = np.zeros((combined_neuron["spike_indices"].shape[0], max_clip_samples), dtype=clips_by_unit[0].dtype)
         clip_start_ind = 0
         for clips in clips_by_unit:
             combined_neuron['clips'][clip_start_ind:clips.shape[0]+clip_start_ind, 0:clips.shape[1]] = clips
@@ -2336,7 +2337,7 @@ class WorkItemSummary(object):
             chan_select = channel_selector == chan
             combined_neuron['channel_selector'][chan] = chan_select
             combined_neuron["template"][chan] = np.mean(
-                combined_neuron['clips'][chan_select, :], axis=0)
+                combined_neuron['clips'][chan_select, :], axis=0).astype(combined_neuron["clips"].dtype)
 
         # if len(combined_neuron['channel']) == 1:
         #     # All data on same channel so use minimal duplicate tolerance
@@ -2374,7 +2375,8 @@ class WorkItemSummary(object):
                 chans_to_remove.append(chan)
             else:
                 combined_neuron["template"][chan] = np.mean(
-                    combined_neuron['clips'][combined_neuron['channel_selector'][chan], :], axis=0)
+                    combined_neuron['clips'][combined_neuron['channel_selector'][chan], :],
+                    axis=0).astype(combined_neuron["clips"].dtype)
                 combined_neuron['snr'][chan] = np.mean(snr_by_unit[combined_neuron['channel_selector'][chan]])
         for chan_ind in reversed(range(0, len(chans_to_remove))):
             chan_num = chans_to_remove[chan_ind]

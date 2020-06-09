@@ -1772,6 +1772,7 @@ class WorkItemSummary(object):
         Note: overlap_ratio_threshold == np.inf will not delete anything while
         overlap_ratio_threshold == -np.inf will delete everything except 1 unit.
         """
+        rn_verbose = True
         # Since we are comparing across channels, we need to consider potentially
         # large alignment differences in the overlap_time
         overlap_time = self.half_clip_inds / self.sort_info['sampling_rate']
@@ -1965,9 +1966,9 @@ class WorkItemSummary(object):
                             delete_2 = True
 
             if delete_1:
-                # print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
-                # print("Deleting neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
-                # print("Keeping neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
+                if rn_verbose: print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
+                if rn_verbose: print("Deleting neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
+                if rn_verbose: print("Keeping neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
                 neurons_remaining_indices.remove(best_pair[0])
                 for vp in violation_partners:
                     vp.discard(best_pair[0])
@@ -1993,9 +1994,9 @@ class WorkItemSummary(object):
                 neurons[best_pair[0]]['next_seg_link'] = None
                 neurons[best_pair[0]]['deleted_as_redundant'] = True
             if delete_2:
-                # print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
-                # print("Keeping neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
-                # print("Deleting neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
+                if rn_verbose: print("Choosing from neurons with channels", neuron_1['channel'], neuron_2['channel'], "in segment", seg)
+                if rn_verbose: print("Keeping neuron 1 with violators", violation_partners[best_pair[0]], "MUA", neuron_1['fraction_mua'], 'snr', neuron_1['snr'], "n spikes", neuron_1['spike_indices'].shape[0])
+                if rn_verbose: print("Deleting neuron 2 with violators", violation_partners[best_pair[1]], "MUA", neuron_2['fraction_mua'], 'snr', neuron_2['snr'], "n spikes", neuron_2['spike_indices'].shape[0])
                 neurons_remaining_indices.remove(best_pair[1])
                 for vp in violation_partners:
                     vp.discard(best_pair[1])

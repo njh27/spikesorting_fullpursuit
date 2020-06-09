@@ -538,6 +538,9 @@ def cleanup_clusters(clips, neuron_labels):
 
 def keep_cluster_centroid(clips, neuron_labels, n_keep=100):
     keep_clips = np.ones(clips.shape[0], dtype=np.bool)
+    if n_keep > clips.shape[0]:
+        # Everything will be kept no matter what so just exit
+        return keep_clips
     for nl in np.unique(neuron_labels):
         select_nl = neuron_labels == nl
         nl_template = np.mean(clips[select_nl, :], axis=0)

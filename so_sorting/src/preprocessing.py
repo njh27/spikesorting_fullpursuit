@@ -542,7 +542,7 @@ def keep_cluster_centroid(clips, neuron_labels, n_keep=100):
         select_nl = neuron_labels == nl
         nl_template = np.mean(clips[select_nl, :], axis=0)
         nl_distances = np.sum((clips[select_nl, :] - nl_template[None, :]) ** 2, axis=1)
-        dist_order = np.argsort(nl_distances)[0:min(n_keep, nl_distances.shape[0])]
+        dist_order = np.argpartition(nl_distances, min(n_keep, nl_distances.shape[0]-1))[0:min(n_keep, nl_distances.shape[0])]
         select_dist = np.zeros(nl_distances.shape[0], dtype=np.bool)
         select_dist[dist_order] = True
         keep_clips[select_nl] = select_dist

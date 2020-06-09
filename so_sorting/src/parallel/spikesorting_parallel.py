@@ -29,6 +29,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['tmp_clips_dir'] = None # Directory where spike clips will be stored for transfer between processes (deleted at completion)
     settings['clip_width'] = [-6e-4, 10e-4]# Width of clip in seconds
     settings['do_branch_PCA'] = True # Use branch pca method to split clusters
+    settings['do_branch_PCA_by_chan'] = True
     settings['filter_band'] = (300, 6000)
     settings['do_ZCA_transform'] = True
     settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
@@ -43,6 +44,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['save_1_cpu'] = True
     settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
     settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
+    settings['n_centroid'] = np.inf # Clips to use to make binary pursuit templates. np.inf is all
     settings['cleanup_neurons'] = False # Remove garbage at the end
 
     for k in kwargs.keys():
@@ -445,7 +447,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             if settings['verbose']: print("After MULTI BRANCH", curr_num_clusters.size, "different clusters", flush=True)
 
         # Multi channel branch by channel
-        if data_dict['num_channels'] > 1 and settings['do_branch_PCA']:
+        if data_dict['num_channels'] > 1 and settings['do_branch_PCA_by_chan'] and settings['do_branch_PCA']:
             neuron_labels = branch_pca_2_0(neuron_labels, clips, curr_chan_inds,
                                 p_value_cut_thresh=settings['p_value_cut_thresh'],
                                 add_peak_valley=settings['add_peak_valley'],
@@ -478,6 +480,11 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         # Realign spikes based on correlation with current cluster templates before doing binary pursuit
         crossings, neuron_labels, _ = segment_parallel.align_events_with_template(item_dict, voltage[chan, :], neuron_labels, crossings, clip_width=settings['clip_width'])
         if settings['do_binary_pursuit']:
+
+            keep_clips = preprocessing.keep_cluster_centroid(clips, neuron_labels, n_keep=settings['n_centroid'])
+            crossings, neuron_labels = segment.keep_valid_inds(
+                    [crossings, neuron_labels], keep_clips)
+
             if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
             if settings['verbose']: print("Doing binary pursuit", flush=True)
             if not settings['use_GPU']:

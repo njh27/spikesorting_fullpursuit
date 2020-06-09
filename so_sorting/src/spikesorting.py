@@ -17,6 +17,7 @@ def spike_sorting_settings(**kwargs):
     settings['verbose'] = False
     settings['clip_width'] = [-6e-4, 10e-4]# Width of clip in seconds
     settings['do_branch_PCA'] = True # Use branch pca method to split clusters
+    settings['do_branch_PCA_by_chan'] = True
     settings['filter_band'] = (300, 6000)
     settings['do_ZCA_transform'] = True
     settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
@@ -30,6 +31,7 @@ def spike_sorting_settings(**kwargs):
     settings['max_gpu_memory'] = None # Use as much memory as possible
     settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
     settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
+    settings['n_centroid'] = np.inf # Clips to use to make binary pursuit templates. np.inf is all 
     settings['cleanup_neurons'] = False # Remove garbage at the end
 
     for k in kwargs.keys():
@@ -327,7 +329,7 @@ def spike_sort_item(Probe, work_item, settings):
         if settings['verbose']: print("After MULTI BRANCH", curr_num_clusters.size, "different clusters")
 
     # Multi channel branch by channel
-    if Probe.num_channels > 1 and settings['do_branch_PCA']:
+    if Probe.num_channels > 1 and settings['do_branch_PCA_by_chan'] and settings['do_branch_PCA']:
         neuron_labels = branch_pca_2_0(neuron_labels, clips, curr_chan_inds,
                             p_value_cut_thresh=settings['p_value_cut_thresh'],
                             add_peak_valley=settings['add_peak_valley'],
@@ -357,6 +359,11 @@ def spike_sort_item(Probe, work_item, settings):
     # Realign spikes based on correlation with current cluster templates before doing binary pursuit
     crossings, neuron_labels, _ = segment.align_events_with_template(Probe, chan, neuron_labels, crossings, clip_width=settings['clip_width'])
     if settings['do_binary_pursuit']:
+
+        keep_clips = preprocessing.keep_cluster_centroid(clips, neuron_labels, n_keep=settings['n_centroid'])
+        crossings, neuron_labels = segment.keep_valid_inds(
+                [crossings, neuron_labels], keep_clips)
+
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters")
         if settings['verbose']: print("Doing binary pursuit")
         if not settings['use_GPU']:

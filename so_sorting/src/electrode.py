@@ -171,7 +171,7 @@ class DistanceBasedProbe(AbstractProbe):
         """ Neighbors returned as all channels within 75 microns of input channel. """
         if channel > self.num_channels - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
-        neighbors = np.flatnonzero(self.distance_mat[channel, :] < 51)
+        neighbors = np.flatnonzero(self.distance_mat[channel, :] < 101)
         neighbors.sort()
         return np.int64(neighbors)
 

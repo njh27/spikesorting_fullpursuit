@@ -482,7 +482,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if settings['do_binary_pursuit']:
 
             keep_clips = preprocessing.keep_cluster_centroid(clips, neuron_labels, n_keep=settings['n_centroid'])
-            crossings, neuron_labels = segment.keep_valid_inds(
+            crossings, neuron_labels = segment_parallel.keep_valid_inds(
                     [crossings, neuron_labels], keep_clips)
 
             if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)

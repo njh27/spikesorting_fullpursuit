@@ -544,6 +544,10 @@ def calc_ccg_overlap_ratios(spike_inds_1, spike_inds_2, overlap_time, sampling_r
     # Infer number of spikes in overlapping window based on first and last index
     n1_count = n1_stop - n1_start
     n2_count = n2_stop - n2_start
+    n_overlap_spikes = min(n1_count, n2_count)
+    if n_overlap_spikes == 0:
+        # Neurons never fire at the same time, so expected overlap is 0
+        return 0., 0., 0.
 
     # CCG bins based on center, meaning that zero centered bin contains values
     # from +/- half bin width. Therefore we must double overlap_time to get
@@ -565,7 +569,6 @@ def calc_ccg_overlap_ratios(spike_inds_1, spike_inds_2, overlap_time, sampling_r
     delta_max = max(max_left, max_right)
 
     # Overlap ratio relative to spikes in overlapping time window
-    n_overlap_spikes = min(n1_count, n2_count)
     expected_overlap_ratio = counts[expected_bin] / n_overlap_spikes
     actual_overlap_ratio = counts[zero_ind] / n_overlap_spikes
     # Normalize delta max also
@@ -2389,7 +2392,10 @@ class WorkItemSummary(object):
         combined_neuron['snr']['average'] = np.mean(snr_by_unit)
         combined_neuron['duration_s'] = (combined_neuron['spike_indices'][-1] - combined_neuron['spike_indices'][0]) \
                                        / (combined_neuron['sort_info']['sampling_rate'])
-        combined_neuron['firing_rate'] = combined_neuron['spike_indices'].shape[0] / combined_neuron['duration_s']
+        if combined_neuron['duration_s'] == 0:
+            combined_neuron['firing_rate'] = 0.
+        else:
+            combined_neuron['firing_rate'] = combined_neuron['spike_indices'].shape[0] / combined_neuron['duration_s']
         combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(
                         combined_neuron["spike_indices"],
                         self.sort_info['sampling_rate'],

@@ -1903,9 +1903,11 @@ class WorkItemSummary(object):
                     raise RuntimeError("DIFF SCORES IN REDUNDANT ARE NOT BOTH EQUAL TO ZERO BUT I THOUGHT THEY SHOULD BE!")
                 # First defer to choosing highest quality score
                 if neuron_1['quality_score'] > neuron_2['quality_score']:
+                    delete_1 = False
                     delete_2 = True
                 else:
                     delete_1 = True
+                    delete_2 = False
 
                 # Check if quality score is primarily driven by number of spikes rather than SNR and MUA
                 # Spike number is primarily valuable in the case that one unit
@@ -1913,6 +1915,17 @@ class WorkItemSummary(object):
                 # need to avoid relying on spike count
                 if (delete_2 and (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']) or \
                     (delete_1 and (1-neuron_1['fraction_mua']) * neuron_1['snr'] > (1-neuron_2['fraction_mua']) * neuron_2['snr']):
+                    if rn_verbose: print("Checking for mixture due to lopsided spike counts")
+                    if len(violation_partners[best_pair[0]]) < len(violation_partners[best_pair[1]]):
+                        if rn_verbose: print("Neuron 1 has fewer violation partners. Set default delete neuron 2.")
+                        delete_1 = False
+                        delete_2 = True
+                    elif len(violation_partners[best_pair[1]]) < len(violation_partners[best_pair[0]]):
+                        if rn_verbose: print("Neuron 2 has fewer violation partners. Set default delete neuron 1.")
+                        delete_1 = True
+                        delete_2 = False
+                    else:
+                        if rn_verbose: print("Both have equal violation partners")
                     # We will now check if one unit appears to be a subset of the other
                     # If these units are truly redundant subsets, then the MUA of
                     # their union will be <= max(mua1, mua2)
@@ -1956,6 +1969,7 @@ class WorkItemSummary(object):
                         and union_fraction_mua_rate > max(fraction_mua_rate_1, fraction_mua_rate_2):
                         # This is a red flag that one unit is likely a large mixture
                         # and we should ignore spike count
+                        if rn_verbose: print("This flagged as a large mixture")
                         if (1-neuron_2['fraction_mua']) * neuron_2['snr'] > (1-neuron_1['fraction_mua']) * neuron_1['snr']:
                             # Neuron 2 has better MUA and SNR so pick it
                             delete_1 = True

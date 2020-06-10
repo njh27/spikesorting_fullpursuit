@@ -14,7 +14,7 @@ from scipy.signal import fftconvolve
 
 def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                    event_indices, neuron_labels, clip_width,
-                   kernels_path=None, max_gpu_memory=None):
+                   find_all=False, kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
 
@@ -230,9 +230,14 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
             chunk_voltage = np.float32(neighbor_voltage[:, start_index:stop_index])
             # Reshape voltage over channels into a single 1D vector
             chunk_voltage = chunk_voltage.reshape(chunk_voltage.size)
-            select = np.logical_and(event_indices >= start_index, event_indices < stop_index)
-            chunk_crossings = event_indices[select] - start_index
-            chunk_labels = neuron_labels[select]
+            if find_all:
+                # We will find all spikes in binary pursuit so set chunk crossings to zero
+                chunk_crossings = np.array([], dtype=np.uint32)
+                chunk_labels = np.array([], dtype=np.uint32)
+            else:
+                select = np.logical_and(event_indices >= start_index, event_indices < stop_index)
+                chunk_crossings = event_indices[select] - start_index
+                chunk_labels = neuron_labels[select]
 
             # - Set up the compute_residual kernel -
             # Create our buffers on the graphics cards.

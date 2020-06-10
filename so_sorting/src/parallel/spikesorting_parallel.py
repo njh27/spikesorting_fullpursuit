@@ -44,7 +44,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['save_1_cpu'] = True
     settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
     settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
-    settings['n_centroid'] = np.inf # Clips to use to make binary pursuit templates. np.inf is all
+    settings['binary_pursuit_only'] = False # If true, all spikes are found and classified by binary pursuit
     settings['cleanup_neurons'] = False # Remove garbage at the end
 
     for k in kwargs.keys():
@@ -481,9 +481,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings, neuron_labels, _ = segment_parallel.align_events_with_template(item_dict, voltage[chan, :], neuron_labels, crossings, clip_width=settings['clip_width'])
         if settings['do_binary_pursuit']:
 
-            keep_clips = preprocessing.keep_cluster_centroid(clips, neuron_labels, n_keep=settings['n_centroid'])
-            crossings, neuron_labels = segment_parallel.keep_valid_inds(
-                    [crossings, neuron_labels], keep_clips)
+            # keep_clips = preprocessing.keep_cluster_centroid(clips, neuron_labels, n_keep=settings['binary_pursuit_only'])
+            # crossings, neuron_labels = segment_parallel.keep_valid_inds(
+            #         [crossings, neuron_labels], keep_clips)
 
             if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
             if settings['verbose']: print("Doing binary pursuit", flush=True)
@@ -491,7 +491,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 crossings, neuron_labels, bp_bool = overlap_parallel.binary_pursuit_secret_spikes(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 neuron_labels, crossings,
-                                settings['clip_width'])
+                                settings['clip_width'],
+                                find_all=settings['binary_pursuit_only'])
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
                 crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
             else:
@@ -553,6 +554,12 @@ def spike_sort_parallel(Probe, **kwargs):
     See also:
     '
     """
+    # Get our settings
+    settings = spike_sorting_settings_parallel(**kwargs)
+    if settings['binary_pursuit_only'] and not settings['use_GPU']:
+        raise ValueError("Running binary pursuit only without using GPU is not implemented because it would take forever. Must set use_GPU to True if binary_pursuit_only is True.")
+    if settings['binary_pursuit_only'] and not settings['do_binary_pursuit']:
+        raise ValueError("Running binary pursuit only implies do_binary_pursuit is True, but do_binary_pursuit was input as 'False'.")
     # Check that Probe neighborhood function is appropriate. Otherwise it can
     # generate seemingly mysterious errors
     try:
@@ -563,8 +570,6 @@ def spike_sort_parallel(Probe, **kwargs):
         raise ValueError("Probe get_neighbors() method must return a numpy ndarray of dtype np.int64.")
     elif check_neighbors.dtype != np.int64:
         raise ValueError("Probe get_neighbors() method must return a numpy ndarray of dtype np.int64.")
-    # Get our settings
-    settings = spike_sorting_settings_parallel(**kwargs)
     # For convenience, necessary to define clip width as negative for first entry
     if settings['clip_width'][0] > 0:
         settings['clip_width'] *= -1

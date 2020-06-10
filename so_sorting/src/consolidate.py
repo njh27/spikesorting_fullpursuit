@@ -142,12 +142,12 @@ def combine_two_neurons(neuron1, neuron2):
     for clips in clips_by_unit:
         combined_neuron['clips'][clip_start_ind:clips.shape[0]+clip_start_ind, 0:clips.shape[1]] = clips
         clip_start_ind += clips.shape[0]
-    combined_neuron["binary_pursuit_bool"] = np.hstack(binary_pursuit_bool_by_unit)
+    combined_neuron["binary_pursuit_bool"] = np.hstack(bp_spike_bool_by_unit)
 
     # Cleanup some memory that wasn't overwritten during concatenation
     del indices_by_unit
     del clips_by_unit
-    del binary_pursuit_bool_by_unit
+    del bp_spike_bool_by_unit
 
     # NOTE: This still needs to be done even though segments
     # were ordered because of overlap!
@@ -2272,7 +2272,7 @@ class WorkItemSummary(object):
         channel_selector = []
         indices_by_unit = []
         clips_by_unit = []
-        binary_pursuit_bool_by_unit = []
+        bp_spike_bool_by_unit = []
         threshold_by_unit = []
         segment_by_unit = []
         snr_by_unit = []
@@ -2292,7 +2292,7 @@ class WorkItemSummary(object):
 
             indices_by_unit.append(unit['spike_indices'] + shift)
             clips_by_unit.append(unit['clips'])
-            binary_pursuit_bool_by_unit.append(unit['binary_pursuit_bool'])
+            bp_spike_bool_by_unit.append(unit['binary_pursuit_bool'])
             # Make and append a bunch of book keeping numpy arrays
             channel_selector.append(np.full(n_unit_events, unit['channel']))
             threshold_by_unit.append(np.full(n_unit_events, unit['threshold']))
@@ -2315,12 +2315,12 @@ class WorkItemSummary(object):
         for clips in clips_by_unit:
             combined_neuron['clips'][clip_start_ind:clips.shape[0]+clip_start_ind, 0:clips.shape[1]] = clips
             clip_start_ind += clips.shape[0]
-        combined_neuron["binary_pursuit_bool"] = np.hstack(binary_pursuit_bool_by_unit)
+        combined_neuron["binary_pursuit_bool"] = np.hstack(bp_spike_bool_by_unit)
 
         # Cleanup some memory that wasn't overwritten during concatenation
         del indices_by_unit
         del clips_by_unit
-        del binary_pursuit_bool_by_unit
+        del bp_spike_bool_by_unit
 
         # NOTE: This still needs to be done even though segments
         # were ordered because of overlap!

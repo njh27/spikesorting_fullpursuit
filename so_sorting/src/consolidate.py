@@ -161,15 +161,15 @@ def combine_two_neurons(neuron1, neuron2):
     channel_selector = channel_selector[spike_order]
     snr_by_unit = snr_by_unit[spike_order]
 
-    # Remove duplicates found in binary pursuit
-    keep_bool = keep_binary_pursuit_duplicates(combined_neuron["spike_indices"],
-                    combined_neuron["binary_pursuit_bool"],
-                    tol_inds=half_clip_inds)
-    combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-    combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
-    combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
-    channel_selector = channel_selector[keep_bool]
-    snr_by_unit = snr_by_unit[keep_bool]
+    # # Remove duplicates found in binary pursuit
+    # keep_bool = keep_binary_pursuit_duplicates(combined_neuron["spike_indices"],
+    #                 combined_neuron["binary_pursuit_bool"],
+    #                 tol_inds=half_clip_inds)
+    # combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
+    # combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+    # combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
+    # channel_selector = channel_selector[keep_bool]
+    # snr_by_unit = snr_by_unit[keep_bool]
 
     # Get each spike's channel of origin and the clips on main channel
     combined_neuron['channel_selector'] = {}
@@ -722,7 +722,8 @@ class WorkItemSummary(object):
             for seg in range(0, self.n_segments):
                 self.neuron_summary_seg_inds.append(self.work_items[0][seg]['index_window'])
         if not skip_organization:
-            self.remove_segment_binary_pursuit_duplicates()
+            if not self.sort_info['binary_pursuit_only']:
+                self.remove_segment_binary_pursuit_duplicates()
             self.delete_bad_mua_snr_units()
 
     def check_input_data(self, sort_data, work_items):
@@ -1201,14 +1202,15 @@ class WorkItemSummary(object):
                         union_clips = union_clips[spike_order, :]
                         union_binary_pursuit_bool = union_binary_pursuit_bool[spike_order]
 
-                        # Keep duplicates found in binary pursuit since it can reject
-                        # false positives
-                        keep_bool = keep_binary_pursuit_duplicates(union_spikes,
-                                        union_binary_pursuit_bool,
-                                        tol_inds=self.half_clip_inds)
-                        union_spikes = union_spikes[keep_bool]
-                        union_binary_pursuit_bool = union_binary_pursuit_bool[keep_bool]
-                        union_clips = union_clips[keep_bool, :]
+                        if not self.sort_info['binary_pursuit_only']:
+                            # Keep duplicates found in binary pursuit since it can reject
+                            # false positives
+                            keep_bool = keep_binary_pursuit_duplicates(union_spikes,
+                                            union_binary_pursuit_bool,
+                                            tol_inds=self.half_clip_inds)
+                            union_spikes = union_spikes[keep_bool]
+                            union_binary_pursuit_bool = union_binary_pursuit_bool[keep_bool]
+                            union_clips = union_clips[keep_bool, :]
 
                         # Remove any identical index duplicates (either from error or
                         # from combining overlapping segments), preferentially keeping
@@ -1687,14 +1689,15 @@ class WorkItemSummary(object):
                     # channel summary shouldn't be off by this
                     neuron['duplicate_tol_inds'] = calc_spike_half_width(
                         neuron['clips'][:, neuron['main_win'][0]:neuron['main_win'][1]]) + 1
-                    # Keep duplicates found in binary pursuit since it can reject
-                    # false positives
-                    keep_bool = keep_binary_pursuit_duplicates(neuron["spike_indices"],
-                                    neuron["binary_pursuit_bool"],
-                                    tol_inds=self.half_clip_inds)
-                    neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                    neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][keep_bool]
-                    neuron['clips'] = neuron['clips'][keep_bool, :]
+                    if not self.sort_info['binary_pursuit_only']:
+                        # Keep duplicates found in binary pursuit since it can reject
+                        # false positives
+                        keep_bool = keep_binary_pursuit_duplicates(neuron["spike_indices"],
+                                        neuron["binary_pursuit_bool"],
+                                        tol_inds=self.half_clip_inds)
+                        neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                        neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][keep_bool]
+                        neuron['clips'] = neuron['clips'][keep_bool, :]
 
                     # Remove any identical index duplicates (either from error or
                     # from combining overlapping segments), preferentially keeping
@@ -2336,17 +2339,18 @@ class WorkItemSummary(object):
         segment_by_unit = segment_by_unit[spike_order]
         snr_by_unit = snr_by_unit[spike_order]
 
-        # Remove duplicates found in binary pursuit
-        keep_bool = keep_binary_pursuit_duplicates(combined_neuron["spike_indices"],
-                        combined_neuron["binary_pursuit_bool"],
-                        tol_inds=self.half_clip_inds)
-        combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-        combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
-        combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
-        channel_selector = channel_selector[keep_bool]
-        threshold_by_unit = threshold_by_unit[keep_bool]
-        segment_by_unit = segment_by_unit[keep_bool]
-        snr_by_unit = snr_by_unit[keep_bool]
+        if not self.sort_info['binary_pursuit_only']:
+            # Remove duplicates found in binary pursuit
+            keep_bool = keep_binary_pursuit_duplicates(combined_neuron["spike_indices"],
+                            combined_neuron["binary_pursuit_bool"],
+                            tol_inds=self.half_clip_inds)
+            combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
+            combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+            combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
+            channel_selector = channel_selector[keep_bool]
+            threshold_by_unit = threshold_by_unit[keep_bool]
+            segment_by_unit = segment_by_unit[keep_bool]
+            snr_by_unit = snr_by_unit[keep_bool]
 
         # Get each spike's channel of origin and the clips on main channel
         combined_neuron['channel_selector'] = {}

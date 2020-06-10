@@ -369,13 +369,13 @@ def spike_sort_item(Probe, work_item, settings):
         if not settings['use_GPU']:
             crossings, neuron_labels, bp_bool = overlap.binary_pursuit_secret_spikes(
                                     Probe, chan, neuron_labels, crossings,
-                                    settings['clip_width'],
-                                    find_all=settings['binary_pursuit_only'])
+                                    settings['clip_width'])
             clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
         else:
             crossings, neuron_labels, bp_bool, clips = binary_pursuit.binary_pursuit(
                 Probe, chan, crossings, neuron_labels, settings['clip_width'],
+                find_all=settings['binary_pursuit_only'],
                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
     else:
         # Need to get newly aligned clips and bp_bool = False

@@ -491,8 +491,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 crossings, neuron_labels, bp_bool = overlap_parallel.binary_pursuit_secret_spikes(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 neuron_labels, crossings,
-                                settings['clip_width'],
-                                find_all=settings['binary_pursuit_only'])
+                                settings['clip_width'])
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
                 crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
             else:
@@ -500,6 +499,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 crossings, neuron_labels, settings['clip_width'],
+                                find_all=settings['binary_pursuit_only'],
                                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
             exit_type = "Finished binary pursuit"
         else:

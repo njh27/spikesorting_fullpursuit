@@ -322,8 +322,8 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                                 residual_voltage[cv_win[0]:cv_win[1]],
                                 fft_kernels[n*n_neighbor_chans + chan],
                                 mode='same'))
-                std_noise = np.median(np.abs(neighbor_bias)) / 0.6745
-                spike_biases[n] = 2*std_noise
+                p_peak = np.count_nonzero(neighbor_bias > -.5*template_sum_squared[n])/neighbor_bias.shape[0]
+                spike_biases[n] = -1*np.log(p_peak) + np.log(1-p_peak)
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage

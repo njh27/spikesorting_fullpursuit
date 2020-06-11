@@ -1778,7 +1778,7 @@ class WorkItemSummary(object):
         rn_verbose = True
         # Since we are comparing across channels, we need to consider potentially
         # large alignment differences in the overlap_time
-        # overlap_time = self.half_clip_inds / self.sort_info['sampling_rate']
+        overlap_time = self.half_clip_inds / self.sort_info['sampling_rate']
         neurons = self.neuron_summary_by_seg[seg]
         overlap_ratio = np.zeros((len(neurons), len(neurons)))
         expected_ratio = np.zeros((len(neurons), len(neurons)))
@@ -1794,7 +1794,7 @@ class WorkItemSummary(object):
                     continue # If they are on the same channel, do nothing
                 # if neuron1['channel'] not in neuron2['neighbors']:
                 #     continue # If they are not in same neighborhood, do nothing
-                overlap_time = max(neuron1['duplicate_tol_inds'], neuron2['duplicate_tol_inds']) / self.sort_info['sampling_rate']
+                # overlap_time = max(neuron1['duplicate_tol_inds'], neuron2['duplicate_tol_inds']) / self.sort_info['sampling_rate']
                 exp, act, delta = calc_ccg_overlap_ratios(
                                                 neuron1['spike_indices'],
                                                 neuron2['spike_indices'],
@@ -2623,7 +2623,7 @@ class WorkItemSummary(object):
                     continue # If they are on the same channel, do nothing
                 # if neuron1['channel'] not in neuron2['neighbors']:
                 #     continue # If they are not in same neighborhood, do nothing
-                overlap_time = max(neuron1['duplicate_tol_inds'], neuron2['duplicate_tol_inds']) / self.sort_info['sampling_rate']
+                # overlap_time = max(neuron1['duplicate_tol_inds'], neuron2['duplicate_tol_inds']) / self.sort_info['sampling_rate']
                 exp, act, delta = calc_ccg_overlap_ratios(
                                                 neuron1['spike_indices'],
                                                 neuron2['spike_indices'],

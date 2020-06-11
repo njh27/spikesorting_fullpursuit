@@ -499,7 +499,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 crossings, neuron_labels, settings['clip_width'],
-                                thresh_sigma=3,
+                                thresh_sigma=1.645, # Normal dists are - 95: 1.645;  97.5: 1.96; 99: 2.326
                                 find_all=settings['binary_pursuit_only'],
                                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
             exit_type = "Finished binary pursuit"

@@ -11,7 +11,6 @@ from scipy.signal import fftconvolve
 
 
 
-
 def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                    event_indices, neuron_labels, clip_width, thresh_sigma=4.,
                    find_all=False, kernels_path=None, max_gpu_memory=None):
@@ -327,17 +326,19 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                                 residual_voltage[cv_win[0]:cv_win[1]],
                                 fft_kernels[n*n_neighbor_chans + chan],
                                 mode='same'))
-                # MAD estimate of noise STD and threshold
-                std_noise = np.median(np.abs(neighbor_bias)) / 0.6745
-                conv_threshold = thresh_sigma*std_noise
-                # Log probability of an event over threshold being found
-                p_peak = np.count_nonzero(neighbor_bias > conv_threshold)/neighbor_bias.shape[0]
-                p_peak = np.float32(p_peak)
-                if p_peak == 0:
-                    # Technically infinity but just set it big enough to never be chosen
-                    spike_biases[n] = np.float32([1000 * -1 * template_sum_squared[n]])
-                else:
-                    spike_biases[n] = -1*np.log(p_peak) + np.log(1-p_peak)
+                # Use MAD to estimate STD of the noise and set bias at
+                # thresh_sigma standard deviations. The typical extremely large
+                # n value for neighbor_bias makes this calculation converge to
+                # normal distribution
+                # median_bias = np.median(neighbor_bias)
+                # MAD = np.median(np.abs(median_bias - neighbor_bias))
+                # std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
+                # spike_biases[n] = np.float32(median_bias + thresh_sigma*std_noise)
+                
+                # Assumes zero-centered (which median usually isn't)
+                MAD = np.median(np.abs(neighbor_bias))
+                std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
+                spike_biases[n] = np.float32(thresh_sigma*std_noise)
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage

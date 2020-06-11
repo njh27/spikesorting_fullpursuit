@@ -375,7 +375,7 @@ def spike_sort_item(Probe, work_item, settings):
         else:
             crossings, neuron_labels, bp_bool, clips = binary_pursuit.binary_pursuit(
                 Probe, chan, crossings, neuron_labels, settings['clip_width'],
-                thresh_sigma=3,
+                thresh_sigma=1.645, # Normal dists are - 95: 1.645;  97.5: 1.96; 99: 2.326
                 find_all=settings['binary_pursuit_only'],
                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
     else:

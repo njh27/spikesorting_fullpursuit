@@ -375,6 +375,7 @@ def spike_sort_item(Probe, work_item, settings):
         else:
             crossings, neuron_labels, bp_bool, clips = binary_pursuit.binary_pursuit(
                 Probe, chan, crossings, neuron_labels, settings['clip_width'],
+                thresh_sigma=3,
                 find_all=settings['binary_pursuit_only'],
                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
     else:
@@ -382,6 +383,12 @@ def spike_sort_item(Probe, work_item, settings):
         clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
         crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
         bp_bool = np.zeros(crossings.size, dtype=np.bool)
+
+    if len(neuron_labels) == 0:
+        # Nothing found in binary pursuit, probably with binary_pursuit_only == True
+        if settings['verbose']: print("No clusters over min_firing_rate")
+        if settings['verbose']: print("Done.")
+        return [], [], [], []
 
     if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters")
     # Adjust crossings for segment start time

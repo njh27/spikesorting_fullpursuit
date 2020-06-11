@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 
 def binary_pursuit(Probe, channel, event_indices, neuron_labels,
-        clip_width, find_all=False, kernels_path=None,
+        clip_width, thresh_sigma=4., find_all=False, kernels_path=None,
         max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
@@ -322,8 +322,17 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                                 residual_voltage[cv_win[0]:cv_win[1]],
                                 fft_kernels[n*n_neighbor_chans + chan],
                                 mode='same'))
-                p_peak = np.count_nonzero(neighbor_bias > -.5*template_sum_squared[n])/neighbor_bias.shape[0]
-                spike_biases[n] = -1*np.log(p_peak) + np.log(1-p_peak)
+                # MAD estimate of noise STD and threshold
+                std_noise = np.median(np.abs(neighbor_bias)) / 0.6745
+                conv_threshold = thresh_sigma*std_noise
+                # Log probability of an event over threshold being found
+                p_peak = np.count_nonzero(neighbor_bias > conv_threshold)/neighbor_bias.shape[0]
+                p_peak = np.float32(p_peak)
+                if p_peak == 0:
+                    # Technically infinity but just set it big enough to never be chosen
+                    spike_biases[n] = np.float32([1000 * -1 * template_sum_squared[n]])
+                else:
+                    spike_biases[n] = -1*np.log(p_peak) + np.log(1-p_peak)
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage
@@ -480,13 +489,17 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
         template_buffer.release()
         template_sum_squared_buffer.release()
 
-    event_indices = np.int64(np.hstack(secret_spike_indices))
-    neuron_labels = np.int64(np.hstack(secret_spike_labels))
-    adjusted_clips = (np.vstack(adjusted_spike_clips)).astype(Probe.v_dtype)
-    binary_pursuit_spike_bool = np.hstack(secret_spike_bool)
-    # Realign events with center of spike
-    event_indices += clip_init_samples
-
-    print("Found a total of", np.count_nonzero(binary_pursuit_spike_bool), "secret spikes", flush=True)
+    if len(secret_spike_indices) > 0:
+        event_indices = np.int64(np.hstack(secret_spike_indices))
+        neuron_labels = np.int64(np.hstack(secret_spike_labels))
+        adjusted_clips = (np.vstack(adjusted_spike_clips)).astype(probe_dict['v_dtype'])
+        binary_pursuit_spike_bool = np.hstack(secret_spike_bool)
+        # Realign events with center of spike
+        event_indices += clip_init_samples
+        print("Found a total of", np.count_nonzero(binary_pursuit_spike_bool), "secret spikes", flush=True)
+    else:
+        # No spikes found and findall == True
+        event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
+        print("Found a total of ZERO secret spikes", flush=True)
 
     return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips

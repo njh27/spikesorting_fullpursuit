@@ -499,6 +499,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                                 item_dict, chan, neighbors, voltage[neighbors, :],
                                 crossings, neuron_labels, settings['clip_width'],
+                                thresh_sigma=3,
                                 find_all=settings['binary_pursuit_only'],
                                 kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
             exit_type = "Finished binary pursuit"
@@ -507,6 +508,13 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
             bp_bool = np.zeros(crossings.size, dtype=np.bool)
+
+        if len(neuron_labels) == 0:
+            # Nothing found in binary pursuit, probably with binary_pursuit_only == True
+            exit_type = "No clusters over min_firing_rate."
+            # Raise error to force exit and wrap_up()
+            crossings, neuron_labels, clips, bp_bool = [], [], [], []
+            raise NoSpikesError
 
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
         # Map labels starting at zero and put labels in order

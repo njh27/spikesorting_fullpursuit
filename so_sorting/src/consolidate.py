@@ -557,6 +557,7 @@ def calc_ccg_overlap_ratios(spike_inds_1, spike_inds_2, overlap_time, sampling_r
     samples_window = 10 * bin_samples
     counts, x_vals = zero_symmetric_ccg(spike_inds_1, spike_inds_2,
                                         samples_window, bin_samples)
+    counts = counts / counts.shape[0] # Normalize by N bins
     zero_ind = np.flatnonzero(x_vals == 0)[0]
     # Find maximal neighboring count and use as expected value
     if counts[zero_ind - 1] >= counts[zero_ind + 1]:
@@ -1698,6 +1699,8 @@ class WorkItemSummary(object):
                         neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
                         neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][keep_bool]
                         neuron['clips'] = neuron['clips'][keep_bool, :]
+                    else:
+                        neuron['duplicate_tol_inds'] = 1
 
                     # Remove any identical index duplicates (either from error or
                     # from combining overlapping segments), preferentially keeping
@@ -1945,22 +1948,24 @@ class WorkItemSummary(object):
                             self.half_clip_inds)
                     union_spikes = np.hstack((neuron_1['spike_indices'][neuron_1_compliment], neuron_2['spike_indices']))
                     union_spikes.sort()
+                    # union_duplicate_tol = self.half_clip_inds
+                    union_duplicate_tol = max(neuron_1['duplicate_tol_inds'], neuron_2['duplicate_tol_inds'])
                     union_fraction_mua_rate = calc_fraction_mua(
                                                      union_spikes,
                                                      self.sort_info['sampling_rate'],
-                                                     self.half_clip_inds,
+                                                     union_duplicate_tol,
                                                      self.absolute_refractory_period)
                     # Need to get fraction MUA by rate, rather than peak,
                     # for comparison here
                     fraction_mua_rate_1 = calc_fraction_mua(
                                              neuron_1['spike_indices'],
                                              self.sort_info['sampling_rate'],
-                                             self.half_clip_inds,
+                                             union_duplicate_tol,
                                              self.absolute_refractory_period)
                     fraction_mua_rate_2 = calc_fraction_mua(
                                              neuron_2['spike_indices'],
                                              self.sort_info['sampling_rate'],
-                                             self.half_clip_inds,
+                                             union_duplicate_tol,
                                              self.absolute_refractory_period)
                     # We will decide not to consider spike count if this looks like
                     # one unit could be a large mixture. This usually means that

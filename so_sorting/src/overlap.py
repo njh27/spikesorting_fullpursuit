@@ -252,7 +252,7 @@ def find_multichannel_max_neuron(Probe, channel, neighbors, check_time, indices,
 
 
 def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
-        clip_width):
+        clip_width, thresh_sigma=1.645):
     """
     This function is slow and not efficient in time or memory consumption. The
     GPU version should be preferred.
@@ -352,7 +352,7 @@ def binary_pursuit_secret_spikes(Probe, channel, neuron_labels, event_indices,
         # Evenly split bias across channels. Main channel will have to cross
         # this number, unlike in the GPU version, but this should be low enough
         # to make a difference of not more than a spike here or there
-        spike_biases[unit, :] = 2*std_noise[unit] / neighbors.size
+        spike_biases[unit, :] = thresh_sigma*std_noise[unit] / neighbors.size
     # Free some memory
     del spike_times
     del neighbor_bias

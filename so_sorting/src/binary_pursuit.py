@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 
 def binary_pursuit(Probe, channel, event_indices, neuron_labels,
-        clip_width, thresh_sigma=4., find_all=False, kernels_path=None,
+        clip_width, thresh_sigma=1.645, find_all=False, kernels_path=None,
         max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)

@@ -12,7 +12,7 @@ from scipy.signal import fftconvolve
 
 
 def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
-                   event_indices, neuron_labels, clip_width, thresh_sigma=4.,
+                   event_indices, neuron_labels, clip_width, thresh_sigma=1.645,
                    find_all=False, kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
@@ -334,7 +334,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
                 # MAD = np.median(np.abs(median_bias - neighbor_bias))
                 # std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
                 # spike_biases[n] = np.float32(median_bias + thresh_sigma*std_noise)
-                
+
                 # Assumes zero-centered (which median usually isn't)
                 MAD = np.median(np.abs(neighbor_bias))
                 std_noise = MAD / 0.6745 # Convert MAD to normal dist STD

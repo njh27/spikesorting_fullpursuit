@@ -31,7 +31,7 @@ def spike_sorting_settings(**kwargs):
     settings['max_gpu_memory'] = None # Use as much memory as possible
     settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
     settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
-    settings['binary_pursuit_only'] = False # If true, all spikes are found and classified by binary pursuit
+    settings['binary_pursuit_only'] = True # If true, all spikes are found and classified by binary pursuit
     settings['cleanup_neurons'] = False # Remove garbage at the end
 
     for k in kwargs.keys():
@@ -369,7 +369,7 @@ def spike_sort_item(Probe, work_item, settings):
         if not settings['use_GPU']:
             crossings, neuron_labels, bp_bool = overlap.binary_pursuit_secret_spikes(
                                     Probe, chan, neuron_labels, crossings,
-                                    settings['clip_width'])
+                                    settings['clip_width'], thresh_sigma=1.645)
             clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
         else:

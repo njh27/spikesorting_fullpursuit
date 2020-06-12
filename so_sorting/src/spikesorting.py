@@ -524,8 +524,8 @@ def spike_sort(Probe, **kwargs):
             zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                             thresholds, settings['sigma'],
                             zca_cushion, n_samples=1e6)
-            zca_matrix = zca_matrix.astype(Probe.v_dtype)
-            seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
+            # @ makes new copy
+            seg_voltage = (zca_matrix @ seg_voltage).astype(Probe.v_dtype)
         thresholds = segment.median_threshold(seg_voltage, settings['sigma'])
         segment_voltages.append(seg_voltage)
         for chan in range(0, Probe.num_channels):

@@ -351,6 +351,14 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             crossings, neuron_labels = segment_parallel.keep_valid_inds(
                     [crossings, neuron_labels], valid_event_indices)
 
+            # keep_clips = preprocessing.keep_max_on_main(clips, curr_chan_inds)
+            # clips = clips[keep_clips, :]
+            # crossings, neuron_labels = segment_parallel.keep_valid_inds(
+            #         [crossings, neuron_labels], keep_clips)
+            #
+            # curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
+            # if settings['verbose']: print("After keep max on main removed", np.count_nonzero(~keep_clips), "clips", curr_num_clusters.size, "different clusters", flush=True)
+
             scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
                         settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
                         curr_chan_inds=np.arange(0, curr_chan_inds.size))
@@ -672,8 +680,8 @@ def spike_sort_parallel(Probe, **kwargs):
             zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                             thresholds, settings['sigma'],
                             zca_cushion, n_samples=1e6)
-            zca_matrix = zca_matrix.astype(Probe.v_dtype)
-            seg_voltage = zca_matrix @ seg_voltage # @ makes new copy
+            # @ makes new copy
+            seg_voltage = (zca_matrix @ seg_voltage).astype(Probe.v_dtype)
         thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
         samples_over_thresh.extend(seg_over_thresh)
         # Allocate shared voltage buffer. List is appended in SEGMENT ORDER

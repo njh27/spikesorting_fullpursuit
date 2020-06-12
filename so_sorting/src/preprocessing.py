@@ -507,6 +507,17 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds,
     return np.hstack(pcs_by_chan)
 
 
+def keep_max_on_main(clips, main_chan_inds):
+
+    keep_clips = np.ones(clips.shape[0], dtype=np.bool)
+    for c in range(0, clips.shape[0]):
+        max_ind = np.argmax(np.abs(clips[c, :]))
+        if max_ind < main_chan_inds[0] or max_ind > main_chan_inds[-1]:
+            keep_clips[c] = False
+
+    return keep_clips
+
+
 def cleanup_clusters(clips, neuron_labels):
 
     keep_clips = np.ones(clips.shape[0], dtype=np.bool)

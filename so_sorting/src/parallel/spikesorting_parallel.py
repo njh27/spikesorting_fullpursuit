@@ -743,6 +743,7 @@ def spike_sort_parallel(Probe, **kwargs):
     processes = []
     proc_item_index = []
     completed_items_index = 0
+    seg_chan_counter = np.zeros(len(segment_onsets), dtype=np.int64)
     print("Starting sorting pool")
     # Put the work items through the sorter
     for wi_ind, w_item in enumerate(work_items):
@@ -799,6 +800,10 @@ def spike_sort_parallel(Probe, **kwargs):
             processes[done_index].join()
             processes[done_index].close()
             del processes[done_index]
+
+            seg_chan_counter[work_items[finished_item]['seg_number']] += 1
+            if seg_chan_counter[work_items[finished_item]['seg_number']] == Probe.num_electrodes:
+                # Segment is complete, so ready to run binary pursuit
 
     sort_data = []
     for wi_ind, w_item in enumerate(work_items):

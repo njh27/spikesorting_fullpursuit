@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.signal import filtfilt, butter
-from so_sorting.src import preprocessing
+from fbp.src import preprocessing
 
 
 

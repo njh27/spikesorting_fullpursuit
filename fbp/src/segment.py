@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import signal
 import copy
-from so_sorting.src import sort
+from fbp.src import sort
 
 import matplotlib.pyplot as plt
 

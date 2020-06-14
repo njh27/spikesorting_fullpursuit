@@ -1,10 +1,9 @@
 import numpy as np
-from so_sorting.src import segment
-from so_sorting.src import preprocessing
-from so_sorting.src import sort
-from so_sorting.src import overlap
-from so_sorting.src import binary_pursuit
-from so_sorting.src import consolidate
+from fbp.src import segment
+from fbp.src import preprocessing
+from fbp.src import sort
+from fbp.src import binary_pursuit
+from fbp.src import consolidate
 import warnings
 import copy
 
@@ -366,18 +365,11 @@ def spike_sort_item(Probe, work_item, settings):
 
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters")
         if settings['verbose']: print("Doing binary pursuit")
-        if not settings['use_GPU']:
-            crossings, neuron_labels, bp_bool = overlap.binary_pursuit_secret_spikes(
-                                    Probe, chan, neuron_labels, crossings,
-                                    settings['clip_width'], thresh_sigma=1.645)
-            clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
-            crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
-        else:
-            crossings, neuron_labels, bp_bool, clips = binary_pursuit.binary_pursuit(
-                Probe, chan, crossings, neuron_labels, settings['clip_width'],
-                thresh_sigma=1.645, # Normal dists are - 95: 1.645;  97.5: 1.96; 99: 2.326
-                find_all=settings['binary_pursuit_only'],
-                kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
+        crossings, neuron_labels, bp_bool, clips = binary_pursuit.binary_pursuit(
+            Probe, chan, crossings, neuron_labels, settings['clip_width'],
+            thresh_sigma=1.645, # Normal dists are - 95: 1.645;  97.5: 1.96; 99: 2.326
+            find_all=settings['binary_pursuit_only'],
+            kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
     else:
         # Need to get newly aligned clips and bp_bool = False
         clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
@@ -429,7 +421,7 @@ def spike_sort(Probe, **kwargs):
                          'min_firing_rate': 1, do_binary_pursuit=True,
                          'cleanup_neurons': False, 'verbose': True}
     Probe = TestProbe(samples_per_second, voltage_array, num_channels=4)
-    neurons = so_sorting.spike_sort(Probe, **spike_sort_kwargs)
+    neurons = fbp.spike_sort(Probe, **spike_sort_kwargs)
     """
     # Get our settings
     settings = spike_sorting_settings(**kwargs)

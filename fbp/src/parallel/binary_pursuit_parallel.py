@@ -3,17 +3,40 @@ import os
 import platform as sys_platform
 import re
 import math
-from so_sorting.src.sort import reorder_labels
-from so_sorting.src import segment
-from so_sorting.src.parallel import segment_parallel
-from so_sorting.src.overlap import reassign_simultaneous_spiking_clusters, get_zero_phase_kernel, remove_overlapping_spikes
+from fbp.src.sort import reorder_labels
+from fbp.src import segment
+from fbp.src.parallel import segment_parallel
+from fbp.src.consolidate import find_overlapping_spike_bool
 from scipy.signal import fftconvolve
 
 
 
-def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
-                   event_indices, neuron_labels, clip_width, thresh_sigma=1.645,
-                   find_all=False, kernels_path=None, max_gpu_memory=None):
+def get_zero_phase_kernel(x, x_center):
+    """ Zero pads the 1D kernel x, so that it is aligned with the current element
+        of x located at x_center.  This ensures that convolution with the kernel
+        x will be zero phase with respect to x_center.
+    """
+
+    kernel_offset = x.size - 2 * x_center - 1 # -1 To center ON the x_center index
+    kernel_size = np.abs(kernel_offset) + x.size
+    if kernel_size // 2 == 0: # Kernel must be odd
+        kernel_size -= 1
+        kernel_offset -= 1
+    kernel = np.zeros(kernel_size)
+    if kernel_offset > 0:
+        kernel_slice = slice(kernel_offset, kernel.size)
+    elif kernel_offset < 0:
+        kernel_slice = slice(0, kernel.size + kernel_offset)
+    else:
+        kernel_slice = slice(0, kernel.size)
+    kernel[kernel_slice] = x
+
+    return kernel
+
+
+def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
+                   clip_width, template_samples_per_chan, thresh_sigma=1.645,
+                   kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
 
@@ -31,7 +54,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
 
     The output of this function is a new set of crossing times, labels, and clips.
     The clips have all other spikes removed. The clips and binary pursuit are all
-    done in np.float32 precision. Output clips are cast to probe_dict['v_dtype']
+    done in np.float32 precision. Output clips are cast to templates.dtype
     at the end for output.
 
     A couple of notes regarding the OpenCL implementation of the binary pursuit algorithm.
@@ -56,39 +79,16 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
     import pyopencl as cl
     os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
     ############################################################################
+    # Ease of use variables
+    n_chans = np.uint32(voltage.shape[0])
+    n_samples = voltage.shape[1]
+    chan_win, clip_width = segment_parallel.time_window_to_samples(clip_width, sampling_rate)
 
-    chan_win, clip_width = segment_parallel.time_window_to_samples(clip_width, probe_dict['sampling_rate'])
-    _, master_channel_index, clip_samples, template_samples_per_chan, curr_chan_inds = segment.get_windows_and_indices(
-        clip_width, probe_dict['sampling_rate'], channel, neighbors)
-    # Remove any spikes within 1 clip width of each other
-    event_order = np.argsort(event_indices)
-    event_indices = event_indices[event_order]
-    neuron_labels = neuron_labels[event_order]
-
-    # Get new aligned multichannel clips here for computing voltage residuals.  Still not normalized
-    clips, valid_inds = segment_parallel.get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width=clip_width)
-    event_indices, neuron_labels = segment_parallel.keep_valid_inds([event_indices, neuron_labels], valid_inds)
-
-    # Ensure our neuron_labels go from 0 to M - 1 (required for kernels)
-    # This MUST be done after removing overlaps and reassigning simultaneous
-    reorder_labels(neuron_labels)
-
-    templates, temp_labels = segment_parallel.calculate_templates(clips, neuron_labels)
-
-    keep_bool = remove_overlapping_spikes(event_indices, clips, neuron_labels, templates,
-                                  temp_labels, clip_samples[1]-clip_samples[0])
-    event_indices = event_indices[keep_bool]
-    neuron_labels = neuron_labels[keep_bool]
-    clips = clips[keep_bool, :]
-    templates, temp_labels = segment_parallel.calculate_templates(clips, neuron_labels)
-
-    templates = np.vstack(templates).astype(np.float32)
+    # Templates must be float32
+    templates = np.float32(templates)
     # Reshape our templates so that instead of being an MxN array, this
     # becomes a 1x(M*N) vector. The first template should be in the first N points
     templates_vector = templates.reshape(templates.size).astype(np.float32)
-    # Index of current channel in the neighborhood
-    master_channel_index = np.uint32(master_channel_index)
-    n_neighbor_chans = np.uint32(neighbors.size)
 
     # Load OpenCL code from a file (stored as a string)
     if kernels_path is None:
@@ -129,9 +129,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         # Adjust event_indices so that they refer to the start of the clip to be
         # subtracted.
         clip_init_samples = int(np.abs(chan_win[0]))
-        event_indices -= clip_init_samples
-        event_indices = np.uint32(event_indices)
-        neuron_labels = np.uint32(neuron_labels)
+        template_labels = np.uint32(template_labels)
 
         # Determine the segment size that we need to use to fit into the
         # memory on this GPU device.
@@ -152,29 +150,28 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
 
         # Estimate the number of bytes that 1 second of data take up
         # This is skipping the bias and template squared error buffers which are small
-        constant_memory_usage = templates_vector.nbytes + event_indices.nbytes + neuron_labels.nbytes
+        constant_memory_usage = templates_vector.nbytes + template_labels.nbytes
         # Usage for voltage, additional spike indices, additional spike labels
-        memory_usage_per_second = (n_neighbor_chans * probe_dict['sampling_rate'] * np.dtype(np.float32).itemsize +
-                                   probe_dict['sampling_rate'] * (np.dtype(np.uint32).itemsize +
+        memory_usage_per_second = (n_chans * sampling_rate * np.dtype(np.float32).itemsize +
+                                   sampling_rate * (np.dtype(np.uint32).itemsize +
                                    np.dtype(np.uint32).itemsize) / template_samples_per_chan)
         # Need to further normalize this by the number of templates and channels
         # More templates and channels slows the GPU algorithm and GPU can timeout
         num_seconds_per_chunk = (gpu_memory_size - constant_memory_usage) \
-                                / (templates.shape[0] * n_neighbor_chans * memory_usage_per_second)
+                                / (templates.shape[0] * n_chans * memory_usage_per_second)
         # Do not exceed a the length of a buffer in bytes that can be addressed
         # Note: there is also a max allocation size,
         # device.get_info(cl.device_info.MAX_MEM_ALLOC_SIZE)
         max_addressable_seconds = (((1 << device.get_info(cl.device_info.ADDRESS_BITS)) - 1)
-                                    / (np.dtype(np.float32).itemsize * probe_dict['sampling_rate']
-                                     * n_neighbor_chans))
+                                    / (np.dtype(np.float32).itemsize * sampling_rate
+                                     * n_chans))
         num_seconds_per_chunk = min(num_seconds_per_chunk, np.floor(max_addressable_seconds))
-        num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * probe_dict['sampling_rate']))
+        num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * sampling_rate))
 
         if num_indices_per_chunk < 4 * template_samples_per_chan:
             raise ValueError("Cannot fit enough data on GPU to run binary pursuit. Decrease neighborhoods and/or clip width.")
 
         # Get all of our kernels
-        # This kernel subtracts the templates at each of their spike locations
         compute_residual_kernel = prg.compute_residual
         binary_pursuit_kernel = prg.binary_pursuit
         get_adjusted_clips_kernel = prg.get_adjusted_clips
@@ -205,7 +202,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         template_sum_squared = np.zeros(templates.shape[0], dtype=np.float32)
         for n in range(0, templates.shape[0]):
             template_sum_squared[n] = np.float32(-0.5 * np.dot(templates[n, :], templates[n, :]))
-            for chan in range(0, n_neighbor_chans):
+            for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
                 # Also get the FFT kernels used for spike bias below while we're at it
                 fft_kernels.append(get_zero_phase_kernel(templates[n, t_win[0]:t_win[1]], clip_init_samples))
@@ -217,124 +214,59 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
         # Note: Any spikes in the last template width of data are not checked
         chunk_onsets = []
         curr_onset = 0
-        while ((curr_onset) < (probe_dict['n_samples'] - template_samples_per_chan)):
+        while ((curr_onset) < (n_samples - template_samples_per_chan)):
             chunk_onsets.append(curr_onset)
             curr_onset += num_indices_per_chunk - 3 * template_samples_per_chan
         print("Using ", len(chunk_onsets), " chunks for binary pursuit.", flush=True)
 
         # Loop over chunks
         for chunk_number, start_index in enumerate(chunk_onsets):
-            stop_index = np.uint32(min(probe_dict['n_samples'], start_index + num_indices_per_chunk))
+            stop_index = np.uint32(min(n_samples, start_index + num_indices_per_chunk))
             print("Starting chunk number", chunk_number, "from", start_index, "to", stop_index, flush=True)
-            chunk_voltage = np.float32(neighbor_voltage[:, start_index:stop_index])
+            chunk_voltage = np.float32(voltage[:, start_index:stop_index])
             # Reshape voltage over channels into a single 1D vector
             chunk_voltage = chunk_voltage.reshape(chunk_voltage.size)
-            if find_all:
-                # We will find all spikes in binary pursuit so set chunk crossings to zero
-                chunk_crossings = np.array([], dtype=np.uint32)
-                chunk_labels = np.array([], dtype=np.uint32)
-            else:
-                select = np.logical_and(event_indices >= start_index, event_indices < stop_index)
-                chunk_crossings = event_indices[select] - start_index
-                chunk_labels = neuron_labels[select]
+
+            # We will find all spikes in binary pursuit so set chunk crossings to zero
+            chunk_crossings = np.array([], dtype=np.uint32)
+            chunk_labels = np.array([], dtype=np.uint32)
 
             # - Set up the compute_residual kernel -
             # Create our buffers on the graphics cards.
             # Essentially all we are doing is copying each of our arrays to the graphics card.
             voltage_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=chunk_voltage)
 
-            # Set arguments that are the same whether we subtract spikes to
-            # get the residual or whether there are no spikes. These will all
-            # be used later in the event new spikes are added.
+            # Set arguments that are the same every iteration
             compute_residual_kernel.set_arg(0, voltage_buffer) # location where chunk voltage is stored
             compute_residual_kernel.set_arg(1, np.uint32(stop_index - start_index)) # length of chunk voltage array
-            compute_residual_kernel.set_arg(2, n_neighbor_chans) # Number of neighboring channels
+            compute_residual_kernel.set_arg(2, n_chans) # Number of neighboring channels
             compute_residual_kernel.set_arg(3, template_buffer) # location where our templates are stored
             compute_residual_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of neurons (`rows` in templates)
             compute_residual_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each channel of templates
 
-            # Only get residual if there are spikes, else it's same as voltage
-            if chunk_crossings.shape[0] > 0:
-                crossings_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=chunk_crossings)
-                spike_labels_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=chunk_labels)
-
-                # These args are specific to this calculation of residual
-                compute_residual_kernel.set_arg(6, crossings_buffer) # Buffer of our spike indices
-                compute_residual_kernel.set_arg(7, spike_labels_buffer) # Buffer of our 0 indexed spike labels
-                compute_residual_kernel.set_arg(8, np.uint32(chunk_crossings.shape[0])) # Number of crossings
-
-                num_kernels = chunk_crossings.shape[0]
-                # Enqueue kernels in groups of max_compute_units * local_work_size
-                # Until we exceed num_kernels. On non-interactive systems, we could just
-                # enqueue `local_work_size * Integer(ceil(num_kernels / local_work_size))`
-                # but this can fail the watch-dog timeout on some Windows systems, forcing
-                # us to schedule in smaller units to let the operating system use the
-                # card
-                total_work_size_resid = np.uint32(resid_local_work_size * np.ceil(num_kernels / resid_local_work_size))
-                residual_events = []
-                n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
-                next_wait_event = None
-                for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
-                    residual_event = cl.enqueue_nd_range_kernel(queue,
-                                           compute_residual_kernel,
-                                           (n_to_enqueue, ), (resid_local_work_size, ),
-                                           global_work_offset=(enqueue_step, ),
-                                           wait_for=next_wait_event)
-                    next_wait_event = [residual_event]
-
-                # Set up the binary pursuit OpenCL kernel
-                # We can process the voltage trace in small blocks (equal to the template width) by minimizing the RMSE
-                # at each interval. For a given index, i, we can add a spike for neuron, n,
-                # if:
-                #  1) addition of the spike reduces the log-likelihood, which is based
-                #     on the Pillow formula:
-                #       0.5 * sum((R).^2) - 0.5 * sum((R - template).^2)
-                #     where 'R' is the voltage residuals (all other spikes removed).
-                #       0.5 * sum(R.^2) - 0.5 * sum(R.^2) + 1 * sum(R .* template) - 0.5 * sum(template.^2)
-                #     which is equavalent to
-                #       sum(R .* template) - 0.5 * sum(template.^2)
-                #     where the last two terms can be computed without a dependence on index i.
-                #     NOTE: This formation assumes that the voltage has been scaled by 1/sqrt(sigma) where sigma
-                #     is the variance of the residual voltage with the majority of spikes removed. An alternative
-                #     definition (which is used here when the voltage has not been scaled) is:
-                #       sum(R .* template) - 0.5 * sum(template.^2)
-                #  2) the addition of the spike is the largest for the current neuron at
-                #     the current timepoint
-                #  3) this is the best addition within the template width for any other spike.
-                #     That is, we could not add add a spike at an index earlier (by the spike
-                #     template width) or later (by the spike template width) that would be
-                #     a better addition than the current spike.
-
-                residual_voltage = np.empty(chunk_voltage.shape[0], dtype=np.float32)
-                cl.enqueue_copy(queue, residual_voltage, voltage_buffer, wait_for=residual_events) #dest, source
-            else:
-                # Need this stuff later no matter what
-                next_wait_event = None
-                residual_voltage = chunk_voltage
-                # residual_voltage = np.empty(chunk_voltage.shape[0], dtype=np.float32)
-                # cl.enqueue_copy(queue, residual_voltage, voltage_buffer, wait_for=None)
+            # Residual voltage starts off as just the voltage
+            next_wait_event = None
+            residual_voltage = chunk_voltage
 
             # Compute the template_sum_squared and bias terms
             spike_biases = np.zeros(templates.shape[0], dtype=np.float32)
             # Compute bias separately for each neuron
             for n in range(0, templates.shape[0]):
                 neighbor_bias = np.zeros((stop_index - start_index), dtype=np.float32)
-                for chan in range(0, n_neighbor_chans):
+                for chan in range(0, n_chans):
+                    if np.all(fft_kernels[n*n_chans + chan] == 0):
+                        # Unit is not defined over this channel so skip
+                        continue
                     cv_win = [chan * (stop_index - start_index),
                               chan * (stop_index - start_index) + (stop_index - start_index)]
                     neighbor_bias += np.float32(fftconvolve(
                                 residual_voltage[cv_win[0]:cv_win[1]],
-                                fft_kernels[n*n_neighbor_chans + chan],
+                                fft_kernels[n*n_chans + chan],
                                 mode='same'))
                 # Use MAD to estimate STD of the noise and set bias at
                 # thresh_sigma standard deviations. The typical extremely large
                 # n value for neighbor_bias makes this calculation converge to
                 # normal distribution
-                # median_bias = np.median(neighbor_bias)
-                # MAD = np.median(np.abs(median_bias - neighbor_bias))
-                # std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-                # spike_biases[n] = np.float32(median_bias + thresh_sigma*std_noise)
-
                 # Assumes zero-centered (which median usually isn't)
                 MAD = np.median(np.abs(neighbor_bias))
                 std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
@@ -343,9 +275,6 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
             # Delete stuff no longer needed for this chunk
             del residual_voltage
             del neighbor_bias
-            if chunk_crossings.shape[0] > 0:
-                crossings_buffer.release()
-                spike_labels_buffer.release()
 
             num_kernels = np.ceil(chunk_voltage.shape[0] / templates.shape[1])
             total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(num_kernels / pursuit_local_work_size))
@@ -361,7 +290,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
 
             binary_pursuit_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
             binary_pursuit_kernel.set_arg(1, np.uint32(stop_index - start_index)) # Length of chunk voltage
-            binary_pursuit_kernel.set_arg(2, n_neighbor_chans) # number of neighboring channels
+            binary_pursuit_kernel.set_arg(2, n_chans) # number of neighboring channels
             binary_pursuit_kernel.set_arg(3, template_buffer) # Our template buffer, created previously
             binary_pursuit_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of unique neurons, M
             binary_pursuit_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
@@ -451,7 +380,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
 
                 get_adjusted_clips_kernel.set_arg(0, voltage_buffer)
                 get_adjusted_clips_kernel.set_arg(1, np.uint32(stop_index - start_index))
-                get_adjusted_clips_kernel.set_arg(2, n_neighbor_chans)
+                get_adjusted_clips_kernel.set_arg(2, n_chans)
                 get_adjusted_clips_kernel.set_arg(3, template_buffer)
                 get_adjusted_clips_kernel.set_arg(4, np.uint32(templates.shape[0]))
                 get_adjusted_clips_kernel.set_arg(5, np.uint32(template_samples_per_chan))
@@ -498,7 +427,7 @@ def binary_pursuit(probe_dict, channel, neighbors, neighbor_voltage,
     if len(secret_spike_indices) > 0:
         event_indices = np.int64(np.hstack(secret_spike_indices))
         neuron_labels = np.int64(np.hstack(secret_spike_labels))
-        adjusted_clips = (np.vstack(adjusted_spike_clips)).astype(probe_dict['v_dtype'])
+        adjusted_clips = (np.vstack(adjusted_spike_clips)).astype(v_dtype)
         binary_pursuit_spike_bool = np.hstack(secret_spike_bool)
         # Realign events with center of spike
         event_indices += clip_init_samples

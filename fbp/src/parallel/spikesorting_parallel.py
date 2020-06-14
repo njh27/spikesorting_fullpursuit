@@ -10,12 +10,11 @@ import psutil
 import time
 from traceback import print_tb
 import warnings
-from so_sorting.src.parallel import segment_parallel
-from so_sorting.src import sort
-from so_sorting.src.parallel import overlap_parallel
-from so_sorting.src.parallel import binary_pursuit_parallel
-from so_sorting.src import preprocessing
-from so_sorting.src import consolidate
+from fbp.src.parallel import segment_parallel
+from fbp.src import sort
+from fbp.src.parallel import binary_pursuit_parallel
+from fbp.src import preprocessing
+from fbp.src import full_binary_pursuit
 
 
 
@@ -38,13 +37,10 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['max_components'] = 10 # Max number to use, of those checked
     settings['min_firing_rate'] = 1. # Neurons with fewer threshold crossings than this are removed
     settings['p_value_cut_thresh'] = 0.05
-    settings['do_binary_pursuit'] = True
-    settings['use_GPU'] = True # Force algorithms to run on the CPU rather than the GPU
     settings['max_gpu_memory'] = None # Use as much memory as possible
     settings['save_1_cpu'] = True
     settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
     settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
-    settings['binary_pursuit_only'] = True # If true, all spikes are found and classified by binary pursuit
     settings['cleanup_neurons'] = False # Remove garbage at the end
 
     for k in kwargs.keys():
@@ -250,10 +246,10 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
     do_ZCA_transform, filter_band is not used here but prevents errors from passing kwargs.
     """
     # Initialize variables in case this exits on error
-    crossings, neuron_labels, clips, bp_bool = [], [], [], []
+    crossings, neuron_labels, clips = [], [], []
     exit_type = None
     def wrap_up():
-        data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels, bp_bool]
+        data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels]
         with open(settings['tmp_clips_dir'] + '/temp_clips' + str(work_item['ID']) + '.pickle', 'wb') as fp:
             pickle.dump(clips, fp, protocol=-1)
         data_dict['completed_items'].append(work_item['ID'])
@@ -303,7 +299,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if crossings.size == 0:
             exit_type = "No crossings over threshold."
             # Raise error to force exit and wrap_up()
-            crossings, neuron_labels, clips, bp_bool = [], [], [], []
+            crossings, neuron_labels, clips = [], [], []
             raise NoSpikesError
         min_cluster_size = (np.floor(settings['min_firing_rate'] * item_dict['n_samples'] / item_dict['sampling_rate'])).astype(np.int64)
         if min_cluster_size < 1:
@@ -319,9 +315,14 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                             settings['clip_width'],
                             settings['filter_band'])
 
-        median_cluster_size = min(100, int(np.around(crossings.size / 1000)))
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
         crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
+
+        # keep_clips = preprocessing.keep_max_on_main(clips, curr_chan_inds)
+        # clips = clips[keep_clips, :]
+        # crossings = crossings[keep_clips]
+        # curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
+        # if settings['verbose']: print("After keep max on main removed", np.count_nonzero(~keep_clips), "clips", flush=True)
 
         exit_type = "Found first clips"
 
@@ -329,6 +330,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         # Do initial single channel sort. Start with single channel only because
         # later branching can split things out using multichannel info, but it
         # can't put things back together again
+        median_cluster_size = min(100, int(np.around(crossings.size / 1000)))
         if crossings.size > 1:
             scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
                         settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
@@ -350,14 +352,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                                             crossings, clip_width=settings['clip_width'])
             crossings, neuron_labels = segment_parallel.keep_valid_inds(
                     [crossings, neuron_labels], valid_event_indices)
-
-            # keep_clips = preprocessing.keep_max_on_main(clips, curr_chan_inds)
-            # clips = clips[keep_clips, :]
-            # crossings, neuron_labels = segment_parallel.keep_valid_inds(
-            #         [crossings, neuron_labels], keep_clips)
-            #
-            # curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
-            # if settings['verbose']: print("After keep max on main removed", np.count_nonzero(~keep_clips), "clips", curr_num_clusters.size, "different clusters", flush=True)
 
             scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
                         settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
@@ -413,13 +407,12 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings, neuron_labels = segment_parallel.keep_valid_inds(
                 [crossings, neuron_labels], valid_event_indices)
 
-        if settings['do_binary_pursuit']:
-            # Remove deviant clips before doing branch PCA to avoid getting clusters
-            # of overlaps or garbage
-            keep_clips = preprocessing.cleanup_clusters(clips[:, curr_chan_inds], neuron_labels)
-            crossings, neuron_labels = segment_parallel.keep_valid_inds(
-                    [crossings, neuron_labels], keep_clips)
-            clips = clips[keep_clips, :]
+        # Remove deviant clips before doing branch PCA to avoid getting clusters
+        # of overlaps or garbage
+        keep_clips = preprocessing.cleanup_clusters(clips[:, curr_chan_inds], neuron_labels)
+        crossings, neuron_labels = segment_parallel.keep_valid_inds(
+                [crossings, neuron_labels], keep_clips)
+        clips = clips[keep_clips, :]
 
         # Single channel branch
         if curr_num_clusters.size > 1 and settings['do_branch_PCA']:
@@ -434,7 +427,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
             if settings['verbose']: print("After SINGLE BRANCH", curr_num_clusters.size, "different clusters", flush=True)
 
-        if settings['do_branch_PCA'] and settings['do_binary_pursuit']:
+        if settings['do_branch_PCA']:
             # Remove deviant clips before doing branch PCA to avoid getting clusters
             # of overlaps or garbage, this time on full neighborhood
             keep_clips = preprocessing.cleanup_clusters(clips, neuron_labels)
@@ -480,49 +473,13 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if neuron_labels.size == 0:
             exit_type = "No clusters over min_firing_rate."
             # Raise error to force exit and wrap_up()
-            crossings, neuron_labels, clips, bp_bool = [], [], [], []
+            crossings, neuron_labels, clips = [], [], []
             raise NoSpikesError
 
         exit_type = "Finished sorting clusters"
 
         # Realign spikes based on correlation with current cluster templates before doing binary pursuit
         crossings, neuron_labels, _ = segment_parallel.align_events_with_template(item_dict, voltage[chan, :], neuron_labels, crossings, clip_width=settings['clip_width'])
-        if settings['do_binary_pursuit']:
-
-            # keep_clips = preprocessing.keep_cluster_centroid(clips, neuron_labels, n_keep=settings['binary_pursuit_only'])
-            # crossings, neuron_labels = segment_parallel.keep_valid_inds(
-            #         [crossings, neuron_labels], keep_clips)
-
-            if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
-            if settings['verbose']: print("Doing binary pursuit", flush=True)
-            if not settings['use_GPU']:
-                crossings, neuron_labels, bp_bool = overlap_parallel.binary_pursuit_secret_spikes(
-                                item_dict, chan, neighbors, voltage[neighbors, :],
-                                neuron_labels, crossings,
-                                settings['clip_width'], thresh_sigma=1.645)
-                clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
-                crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
-            else:
-                with data_dict['gpu_lock']:
-                    crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
-                                item_dict, chan, neighbors, voltage[neighbors, :],
-                                crossings, neuron_labels, settings['clip_width'],
-                                thresh_sigma=1.645, # Normal dists are - 95: 1.645;  97.5: 1.96; 99: 2.326
-                                find_all=settings['binary_pursuit_only'],
-                                kernels_path=None, max_gpu_memory=settings['max_gpu_memory'])
-            exit_type = "Finished binary pursuit"
-        else:
-            # Need to get newly aligned clips and bp_bool = False
-            clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
-            crossings, neuron_labels = segment_parallel.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
-            bp_bool = np.zeros(crossings.size, dtype=np.bool)
-
-        if len(neuron_labels) == 0:
-            # Nothing found in binary pursuit, probably with binary_pursuit_only == True
-            exit_type = "No clusters over min_firing_rate."
-            # Raise error to force exit and wrap_up()
-            crossings, neuron_labels, clips, bp_bool = [], [], [], []
-            raise NoSpikesError
 
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
         # Map labels starting at zero and put labels in order
@@ -572,10 +529,6 @@ def spike_sort_parallel(Probe, **kwargs):
     """
     # Get our settings
     settings = spike_sorting_settings_parallel(**kwargs)
-    if settings['binary_pursuit_only'] and not settings['use_GPU']:
-        raise ValueError("Running binary pursuit only without using GPU is not implemented because it would take forever. Must set use_GPU to True if binary_pursuit_only is True.")
-    if settings['binary_pursuit_only'] and not settings['do_binary_pursuit']:
-        raise ValueError("Running binary pursuit only implies do_binary_pursuit is True, but do_binary_pursuit was input as 'False'.")
     # Check that Probe neighborhood function is appropriate. Otherwise it can
     # generate seemingly mysterious errors
     try:
@@ -586,17 +539,12 @@ def spike_sort_parallel(Probe, **kwargs):
         raise ValueError("Probe get_neighbors() method must return a numpy ndarray of dtype np.int64.")
     elif check_neighbors.dtype != np.int64:
         raise ValueError("Probe get_neighbors() method must return a numpy ndarray of dtype np.int64.")
+    elif np.any(np.diff(check_neighbors) <= 0):
+        raise ValueError("Probe get_neighbors() method must return neighbor channels IN ORDER without duplicates.")
     # For convenience, necessary to define clip width as negative for first entry
     if settings['clip_width'][0] > 0:
         settings['clip_width'] *= -1
     manager = mp.Manager()
-    if not settings['use_GPU'] and settings['do_binary_pursuit']:
-        use_GPU_message = ("Using CPU binary pursuit to find " \
-                            "secret spikes. This can be MUCH MUCH " \
-                            "slower and uses more " \
-                            "memory than the GPU version. Returned " \
-                            "clips will NOT be adjusted.")
-        warnings.warn(use_GPU_message, RuntimeWarning, stacklevel=2)
     init_dict = {'num_channels': Probe.num_channels, 'sampling_rate': Probe.sampling_rate,
                  'results_dict': manager.dict(), 'v_dtype': Probe.v_dtype,
                  'completed_items': manager.list(), 'exits_dict': manager.dict(),
@@ -717,11 +665,13 @@ def spike_sort_parallel(Probe, **kwargs):
                                             sorted(zip(samples_over_thresh,
                                             work_items), key=lambda pair: pair[0]))]))
 
-    n_cpus = psutil.cpu_count(logical=True)
+    n_cpus = psutil.cpu_count(logical=True) - 1 # minus 1 to save for running GPU
+    gpu_cpu_available = True # Since only one, easier to use flag than a queue
+    gpu_cpu = 0 # GPU processes run on first cpu/process
     if settings['save_1_cpu']:
         n_cpus -= 1
     cpu_queue = manager.Queue(n_cpus)
-    for cpu in range(n_cpus):
+    for cpu in range(1, n_cpus): # START AT 1
         cpu_queue.put(cpu)
     # cpu_alloc returned in order of samples_over_thresh/work_items
     cpu_alloc = allocate_cpus_by_chan(samples_over_thresh)
@@ -744,6 +694,7 @@ def spike_sort_parallel(Probe, **kwargs):
     proc_item_index = []
     completed_items_index = 0
     seg_chan_counter = np.zeros(len(segment_onsets), dtype=np.int64)
+    sort_data = []
     print("Starting sorting pool")
     # Put the work items through the sorter
     for wi_ind, w_item in enumerate(work_items):
@@ -766,6 +717,19 @@ def spike_sort_parallel(Probe, **kwargs):
                     processes[done_index].join()
                     processes[done_index].close()
                     del processes[done_index]
+
+                    # seg_chan_counter[work_items[finished_item]['seg_number']] += 1
+                    # if seg_chan_counter[work_items[finished_item]['seg_number']] == Probe.num_electrodes:
+                    #     # Segment is complete, so ready to run binary pursuit
+                    #     # Check if any other segments are running binary pursuit
+                    #     if
+                    #     if gpu_cpu_available:
+                    #         time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
+                    #         proc = mp.Process(target=spike_sort_item_parallel,
+                    #                           args=(data_dict, use_cpus, w_item, settings))
+                    #         seg_data = full_binary_pursuit.full_binary_pursuit(work_items, data_dict, seg_number)
+                    #     else:
+                    #     sort_data.append(seg_data)
 
         if not settings['test_flag']:
             print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
@@ -801,33 +765,11 @@ def spike_sort_parallel(Probe, **kwargs):
             processes[done_index].close()
             del processes[done_index]
 
-            seg_chan_counter[work_items[finished_item]['seg_number']] += 1
-            if seg_chan_counter[work_items[finished_item]['seg_number']] == Probe.num_electrodes:
-                # Segment is complete, so ready to run binary pursuit
+            # seg_chan_counter[work_items[finished_item]['seg_number']] += 1
+            # if seg_chan_counter[work_items[finished_item]['seg_number']] == Probe.num_electrodes:
+            #     # Segment is complete, so ready to run binary pursuit
+            #     sort_data.append(seg_data)
 
-    sort_data = []
-    for wi_ind, w_item in enumerate(work_items):
-        if w_item['ID'] in data_dict['results_dict'].keys():
-            with open(settings['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle', 'rb') as fp:
-                clips = pickle.load(fp)
-            os.remove(settings['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle')
-            # Append list of crossings, labels, clips, binary pursuit spikes
-            sort_data.append([data_dict['results_dict'][w_item['ID']][0],
-                              data_dict['results_dict'][w_item['ID']][1],
-                              clips,
-                              data_dict['results_dict'][w_item['ID']][2],
-                              w_item['ID']])
-            # I am not sure why, but this has to be added here. It does not work
-            # when done above directly on the global data_dict elements
-            if type(sort_data[-1][0]) == np.ndarray:
-                if sort_data[-1][0].size > 0:
-                    # Adjust crossings for segment start time
-                    sort_data[-1][0] += w_item['index_window'][0]
-        else:
-            # This work item found nothing (or raised an exception)
-            sort_data.append([[], [], [], [], w_item['ID']])
-    if os.path.exists(settings['tmp_clips_dir']):
-        rmtree(settings['tmp_clips_dir'])
     sort_info = settings
     curr_chan_win, _ = segment_parallel.time_window_to_samples(
                                     settings['clip_width'], Probe.sampling_rate)
@@ -836,6 +778,19 @@ def spike_sort_parallel(Probe, **kwargs):
                       'n_samples_per_chan': curr_chan_win[1] - curr_chan_win[0],
                       'sampling_rate': Probe.sampling_rate,
                       'n_segments': len(segment_onsets)})
+
+    for seg_number in range(0, len(segment_onsets)):
+        seg_data = full_binary_pursuit.full_binary_pursuit(work_items,
+                    data_dict, seg_number, sort_info, Probe.v_dtype,
+                    overlap_ratio_threshold=2,
+                    absolute_refractory_period=12e-4,
+                    kernels_path=None,
+                    max_gpu_memory=settings['max_gpu_memory'])
+        sort_data.extend(seg_data)
+
+    # Delete directory containing clips
+    if os.path.exists(settings['tmp_clips_dir']):
+        rmtree(settings['tmp_clips_dir'])
 
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info

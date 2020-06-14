@@ -3,9 +3,9 @@ import os
 import platform as sys_platform
 import re
 import math
-from so_sorting.src.sort import reorder_labels
-from so_sorting.src import segment
-from so_sorting.src.overlap import reassign_simultaneous_spiking_clusters, get_zero_phase_kernel, remove_overlapping_spikes
+from fbp.src.sort import reorder_labels
+from fbp.src import segment
+# from fbp.src.overlap import reassign_simultaneous_spiking_clusters, get_zero_phase_kernel, remove_overlapping_spikes
 from scipy.signal import fftconvolve
 import pyopencl as cl
 os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'

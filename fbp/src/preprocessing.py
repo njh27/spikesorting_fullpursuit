@@ -2,7 +2,7 @@ import numpy as np
 from numpy import linalg as la
 from scipy import signal, linalg
 from scipy.spatial.distance import pdist
-from so_sorting.src.c_cython import sort_cython
+from fbp.src.c_cython import sort_cython
 
 import matplotlib.pyplot as plt
 

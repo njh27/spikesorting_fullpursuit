@@ -1,10 +1,10 @@
 import numpy as np
 from scipy import signal
 from scipy import stats
-from so_sorting.src import electrode
-from so_sorting.src import spikesorting
-from so_sorting.src.parallel import spikesorting_parallel
-from so_sorting.src import consolidate
+from fbp.src import electrode
+from fbp.src import spikesorting
+from fbp.src.parallel import spikesorting_parallel
+from fbp.src import consolidate
 import matplotlib.pyplot as plt
 
 
@@ -317,9 +317,9 @@ class TestDataset(object):
                               'filter_band': self.frequency_range,
                               'p_value_cut_thresh': 0.01, 'check_components': None,
                               'max_components': 10,
-                              'min_firing_rate': 1, 'do_binary_pursuit': False,
+                              'min_firing_rate': 1,
                               'add_peak_valley': False, 'do_ZCA_transform': True,
-                              'do_branch_PCA': True, 'use_GPU': True,
+                              'do_branch_PCA': True,
                               'max_gpu_memory': None,
                               'use_rand_init': True, 'cleanup_neurons': False,
                               'verbose': True}
@@ -336,9 +336,9 @@ class TestDataset(object):
                            'filter_band': self.frequency_range,
                            'p_value_cut_thresh': 0.01, 'check_components': None,
                            'max_components': 10,
-                           'min_firing_rate': 1, 'do_binary_pursuit': False,
+                           'min_firing_rate': 1,
                            'add_peak_valley': False, 'do_branch_PCA': True,
-                           'use_GPU': True, 'max_gpu_memory': None,
+                           'max_gpu_memory': None,
                            'save_1_cpu': True, 'use_rand_init': True,
                            'cleanup_neurons': False,
                            'verbose': True,
@@ -358,9 +358,9 @@ class TestDataset(object):
                               'filter_band': self.frequency_range,
                               'p_value_cut_thresh': 0.01, 'check_components': None,
                               'max_components': 10,
-                              'min_firing_rate': 1, 'do_binary_pursuit': False,
+                              'min_firing_rate': 1,
                               'add_peak_valley': False, 'do_ZCA_transform': True,
-                              'do_branch_PCA': True, 'use_GPU': True,
+                              'do_branch_PCA': True,
                               'max_gpu_memory': None,
                               'use_rand_init': True,
                               'cleanup_neurons': False,
@@ -371,9 +371,9 @@ class TestDataset(object):
                            'filter_band': self.frequency_range,
                            'p_value_cut_thresh': 0.01, 'check_components': None,
                            'max_components': 10,
-                           'min_firing_rate': 1, 'do_binary_pursuit': False,
+                           'min_firing_rate': 1,
                            'add_peak_valley': False, 'do_branch_PCA': True,
-                           'use_GPU': True, 'max_gpu_memory': None,
+                           'max_gpu_memory': None,
                            'save_1_cpu': True, 'use_rand_init': True,
                            'cleanup_neurons': False,
                            'verbose': True,

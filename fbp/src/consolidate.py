@@ -814,9 +814,9 @@ class SegSummary(object):
         # Get n2 expanded templated shifted to align with n1 then average
         shifted_n2 = np.zeros(neuron['expanded_template'].shape[0], dtype=self.v_dtype)
         if n2_shift > 0:
-            shifted_n2[best_shift:] = self.summaries[n2_ind]['expanded_template'][:-1*best_shift]
+            shifted_n2[n2_shift:] = self.summaries[n2_ind]['expanded_template'][:-1*n2_shift]
         elif n2_shift < 0:
-            shifted_n2[:-1*best_shift] = self.summaries[n2_ind]['expanded_template'][best_shift:]
+            shifted_n2[:-1*n2_shift] = self.summaries[n2_ind]['expanded_template'][n2_shift:]
         else:
             shifted_n2 = self.summaries[n2_ind]['expanded_template']
         # Get 'expanded template' over all channels as weighted average

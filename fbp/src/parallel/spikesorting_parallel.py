@@ -665,13 +665,11 @@ def spike_sort_parallel(Probe, **kwargs):
                                             sorted(zip(samples_over_thresh,
                                             work_items), key=lambda pair: pair[0]))]))
 
-    n_cpus = psutil.cpu_count(logical=True) - 1 # minus 1 to save for running GPU
-    gpu_cpu_available = True # Since only one, easier to use flag than a queue
-    gpu_cpu = 0 # GPU processes run on first cpu/process
+    n_cpus = psutil.cpu_count(logical=True)
     if settings['save_1_cpu']:
         n_cpus -= 1
     cpu_queue = manager.Queue(n_cpus)
-    for cpu in range(1, n_cpus): # START AT 1
+    for cpu in range(n_cpus):
         cpu_queue.put(cpu)
     # cpu_alloc returned in order of samples_over_thresh/work_items
     cpu_alloc = allocate_cpus_by_chan(samples_over_thresh)
@@ -693,8 +691,6 @@ def spike_sort_parallel(Probe, **kwargs):
     processes = []
     proc_item_index = []
     completed_items_index = 0
-    seg_chan_counter = np.zeros(len(segment_onsets), dtype=np.int64)
-    sort_data = []
     print("Starting sorting pool")
     # Put the work items through the sorter
     for wi_ind, w_item in enumerate(work_items):
@@ -717,19 +713,6 @@ def spike_sort_parallel(Probe, **kwargs):
                     processes[done_index].join()
                     processes[done_index].close()
                     del processes[done_index]
-
-                    # seg_chan_counter[work_items[finished_item]['seg_number']] += 1
-                    # if seg_chan_counter[work_items[finished_item]['seg_number']] == Probe.num_electrodes:
-                    #     # Segment is complete, so ready to run binary pursuit
-                    #     # Check if any other segments are running binary pursuit
-                    #     if
-                    #     if gpu_cpu_available:
-                    #         time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
-                    #         proc = mp.Process(target=spike_sort_item_parallel,
-                    #                           args=(data_dict, use_cpus, w_item, settings))
-                    #         seg_data = full_binary_pursuit.full_binary_pursuit(work_items, data_dict, seg_number)
-                    #     else:
-                    #     sort_data.append(seg_data)
 
         if not settings['test_flag']:
             print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
@@ -765,11 +748,7 @@ def spike_sort_parallel(Probe, **kwargs):
             processes[done_index].close()
             del processes[done_index]
 
-            # seg_chan_counter[work_items[finished_item]['seg_number']] += 1
-            # if seg_chan_counter[work_items[finished_item]['seg_number']] == Probe.num_electrodes:
-            #     # Segment is complete, so ready to run binary pursuit
-            #     sort_data.append(seg_data)
-
+    sort_data = []
     sort_info = settings
     curr_chan_win, _ = segment_parallel.time_window_to_samples(
                                     settings['clip_width'], Probe.sampling_rate)
@@ -783,7 +762,7 @@ def spike_sort_parallel(Probe, **kwargs):
         seg_data = full_binary_pursuit.full_binary_pursuit(work_items,
                     data_dict, seg_number, sort_info, Probe.v_dtype,
                     overlap_ratio_threshold=2,
-                    absolute_refractory_period=12e-4,
+                    absolute_refractory_period=20e-4,
                     kernels_path=None,
                     max_gpu_memory=settings['max_gpu_memory'])
         sort_data.extend(seg_data)

@@ -1792,7 +1792,7 @@ class WorkItemSummary(object):
                     if clips_1.shape[0] == 1 or clips_2.shape[0] == 1:
                         # Don't mess around with only 1 spike, if they are
                         # nearest each other they can merge
-                        ismerged = True
+                        is_merged = True
                     else:
                         is_merged, _, _ = self.merge_test_two_units(
                                 clips_1, clips_2, self.sort_info['p_value_cut_thresh'],

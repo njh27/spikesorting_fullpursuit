@@ -1052,7 +1052,7 @@ class SegSummary(object):
         Note: overlap_ratio_threshold == np.inf will not delete anything while
         overlap_ratio_threshold == -np.inf will delete everything except 1 unit.
         """
-        rn_verbose = True
+        rn_verbose = False
         # Since we are comparing across channels, we need to consider potentially
         # large alignment differences in the overlap_time
         overlap_time = self.half_clip_inds / self.sort_info['sampling_rate']

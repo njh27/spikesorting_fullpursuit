@@ -105,8 +105,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
 
     templates = np.vstack(templates)
     print("Starting full binary pursuit search with", template_labels.shape[0], "templates in segment", seg_number)
-    plt.plot(templates.T)
-    plt.show()
+    # plt.plot(templates.T)
+    # plt.show()
 
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, template_labels, sort_info['sampling_rate'],
@@ -154,8 +154,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                 # Map clips from all channels to current channel neighborhood
                 for neigh in range(0, curr_item['neighbors'].shape[0]):
                     chan_ind = curr_item['neighbors'][neigh]
-                    unit_clips[:, neigh*self.sort_info['n_samples_per_chan']:(neigh+1)*self.sort_info['n_samples_per_chan']] = \
-                            clips[select, chan_ind*self.sort_info['n_samples_per_chan']:(chan_ind+1)*self.sort_info['n_samples_per_chan']]
+                    unit_clips[:, neigh*sort_info['n_samples_per_chan']:(neigh+1)*sort_info['n_samples_per_chan']] = \
+                            clips[select, chan_ind*sort_info['n_samples_per_chan']:(chan_ind+1)*sort_info['n_samples_per_chan']]
                 chan_clips.append(unit_clips)
 
             # Append list of crossings, labels, clips, binary pursuit spikes

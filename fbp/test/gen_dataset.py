@@ -79,8 +79,8 @@ class TestProbe(electrode.AbstractProbe):
     def get_neighbors(self, channel):
         """ Test probe neighbor function simple returns an array of all channel numbers.
             """
-        start = max(channel - 2, 0)
-        stop = min(channel + 3, self.num_channels)
+        start = max(channel - 3, 0)
+        stop = min(channel + 4, self.num_channels)
 
         return np.arange(start, stop)
 

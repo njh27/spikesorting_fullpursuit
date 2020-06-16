@@ -1,8 +1,13 @@
 import numpy as np
 import pickle
 import os
-from fbp.src.consolidate import WorkItemSummary
+from fbp.src.consolidate import SegSummary
 from fbp.src.parallel import binary_pursuit_parallel
+
+
+
+import matplotlib.pyplot as plt
+
 
 
 
@@ -44,90 +49,92 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                         kernels_path=None, max_gpu_memory=None):
 
     # Need to build this in format used for consolidate functions
-    seg_data = [[] for x in range(0, sort_info['n_channels'])]
-    seg_w_items = [[] for x in range(0, sort_info['n_channels'])]
+    seg_data = []
+    seg_w_items = []
     for wi_ind, w_item in enumerate(work_items):
         if w_item['seg_number'] != seg_number:
             continue
         # Always do this to match with seg_data
-        seg_w_items[w_item['channel']].append(w_item)
+        seg_w_items.append(w_item)
         if w_item['ID'] in data_dict['results_dict'].keys():
             if len(data_dict['results_dict'][w_item['ID']][0]) == 0:
                 # This work item found nothing (or raised an exception)
-                seg_data[w_item['channel']].append([[], [], [], [], w_item['ID']])
+                seg_data.append([[], [], [], [], w_item['ID']])
                 continue
             with open(sort_info['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle', 'rb') as fp:
                 clips = pickle.load(fp)
             os.remove(sort_info['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle')
             # Insert list of crossings, labels, clips, binary pursuit spikes
-            seg_data[w_item['channel']].append([data_dict['results_dict'][w_item['ID']][0],
+            seg_data.append([data_dict['results_dict'][w_item['ID']][0],
                               data_dict['results_dict'][w_item['ID']][1],
                               clips,
                               np.zeros(len(data_dict['results_dict'][w_item['ID']][0]), dtype=np.bool),
                               w_item['ID']])
             # I am not sure why, but this has to be added here. It does not work
             # when done above directly on the global data_dict elements
-            if type(seg_data[w_item['channel']][0][0]) == np.ndarray:
-                if seg_data[w_item['channel']][0][0].size > 0:
+            if type(seg_data[-1][0][0]) == np.ndarray:
+                if seg_data[-1][0][0].size > 0:
                     # Adjust crossings for segment start time
-                    seg_data[w_item['channel']][0][0] += w_item['index_window'][0]
+                    seg_data[-1][0][0] += w_item['index_window'][0]
         else:
             # This work item found nothing (or raised an exception)
-            seg_data[w_item['channel']].append([[], [], [], [], w_item['ID']])
+            seg_data.append([[], [], [], [], w_item['ID']])
 
-    work_item_summary.sharpen_segments()
-    work_item_summary.summarize_neurons_by_seg()
-
-    seg_summary = SegSummary(seg_data, seg_w_items, sort_info,
+    seg_summary = SegSummary(seg_data, seg_w_items, sort_info, v_dtype,
                         absolute_refractory_period=absolute_refractory_period,
                         verbose=False)
-
-    # Since we are 'hacking' WorkItemSummary a bit, need to default these
-    for n in work_item_summary.neuron_summary_by_seg[0]:
-        n['deleted_as_redundant'] = False
-    neurons = work_item_summary.remove_redundant_neurons(0,
-                overlap_ratio_threshold=overlap_ratio_threshold)
+    seg_summary.sharpen_across_chans()
+    seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
+    neurons = seg_summary.summaries
 
     templates = []
     template_labels = []
-    template_labels_to_chans = {}
-    chans_to_template_labels = {}
-    for chan in range(0, sort_info['n_channels']):
-        chans_to_template_labels[chan] = []
     next_label = 0
     for n in neurons:
         if not n['deleted_as_redundant']:
-            curr_t = np.zeros(sort_info['n_samples_per_chan'] * sort_info['n_channels'], dtype=v_dtype)
-            t_index = [n['neighbors'][0] * sort_info['n_samples_per_chan'],
-                       (n['neighbors'][-1] + 1) * sort_info['n_samples_per_chan']]
-            curr_t[t_index[0]:t_index[1]] = n['template']
-            templates.append(curr_t)
+            templates.append(n['expanded_template'])
             template_labels.append(next_label)
-            template_labels_to_chans[next_label] = n['channel']
-            chans_to_template_labels[n['channel']].append(next_label)
             next_label += 1
-            print("NEED TO GET THE WORK ITEM IN THIS SEGMENT WITH THIS CHANNEL (IF WE DON'T HAVE IT YET) TO KEEP CONSISTENT OUTPUTS")
     template_labels = np.array(template_labels, dtype=np.int64)
+
+    del seg_summary
 
     seg_volts_buffer = data_dict['segment_voltages'][seg_number][0]
     seg_volts_shape = data_dict['segment_voltages'][seg_number][1]
     voltage = np.frombuffer(seg_volts_buffer, dtype=v_dtype).reshape(seg_volts_shape)
 
     templates = np.vstack(templates)
+    print("Starting full binary pursuit search with", template_labels.shape[0], "templates in segment", seg_number)
+    plt.plot(templates.T)
+    plt.show()
+
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, template_labels, sort_info['sampling_rate'],
                     v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
-                    thresh_sigma=1.645, kernels_path=None, max_gpu_memory=None)
+                    thresh_sigma=1.645, kernels_path=None,
+                    max_gpu_memory=max_gpu_memory)
 
-    # Need to convert binary pursuit output to standard sorting output
+    chans_to_template_labels = {}
+    for chan in range(0, sort_info['n_channels']):
+        chans_to_template_labels[chan] = []
+    for unit in np.unique(neuron_labels):
+        # Find this unit's channel as the channel with max value of template
+        curr_template = np.mean(clips[neuron_labels == unit, :], axis=0)
+        curr_chan = np.argmax(np.abs(curr_template)) // sort_info['n_samples_per_chan']
+        chans_to_template_labels[curr_chan].append(unit)
+
+    # Need to convert binary pursuit output to standard sorting output. This
+    # requires data from every channel, even if it is just empty
     seg_data = []
     for chan in range(0, voltage.shape[0]):
-        work_ID = np.nan
+        curr_item = None
         for w_item in work_items:
+            if w_item['seg_number'] != seg_number:
+                continue
             if w_item['channel'] == chan:
-                work_ID = w_item['ID']
+                curr_item = w_item
                 break
-        if np.isnan(work_ID):
+        if curr_item is None:
             # This should never be possible, but just to be sure
             raise RuntimeError("Could not find a matching work item for unit")
         if len(chans_to_template_labels[chan]) > 0:
@@ -138,16 +145,29 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                 chan_events.append(crossings[select])
                 chan_labels.append(neuron_labels[select])
                 chan_bp_bool.append(bp_bool[select])
-                chan_clips.append(clips[select, :])
+
+                unit_clips = np.zeros((np.count_nonzero(select),
+                                       curr_item['neighbors'].shape[0] * \
+                                       sort_info['n_samples_per_chan']),
+                                       dtype=v_dtype)
+
+                # Map clips from all channels to current channel neighborhood
+                for neigh in range(0, curr_item['neighbors'].shape[0]):
+                    chan_ind = curr_item['neighbors'][neigh]
+                    unit_clips[:, neigh*self.sort_info['n_samples_per_chan']:(neigh+1)*self.sort_info['n_samples_per_chan']] = \
+                            clips[select, chan_ind*self.sort_info['n_samples_per_chan']:(chan_ind+1)*self.sort_info['n_samples_per_chan']]
+                chan_clips.append(unit_clips)
 
             # Append list of crossings, labels, clips, binary pursuit spikes
             seg_data.append([np.hstack(chan_events),
                              np.hstack(chan_labels),
                              np.vstack(chan_clips),
                              np.hstack(chan_bp_bool),
-                             work_ID])
+                             curr_item['ID']])
         else:
             # This work item found nothing (or raised an exception)
-            seg_data.append([[], [], [], [], work_ID])
+            seg_data.append([[], [], [], [], curr_item['ID']])
+    # Make everything compatible with regular consolidate.WorkItemSummary
+    sort_info['binary_pursuit_only'] = True
 
     return seg_data

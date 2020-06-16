@@ -158,8 +158,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                             clips[select, chan_ind*sort_info['n_samples_per_chan']:(chan_ind+1)*sort_info['n_samples_per_chan']]
                 chan_clips.append(unit_clips)
 
+            # Adjust crossings for seg start time
+            chan_events = np.hstack(chan_events)
+            chan_events += curr_item['index_window'][0]
             # Append list of crossings, labels, clips, binary pursuit spikes
-            seg_data.append([np.hstack(chan_events),
+            seg_data.append([chan_events,
                              np.hstack(chan_labels),
                              np.vstack(chan_clips),
                              np.hstack(chan_bp_bool),

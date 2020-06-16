@@ -835,6 +835,8 @@ class SegSummary(object):
         for n1_ind in remaining_inds:
             n1 = self.summaries[n1_ind]
             for n2_ind in remaining_inds:
+                if n1['channel'] == n2['channel']:
+                    continue
                 if (n1_ind <= n2_ind) or ([n1_ind, n2_ind] in previously_compared_pairs):
                     # Do not perform repeat or identical comparisons
                     continue
@@ -1026,11 +1028,11 @@ class SegSummary(object):
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:
                     inds_to_delete.append(best_pair[1])
                     remaining_inds.remove(best_pair[1])
-                    self.combine_two_summaries(best_pair[0], best_pair[1], best_shift)
+                    # self.combine_two_summaries(best_pair[0], best_pair[1], best_shift)
                 else:
                     inds_to_delete.append(best_pair[0])
                     remaining_inds.remove(best_pair[0])
-                    self.combine_two_summaries(best_pair[1], best_pair[0], best_shift)
+                    # self.combine_two_summaries(best_pair[1], best_pair[0], best_shift)
             else:
                 # These mutually closest failed so do not repeat either
                 remaining_inds.remove(best_pair[0])
@@ -2666,6 +2668,7 @@ class WorkItemSummary(object):
     def make_overlapping_links(self, verbose=False):
         """
         """
+        ol_verbose = True
         # Now looking for overlaps not only between channels, but between segments
         # so use the largest reasonable overlap time window
         overlap_time = self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]
@@ -2684,18 +2687,28 @@ class WorkItemSummary(object):
                 # Choose the n1/n2 pair with most overlap and link if over threshold
                 for n1_ind in n1_remaining:
                     n1 = self.neuron_summary_by_seg[seg][n1_ind]
+                    if ol_verbose: print("CHECKING for matches for n1 on channel", n1['channel'], "quality", n1['quality_score'], "n spikes", n1['spike_indices'].shape[0])
                     for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
+                        if ol_verbose: print("AGAINST n2 on channel", n2['channel'], "quality", n2['quality_score'], "n spikes", n2['spike_indices'].shape[0])
                         # Only choose from neighborhood
                         if n1['channel'] not in n2['neighbors']:
+                            if ol_verbose: print("RESULT: not in neighbors")
                             continue
                         # Only choose from n2 with no previous link and not redundant
                         if n2['prev_seg_link'] is not None or n2['deleted_as_redundant']:
+                            if ol_verbose:
+                                if n2['prev_seg_link'] is not None:
+                                    print("RESULT: n2 has previous link")
+                                if n2['deleted_as_redundant']:
+                                    print("RESULT: n2 was deleted as redundant")
                             continue
                         curr_overlap = self.get_overlap_ratio(
                                 seg, n1_ind, seg+1, n2_ind, overlap_time)
                         if curr_overlap < self.min_overlapping_spikes:
+                            if ol_verbose: print("RESULT: overlap of", curr_overlap, "is less than min_overlapping spikes", self.min_overlapping_spikes)
                             continue
                         if curr_overlap > max_overlap_ratio:
+                            if ol_verbose: print("RESULT: overlap of", curr_overlap, "is set to max for linking")
                             max_overlap_ratio = curr_overlap
                             max_overlap_pair = [n1_ind, n2_ind]
                 if max_overlap_ratio > 0:

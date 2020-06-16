@@ -835,12 +835,12 @@ class SegSummary(object):
         for n1_ind in remaining_inds:
             n1 = self.summaries[n1_ind]
             for n2_ind in remaining_inds:
-                if n1['channel'] == n2['channel']:
-                    continue
                 if (n1_ind <= n2_ind) or ([n1_ind, n2_ind] in previously_compared_pairs):
                     # Do not perform repeat or identical comparisons
                     continue
                 n2 = self.summaries[n2_ind]
+                if n1['channel'] == n2['channel']:
+                    continue
                 cross_corr = np.correlate(n1['expanded_template'],
                                           n2['expanded_template'],
                                           mode='full')

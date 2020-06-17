@@ -105,8 +105,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
 
     templates = np.vstack(templates)
     print("Starting full binary pursuit search with", template_labels.shape[0], "templates in segment", seg_number)
-    plt.plot(templates.T)
-    plt.show()
+    # plt.plot(templates.T)
+    # plt.show()
 
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, template_labels, sort_info['sampling_rate'],

@@ -896,32 +896,8 @@ class SegSummary(object):
         neuron_labels = merge_clusters(scores, neuron_labels,
                             split_only=False, merge_only=True,
                             p_value_cut_thresh=self.sort_info['p_value_cut_thresh'])
+
         curr_labels, n_per_label = np.unique(neuron_labels, return_counts=True)
-
-        # max_perc_1 = 0.
-        # max_perc_2 = 0.
-        # max_label_1 = None
-        # max_label_2 = None
-        # for cl in curr_labels:
-        #     select_cl = neuron_labels == cl
-        #     # Percent clips_1 assigned to cl
-        #     perc_1 = np.count_nonzero(select_cl[0:clips_1.shape[0]]) / clips_1.shape[0]
-        #     if perc_1 > max_perc_1:
-        #         max_perc_1 = perc_1
-        #         max_label_1 = cl
-        #     # Percent clips_2 assigned to cl
-        #     perc_2 = np.count_nonzero(select_cl[clips_1.shape[0]:]) / clips_2.shape[0]
-        #     if perc_2 > max_perc_2:
-        #         max_perc_2 = perc_2
-        #         max_label_2 = cl
-        #
-        # print("Re-sorting results for unit 1 with", clips_1.shape[0], "spikes and unit 2 with", clips_2.shape[0], "spikes were sorted into", curr_labels, n_per_label)
-        # plt.plot(np.mean(clips_1, axis=0))
-        # plt.plot(np.mean(clips_2, axis=0))
-        # plt.show()
-        # print("Max percent clustering is", max_perc_1, max_perc_2)
-        # print("Max labels are", max_label_1, max_label_2)
-
         if curr_labels.size == 1:
             clips_merged = True
         else:
@@ -1001,12 +977,12 @@ class SegSummary(object):
                 #         method='channel_template_pca', merge_only=True,
                 #         curr_chan_inds=None, use_weights=True)
                 is_merged = self.re_sort_two_units(clips_1, clips_2, curr_chan_inds=None)
-                print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
-                # plt.plot(self.summaries[best_pair[0]]['expanded_template'])
-                # plt.plot(self.summaries[best_pair[1]]['expanded_template'])
-                plt.plot(np.mean(clips_1, axis=0))
-                plt.plot(np.mean(clips_2, axis=0))
-                plt.show()
+                # print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
+                # # plt.plot(self.summaries[best_pair[0]]['expanded_template'])
+                # # plt.plot(self.summaries[best_pair[1]]['expanded_template'])
+                # plt.plot(np.mean(clips_1, axis=0))
+                # plt.plot(np.mean(clips_2, axis=0))
+                # plt.show()
             if is_merged:
                 # Delete the unit with the fewest spikes
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:

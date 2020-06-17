@@ -1,6 +1,6 @@
 import numpy as np
 from fbp.src import segment
-from fbp.src.sort import merge_clusters
+from fbp.src.sort import merge_clusters, initial_cluster_farthest
 from fbp.src import preprocessing
 from fbp.src.c_cython import sort_cython
 from scipy import stats
@@ -756,76 +756,6 @@ class SegSummary(object):
 
                 self.summaries.append(neuron)
 
-    def combine_two_summaries(self, n1_ind, n2_ind, n2_shift):
-        """ Combines n1_ind and n2_ind and places them in the location of n1_ind.
-        n2_ind is NOT DELETED so that indexing can be kept constant externally
-        if needed. THIS DOES NOT UPDATE CLIPS AT ALL!. Primarily serves to
-        updated the extended template and spike times for use in sharpen, but
-        updating the clips and neighbors as well poses many problems. Everything
-        else done with these summaries relies only on the template and spike
-        times. """
-        neuron = self.summaries[n1_ind]
-        self.summaries[n2_ind]['spike_indices'] += n2_shift
-        neuron["spike_indices"] = np.hstack((neuron['spike_indices'],
-                                     self.summaries[n2_ind]['spike_indices']))
-        # neuron['clips'] = np.vstack((neuron['clips'],
-        #                              self.summaries[n2_ind]['clips']))
-        # neuron['chan_neighbor_ind'] = np.argwhere(neuron['neighbors'] == neuron['channel'])[0][0]
-        # neuron['main_win'] = [self.sort_info['n_samples_per_chan'] * neuron['chan_neighbor_ind'],
-        #                       self.sort_info['n_samples_per_chan'] * (neuron['chan_neighbor_ind'] + 1)]
-
-        # NOTE: This still needs to be done even though segments
-        # were ordered because of overlap!
-        # Ensure spike times are ordered. Must use 'stable' sort for
-        # output to be repeatable because overlapping segments and
-        # binary pursuit can return slightly different dupliate spikes
-        spike_order = np.argsort(neuron["spike_indices"], kind='stable')
-        neuron["spike_indices"] = neuron["spike_indices"][spike_order]
-        # neuron['clips'] = neuron['clips'][spike_order, :]
-
-        # Set duplicate tolerance as half spike width since within
-        # channel summary shouldn't be off by this
-        # neuron['duplicate_tol_inds'] = calc_spike_half_width(
-        #     neuron['clips'][:, neuron['main_win'][0]:neuron['main_win'][1]]) + 1
-        neuron['duplicate_tol_inds'] = max(neuron['duplicate_tol_inds'],
-                                self.summaries[n2_ind]['duplicate_tol_inds'])
-
-        # Remove any identical index duplicates (either from error or
-        # from combining overlapping segments), preferentially keeping
-        # the waveform best aligned to the template
-        # neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
-        # keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
-        #                 neuron['clips'], neuron["template"],
-        #                 tol_inds=neuron['duplicate_tol_inds'])
-        # neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-        # neuron['clips'] = neuron['clips'][keep_bool, :]
-
-        # Recompute template and store output
-        # neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
-        # neuron['snr'] = self.get_snr(neuron)
-        neuron['fraction_mua'] = calc_fraction_mua_to_peak(
-                                    neuron["spike_indices"],
-                                    self.sort_info['sampling_rate'],
-                                    neuron['duplicate_tol_inds'],
-                                    self.absolute_refractory_period)
-        neuron['quality_score'] = neuron['snr'] * (1-neuron['fraction_mua']) \
-                                        * (neuron['spike_indices'].shape[0])
-
-        # Get n2 expanded templated shifted to align with n1 then average
-        shifted_n2 = np.zeros(neuron['expanded_template'].shape[0], dtype=self.v_dtype)
-        if n2_shift > 0:
-            shifted_n2[n2_shift:] = self.summaries[n2_ind]['expanded_template'][:-1*n2_shift]
-        elif n2_shift < 0:
-            shifted_n2[:-1*n2_shift] = self.summaries[n2_ind]['expanded_template'][n2_shift:]
-        else:
-            shifted_n2 = self.summaries[n2_ind]['expanded_template']
-        # Get 'expanded template' over all channels as weighted average
-        n2_weight = self.summaries[n2_ind]['spike_indices'].shape[0] / neuron['spike_indices'].shape[0]
-        neuron['expanded_template'] = (1 - n2_weight) * neuron['expanded_template'] \
-                        + n2_weight * self.summaries[n2_ind]['expanded_template']
-
-        self.summaries[n1_ind] = neuron # is this even necessary?
-
     def find_nearest_shifted_pair(self, remaining_inds, previously_compared_pairs):
         """ Alternative to sort_cython.identify_clusters_to_compare that simply
         chooses the nearest template after shifting to optimal alignment.
@@ -839,7 +769,9 @@ class SegSummary(object):
                     # Do not perform repeat or identical comparisons
                     continue
                 n2 = self.summaries[n2_ind]
-                if n1['channel'] == n2['channel']:
+                if n2['channel'] not in n1['neighbors']:
+                    # Must be within each other's neighborhoods
+                    previously_compared_pairs.append([n1_ind, n2_ind])
                     continue
                 cross_corr = np.correlate(n1['expanded_template'],
                                           n2['expanded_template'],
@@ -872,22 +804,31 @@ class SegSummary(object):
             clips_1 = None
             clips_2 = None
             return best_pair, best_shift, clips_1, clips_2
+
+        # Reset n1 and n2 to match the best then calculate clips
+        n1 = self.summaries[best_pair[0]]
+        n2 = self.summaries[best_pair[1]]
+
         # Create extended clips and align and truncate them for best match pair
         shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(best_shift)
         clips_1 = np.zeros((n1['clips'].shape[0], shift_samples_per_chan * self.sort_info['n_channels']), dtype=self.v_dtype)
         clips_2 = np.zeros((n2['clips'].shape[0], shift_samples_per_chan * self.sort_info['n_channels']), dtype=self.v_dtype)
+        sample_select_1 = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
+        sample_select_2 = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
         if best_shift == 0:
             # No truncating/alignment. Just expand and return
             c_index = [n1['neighbors'][0] * shift_samples_per_chan,
                        (n1['neighbors'][-1] + 1) * shift_samples_per_chan]
             clips_1[:, c_index[0]:c_index[1]] = n1['clips']
+            sample_select_1[c_index[0]:c_index[1]] = True
             c_index = [n2['neighbors'][0] * shift_samples_per_chan,
                        (n2['neighbors'][-1] + 1) * shift_samples_per_chan]
             clips_2[:, c_index[0]:c_index[1]] = n2['clips']
-            # Only keep samples with data from at least one unit
-            clip_select = np.logical_or(np.any(clips_1 != 0, axis=0), np.any(clips_2 != 0, axis=0))
-            clips_1 = clips_1[:, clip_select]
-            clips_2 = clips_2[:, clip_select]
+            sample_select_2[c_index[0]:c_index[1]] = True
+            # Only keep samples with data from at least one units
+            sample_select = np.logical_or(sample_select_1, sample_select_2)
+            clips_1 = clips_1[:, sample_select]
+            clips_2 = clips_2[:, sample_select]
             return best_pair, best_shift, clips_1, clips_2
 
         # Get clips for each channel, shift them, and assign for output, which
@@ -903,6 +844,7 @@ class SegSummary(object):
                 elif best_shift < 0:
                     clips_1[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_1[:, :best_shift]
+                sample_select_1[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
             if chan in n2['neighbors']:
                 neigh_chan_ind = np.argwhere(n2['neighbors'] == chan)[0][0]
                 chan_clips_2 = n2['clips'][:, neigh_chan_ind*self.sort_info['n_samples_per_chan']:(neigh_chan_ind+1)*self.sort_info['n_samples_per_chan']]
@@ -912,7 +854,79 @@ class SegSummary(object):
                 elif best_shift < 0:
                     clips_2[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_2[:, -1*best_shift:]
+                sample_select_2[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
+        # Only keep samples with data from at least one units
+        sample_select = np.logical_or(sample_select_1, sample_select_2)
+        clips_1 = clips_1[:, sample_select]
+        clips_2 = clips_2[:, sample_select]
         return best_pair, best_shift, clips_1, clips_2
+
+    def re_sort_two_units(self, clips_1, clips_2, use_weights=True, curr_chan_inds=None):
+        if self.sort_info['add_peak_valley'] and curr_chan_inds is None:
+            raise ValueError("Must give curr_chan_inds if using peak valley.")
+
+        # Get each clip score from template based PCA space
+        clips = np.vstack((clips_1, clips_2))
+        orig_neuron_labels = np.ones(clips.shape[0], dtype=np.int64)
+        orig_neuron_labels[clips_1.shape[0]:] = 2
+        # scores = preprocessing.compute_template_pca(clips, orig_neuron_labels,
+        #             curr_chan_inds, self.sort_info['check_components'],
+        #             self.sort_info['max_components'],
+        #             add_peak_valley=self.sort_info['add_peak_valley'],
+        #             use_weights=True)
+        # scores = preprocessing.compute_pca(clips,
+        #             self.sort_info['check_components'],
+        #             self.sort_info['max_components'],
+        #             add_peak_valley=self.sort_info['add_peak_valley'],
+        #             curr_chan_inds=curr_chan_inds)
+
+        # Projection onto templates, weighted by number of spikes
+        t1 = np.mean(clips_1, axis=0)
+        t2 = np.mean(clips_2, axis=0)
+        if use_weights:
+            t1 *= (clips_1.shape[0] / clips.shape[0])
+            t2 *= (clips_2.shape[0] / clips.shape[0])
+        scores = clips @ np.vstack((t1, t2)).T
+
+        scores = np.float64(scores)
+
+        median_cluster_size = min(100, int(np.around(clips.shape[0] / 1000)))
+        n_random = max(100, np.around(clips.shape[0] / 100)) if self.sort_info['use_rand_init'] else 0
+        neuron_labels = initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
+        neuron_labels = merge_clusters(scores, neuron_labels,
+                            split_only=False, merge_only=True,
+                            p_value_cut_thresh=self.sort_info['p_value_cut_thresh'])
+        curr_labels, n_per_label = np.unique(neuron_labels, return_counts=True)
+
+        # max_perc_1 = 0.
+        # max_perc_2 = 0.
+        # max_label_1 = None
+        # max_label_2 = None
+        # for cl in curr_labels:
+        #     select_cl = neuron_labels == cl
+        #     # Percent clips_1 assigned to cl
+        #     perc_1 = np.count_nonzero(select_cl[0:clips_1.shape[0]]) / clips_1.shape[0]
+        #     if perc_1 > max_perc_1:
+        #         max_perc_1 = perc_1
+        #         max_label_1 = cl
+        #     # Percent clips_2 assigned to cl
+        #     perc_2 = np.count_nonzero(select_cl[clips_1.shape[0]:]) / clips_2.shape[0]
+        #     if perc_2 > max_perc_2:
+        #         max_perc_2 = perc_2
+        #         max_label_2 = cl
+        #
+        # print("Re-sorting results for unit 1 with", clips_1.shape[0], "spikes and unit 2 with", clips_2.shape[0], "spikes were sorted into", curr_labels, n_per_label)
+        # plt.plot(np.mean(clips_1, axis=0))
+        # plt.plot(np.mean(clips_2, axis=0))
+        # plt.show()
+        # print("Max percent clustering is", max_perc_1, max_perc_2)
+        # print("Max labels are", max_label_1, max_label_2)
+
+        if curr_labels.size == 1:
+            clips_merged = True
+        else:
+            clips_merged = False
+        return clips_merged
 
     def merge_test_two_units(self, clips_1, clips_2, p_cut, method='template_pca',
                              split_only=False, merge_only=False,
@@ -982,61 +996,34 @@ class SegSummary(object):
                 # nearest each other they can merge
                 ismerged = True
             else:
-                is_merged, _, _ = self.merge_test_two_units(
-                        clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                        method='template_pca', merge_only=True,
-                        curr_chan_inds=None, use_weights=True)
+                # is_merged, _, _ = self.merge_test_two_units(
+                #         clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
+                #         method='channel_template_pca', merge_only=True,
+                #         curr_chan_inds=None, use_weights=True)
+                is_merged = self.re_sort_two_units(clips_1, clips_2, curr_chan_inds=None)
+                print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
+                # plt.plot(self.summaries[best_pair[0]]['expanded_template'])
+                # plt.plot(self.summaries[best_pair[1]]['expanded_template'])
+                plt.plot(np.mean(clips_1, axis=0))
+                plt.plot(np.mean(clips_2, axis=0))
+                plt.show()
             if is_merged:
-                union_spikes = np.hstack((self.summaries[best_pair[0]]['spike_indices'], self.summaries[best_pair[1]]['spike_indices']))
-                union_spikes.sort()
-                union_tol_inds = max(self.summaries[best_pair[0]]['duplicate_tol_inds'],
-                                     self.summaries[best_pair[1]]['duplicate_tol_inds'])
-
-                union_fraction_mua_rate = calc_fraction_mua(
-                                                 union_spikes,
-                                                 self.sort_info['sampling_rate'],
-                                                 2*union_tol_inds, # 2*spike half width
-                                                 self.absolute_refractory_period)
-                # Need to get fraction MUA by rate, rather than peak,
-                # for comparison here
-                fraction_mua_rate_1 = calc_fraction_mua(
-                                         self.summaries[best_pair[0]]['spike_indices'],
-                                         self.sort_info['sampling_rate'],
-                                         2*union_tol_inds,
-                                         self.absolute_refractory_period)
-                fraction_mua_rate_2 = calc_fraction_mua(
-                                         self.summaries[best_pair[1]]['spike_indices'],
-                                         self.sort_info['sampling_rate'],
-                                         2*union_tol_inds,
-                                         self.absolute_refractory_period)
-                # Use the biggest bin over bin change observed in the
-                # CCG as an error tolerance
-                _, _, max_delta = calc_ccg_overlap_ratios(self.summaries[best_pair[0]]['spike_indices'],
-                                    self.summaries[best_pair[1]]['spike_indices'],
-                                    self.absolute_refractory_period,
-                                    self.sort_info['sampling_rate'])
-                # print("In sharpen CCG analysis we have", exp, act, max_delta)
-                # print("with MUAs", union_fraction_mua_rate, fraction_mua_rate_1, fraction_mua_rate_2)
-                # plt.plot(np.mean(clips_1, axis=0))
-                # plt.plot(np.mean(clips_2, axis=0))
-                # plt.show()
-                if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + max_delta:
-                    is_merged = False
-
-            if is_merged:
-                # Combine these into whichever label has more spikes
+                # Delete the unit with the fewest spikes
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:
                     inds_to_delete.append(best_pair[1])
                     remaining_inds.remove(best_pair[1])
-                    # self.combine_two_summaries(best_pair[0], best_pair[1], best_shift)
                 else:
                     inds_to_delete.append(best_pair[0])
                     remaining_inds.remove(best_pair[0])
-                    # self.combine_two_summaries(best_pair[1], best_pair[0], best_shift)
             else:
                 # These mutually closest failed so do not repeat either
                 remaining_inds.remove(best_pair[0])
                 remaining_inds.remove(best_pair[1])
+                # # Remove unit with the most spikes
+                # if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:
+                #     remaining_inds.remove(best_pair[0])
+                # else:
+                #     remaining_inds.remove(best_pair[1])
             previously_compared_pairs.append(best_pair)
 
         # Delete merged units
@@ -2308,7 +2295,8 @@ class WorkItemSummary(object):
                         neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][keep_bool]
                         neuron['clips'] = neuron['clips'][keep_bool, :]
                     else:
-                        neuron['duplicate_tol_inds'] = 1
+                        pass
+                        # neuron['duplicate_tol_inds'] = 1
 
                     # Remove any identical index duplicates (either from error or
                     # from combining overlapping segments), preferentially keeping

@@ -151,23 +151,28 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         # Estimate the number of bytes that 1 second of data take up
         # This is skipping the bias and template squared error buffers which are small
         constant_memory_usage = templates_vector.nbytes + template_labels.nbytes
-        # Usage for voltage, additional spike indices, additional spike labels
-        memory_usage_per_second = (n_chans * sampling_rate * np.dtype(np.float32).itemsize +
-                                   sampling_rate * (np.dtype(np.uint32).itemsize +
-                                   np.dtype(np.uint32).itemsize) / template_samples_per_chan)
+        # Usage for voltage
+        memory_usage_per_second = (n_chans * sampling_rate * np.dtype(np.float32).itemsize)
+        # Usage for new spike info storage buffers depends on samples divided by template size
+        memory_usage_per_second += (sampling_rate / template_samples_per_chan) * \
+                                    (np.dtype(np.uint32).itemsize + # additional indices
+                                     np.dtype(np.uint32).itemsize + # additional labels
+                                     np.dtype(np.uint32).itemsize + # best indices
+                                     np.dtype(np.uint32).itemsize + # best labels
+                                     np.dtype(np.float32).itemsize) # best likelihoods
+
         # Estimate how much data we can look at in each data 'chunk'
         num_seconds_per_chunk = (gpu_memory_size - constant_memory_usage) \
                                 / (memory_usage_per_second)
-        # Need to further normalize this by the number of templates and channels
-        # More templates and channels slows the GPU algorithm and GPU can timeout
-        num_seconds_per_chunk = num_seconds_per_chunk / (n_chans)
-        # Do not exceed a the length of a buffer in bytes that can be addressed
+        # Do not exceed the length of a buffer in bytes that can be addressed
+        # for the single largest data buffer, the voltage
         # Note: there is also a max allocation size,
         # device.get_info(cl.device_info.MAX_MEM_ALLOC_SIZE)
         max_addressable_seconds = (((1 << device.get_info(cl.device_info.ADDRESS_BITS)) - 1)
                                     / (np.dtype(np.float32).itemsize * sampling_rate
                                      * n_chans))
         num_seconds_per_chunk = min(num_seconds_per_chunk, np.floor(max_addressable_seconds))
+        # Convert from seconds to indices, the actual currency of this function's computations
         num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * sampling_rate))
 
         if num_indices_per_chunk < 4 * template_samples_per_chan:

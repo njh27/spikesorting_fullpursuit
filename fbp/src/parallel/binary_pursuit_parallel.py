@@ -365,23 +365,25 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for template_index in range(0, templates.shape[0]):
                     for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
-                        time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
+                        # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
                         compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(template_index)) # Template number
                         temp_ml_event = cl.enqueue_nd_range_kernel(queue,
                                               compute_template_maximum_likelihood_kernel,
                                               (n_to_enqueue, ), (pursuit_local_work_size, ),
                                               global_work_offset=(enqueue_step, ),
-                                              wait_for=next_wait_event)
+                                              wait_for=None)
+                        queue.finish()
                         next_wait_event = [temp_ml_event]
 
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
-                    time.sleep(.1)
+                    # time.sleep(.1)
                     pursuit_event = cl.enqueue_nd_range_kernel(queue,
                                           binary_pursuit_kernel,
                                           (n_to_enqueue, ), (pursuit_local_work_size, ),
                                           global_work_offset=(enqueue_step, ),
                                           wait_for=next_wait_event)
+                    queue.finish()
                     next_wait_event = [pursuit_event]
 
                 cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=next_wait_event)
@@ -413,12 +415,13 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
                 n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
                 for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
-                    time.sleep(.1)
+                    # time.sleep(.1)
                     residual_event = cl.enqueue_nd_range_kernel(queue,
                                            compute_residual_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),
                                            global_work_offset=(enqueue_step, ),
                                            wait_for=next_wait_event)
+                    queue.finish()
                     next_wait_event = [residual_event]
                 # Ensure that num_additional_spikes is equal to zero for the next pass
                 cl.enqueue_copy(queue, num_additional_spikes_buffer, np.zeros(1, dtype=np.uint32), wait_for=None)
@@ -473,12 +476,13 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 n_to_enqueue = min(total_work_size_clips, max_enqueue_resid)
                 print("Getting adjusted clips", flush=True)
                 for enqueue_step in np.arange(0, total_work_size_clips, max_enqueue_resid, dtype=np.uint32):
-                    time.sleep(.1)
+                    # time.sleep(.1)
                     clip_event = cl.enqueue_nd_range_kernel(queue,
                                            get_adjusted_clips_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),
                                            global_work_offset=(enqueue_step, ),
                                            wait_for=next_wait_event)
+                    queue.finish()
                     next_wait_event = [clip_event]
                 cl.enqueue_copy(queue, all_adjusted_clips, all_adjusted_clips_buffer, wait_for=clip_events)
                 all_adjusted_clips = np.reshape(all_adjusted_clips, (all_chunk_crossings.shape[0], templates.shape[1]))

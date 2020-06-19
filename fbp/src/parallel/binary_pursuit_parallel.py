@@ -2,7 +2,7 @@ import numpy as np
 import os
 import platform as sys_platform
 import re
-import math
+import time
 from fbp.src.sort import reorder_labels
 from fbp.src import segment
 from fbp.src.parallel import segment_parallel
@@ -189,6 +189,10 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         max_enqueue_resid = max(resid_local_work_size, resid_local_work_size * (max_enqueue_resid // resid_local_work_size))
         max_enqueue_pursuit = max(pursuit_local_work_size, pursuit_local_work_size * (max_enqueue_pursuit // pursuit_local_work_size))
 
+        print("COMPUTE UNITS", device.max_compute_units)
+        # max_enqueue_pursuit = 256 * 10
+        # max_enqueue_resid = 256 * 10
+
         # Set up our final outputs
         num_additional_spikes = np.zeros(1, dtype=np.uint32)
 
@@ -342,11 +346,13 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             chunk_total_additional_spike_indices = []
             chunk_total_additional_spike_labels = []
             n_loops = 0
+            print("pursuit total size is", total_work_size_pursuit, "local size is", pursuit_local_work_size, "with max enqueue", max_enqueue_pursuit, "chose n to enqueue", min(total_work_size_pursuit, max_enqueue_pursuit))
             while True:
                 n_loops += 1
+                n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for template_index in range(0, templates.shape[0]):
-                    n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                     for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
+                        time.sleep(.1)
                         compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(template_index)) # Template number
                         temp_ml_event = cl.enqueue_nd_range_kernel(queue,
                                               compute_template_maximum_likelihood_kernel,
@@ -357,6 +363,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
+                    time.sleep(.1)
                     pursuit_event = cl.enqueue_nd_range_kernel(queue,
                                           binary_pursuit_kernel,
                                           (n_to_enqueue, ), (pursuit_local_work_size, ),
@@ -393,6 +400,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
                 n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
                 for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
+                    time.sleep(.1)
                     residual_event = cl.enqueue_nd_range_kernel(queue,
                                            compute_residual_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),
@@ -452,6 +460,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 n_to_enqueue = min(total_work_size_clips, max_enqueue_resid)
                 print("Getting adjusted clips", flush=True)
                 for enqueue_step in np.arange(0, total_work_size_clips, max_enqueue_resid, dtype=np.uint32):
+                    time.sleep(.1)
                     clip_event = cl.enqueue_nd_range_kernel(queue,
                                            get_adjusted_clips_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),

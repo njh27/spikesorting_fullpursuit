@@ -120,6 +120,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                     thresh_sigma=1.645, kernels_path=None,
                     max_gpu_memory=max_gpu_memory)
 
+    crossings, neuron_labels, bp_bool, clips = n_crossings, n_neuron_labels, n_bp_bool, n_clips
+
     chans_to_template_labels = {}
     for chan in range(0, sort_info['n_channels']):
         chans_to_template_labels[chan] = []

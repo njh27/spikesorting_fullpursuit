@@ -199,7 +199,7 @@ static void prefix_local_sum(__local unsigned int * restrict x) /**< Length must
  *  maximum_likelihood [out]: The maximum likelihood found at this point (private).
  *  maximum_likelihood_neuron [out]: The neuron with the maximum likelihood (private).
  */
-static void compute_maximum_likelihood(
+static void compute_likelihood(
     __global voltage_type * restrict voltage,
     unsigned int voltage_length,
     const unsigned int num_neighbor_channels,
@@ -207,12 +207,11 @@ static void compute_maximum_likelihood(
     __global const voltage_type * restrict templates,
     const unsigned int num_templates,
     const unsigned int template_length,
+    const unsigned int template_number,
     __global const float * restrict template_sum_squared,
     __global const float * restrict gamma,
-    float * restrict maximum_likelihood,
-    unsigned int * restrict maximum_likelihood_neuron)
+    float * restrict maximum_likelihood)
 {
-    unsigned int i;
     unsigned int j;
     unsigned int current_channel;
     /* Set our maximum likelihood found to 0.0 (no spike to add) */
@@ -222,29 +221,93 @@ static void compute_maximum_likelihood(
         return; /* Returns maximum likelihood = 0.0 */
     }
 
-    float current_likelihood;
-    /* Look across all neurons (templates) */
-    for (i = 0; i < num_templates; i++)
+    float current_likelihood = template_sum_squared[template_number] - gamma[template_number];
+    /* Compute likelihood over all channels for this template and time point */
+    for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
     {
-        current_likelihood = template_sum_squared[i] - gamma[i];
-        /* The master channel exceeded threshold, check all of our neighbors */
-        for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
+        unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
+        unsigned int voltage_offset = index + (voltage_length * current_channel);
+        for (j = 0; j < template_length; j++)
         {
-            unsigned int template_offset = (i * template_length * num_neighbor_channels) + (current_channel * template_length);
-            unsigned int voltage_offset = index + (voltage_length * current_channel);
-            for (j = 0; j < template_length; j++)
+            current_likelihood = current_likelihood + (float) templates[template_offset + j] * (float) voltage[voltage_offset + j];
+        }
+    }
+    if (current_likelihood > *maximum_likelihood)
+    {
+        *maximum_likelihood = current_likelihood;
+    }
+    return;
+}
+
+__kernel void compute_template_peaks(
+    __global voltage_type * restrict voltage,
+    const unsigned int voltage_length,
+    const unsigned int num_neighbor_channels,
+    __global const voltage_type * restrict templates,
+    const unsigned int num_templates,
+    const unsigned int template_length,
+    const size_t n_worker_windows,
+    __global const float * restrict template_sum_squared,
+    __global const float * restrict gamma,
+    __global float * restrict peak_values,
+    __global unsigned int * restrict peak_indices)
+{
+    const size_t id = get_global_id(0);
+
+    /* Use this to select this worker's time window */
+    const size_t win_int = id % n_worker_windows;
+    /* Use this to select worker's template */
+    const unsigned int temp_int = (signed int) (id / n_worker_windows);
+
+    /* Only return peak values that are within this time window */
+    /* All other peaks are ignored (previous window and next window) */
+    const unsigned int start_of_my_window = ((signed int) win_int) * ((signed int) template_length);
+    const unsigned int end_of_my_window = (win_int + 1) * template_length - 1;
+    const unsigned int start = (template_length > start_of_my_window) ? 0 : (start_of_my_window - template_length);
+    const unsigned int stop = (end_of_my_window + 2 * template_length) > voltage_length ? voltage_length : (end_of_my_window + 2 * template_length);
+
+    /* Define our private variables */
+    float maximum_likelihood = 0.0;
+    unsigned int maximum_likelihood_index = 0;
+    unsigned int i;
+
+    if (end_of_my_window < voltage_length - template_length || num_neighbor_channels == 0)
+    {
+        /* Compute our minimum cost to go for adding this spike at each point */
+        for (i = 0; i < (unsigned) stop - start; i++)
+        {
+            float current_maximum_likelihood = 0.0;
+            compute_likelihood(voltage, voltage_length, num_neighbor_channels,
+                i + start, templates, num_templates, template_length,
+                temp_int, template_sum_squared, gamma,
+                &current_maximum_likelihood);
+            if (current_maximum_likelihood > maximum_likelihood)
             {
-                current_likelihood = current_likelihood + (float) templates[template_offset + j] * (float) voltage[voltage_offset + j];
+                maximum_likelihood = current_maximum_likelihood;
+                maximum_likelihood_index = start + i;
             }
         }
 
-        if (current_likelihood > *maximum_likelihood)
-        {
-            *maximum_likelihood = current_likelihood;
-            *maximum_likelihood_neuron = i;
-        }
+        // if ((win_int % 100 == 0) && (temp_int == 0))
+        // {
+        //   maximum_likelihood = 1.;
+        //   maximum_likelihood_index = start_of_my_window + 1;
+        // }
+        // else
+        // {
+        //   maximum_likelihood = 0.0;
+        //   maximum_likelihood_index = 0;
+        // }
+
     }
-    return;
+    /* If the best maximum likelihood is greater than zero and within our window */
+    /* add the spike to the output */
+    if ((maximum_likelihood > 0.0) && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index <= end_of_my_window))
+    {
+        /* Place what we've found into global buffer */
+        peak_values[id] = maximum_likelihood;
+        peak_indices[id] = maximum_likelihood_index;
+    }
 }
 
 /**
@@ -283,29 +346,18 @@ static void compute_maximum_likelihood(
  *   restrictions as additional_spike_indices.
  */
 __kernel void binary_pursuit(
-    __global voltage_type * restrict voltage,
-    const unsigned int voltage_length,
-    const unsigned int num_neighbor_channels,
-    __global const voltage_type * restrict templates,
+    __global float * restrict peak_values,
+    __global unsigned int * restrict peak_indices,
     const unsigned int num_templates,
-    const unsigned int template_length,
-    __global const float * restrict template_sum_squared,
-    __global const float * restrict gamma,
     __local unsigned int * restrict local_scratch,
     __global unsigned int * restrict num_additional_spikes,
     __global unsigned int * restrict additional_spike_indices,
     __global unsigned int * restrict additional_spike_labels)
 {
     const size_t id = get_global_id(0);
+    const size_t global_size = get_global_size(0);
     const size_t local_id = get_local_id(0);
     const size_t local_size = get_local_size(0);
-
-    /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
-    /* All other spikes are ignored (previous window and next window) */
-    const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
-    const unsigned int end_of_my_window = (id + 1) * template_length - 1;
-    const unsigned int start = (template_length > start_of_my_window) ? 0 : (start_of_my_window - template_length);
-    const unsigned int stop = (end_of_my_window + 2 * template_length) > voltage_length ? voltage_length : (end_of_my_window + 2 * template_length);
 
     /* Define our private variables */
     unsigned int maximum_likelihood_neuron = 0;
@@ -317,38 +369,21 @@ __kernel void binary_pursuit(
     /* Define a small local variable for our global offset */
     __local unsigned int global_offset;
 
-    if (end_of_my_window < voltage_length - template_length || num_neighbor_channels == 0)
+    for (i = 0; i < num_templates; i++)
     {
-        /* Compute our minimum cost to go for adding a spike at each point */
-        for (i = 0; i < (unsigned) stop - start; i++)
+        /* Here the number of global workers is equivalent to the number of windows */
+        /* used in compute_template_peaks */
+        if (peak_values[global_size * i + id] > maximum_likelihood)
         {
-            float current_maximum_likelihood = 0.0;
-            unsigned int current_maximum_likelihood_neuron = 0;
-            compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
-                i + start, templates, num_templates, template_length,
-                template_sum_squared, gamma,
-                &current_maximum_likelihood, &current_maximum_likelihood_neuron);
-            if (current_maximum_likelihood > maximum_likelihood)
-            {
-                maximum_likelihood = current_maximum_likelihood;
-                maximum_likelihood_neuron = current_maximum_likelihood_neuron;
-                maximum_likelihood_index = start + i;
-            }
+            maximum_likelihood = peak_values[global_size * i + id];
+            maximum_likelihood_neuron = i;
+            maximum_likelihood_index = peak_indices[global_size * i + id];
         }
-        // if ((id % 100 == 0))
-        // {
-        //   maximum_likelihood = 1.;
-        //   maximum_likelihood_index = start_of_my_window + 1;
-        // }
-        // else
-        // {
-        //   maximum_likelihood = 0.0;
-        //   maximum_likelihood_index = 0;
-        // }
     }
-    /* If the best maximum likelihood is greater than zero and within our window */
+
+    /* If the best maximum likelihood is greater than zero */
     /* add the spike to the output */
-    if ((maximum_likelihood > 0.0) && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index <= end_of_my_window))
+    if (maximum_likelihood > 0.0)
     {
         local_scratch[local_id] = 1;
         has_spike = 1;
@@ -358,24 +393,32 @@ __kernel void binary_pursuit(
         local_scratch[local_id] = 0;
         has_spike = 0;
     }
-    barrier(CLK_LOCAL_MEM_FENCE); /* Wait for all workers to get here */
-    prefix_local_sum(local_scratch); /* Compute the prefix sum to give our offset into spike indices) */
 
-    if ((local_id == (local_size - 1)) && (local_scratch[(local_size - 1)] || has_spike)) /* I am the last worker and there are spikes to add in this group */
+    if (has_spike == 1)
     {
-        /* NOTE: The old value of num_additional spikes is returned as global offset */
-        /* This is an atomic add on a global value (sync'ed across work groups) */
-        global_offset = atomic_add(num_additional_spikes, (local_scratch[(local_size - 1)] + has_spike));
+        global_offset = atomic_add(num_additional_spikes, 1);
+        additional_spike_indices[global_offset] = maximum_likelihood_index;
+        additional_spike_labels[global_offset] = maximum_likelihood_neuron;
     }
-    barrier(CLK_LOCAL_MEM_FENCE); /* Ensure all local workers get the same global offset */
 
-    /* Each local worker stores their result in the appropriate offset */
-    const unsigned int my_offset = global_offset + local_scratch[local_id];
-    if (has_spike)
-    {
-        additional_spike_indices[my_offset] = maximum_likelihood_index;
-        additional_spike_labels[my_offset] = maximum_likelihood_neuron;
-    }
+    // barrier(CLK_LOCAL_MEM_FENCE); /* Wait for all workers to get here */
+    // prefix_local_sum(local_scratch); /* Compute the prefix sum to give our offset into spike indices) */
+    //
+    // if ((local_id == (local_size - 1)) && (local_scratch[(local_size - 1)] || has_spike)) /* I am the last worker and there are spikes to add in this group */
+    // {
+    //     /* NOTE: The old value of num_additional spikes is returned as global offset */
+    //     /* This is an atomic add on a global value (sync'ed across work groups) */
+    //     global_offset = atomic_add(num_additional_spikes, (local_scratch[(local_size - 1)] + has_spike));
+    // }
+    // barrier(CLK_LOCAL_MEM_FENCE); /* Ensure all local workers get the same global offset */
+    //
+    // /* Each local worker stores their result in the appropriate offset */
+    // const unsigned int my_offset = global_offset + local_scratch[local_id];
+    // if (has_spike)
+    // {
+    //     additional_spike_indices[my_offset] = maximum_likelihood_index;
+    //     additional_spike_labels[my_offset] = maximum_likelihood_neuron;
+    // }
     return;
 }
 

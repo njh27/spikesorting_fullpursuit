@@ -352,6 +352,9 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 # Ensure that num_additional_spikes is equal to zero for the next pass
                 cl.enqueue_copy(queue, num_additional_spikes_buffer, np.zeros(1, dtype=np.uint32), wait_for=None)
                 chunk_total_additional_spikes += num_additional_spikes[0]
+                print("Found", num_additional_spikes[0], "spike this pass")
+                print("BREAKING OUT")
+                break
                 num_additional_spikes[0] = 0
 
             additional_spike_indices_buffer.release()

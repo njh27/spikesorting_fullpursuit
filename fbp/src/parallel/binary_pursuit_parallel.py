@@ -184,14 +184,16 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         # or else systems can timeout and freeze or restart GPU
         resid_local_work_size = compute_residual_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
         pursuit_local_work_size = binary_pursuit_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
-        max_enqueue_resid = np.uint32(resid_local_work_size * (device.max_compute_units))
-        max_enqueue_pursuit = np.uint32(pursuit_local_work_size * (device.max_compute_units))
+        # Windows 10 also seems to be fussy about the number of compute units occupied...
+        regex_version = re.search('[0-9][0-9][.]', sys_platform.version())
+        if (sys_platform.system() == 'Windows') and (float(regex_version.group()) >= 10.):
+            max_enqueue_resid = np.uint32(resid_local_work_size * np.floor(device.max_compute_units * 0.75))
+            max_enqueue_pursuit = np.uint32(pursuit_local_work_size * np.floor(device.max_compute_units * 0.75))
+        else:
+            max_enqueue_resid = np.uint32(resid_local_work_size * (device.max_compute_units))
+            max_enqueue_pursuit = np.uint32(pursuit_local_work_size * (device.max_compute_units))
         max_enqueue_resid = max(resid_local_work_size, resid_local_work_size * (max_enqueue_resid // resid_local_work_size))
         max_enqueue_pursuit = max(pursuit_local_work_size, pursuit_local_work_size * (max_enqueue_pursuit // pursuit_local_work_size))
-
-        print("COMPUTE UNITS", device.max_compute_units)
-        # max_enqueue_pursuit = 256 * 10
-        # max_enqueue_resid = 256 * 10
 
         # Set up our final outputs
         num_additional_spikes = np.zeros(1, dtype=np.uint32)
@@ -214,6 +216,49 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 # Also get the FFT kernels used for spike bias below while we're at it
                 fft_kernels.append(get_zero_phase_kernel(templates[n, t_win[0]:t_win[1]], clip_init_samples))
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
+
+        # Compute the template bias terms over all voltage data (fixed for each chunk)
+        spike_biases = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
+        # Compute bias separately for each neuron
+        for n in range(0, templates.shape[0]):
+            neighbor_bias = np.zeros(n_samples, dtype=np.float32)
+            for chan in range(0, n_chans):
+                if np.all(fft_kernels[n*n_chans + chan] == 0):
+                    # Unit is not defined over this channel so skip
+                    continue
+                # Moved bias out here so voltage is not yet a 1D vector, so no
+                # need to do all this stride indexing
+                # cv_win = [chan * n_samples,
+                #           chan * n_samples + n_samples]
+                # neighbor_bias += np.float32(fftconvolve(
+                #             voltage[cv_win[0]:cv_win[1]],
+                #             fft_kernels[n*n_chans + chan],
+                #             mode='same'))
+                neighbor_bias += np.float32(fftconvolve(
+                                                voltage[chan, :],
+                                                fft_kernels[n*n_chans + chan],
+                                                mode='same'))
+            # Use MAD to estimate STD of the noise and set bias at
+            # thresh_sigma standard deviations. The typical extremely large
+            # n value for neighbor_bias makes this calculation converge to
+            # normal distribution
+            # Assumes zero-centered (which median usually isn't)
+            MAD = np.median(np.abs(neighbor_bias))
+            std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
+            total_bias = np.float32(thresh_sigma*std_noise)
+            bias_per_chan = total_bias / n_chans
+            # Distribute bias evenly over channels with data
+            for chan in range(0, n_chans):
+                # CAN'T DO THIS NOW BUT MAY IF WE GET SMART ABOUT NEIGHBORHOODS...
+                # if np.all(fft_kernels[n*n_chans + chan] == 0):
+                #     # Unit is not defined over this channel so skip
+                #     spike_biases[(n*n_chans) + chan] = 0
+                #     continue
+                spike_biases[(n*n_chans) + chan] = bias_per_chan
+
+        # Delete stuff no longer needed for this chunk
+        # del residual_voltage
+        del neighbor_bias
 
         # Determine our chunk onset indices, making sure that each new start
         # index overlaps the previous chunk by 3 template widths so that no
@@ -252,46 +297,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             compute_residual_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of neurons (`rows` in templates)
             compute_residual_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each channel of templates
 
-            # Residual voltage starts off as just the voltage
             next_wait_event = None
-            residual_voltage = chunk_voltage
-
-            # Compute the template_sum_squared and bias terms
-            spike_biases = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
-            # Compute bias separately for each neuron
-            for n in range(0, templates.shape[0]):
-                neighbor_bias = np.zeros(chunk_voltage_length, dtype=np.float32)
-                for chan in range(0, n_chans):
-                    if np.all(fft_kernels[n*n_chans + chan] == 0):
-                        # Unit is not defined over this channel so skip
-                        continue
-                    cv_win = [chan * chunk_voltage_length,
-                              chan * chunk_voltage_length + chunk_voltage_length]
-                    neighbor_bias += np.float32(fftconvolve(
-                                residual_voltage[cv_win[0]:cv_win[1]],
-                                fft_kernels[n*n_chans + chan],
-                                mode='same'))
-                # Use MAD to estimate STD of the noise and set bias at
-                # thresh_sigma standard deviations. The typical extremely large
-                # n value for neighbor_bias makes this calculation converge to
-                # normal distribution
-                # Assumes zero-centered (which median usually isn't)
-                MAD = np.median(np.abs(neighbor_bias))
-                std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-                total_bias = np.float32(thresh_sigma*std_noise)
-                bias_per_chan = total_bias / n_chans
-                # Distribute bias evenly over channels with data
-                for chan in range(0, n_chans):
-                    # CAN'T DO THIS NOW BUT MAY IF WE GET SMART ABOUT NEIGHBORHOODS...
-                    # if np.all(fft_kernels[n*n_chans + chan] == 0):
-                    #     # Unit is not defined over this channel so skip
-                    #     spike_biases[(n*n_chans) + chan] = 0
-                    #     continue
-                    spike_biases[(n*n_chans) + chan] = bias_per_chan
-
-            # Delete stuff no longer needed for this chunk
-            del residual_voltage
-            del neighbor_bias
 
             # Determine how many independent workers will work on binary pursuit
             # (Includes both template ML and binary pursuit kernels)
@@ -349,10 +355,12 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             print("pursuit total size is", total_work_size_pursuit, "local size is", pursuit_local_work_size, "with max enqueue", max_enqueue_pursuit, "chose n to enqueue", min(total_work_size_pursuit, max_enqueue_pursuit))
             while True:
                 n_loops += 1
+                if n_loops % 10 == 0:
+                    print("Starting loop", n_loops, "for this chunk")
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for template_index in range(0, templates.shape[0]):
                     for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
-                        time.sleep(.1)
+                        time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
                         compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(template_index)) # Template number
                         temp_ml_event = cl.enqueue_nd_range_kernel(queue,
                                               compute_template_maximum_likelihood_kernel,

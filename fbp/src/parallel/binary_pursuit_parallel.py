@@ -155,10 +155,12 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         memory_usage_per_second = (n_chans * sampling_rate * np.dtype(np.float32).itemsize +
                                    sampling_rate * (np.dtype(np.uint32).itemsize +
                                    np.dtype(np.uint32).itemsize) / template_samples_per_chan)
+        # Estimate how much data we can look at in each data 'chunk'
+        num_seconds_per_chunk = (gpu_memory_size - constant_memory_usage) \
+                                / (memory_usage_per_second)
         # Need to further normalize this by the number of templates and channels
         # More templates and channels slows the GPU algorithm and GPU can timeout
-        num_seconds_per_chunk = (gpu_memory_size - constant_memory_usage) \
-                                / (templates.shape[0] * n_chans * memory_usage_per_second)
+        num_seconds_per_chunk = num_seconds_per_chunk / (n_chans)
         # Do not exceed a the length of a buffer in bytes that can be addressed
         # Note: there is also a max allocation size,
         # device.get_info(cl.device_info.MAX_MEM_ALLOC_SIZE)
@@ -173,6 +175,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
         # Get all of our kernels
         compute_residual_kernel = prg.compute_residual
+        compute_template_maximum_likelihood_kernel = prg.compute_template_maximum_likelihood
         binary_pursuit_kernel = prg.binary_pursuit
         get_adjusted_clips_kernel = prg.get_adjusted_clips
 
@@ -199,11 +202,11 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
         # Compute our template sum squared error (see note below).
         # This is a num_templates x num_neighbors vector
-        template_sum_squared = np.zeros(templates.shape[0], dtype=np.float32)
+        template_sum_squared = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
         for n in range(0, templates.shape[0]):
-            template_sum_squared[n] = np.float32(-0.5 * np.dot(templates[n, :], templates[n, :]))
             for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
+                template_sum_squared[(n*n_chans) + chan] = np.float32(-0.5 * np.dot(templates[n, t_win[0]:t_win[1]], templates[n, t_win[0]:t_win[1]]))
                 # Also get the FFT kernels used for spike bias below while we're at it
                 fft_kernels.append(get_zero_phase_kernel(templates[n, t_win[0]:t_win[1]], clip_init_samples))
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
@@ -224,6 +227,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             stop_index = np.uint32(min(n_samples, start_index + num_indices_per_chunk))
             print("Starting chunk number", chunk_number, "from", start_index, "to", stop_index, flush=True)
             chunk_voltage = np.float32(voltage[:, start_index:stop_index])
+            chunk_voltage_length = np.uint32(stop_index - start_index)
             # Reshape voltage over channels into a single 1D vector
             chunk_voltage = chunk_voltage.reshape(chunk_voltage.size)
 
@@ -238,7 +242,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
             # Set arguments that are the same every iteration
             compute_residual_kernel.set_arg(0, voltage_buffer) # location where chunk voltage is stored
-            compute_residual_kernel.set_arg(1, np.uint32(stop_index - start_index)) # length of chunk voltage array
+            compute_residual_kernel.set_arg(1, chunk_voltage_length) # length of chunk voltage array
             compute_residual_kernel.set_arg(2, n_chans) # Number of neighboring channels
             compute_residual_kernel.set_arg(3, template_buffer) # location where our templates are stored
             compute_residual_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of neurons (`rows` in templates)
@@ -249,16 +253,16 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             residual_voltage = chunk_voltage
 
             # Compute the template_sum_squared and bias terms
-            spike_biases = np.zeros(templates.shape[0], dtype=np.float32)
+            spike_biases = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
             # Compute bias separately for each neuron
             for n in range(0, templates.shape[0]):
-                neighbor_bias = np.zeros((stop_index - start_index), dtype=np.float32)
+                neighbor_bias = np.zeros(chunk_voltage_length, dtype=np.float32)
                 for chan in range(0, n_chans):
                     if np.all(fft_kernels[n*n_chans + chan] == 0):
                         # Unit is not defined over this channel so skip
                         continue
-                    cv_win = [chan * (stop_index - start_index),
-                              chan * (stop_index - start_index) + (stop_index - start_index)]
+                    cv_win = [chan * chunk_voltage_length,
+                              chan * chunk_voltage_length + chunk_voltage_length]
                     neighbor_bias += np.float32(fftconvolve(
                                 residual_voltage[cv_win[0]:cv_win[1]],
                                 fft_kernels[n*n_chans + chan],
@@ -270,43 +274,87 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 # Assumes zero-centered (which median usually isn't)
                 MAD = np.median(np.abs(neighbor_bias))
                 std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-                spike_biases[n] = np.float32(thresh_sigma*std_noise)
+                total_bias = np.float32(thresh_sigma*std_noise)
+                bias_per_chan = total_bias / n_chans
+                # Distribute bias evenly over channels with data
+                for chan in range(0, n_chans):
+                    # CAN'T DO THIS NOW BUT MAY IF WE GET SMART ABOUT NEIGHBORHOODS...
+                    # if np.all(fft_kernels[n*n_chans + chan] == 0):
+                    #     # Unit is not defined over this channel so skip
+                    #     spike_biases[(n*n_chans) + chan] = 0
+                    #     continue
+                    spike_biases[(n*n_chans) + chan] = bias_per_chan
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage
             del neighbor_bias
 
-            num_kernels = np.ceil(chunk_voltage.shape[0] / templates.shape[1])
-            total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(num_kernels / pursuit_local_work_size))
+            # Determine how many independent workers will work on binary pursuit
+            # (Includes both template ML and binary pursuit kernels)
+            num_template_widths = int(np.ceil(chunk_voltage_length / template_samples_per_chan))
+            total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(num_template_widths / pursuit_local_work_size))
 
             # Construct our buffers
-            num_additional_spikes_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(1, dtype=np.uint32)) # NOTE: Must be :rw for atomic to work
-            additional_spike_indices_buffer = cl.Buffer(ctx, mf.WRITE_ONLY, size=4 * total_work_size_pursuit) # TODO: How long should this be ?, NOTE: 4 is sizeof('uint32')
-            additional_spike_labels_buffer = cl.Buffer(ctx, mf.WRITE_ONLY, size=4 * total_work_size_pursuit) # TODO: How long should this be ?
             spike_biases_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=spike_biases)
+            num_additional_spikes_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(1, dtype=np.uint32)) # NOTE: Must be :rw for atomic to work
+            additional_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
+            additional_spike_labels_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
+            best_spike_likelihoods_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.float32))
+            best_spike_labels_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
+            best_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
+
+            # Set input arguments for template maximum likelihood kernel
+            compute_template_maximum_likelihood_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
+            compute_template_maximum_likelihood_kernel.set_arg(1, chunk_voltage_length) # Length of chunk voltage
+            compute_template_maximum_likelihood_kernel.set_arg(2, n_chans) # number of neighboring channels
+            compute_template_maximum_likelihood_kernel.set_arg(3, template_buffer) # Our template buffer, created previously
+            compute_template_maximum_likelihood_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of unique neurons, M
+            compute_template_maximum_likelihood_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
+            compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(0)) # Template number
+            compute_template_maximum_likelihood_kernel.set_arg(7, template_sum_squared_buffer) # Sum of squared templated
+            compute_template_maximum_likelihood_kernel.set_arg(8, spike_biases_buffer) # Bias
+            compute_template_maximum_likelihood_kernel.set_arg(9, best_spike_indices_buffer) # Storage for peak likelihood index
+            compute_template_maximum_likelihood_kernel.set_arg(10, best_spike_labels_buffer) # Storage for peak likelihood label
+            compute_template_maximum_likelihood_kernel.set_arg(11, best_spike_likelihoods_buffer) # Storage for peak likelihood value
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
 
+            # Set input arguments for binary pursuit kernel
             binary_pursuit_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
-            binary_pursuit_kernel.set_arg(1, np.uint32(stop_index - start_index)) # Length of chunk voltage
+            binary_pursuit_kernel.set_arg(1, chunk_voltage_length) # Length of chunk voltage
             binary_pursuit_kernel.set_arg(2, n_chans) # number of neighboring channels
             binary_pursuit_kernel.set_arg(3, template_buffer) # Our template buffer, created previously
             binary_pursuit_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of unique neurons, M
             binary_pursuit_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
             binary_pursuit_kernel.set_arg(6, template_sum_squared_buffer) # Sum of squared templated
             binary_pursuit_kernel.set_arg(7, spike_biases_buffer) # Bias
-            binary_pursuit_kernel.set_arg(8, local_buffer) # Local buffer
-            binary_pursuit_kernel.set_arg(9, num_additional_spikes_buffer) # Output, total number of additional spikes
-            binary_pursuit_kernel.set_arg(10, additional_spike_indices_buffer) # Additional spike indices
-            binary_pursuit_kernel.set_arg(11, additional_spike_labels_buffer) # Additional spike labels
+            binary_pursuit_kernel.set_arg(8, best_spike_indices_buffer) # Storage for peak likelihood index
+            binary_pursuit_kernel.set_arg(9, best_spike_labels_buffer) # Storage for peak likelihood label
+            binary_pursuit_kernel.set_arg(10, best_spike_likelihoods_buffer) # Storage for peak likelihood value
+            binary_pursuit_kernel.set_arg(11, local_buffer) # Local buffer
+            binary_pursuit_kernel.set_arg(12, num_additional_spikes_buffer) # Output, total number of additional spikes
+            binary_pursuit_kernel.set_arg(13, additional_spike_indices_buffer) # Additional spike indices
+            binary_pursuit_kernel.set_arg(14, additional_spike_labels_buffer) # Additional spike labels
 
             # Run the kernel until num_additional_spikes is zero
             chunk_total_additional_spikes = 0
             chunk_total_additional_spike_indices = []
             chunk_total_additional_spike_labels = []
+            n_loops = 0
             while True:
-                pursuit_events = []
+                n_loops += 1
+                for template_index in range(0, templates.shape[0]):
+                    n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
+                    for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
+                        compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(template_index)) # Template number
+                        temp_ml_event = cl.enqueue_nd_range_kernel(queue,
+                                              compute_template_maximum_likelihood_kernel,
+                                              (n_to_enqueue, ), (pursuit_local_work_size, ),
+                                              global_work_offset=(enqueue_step, ),
+                                              wait_for=next_wait_event)
+                        next_wait_event = [temp_ml_event]
+
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
                     pursuit_event = cl.enqueue_nd_range_kernel(queue,
@@ -316,7 +364,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                                           wait_for=next_wait_event)
                     next_wait_event = [pursuit_event]
 
-                cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=pursuit_events)
+                cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=next_wait_event)
                 # print("Added", num_additional_spikes[0], "secret spikes", flush=True)
 
                 if (num_additional_spikes[0] == 0):
@@ -325,8 +373,10 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 # Read out and save all the new spikes we just found for this chunk
                 additional_spike_indices = np.zeros(num_additional_spikes[0], dtype=np.uint32)
                 additional_spike_labels = np.zeros(num_additional_spikes[0], dtype=np.uint32)
-                cl.enqueue_copy(queue, additional_spike_indices, additional_spike_indices_buffer, wait_for=None)
-                cl.enqueue_copy(queue, additional_spike_labels, additional_spike_labels_buffer, wait_for=None)
+                next_wait_event = []
+                # Already waited for pursuit to finish above
+                next_wait_event.append(cl.enqueue_copy(queue, additional_spike_indices, additional_spike_indices_buffer, wait_for=None))
+                next_wait_event.append(cl.enqueue_copy(queue, additional_spike_labels, additional_spike_labels_buffer, wait_for=None))
                 chunk_total_additional_spike_indices.append(additional_spike_indices)
                 chunk_total_additional_spike_labels.append(additional_spike_labels)
 
@@ -340,7 +390,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
                 total_work_size_resid = resid_local_work_size * int(np.ceil(
                                             (num_additional_spikes[0]) / resid_local_work_size))
-                residual_events = []
+
                 n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
                 for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
                     residual_event = cl.enqueue_nd_range_kernel(queue,
@@ -352,14 +402,17 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 # Ensure that num_additional_spikes is equal to zero for the next pass
                 cl.enqueue_copy(queue, num_additional_spikes_buffer, np.zeros(1, dtype=np.uint32), wait_for=None)
                 chunk_total_additional_spikes += num_additional_spikes[0]
-                print("Found", num_additional_spikes[0], "spike this pass")
-                print("BREAKING OUT")
-                break
+                # if n_loops >= 2:
+                #     print("BREAKING OUT")
+                #     break
                 num_additional_spikes[0] = 0
 
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()
             spike_biases_buffer.release()
+            best_spike_likelihoods_buffer.release()
+            best_spike_labels_buffer.release()
+            best_spike_indices_buffer.release()
 
             # Read out the adjusted spikes here before releasing
             # the residual voltage. Only do this if there are spikes to get clips of
@@ -382,7 +435,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 all_adjusted_clips_buffer = cl.Buffer(ctx, mf.WRITE_ONLY | mf.COPY_HOST_PTR, hostbuf=all_adjusted_clips)
 
                 get_adjusted_clips_kernel.set_arg(0, voltage_buffer)
-                get_adjusted_clips_kernel.set_arg(1, np.uint32(stop_index - start_index))
+                get_adjusted_clips_kernel.set_arg(1, chunk_voltage_length)
                 get_adjusted_clips_kernel.set_arg(2, n_chans)
                 get_adjusted_clips_kernel.set_arg(3, template_buffer)
                 get_adjusted_clips_kernel.set_arg(4, np.uint32(templates.shape[0]))

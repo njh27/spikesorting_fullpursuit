@@ -280,9 +280,17 @@ __kernel void compute_template_maximum_likelihood(
     __global const float * restrict gamma,
     __global unsigned int * restrict best_spike_indices,
     __global unsigned int * restrict best_spike_labels,
-    __global float * restrict best_spike_likelihoods)
+    __global float * restrict best_spike_likelihoods,
+    __global unsigned int * restrict work_ids,
+    const unsigned int n_work_ids)
 {
-    const size_t id = get_global_id(0);
+    const size_t id_ind = get_global_id(0);
+    if (id_ind > n_work_ids - 1)
+    {
+        /* Extra worker with nothing to do */
+        return;
+    }
+    const size_t id = work_ids[id_ind];
     unsigned int i;
 
     /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
@@ -310,10 +318,11 @@ __kernel void compute_template_maximum_likelihood(
     __private float best_spike_likelihood_private = best_spike_likelihoods[id];
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
+
     if (template_number == 0)
     {
         /* Reset our best_spike_likelihoods*/
-        best_spike_likelihood_private = 0.0 ;
+        best_spike_likelihood_private = 0.0;
     }
 
     /* Compute our minimum cost to go for adding our current template at each point in the window */
@@ -387,11 +396,22 @@ __kernel void binary_pursuit(
     __local unsigned int * restrict local_scratch,
     __global unsigned int * restrict num_additional_spikes,
     __global unsigned int * restrict additional_spike_indices,
-    __global unsigned int * restrict additional_spike_labels)
+    __global unsigned int * restrict additional_spike_labels,
+    const unsigned int n_windows,
+    __global unsigned int * restrict next_check_window,
+    __global unsigned int * restrict work_ids,
+    const unsigned int n_work_ids)
 {
-    const size_t id = get_global_id(0);
+    const size_t id_ind = get_global_id(0);
+    if (id_ind > n_work_ids - 1)
+    {
+        /* Extra worker with nothing to do */
+        return;
+    }
+    const size_t id = work_ids[id_ind];
     const size_t local_id = get_local_id(0);
     const size_t local_size = get_local_size(0);
+    unsigned int i;
 
     /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
     /* All other spikes are ignored (previous window and next window) */
@@ -422,6 +442,13 @@ __kernel void binary_pursuit(
     {
         local_scratch[local_id] = 1;
         has_spike = 1;
+        /* This creates a race condition, but all are setting = 1 so shouldn't matter */
+        const unsigned int start = ((signed int) id - 4 <= 0) ? 0 : (id - 4);
+        const unsigned int stop = (id + 5) > n_windows ? n_windows : (id + 5);
+        for (i = start; i < stop; i++)
+        {
+            next_check_window[i] = 1;
+        }
     }
     else
     {

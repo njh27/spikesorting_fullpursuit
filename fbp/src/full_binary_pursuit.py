@@ -2,7 +2,7 @@ import numpy as np
 import pickle
 import os
 from fbp.src.consolidate import SegSummary
-from fbp.src.parallel import binary_pursuit_parallel
+from fbp.src.parallel import binary_pursuit_parallel, binary_pursuit_parallel_old
 
 
 
@@ -108,11 +108,19 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # plt.plot(templates.T)
     # plt.show()
 
+    ocrossings, oneuron_labels, obp_bool, oclips = binary_pursuit_parallel_old.binary_pursuit(
+                    templates, voltage, template_labels, sort_info['sampling_rate'],
+                    v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
+                    thresh_sigma=1.645, kernels_path=None,
+                    max_gpu_memory=max_gpu_memory)
+
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, template_labels, sort_info['sampling_rate'],
                     v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
                     thresh_sigma=1.645, kernels_path=None,
                     max_gpu_memory=max_gpu_memory)
+
+
 
     chans_to_template_labels = {}
     for chan in range(0, sort_info['n_channels']):

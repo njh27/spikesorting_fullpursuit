@@ -403,10 +403,11 @@ __kernel void binary_pursuit(
     const unsigned int n_work_ids)
 {
     const size_t id_ind = get_global_id(0);
+    size_t bad_id = 0;
     if (id_ind > n_work_ids - 1)
     {
         /* Extra worker with nothing to do */
-        return;
+        bad_id = 1;
     }
     const size_t id = work_ids[id_ind];
     const size_t local_id = get_local_id(0);
@@ -438,13 +439,13 @@ __kernel void binary_pursuit(
     }
     /* If the best maximum likelihood is greater than zero and within our window */
     /* add the spike to the output */
-    if ((maximum_likelihood > 0.0) && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index <= end_of_my_window))
+    if ((maximum_likelihood > 0.0) && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index <= end_of_my_window) && (bad_id == 0))
     {
         local_scratch[local_id] = 1;
         has_spike = 1;
         /* This creates a race condition, but all are setting = 1 so shouldn't matter */
-        const unsigned int start = ((signed int) id - 3 <= 0) ? 0 : (id - 3);
-        const unsigned int stop = (id + 4) > n_windows ? n_windows : (id + 4);
+        const unsigned int start = ((signed int) id - 4 <= 0) ? 0 : (id - 4);
+        const unsigned int stop = (id + 5) > n_windows ? n_windows : (id + 5);
         for (i = start; i < stop; i++)
         {
             next_check_window[i] = 1;

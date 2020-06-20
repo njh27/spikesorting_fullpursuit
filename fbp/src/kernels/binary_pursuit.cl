@@ -407,6 +407,7 @@ __kernel void binary_pursuit(
     if (id_ind > n_work_ids - 1)
     {
         /* Extra worker with nothing to do */
+        /* Just flag here, not return, so it can hit barrier */
         bad_id = 1;
     }
     const size_t id = work_ids[id_ind];
@@ -444,8 +445,8 @@ __kernel void binary_pursuit(
         local_scratch[local_id] = 1;
         has_spike = 1;
         /* This creates a race condition, but all are setting = 1 so shouldn't matter */
-        const unsigned int start = ((signed int) id - 4 <= 0) ? 0 : (id - 4);
-        const unsigned int stop = (id + 5) > n_windows ? n_windows : (id + 5);
+        const unsigned int start = ((signed int) id - 2 <= 0) ? 0 : (id - 2);
+        const unsigned int stop = (id + 3) > n_windows ? n_windows : (id + 3);
         for (i = start; i < stop; i++)
         {
             next_check_window[i] = 1;

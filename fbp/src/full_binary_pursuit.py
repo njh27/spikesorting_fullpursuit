@@ -2,7 +2,7 @@ import numpy as np
 import pickle
 import os
 from fbp.src.consolidate import SegSummary
-from fbp.src.parallel import binary_pursuit_parallel, binary_pursuit_parallel_old
+from fbp.src.parallel import binary_pursuit_parallel
 
 
 
@@ -108,26 +108,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # plt.plot(templates.T)
     # plt.show()
 
-    # ocrossings, oneuron_labels, obp_bool, oclips = binary_pursuit_parallel_old.binary_pursuit(
-    #                 templates, voltage, template_labels, sort_info['sampling_rate'],
-    #                 v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
-    #                 thresh_sigma=1.645, kernels_path=None,
-    #                 max_gpu_memory=max_gpu_memory)
-
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, template_labels, sort_info['sampling_rate'],
                     v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
                     thresh_sigma=1.645, kernels_path=None,
                     max_gpu_memory=max_gpu_memory)
-
-    # out_order = np.argsort(crossings, kind='stable')
-    # crossings = crossings[out_order]
-    # neuron_labels = neuron_labels[out_order]
-    # out_order = np.argsort(ocrossings, kind='stable')
-    # ocrossings = ocrossings[out_order]
-    # oneuron_labels = oneuron_labels[out_order]
-    # print("crossings equal", np.all(crossings == ocrossings))
-    # print("labels equal", np.all(neuron_labels == oneuron_labels))
 
     chans_to_template_labels = {}
     for chan in range(0, sort_info['n_channels']):

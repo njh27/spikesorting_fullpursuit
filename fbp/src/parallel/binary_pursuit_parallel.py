@@ -185,19 +185,18 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         get_adjusted_clips_kernel = prg.get_adjusted_clips
 
         # Set local work size for both kernels to the max for device
-        resid_local_work_size = device.get_info(cl.device_info.MAX_WORK_GROUP_SIZE)
-        pursuit_local_work_size = device.get_info(cl.device_info.MAX_WORK_GROUP_SIZE)
-
-        # Windows 10 also seems to be fussy about the number of compute units occupied...
-        regex_version = re.search('[0-9][0-9][.]', sys_platform.version())
-        if (sys_platform.system() == 'Windows') and (float(regex_version.group()) >= 10.):
-            # resid_local_work_size = compute_residual_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
-            # pursuit_local_work_size = binary_pursuit_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
-            max_enqueue_resid = np.uint32(resid_local_work_size * np.floor(device.max_compute_units * 0.5))
-            max_enqueue_pursuit = np.uint32(pursuit_local_work_size * np.floor(device.max_compute_units * 0.5))
-        else:
-            max_enqueue_resid = np.uint32(resid_local_work_size * (device.max_compute_units))
-            max_enqueue_pursuit = np.uint32(pursuit_local_work_size * (device.max_compute_units))
+        # resid_local_work_size = device.get_info(cl.device_info.MAX_WORK_GROUP_SIZE)
+        # pursuit_local_work_size = device.get_info(cl.device_info.MAX_WORK_GROUP_SIZE)
+        # Set local work size for both kernels to the max for device/kernel 'preferred size?'
+        # This can be far faster and leave computer display performance better intact
+        # than using the MAX_WORK_GROUP_SIZE.
+        # This was definitely true on the NVIDEA windows 10 configuration
+        resid_local_work_size = compute_residual_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
+        pursuit_local_work_size = binary_pursuit_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
+        # Over enqueuing can clog up the GPU and cause a GPU timeout, resulting
+        # in either a system crash or the OS terminating our operation
+        max_enqueue_resid = np.uint32(resid_local_work_size * (device.max_compute_units))
+        max_enqueue_pursuit = np.uint32(pursuit_local_work_size * (device.max_compute_units))
         max_enqueue_resid = max(resid_local_work_size, resid_local_work_size * (max_enqueue_resid // resid_local_work_size))
         max_enqueue_pursuit = max(pursuit_local_work_size, pursuit_local_work_size * (max_enqueue_pursuit // pursuit_local_work_size))
 

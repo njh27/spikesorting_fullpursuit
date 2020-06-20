@@ -443,8 +443,8 @@ __kernel void binary_pursuit(
         local_scratch[local_id] = 1;
         has_spike = 1;
         /* This creates a race condition, but all are setting = 1 so shouldn't matter */
-        const unsigned int start = ((signed int) id - 4 <= 0) ? 0 : (id - 4);
-        const unsigned int stop = (id + 5) > n_windows ? n_windows : (id + 5);
+        const unsigned int start = ((signed int) id - 3 <= 0) ? 0 : (id - 3);
+        const unsigned int stop = (id + 4) > n_windows ? n_windows : (id + 4);
         for (i = start; i < stop; i++)
         {
             next_check_window[i] = 1;

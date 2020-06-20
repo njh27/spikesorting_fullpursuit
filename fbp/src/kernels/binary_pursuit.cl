@@ -298,7 +298,7 @@ __kernel void compute_template_maximum_likelihood(
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
     const unsigned int end_of_my_window = (id + 1) * template_length - 1;
     const unsigned int start = (template_length > start_of_my_window) ? 0 : (start_of_my_window - template_length);
-    const unsigned int stop = (end_of_my_window + 2 * template_length) > voltage_length ? voltage_length : (end_of_my_window + 2 * template_length);
+    const unsigned int stop = (end_of_my_window + template_length) > voltage_length ? voltage_length : (end_of_my_window + template_length);
 
     if (template_number >= template_length)
     {
@@ -445,8 +445,8 @@ __kernel void binary_pursuit(
         local_scratch[local_id] = 1;
         has_spike = 1;
         /* This creates a race condition, but all are setting = 1 so shouldn't matter */
-        const unsigned int start = ((signed int) id - 2 <= 0) ? 0 : (id - 2);
-        const unsigned int stop = (id + 3) > n_windows ? n_windows : (id + 3);
+        const unsigned int start = ((signed int) id - 1 <= 0) ? 0 : (id - 1);
+        const unsigned int stop = (id + 2) > n_windows ? n_windows : (id + 2);
         for (i = start; i < stop; i++)
         {
             next_check_window[i] = 1;

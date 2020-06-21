@@ -336,10 +336,10 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             compute_template_maximum_likelihood_kernel.set_arg(9, best_spike_indices_buffer) # Storage for peak likelihood index
             compute_template_maximum_likelihood_kernel.set_arg(10, best_spike_labels_buffer) # Storage for peak likelihood label
             compute_template_maximum_likelihood_kernel.set_arg(11, best_spike_likelihoods_buffer) # Storage for peak likelihood value
-            compute_template_maximum_likelihood_kernel.set_arg(12, work_ids_buffer) # Storage for peak likelihood value
-            compute_template_maximum_likelihood_kernel.set_arg(13, np.uint32(num_template_widths))
-            compute_template_maximum_likelihood_kernel.set_arg(14, next_check_window_buffer) # Additional spike labels
-            compute_template_maximum_likelihood_kernel.set_arg(15, np.uint32(num_template_widths))
+            compute_template_maximum_likelihood_kernel.set_arg(12, work_ids_buffer) # Actual window IDs to check
+            compute_template_maximum_likelihood_kernel.set_arg(13, np.uint32(num_template_widths)) # Number of actual work IDs to check
+            compute_template_maximum_likelihood_kernel.set_arg(14, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
+            compute_template_maximum_likelihood_kernel.set_arg(15, np.uint32(num_template_widths)) # Total number of windows possible to check
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
@@ -360,8 +360,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             binary_pursuit_kernel.set_arg(12, num_additional_spikes_buffer) # Output, total number of additional spikes
             binary_pursuit_kernel.set_arg(13, additional_spike_indices_buffer) # Additional spike indices
             binary_pursuit_kernel.set_arg(14, additional_spike_labels_buffer) # Additional spike labels
-            binary_pursuit_kernel.set_arg(15, work_ids_buffer) # Additional spike labels
-            binary_pursuit_kernel.set_arg(16, np.uint32(num_template_widths))
+            binary_pursuit_kernel.set_arg(15, work_ids_buffer) # Actual window IDs to check
+            binary_pursuit_kernel.set_arg(16, np.uint32(num_template_widths)) # Number of actual work IDs to check
 
 
             # Run the kernel until num_additional_spikes is zero
@@ -409,16 +409,15 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 # Read out the data from next_check_window_buffer
                 # Already waited for pursuit to finish above
                 next_wait_event = [cl.enqueue_copy(queue, next_check_window, next_check_window_buffer, wait_for=None)]
-                print("Next round has", np.count_nonzero(next_check_window))
                 # Use next_check_window data to determine work_ids_buffer for next pass
                 new_work_ids = np.uint32(np.nonzero(next_check_window)[0])
                 # Free old work_ids and set new buffer
                 work_ids_buffer.release()
                 work_ids_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=new_work_ids)
-                compute_template_maximum_likelihood_kernel.set_arg(12, work_ids_buffer)
-                compute_template_maximum_likelihood_kernel.set_arg(13, np.uint32(new_work_ids.shape[0]))
-                binary_pursuit_kernel.set_arg(15, work_ids_buffer)
-                binary_pursuit_kernel.set_arg(16, np.uint32(new_work_ids.shape[0]))
+                compute_template_maximum_likelihood_kernel.set_arg(12, work_ids_buffer) # Actual window IDs to check
+                compute_template_maximum_likelihood_kernel.set_arg(13, np.uint32(new_work_ids.shape[0])) # Number of actual work IDs to check
+                binary_pursuit_kernel.set_arg(15, work_ids_buffer) # Actual window IDs to check
+                binary_pursuit_kernel.set_arg(16, np.uint32(new_work_ids.shape[0])) # Number of actual work IDs to check
                 # Reset number of kernels to run for next pass
                 total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(new_work_ids.shape[0] / pursuit_local_work_size))
                 # Reset next_check_window for next pass and copy to GPU

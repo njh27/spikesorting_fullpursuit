@@ -297,6 +297,7 @@ __kernel void compute_template_maximum_likelihood(
     unsigned int j;
     unsigned int win_start;
     unsigned int win_stop;
+    const unsigned int neighbor_wins = 1;
     unsigned int needs_checked = 0;
 
     /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
@@ -350,8 +351,8 @@ __kernel void compute_template_maximum_likelihood(
     if (needs_checked == 1)
     {
         /* This creates a race condition, but all are setting = 1 so shouldn't matter */
-        win_start = ((signed int) id - 1 <= 0) ? 0 : (id - 1);
-        win_stop = (id + 2) > n_windows ? n_windows : (id + 2);
+        win_start = ((signed int) id - neighbor_wins <= 0) ? 0 : (id - neighbor_wins);
+        win_stop = (id + neighbor_wins + 1) > n_windows ? n_windows : (id + neighbor_wins + 1);
         for (j = win_start; j < win_stop; j++)
         {
             next_check_window[j] = 1;

@@ -282,7 +282,9 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
     __global unsigned int * restrict work_ids,
-    const unsigned int n_work_ids)
+    const unsigned int n_work_ids,
+    __global unsigned int * restrict next_check_window,
+    const unsigned int n_windows)
 {
     const size_t id_ind = get_global_id(0);
     if (id_ind > n_work_ids - 1)
@@ -292,6 +294,10 @@ __kernel void compute_template_maximum_likelihood(
     }
     const size_t id = work_ids[id_ind];
     unsigned int i;
+    unsigned int j;
+    unsigned int win_start;
+    unsigned int win_stop;
+    unsigned int needs_checked = 0;
 
     /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
     /* All other spikes are ignored (previous window and next window) */
@@ -324,7 +330,6 @@ __kernel void compute_template_maximum_likelihood(
         /* Reset our best_spike_likelihoods*/
         best_spike_likelihood_private = 0.0;
     }
-
     /* Compute our minimum cost to go for adding our current template at each point in the window */
     for (i = 0; i < (unsigned) stop - start; i++)
     {
@@ -336,6 +341,20 @@ __kernel void compute_template_maximum_likelihood(
             best_spike_likelihood_private = current_maximum_likelihood;
             best_spike_label_private = template_number;
             best_spike_index_private = start + i;
+        }
+        if ((current_maximum_likelihood > 0.0) && (start + i >= start_of_my_window) && (start + i <= end_of_my_window))
+        {
+            needs_checked = 1;
+        }
+    }
+    if (needs_checked == 1)
+    {
+        /* This creates a race condition, but all are setting = 1 so shouldn't matter */
+        win_start = ((signed int) id - 1 <= 0) ? 0 : (id - 1);
+        win_stop = (id + 2) > n_windows ? n_windows : (id + 2);
+        for (j = win_start; j < win_stop; j++)
+        {
+            next_check_window[j] = 1;
         }
     }
 
@@ -397,8 +416,6 @@ __kernel void binary_pursuit(
     __global unsigned int * restrict num_additional_spikes,
     __global unsigned int * restrict additional_spike_indices,
     __global unsigned int * restrict additional_spike_labels,
-    const unsigned int n_windows,
-    __global unsigned int * restrict next_check_window,
     __global unsigned int * restrict work_ids,
     const unsigned int n_work_ids)
 {
@@ -413,7 +430,6 @@ __kernel void binary_pursuit(
     const size_t id = work_ids[id_ind];
     const size_t local_id = get_local_id(0);
     const size_t local_size = get_local_size(0);
-    unsigned int i;
 
     /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
     /* All other spikes are ignored (previous window and next window) */
@@ -444,13 +460,6 @@ __kernel void binary_pursuit(
     {
         local_scratch[local_id] = 1;
         has_spike = 1;
-        /* This creates a race condition, but all are setting = 1 so shouldn't matter */
-        const unsigned int start = ((signed int) id - 1 <= 0) ? 0 : (id - 1);
-        const unsigned int stop = (id + 2) > n_windows ? n_windows : (id + 2);
-        for (i = start; i < stop; i++)
-        {
-            next_check_window[i] = 1;
-        }
     }
     else
     {

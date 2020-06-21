@@ -338,6 +338,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             compute_template_maximum_likelihood_kernel.set_arg(11, best_spike_likelihoods_buffer) # Storage for peak likelihood value
             compute_template_maximum_likelihood_kernel.set_arg(12, work_ids_buffer) # Storage for peak likelihood value
             compute_template_maximum_likelihood_kernel.set_arg(13, np.uint32(num_template_widths))
+            compute_template_maximum_likelihood_kernel.set_arg(14, next_check_window_buffer) # Additional spike labels
+            compute_template_maximum_likelihood_kernel.set_arg(15, np.uint32(num_template_widths))
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
@@ -358,10 +360,9 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             binary_pursuit_kernel.set_arg(12, num_additional_spikes_buffer) # Output, total number of additional spikes
             binary_pursuit_kernel.set_arg(13, additional_spike_indices_buffer) # Additional spike indices
             binary_pursuit_kernel.set_arg(14, additional_spike_labels_buffer) # Additional spike labels
-            binary_pursuit_kernel.set_arg(15, np.uint32(num_template_widths)) # Additional spike labels
-            binary_pursuit_kernel.set_arg(16, next_check_window_buffer) # Additional spike labels
-            binary_pursuit_kernel.set_arg(17, work_ids_buffer) # Additional spike labels
-            binary_pursuit_kernel.set_arg(18, np.uint32(num_template_widths))
+            binary_pursuit_kernel.set_arg(15, work_ids_buffer) # Additional spike labels
+            binary_pursuit_kernel.set_arg(16, np.uint32(num_template_widths))
+
 
             # Run the kernel until num_additional_spikes is zero
             chunk_total_additional_spikes = 0
@@ -369,6 +370,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             chunk_total_additional_spike_labels = []
             n_loops = 0
             print("pursuit total size is", total_work_size_pursuit, "local size is", pursuit_local_work_size, "with max enqueue", max_enqueue_pursuit, "chose n to enqueue", min(total_work_size_pursuit, max_enqueue_pursuit))
+            print("Looking in", num_template_widths, "windows")
             while True:
                 n_loops += 1
                 if n_loops % 10 == 0:
@@ -399,7 +401,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
                 cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=next_wait_event)
                 # print("Added", num_additional_spikes[0], "secret spikes", flush=True)
-
+                next_wait_event = [cl.enqueue_copy(queue, next_check_window, next_check_window_buffer, wait_for=None)]
+                print("Next round has", np.count_nonzero(next_check_window))
                 if (num_additional_spikes[0] == 0):
                     break # Converged, no spikes added in last pass
 
@@ -414,8 +417,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 work_ids_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=new_work_ids)
                 compute_template_maximum_likelihood_kernel.set_arg(12, work_ids_buffer)
                 compute_template_maximum_likelihood_kernel.set_arg(13, np.uint32(new_work_ids.shape[0]))
-                binary_pursuit_kernel.set_arg(17, work_ids_buffer)
-                binary_pursuit_kernel.set_arg(18, np.uint32(new_work_ids.shape[0]))
+                binary_pursuit_kernel.set_arg(15, work_ids_buffer)
+                binary_pursuit_kernel.set_arg(16, np.uint32(new_work_ids.shape[0]))
                 # Reset number of kernels to run for next pass
                 total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(new_work_ids.shape[0] / pursuit_local_work_size))
                 # Reset next_check_window for next pass and copy to GPU

@@ -273,7 +273,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         # Setup threads and affinity based on use_cpus if not on mac OS
         if 'win32' == sys.platform:
             proc = psutil.Process()  # get self pid
-            proc.cpu_affinity(use_cpus)
+            # proc.cpu_affinity(use_cpus)
         if settings['test_flag']:
             mkl.set_num_threads(8)
         else:

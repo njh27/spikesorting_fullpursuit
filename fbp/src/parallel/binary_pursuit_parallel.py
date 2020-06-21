@@ -224,9 +224,14 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
         # Compute the template bias terms over all voltage data (fixed for each chunk)
         spike_biases = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
+        n_fft_samples = 10000000
+        if n_samples > n_fft_samples:
+            fft_samples = np.random.choice(n_samples, 10000000, replace=True)
+        else:
+            fft_samples = np.arange(0, n_samples)
         # Compute bias separately for each neuron
         for n in range(0, templates.shape[0]):
-            neighbor_bias = np.zeros(n_samples, dtype=np.float32)
+            neighbor_bias = np.zeros(fft_samples.shape[0], dtype=np.float32)
             for chan in range(0, n_chans):
                 if np.all(fft_kernels[n*n_chans + chan] == 0):
                     # Unit is not defined over this channel so skip
@@ -240,7 +245,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 #             fft_kernels[n*n_chans + chan],
                 #             mode='same'))
                 neighbor_bias += np.float32(fftconvolve(
-                                                voltage[chan, :],
+                                                voltage[chan, fft_samples],
                                                 fft_kernels[n*n_chans + chan],
                                                 mode='same'))
             # Use MAD to estimate STD of the noise and set bias at

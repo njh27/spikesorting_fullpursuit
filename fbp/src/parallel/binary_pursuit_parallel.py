@@ -411,7 +411,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 # Use next_check_window data to determine work_ids_buffer for next pass
                 new_work_ids = np.uint32(np.nonzero(next_check_window)[0])
                 # Free old work_ids and set new buffer
-                work_ids_buffer.release()
+                # work_ids_buffer.release()
                 work_ids_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=new_work_ids)
                 compute_template_maximum_likelihood_kernel.set_arg(12, work_ids_buffer) # Actual window IDs to check
                 compute_template_maximum_likelihood_kernel.set_arg(13, np.uint32(new_work_ids.shape[0])) # Number of actual work IDs to check
@@ -455,12 +455,13 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     queue.finish()
                     next_wait_event = [residual_event]
                 # Ensure that num_additional_spikes is equal to zero for the next pass
-                cl.enqueue_copy(queue, num_additional_spikes_buffer, np.zeros(1, dtype=np.uint32), wait_for=None)
+                cl.enqueue_copy(queue, num_additional_spikes_buffer, np.zeros(1, dtype=np.uint32), wait_for=next_wait_event)
                 chunk_total_additional_spikes += num_additional_spikes[0]
                 # if n_loops >= 2:
                 #     print("BREAKING OUT")
                 #     break
                 num_additional_spikes[0] = 0
+                queue.finish()
 
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()

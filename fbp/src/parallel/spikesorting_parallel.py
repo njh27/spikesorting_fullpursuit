@@ -319,8 +319,12 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
 
         keep_clips = preprocessing.keep_max_on_main(clips, curr_chan_inds)
-        clips = clips[keep_clips, :]
+        # clips = clips[keep_clips, :]
         crossings = crossings[keep_clips]
+
+        clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
+        crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
+
         curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
         if settings['verbose']: print("After keep max on main removed", np.count_nonzero(~keep_clips), "clips", flush=True)
 

@@ -87,6 +87,23 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
     neurons = seg_summary.summaries
 
+    if len(neurons) == 0:
+        # All data this segment found nothing (or raised an exception)
+        seg_data = []
+        for chan in range(0, voltage.shape[0]):
+            curr_item = None
+            for w_item in work_items:
+                if w_item['seg_number'] != seg_number:
+                    continue
+                if w_item['channel'] == chan:
+                    curr_item = w_item
+                    break
+            if curr_item is None:
+                # This should never be possible, but just to be sure
+                raise RuntimeError("Could not find a matching work item for unit")
+            seg_data.append([[], [], [], [], curr_item['ID']])
+        return seg_data
+
     templates = []
     template_labels = []
     next_label = 0
@@ -126,7 +143,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Need to convert binary pursuit output to standard sorting output. This
     # requires data from every channel, even if it is just empty
     seg_data = []
-    for chan in range(0, voltage.shape[0]):
+    for chan in range(0, sort_info['n_channels']):
         curr_item = None
         for w_item in work_items:
             if w_item['seg_number'] != seg_number:

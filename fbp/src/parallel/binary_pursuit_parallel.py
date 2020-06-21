@@ -401,14 +401,13 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
                 cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=next_wait_event)
                 # print("Added", num_additional_spikes[0], "secret spikes", flush=True)
+                # Read out the data from next_check_window_buffer
+                # Already waited for pursuit to finish above
                 next_wait_event = [cl.enqueue_copy(queue, next_check_window, next_check_window_buffer, wait_for=None)]
                 print("Next round has", np.count_nonzero(next_check_window))
                 if (num_additional_spikes[0] == 0):
                     break # Converged, no spikes added in last pass
 
-                # Read out the data from next_check_window_buffer
-                # Already waited for pursuit to finish above
-                next_wait_event = [cl.enqueue_copy(queue, next_check_window, next_check_window_buffer, wait_for=None)]
                 # Use next_check_window data to determine work_ids_buffer for next pass
                 new_work_ids = np.uint32(np.nonzero(next_check_window)[0])
                 # Free old work_ids and set new buffer
@@ -469,6 +468,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             best_spike_likelihoods_buffer.release()
             best_spike_labels_buffer.release()
             best_spike_indices_buffer.release()
+            next_check_window_buffer.release()
+            work_ids_buffer.release()
 
             # Read out the adjusted spikes here before releasing
             # the residual voltage. Only do this if there are spikes to get clips of

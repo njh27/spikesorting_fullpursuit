@@ -467,7 +467,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 #     break
                 num_additional_spikes[0] = 0
                 queue.finish()
-                time.sleep(1)
+                if new_work_ids.shape[0] > max_enqueue_pursuit:
+                    time.sleep(1)
 
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()

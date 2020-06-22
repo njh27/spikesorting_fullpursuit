@@ -442,8 +442,8 @@ def compute_template_pca(clips, labels, curr_chan_inds, check_components,
 
 def compute_template_pca_by_channel(clips, labels, curr_chan_inds,
         check_components, max_components, add_peak_valley=False, use_weights=True):
-    if add_peak_valley and curr_chan_inds is None:
-        raise ValueError("Must supply indices for the main channel if using peak valley")
+    if curr_chan_inds is None:
+        raise ValueError("Must supply indices for the main channel for computing PCA by channel")
     # Compute the weights using the PCA for neuron templates
     unique_labels, u_counts = np.unique(labels, return_counts=True)
     if unique_labels.size == 1:

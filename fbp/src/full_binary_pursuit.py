@@ -71,6 +71,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             # Reset neighbors to all channels for full binary pursuit
             original_neighbors.append(w_item['neighbors'])
             w_item['neighbors'] = np.arange(0, voltage.shape[0], dtype=np.int64)
+
             if len(data_dict['results_dict'][w_item['ID']][0]) == 0:
                 # This work item found nothing (or raised an exception)
                 seg_data.append([[], [], [], [], w_item['ID']])

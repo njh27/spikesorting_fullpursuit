@@ -752,7 +752,20 @@ class SegSummary(object):
                 #            (neuron['neighbors'][-1] + 1) * self.sort_info['n_samples_per_chan']]
                 # curr_t[t_index[0]:t_index[1]] = neuron['template']
                 # neuron['template'] = curr_t
-
+                # Set template channels with peak less than half threshold to 0
+                new_neighbors = []
+                new_clips = []
+                for chan in range(0, neuron['neighbors'].shape[0]):
+                    chan_index = [chan * self.sort_info['n_samples_per_chan'],
+                                  (chan + 1) * self.sort_info['n_samples_per_chan']]
+                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.5 * self.work_items[n_wi]['thresholds'][chan]:
+                        # neuron['template'][chan_index[0]:chan_index[1]] = 0
+                        neuron['clips'][:, chan_index[0]:chan_index[1]] = 0
+                    else:
+                        new_neighbors.append(chan)
+                        new_clips.append(neuron['clips'][:, chan_index[0]:chan_index[1]])
+                neuron['neighbors'] = np.array(new_neighbors, dtype=np.int64)
+                neuron['clips'] = np.hstack(new_clips)
 
                 neuron['deleted_as_redundant'] = False
 
@@ -817,21 +830,21 @@ class SegSummary(object):
         clips_2 = np.zeros((n2['clips'].shape[0], shift_samples_per_chan * self.sort_info['n_channels']), dtype=self.v_dtype)
         sample_select_1 = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
         sample_select_2 = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
-        if best_shift == 0:
-            # No truncating/alignment. Just expand and return
-            c_index = [n1['neighbors'][0] * shift_samples_per_chan,
-                       (n1['neighbors'][-1] + 1) * shift_samples_per_chan]
-            clips_1[:, c_index[0]:c_index[1]] = n1['clips']
-            sample_select_1[c_index[0]:c_index[1]] = True
-            c_index = [n2['neighbors'][0] * shift_samples_per_chan,
-                       (n2['neighbors'][-1] + 1) * shift_samples_per_chan]
-            clips_2[:, c_index[0]:c_index[1]] = n2['clips']
-            sample_select_2[c_index[0]:c_index[1]] = True
-            # Only keep samples with data from at least one units
-            sample_select = np.logical_or(sample_select_1, sample_select_2)
-            clips_1 = clips_1[:, sample_select]
-            clips_2 = clips_2[:, sample_select]
-            return best_pair, best_shift, clips_1, clips_2
+        # if best_shift == 0:
+        #     # No truncating/alignment. Just expand and return
+        #     c_index = [n1['neighbors'][0] * shift_samples_per_chan,
+        #                (n1['neighbors'][-1] + 1) * shift_samples_per_chan]
+        #     clips_1[:, c_index[0]:c_index[1]] = n1['clips']
+        #     sample_select_1[c_index[0]:c_index[1]] = True
+        #     c_index = [n2['neighbors'][0] * shift_samples_per_chan,
+        #                (n2['neighbors'][-1] + 1) * shift_samples_per_chan]
+        #     clips_2[:, c_index[0]:c_index[1]] = n2['clips']
+        #     sample_select_2[c_index[0]:c_index[1]] = True
+        #     # Only keep samples with data from at least one units
+        #     sample_select = np.logical_or(sample_select_1, sample_select_2)
+        #     clips_1 = clips_1[:, sample_select]
+        #     clips_2 = clips_2[:, sample_select]
+        #     return best_pair, best_shift, clips_1, clips_2
 
         # Get clips for each channel, shift them, and assign for output, which
         # will be clips that have each channel individually aligned and
@@ -840,7 +853,7 @@ class SegSummary(object):
             if chan in n1['neighbors']:
                 neigh_chan_ind = np.argwhere(n1['neighbors'] == chan)[0][0]
                 chan_clips_1 = n1['clips'][:, neigh_chan_ind*self.sort_info['n_samples_per_chan']:(neigh_chan_ind+1)*self.sort_info['n_samples_per_chan']]
-                if best_shift > 0:
+                if best_shift >= 0:
                     clips_1[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_1[:, best_shift:]
                 elif best_shift < 0:
@@ -853,7 +866,7 @@ class SegSummary(object):
                 if best_shift > 0:
                     clips_2[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_2[:, :-1*best_shift]
-                elif best_shift < 0:
+                elif best_shift <= 0:
                     clips_2[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_2[:, -1*best_shift:]
                 sample_select_2[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
@@ -979,12 +992,12 @@ class SegSummary(object):
                 #         method='channel_template_pca', merge_only=True,
                 #         curr_chan_inds=None, use_weights=True)
                 is_merged = self.re_sort_two_units(clips_1, clips_2, curr_chan_inds=None)
-                # print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
-                # # plt.plot(self.summaries[best_pair[0]]['template'])
-                # # plt.plot(self.summaries[best_pair[1]]['template'])
-                # plt.plot(np.mean(clips_1, axis=0))
-                # plt.plot(np.mean(clips_2, axis=0))
-                # plt.show()
+                print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
+                # plt.plot(self.summaries[best_pair[0]]['template'])
+                # plt.plot(self.summaries[best_pair[1]]['template'])
+                plt.plot(np.mean(clips_1, axis=0))
+                plt.plot(np.mean(clips_2, axis=0))
+                plt.show()
             if is_merged:
                 # Delete the unit with the fewest spikes
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:

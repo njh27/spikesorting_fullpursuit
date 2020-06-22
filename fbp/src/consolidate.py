@@ -762,7 +762,7 @@ class SegSummary(object):
                 for chan in range(0, neuron['neighbors'].shape[0]):
                     chan_index = [chan * self.sort_info['n_samples_per_chan'],
                                   (chan + 1) * self.sort_info['n_samples_per_chan']]
-                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.5 * self.work_items[n_wi]['thresholds'][chan]:
+                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.25 * self.work_items[n_wi]['thresholds'][chan]:
                         neuron['template'][chan_index[0]:chan_index[1]] = 0
                         neuron['clips'][:, chan_index[0]:chan_index[1]] = 0
                     else:
@@ -1011,15 +1011,15 @@ class SegSummary(object):
                 #         method='channel_template_pca', merge_only=True,
                 #         curr_chan_inds=None, use_weights=True)
                 is_merged = self.re_sort_two_units(clips_1, clips_2, curr_chan_inds=None)
-                print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
-                print("THESE ARE THE TEMPLATES")
-                plt.plot(self.summaries[best_pair[0]]['template'])
-                plt.plot(self.summaries[best_pair[1]]['template'])
-                plt.show()
-                print("THESE ARE THE CLIPS AVERAGES")
-                plt.plot(np.mean(clips_1, axis=0))
-                plt.plot(np.mean(clips_2, axis=0))
-                plt.show()
+                # print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
+                # print("THESE ARE THE TEMPLATES")
+                # plt.plot(self.summaries[best_pair[0]]['template'])
+                # plt.plot(self.summaries[best_pair[1]]['template'])
+                # plt.show()
+                # print("THESE ARE THE CLIPS AVERAGES")
+                # plt.plot(np.mean(clips_1, axis=0))
+                # plt.plot(np.mean(clips_2, axis=0))
+                # plt.show()
             if is_merged:
                 # Delete the unit with the fewest spikes
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:

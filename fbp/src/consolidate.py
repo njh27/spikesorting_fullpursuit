@@ -752,14 +752,18 @@ class SegSummary(object):
                 #            (neuron['neighbors'][-1] + 1) * self.sort_info['n_samples_per_chan']]
                 # curr_t[t_index[0]:t_index[1]] = neuron['template']
                 # neuron['template'] = curr_t
+
+                # Preserve full template for binary pursuit
+                neuron['pursuit_template'] = np.copy(neuron['template'])
                 # Set template channels with peak less than half threshold to 0
+                # This will be used for align shifting and merge testing
                 new_neighbors = []
                 new_clips = []
                 for chan in range(0, neuron['neighbors'].shape[0]):
                     chan_index = [chan * self.sort_info['n_samples_per_chan'],
                                   (chan + 1) * self.sort_info['n_samples_per_chan']]
                     if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.5 * self.work_items[n_wi]['thresholds'][chan]:
-                        # neuron['template'][chan_index[0]:chan_index[1]] = 0
+                        neuron['template'][chan_index[0]:chan_index[1]] = 0
                         neuron['clips'][:, chan_index[0]:chan_index[1]] = 0
                     else:
                         new_neighbors.append(chan)
@@ -792,8 +796,8 @@ class SegSummary(object):
                     # Must be within each other's neighborhoods
                     previously_compared_pairs.append([n1_ind, n2_ind])
                     continue
-                cross_corr = np.correlate(n1['template'],
-                                          n2['template'],
+                cross_corr = np.correlate(n1['pursuit_template'],
+                                          n2['pursuit_template'],
                                           mode='full')
                 max_corr_ind = np.argmax(cross_corr)
                 curr_shift = max_corr_ind - cross_corr.shape[0]//2
@@ -802,21 +806,26 @@ class SegSummary(object):
                     continue
                 # Align and truncate template and compute distance
                 if curr_shift > 0:
-                    shiftn1 = n1['template'][curr_shift:]
-                    shiftn2 = n2['template'][:-1*curr_shift]
+                    shiftn1 = n1['pursuit_template'][curr_shift:]
+                    shiftn2 = n2['pursuit_template'][:-1*curr_shift]
                 elif curr_shift < 0:
-                    shiftn1 = n1['template'][:curr_shift]
-                    shiftn2 = n2['template'][-1*curr_shift:]
+                    shiftn1 = n1['pursuit_template'][:curr_shift]
+                    shiftn2 = n2['pursuit_template'][-1*curr_shift:]
                 else:
-                    shiftn1 = n1['template']
-                    shiftn2 = n2['template']
+                    shiftn1 = n1['pursuit_template']
+                    shiftn2 = n2['pursuit_template']
                 # Must normalize distance per data point else reward big shifts
                 curr_distance = np.sum((shiftn1 - shiftn2) ** 2) / shiftn1.shape[0]
                 if curr_distance < best_distance:
                     best_distance = curr_distance
                     best_shift = curr_shift
                     best_pair = [n1_ind, n2_ind]
-        if np.isinf(best_distance):
+        if ~np.isinf(best_distance):
+            # Compare best distance to size of the template SSE to see if its reasonable
+            min_template_SSE = min(np.sum(self.summaries[best_pair[0]]['pursuit_template'] ** 2),
+                                    np.sum(self.summaries[best_pair[1]]['pursuit_template'] ** 2))
+            min_template_SSE /= (self.summaries[best_pair[0]]['pursuit_template'].shape[0] - np.abs(best_shift))
+        if np.isinf(best_distance) or (best_distance > 0.5 * min_template_SSE):
             # Never found a match
             best_pair = []
             best_shift = 0
@@ -881,11 +890,10 @@ class SegSummary(object):
             clips_2 = clips_2[:, sample_select]
             return best_pair, best_shift, clips_1, clips_2
         else:
-            # This is probably not a good match afterall
-            best_pair = []
-            best_shift = 0
-            clips_1 = None
-            clips_2 = None
+            # This is probably not a good match afterall, so try again
+            print("NEAREST SHIFTED PAIR IS RECURSING")
+            previously_compared_pairs.append(best_pair)
+            best_pair, best_shift, clips_1, clips_2 = self.find_nearest_shifted_pair(remaining_inds, previously_compared_pairs)
             return best_pair, best_shift, clips_1, clips_2
 
     def re_sort_two_units(self, clips_1, clips_2, use_weights=True, curr_chan_inds=None):
@@ -1005,8 +1013,11 @@ class SegSummary(object):
                 #         curr_chan_inds=None, use_weights=True)
                 is_merged = self.re_sort_two_units(clips_1, clips_2, curr_chan_inds=None)
                 print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
-                # plt.plot(self.summaries[best_pair[0]]['template'])
-                # plt.plot(self.summaries[best_pair[1]]['template'])
+                print("THESE ARE THE TEMPLATES")
+                plt.plot(self.summaries[best_pair[0]]['template'])
+                plt.plot(self.summaries[best_pair[1]]['template'])
+                plt.show()
+                print("THESE ARE THE CLIPS AVERAGES")
                 plt.plot(np.mean(clips_1, axis=0))
                 plt.plot(np.mean(clips_2, axis=0))
                 plt.show()

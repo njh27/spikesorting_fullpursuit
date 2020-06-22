@@ -979,12 +979,12 @@ class SegSummary(object):
                 #         method='channel_template_pca', merge_only=True,
                 #         curr_chan_inds=None, use_weights=True)
                 is_merged = self.re_sort_two_units(clips_1, clips_2, curr_chan_inds=None)
-                print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
-                # plt.plot(self.summaries[best_pair[0]]['template'])
-                # plt.plot(self.summaries[best_pair[1]]['template'])
-                plt.plot(np.mean(clips_1, axis=0))
-                plt.plot(np.mean(clips_2, axis=0))
-                plt.show()
+                # print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
+                # # plt.plot(self.summaries[best_pair[0]]['template'])
+                # # plt.plot(self.summaries[best_pair[1]]['template'])
+                # plt.plot(np.mean(clips_1, axis=0))
+                # plt.plot(np.mean(clips_2, axis=0))
+                # plt.show()
             if is_merged:
                 # Delete the unit with the fewest spikes
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:

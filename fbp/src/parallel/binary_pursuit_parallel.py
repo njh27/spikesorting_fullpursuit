@@ -212,40 +212,26 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         adjusted_spike_clips = []
 
         # Compute our template sum squared error (see note below).
-        # This is a num_templates x num_neighbors vector
-        template_sum_squared = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
+        # This is a num_templates vector
+        template_sum_squared = np.float32(-0.5 * np.sum(templates * templates, axis=1))
+        # Need to get convolution kernel separate for each channel and each template
         for n in range(0, templates.shape[0]):
             for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
-                template_sum_squared[(n*n_chans) + chan] = np.float32(-0.5 * np.dot(templates[n, t_win[0]:t_win[1]], templates[n, t_win[0]:t_win[1]]))
-                # Also get the FFT kernels used for spike bias below while we're at it
                 fft_kernels.append(get_zero_phase_kernel(templates[n, t_win[0]:t_win[1]], clip_init_samples))
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
 
         # Compute the template bias terms over all voltage data (fixed for each chunk)
-        spike_biases = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
-        n_fft_samples = 10000000
-        if n_samples > n_fft_samples:
-            fft_samples = np.random.choice(n_samples, 10000000, replace=True)
-        else:
-            fft_samples = np.arange(0, n_samples)
+        spike_biases = np.zeros(templates.shape[0], dtype=np.float32)
         # Compute bias separately for each neuron
         for n in range(0, templates.shape[0]):
-            neighbor_bias = np.zeros(fft_samples.shape[0], dtype=np.float32)
+            neighbor_bias = np.zeros(n_samples, dtype=np.float32)
             for chan in range(0, n_chans):
                 if np.all(fft_kernels[n*n_chans + chan] == 0):
                     # Unit is not defined over this channel so skip
                     continue
-                # Moved bias out here so voltage is not yet a 1D vector, so no
-                # need to do all this stride indexing
-                # cv_win = [chan * n_samples,
-                #           chan * n_samples + n_samples]
-                # neighbor_bias += np.float32(fftconvolve(
-                #             voltage[cv_win[0]:cv_win[1]],
-                #             fft_kernels[n*n_chans + chan],
-                #             mode='same'))
                 neighbor_bias += np.float32(fftconvolve(
-                                                voltage[chan, fft_samples],
+                                                voltage[chan, :],
                                                 fft_kernels[n*n_chans + chan],
                                                 mode='same'))
             # Use MAD to estimate STD of the noise and set bias at
@@ -255,16 +241,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             # Assumes zero-centered (which median usually isn't)
             MAD = np.median(np.abs(neighbor_bias))
             std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            total_bias = np.float32(thresh_sigma*std_noise)
-            bias_per_chan = total_bias / n_chans
-            # Distribute bias evenly over channels with data
-            for chan in range(0, n_chans):
-                # CAN'T DO THIS NOW BUT MAY IF WE GET SMART ABOUT NEIGHBORHOODS...
-                # if np.all(fft_kernels[n*n_chans + chan] == 0):
-                #     # Unit is not defined over this channel so skip
-                #     spike_biases[(n*n_chans) + chan] = 0
-                #     continue
-                spike_biases[(n*n_chans) + chan] = bias_per_chan
+            spike_biases[n] = np.float32(thresh_sigma*std_noise)
 
         # Delete stuff no longer needed for this chunk
         # del residual_voltage
@@ -322,11 +299,11 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             best_spike_likelihoods_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.float32))
             best_spike_labels_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
             best_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
-            next_check_window_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
-            work_ids_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.arange(0, num_template_widths, 1, dtype=np.uint32))
+            window_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.arange(0, num_template_widths, 1, dtype=np.uint32))
+            next_check_window_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint8))
 
             # This is separate storage for transferring data from next check, NOT A HOST (maybe could be)
-            next_check_window = np.zeros(num_template_widths, dtype=np.uint32)
+            next_check_window = np.zeros(num_template_widths, dtype=np.uint8)
 
             # Set input arguments for template maximum likelihood kernel
             compute_template_maximum_likelihood_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
@@ -338,13 +315,13 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(0)) # Template number
             compute_template_maximum_likelihood_kernel.set_arg(7, template_sum_squared_buffer) # Sum of squared templated
             compute_template_maximum_likelihood_kernel.set_arg(8, spike_biases_buffer) # Bias
-            compute_template_maximum_likelihood_kernel.set_arg(9, best_spike_indices_buffer) # Storage for peak likelihood index
-            compute_template_maximum_likelihood_kernel.set_arg(10, best_spike_labels_buffer) # Storage for peak likelihood label
-            compute_template_maximum_likelihood_kernel.set_arg(11, best_spike_likelihoods_buffer) # Storage for peak likelihood value
-            compute_template_maximum_likelihood_kernel.set_arg(12, work_ids_buffer) # Actual window IDs to check
-            compute_template_maximum_likelihood_kernel.set_arg(13, np.uint32(num_template_widths)) # Number of actual work IDs to check
+            compute_template_maximum_likelihood_kernel.set_arg(9, window_indices_buffer) # Actual window indices to check
+            compute_template_maximum_likelihood_kernel.set_arg(10, np.uint32(num_template_widths)) # Number of actual window indices to check
+            compute_template_maximum_likelihood_kernel.set_arg(11, best_spike_indices_buffer) # Storage for peak likelihood index
+            compute_template_maximum_likelihood_kernel.set_arg(12, best_spike_labels_buffer) # Storage for peak likelihood label
+            compute_template_maximum_likelihood_kernel.set_arg(13, best_spike_likelihoods_buffer) # Storage for peak likelihood value
             compute_template_maximum_likelihood_kernel.set_arg(14, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
-            compute_template_maximum_likelihood_kernel.set_arg(15, np.uint32(num_template_widths)) # Total number of windows possible to check
+
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
@@ -358,16 +335,15 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             binary_pursuit_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
             binary_pursuit_kernel.set_arg(6, template_sum_squared_buffer) # Sum of squared templated
             binary_pursuit_kernel.set_arg(7, spike_biases_buffer) # Bias
-            binary_pursuit_kernel.set_arg(8, best_spike_indices_buffer) # Storage for peak likelihood index
-            binary_pursuit_kernel.set_arg(9, best_spike_labels_buffer) # Storage for peak likelihood label
-            binary_pursuit_kernel.set_arg(10, best_spike_likelihoods_buffer) # Storage for peak likelihood value
-            binary_pursuit_kernel.set_arg(11, local_buffer) # Local buffer
-            binary_pursuit_kernel.set_arg(12, num_additional_spikes_buffer) # Output, total number of additional spikes
-            binary_pursuit_kernel.set_arg(13, additional_spike_indices_buffer) # Additional spike indices
-            binary_pursuit_kernel.set_arg(14, additional_spike_labels_buffer) # Additional spike labels
-            binary_pursuit_kernel.set_arg(15, work_ids_buffer) # Actual window IDs to check
-            binary_pursuit_kernel.set_arg(16, np.uint32(num_template_widths)) # Number of actual work IDs to check
-
+            binary_pursuit_kernel.set_arg(8, window_indices_buffer) # Actual window indices to check
+            binary_pursuit_kernel.set_arg(9, np.uint32(num_template_widths)) # Number of actual window indices to check
+            binary_pursuit_kernel.set_arg(10, best_spike_indices_buffer) # Storage for peak likelihood index
+            binary_pursuit_kernel.set_arg(11, best_spike_labels_buffer) # Storage for peak likelihood label
+            binary_pursuit_kernel.set_arg(12, best_spike_likelihoods_buffer) # Storage for peak likelihood value
+            binary_pursuit_kernel.set_arg(13, local_buffer) # Local buffer
+            binary_pursuit_kernel.set_arg(14, num_additional_spikes_buffer) # Output, total number of additional spikes
+            binary_pursuit_kernel.set_arg(15, additional_spike_indices_buffer) # Additional spike indices
+            binary_pursuit_kernel.set_arg(16, additional_spike_labels_buffer) # Additional spike labels
 
             # Run the kernel until num_additional_spikes is zero
             chunk_total_additional_spikes = 0
@@ -413,17 +389,15 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 if (num_additional_spikes[0] == 0):
                     break # Converged, no spikes added in last pass
 
-                # Use next_check_window data to determine work_ids_buffer for next pass
-                new_work_ids = np.uint32(np.nonzero(next_check_window)[0])
-                # Free old work_ids and set new buffer
-                # work_ids_buffer.release()
-                work_ids_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=new_work_ids)
-                compute_template_maximum_likelihood_kernel.set_arg(12, work_ids_buffer) # Actual window IDs to check
-                compute_template_maximum_likelihood_kernel.set_arg(13, np.uint32(new_work_ids.shape[0])) # Number of actual work IDs to check
-                binary_pursuit_kernel.set_arg(15, work_ids_buffer) # Actual window IDs to check
-                binary_pursuit_kernel.set_arg(16, np.uint32(new_work_ids.shape[0])) # Number of actual work IDs to check
+                # Use next_check_window data to determine window indices for next pass
+                new_window_indices = np.uint32(np.nonzero(next_check_window)[0])
+                # Copy the new window indices to the window indices buffer
+                next_wait_event = [cl.enqueue_copy(queue, window_indices_buffer, new_window_indices, wait_for=next_wait_event)]
+                # Reset number of indices to check for both kernels
+                compute_template_maximum_likelihood_kernel.set_arg(10, np.uint32(new_window_indices.shape[0])) # Number of actual window indices to check
+                binary_pursuit_kernel.set_arg(9, np.uint32(new_window_indices.shape[0])) # Number of actual window indices to check
                 # Reset number of kernels to run for next pass
-                total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(new_work_ids.shape[0] / pursuit_local_work_size))
+                total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(new_window_indices.shape[0] / pursuit_local_work_size))
                 # Reset next_check_window for next pass and copy to GPU
                 next_check_window[:] = 0
                 next_wait_event = [cl.enqueue_copy(queue, next_check_window_buffer, next_check_window, wait_for=next_wait_event)]
@@ -467,7 +441,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 #     break
                 num_additional_spikes[0] = 0
                 queue.finish()
-                if new_work_ids.shape[0] > max_enqueue_pursuit:
+                if new_window_indices.shape[0] > max_enqueue_pursuit:
                     time.sleep(1)
 
             additional_spike_indices_buffer.release()
@@ -476,8 +450,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             best_spike_likelihoods_buffer.release()
             best_spike_labels_buffer.release()
             best_spike_indices_buffer.release()
+            window_indices_buffer.release()
             next_check_window_buffer.release()
-            work_ids_buffer.release()
 
             # Read out the adjusted spikes here before releasing
             # the residual voltage. Only do this if there are spikes to get clips of

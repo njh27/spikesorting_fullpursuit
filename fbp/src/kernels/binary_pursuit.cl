@@ -194,8 +194,8 @@ static void prefix_local_sum(__local unsigned int * restrict x) /**< Length must
  *  templates: A num_timepoints * num_channels * num_neurons vector (see above description)
  *  num_templates: The dimension M of templates (num_neurons)
  *  template_length: The dimension N of templates (num timepoints)
- *  template_sum_squared: A 1x(num_templates*num_neighbor_channels) vector containing the template sum squared values
- *  gamma: 1x(num_templates*num_neighbor_channels) vector containing the bias parameter
+ *  template_sum_squared: A 1xnum_templates vector containing the template sum squared values
+ *  gamma: 1xnum_templates vector containing the bias parameter
  *  maximum_likelihood [out]: The maximum likelihood found at this point (private).
  */
 static float compute_maximum_likelihood(
@@ -222,13 +222,11 @@ static float compute_maximum_likelihood(
     {
         return maximum_likelihood; /* Invalid template number, return 0.0 */
     }
+    maximum_likelihood = template_sum_squared[template_number] - gamma[template_number];
 
     /* The master channel exceeded threshold, check all of our neighbors */
     for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
     {
-        unsigned int gamma_offset = (template_number * num_neighbor_channels) + current_channel;
-        maximum_likelihood = maximum_likelihood + template_sum_squared[gamma_offset] - gamma[gamma_offset];
-
         unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
         unsigned int voltage_offset = index + (voltage_length * current_channel);
         for (i = 0; i < template_length; i++)
@@ -253,6 +251,15 @@ static float compute_maximum_likelihood(
  * we return without doing anytime (believing that a seperate kerel will take care
  * of those spikes).
  *
+ * On the first pass through binary pursuit, this function should be called for
+ * all non-overlapping windows in the voltage trace. This should be done by
+ * passing in 0:num_windows - 1 as the window_indices (or NULL). On subsequent calls,
+ * window_indices can be reduced to only the windows that need to be checked again (e.g.,
+ * those windows that had a positive likelihood on the previous pass). To help reduce
+ * the computation, the check_window_on_next_pass vector stores a boolean array
+ * that can be used to compute the window indices for the next pass through the
+ * complete binary pursuit algorithm.
+ *
  * Parameters:
  *  voltage: A voltage_type (typically float32) vector containing the voltage data
  *  voltage_length: The length of voltage
@@ -260,13 +267,22 @@ static float compute_maximum_likelihood(
  *  templates: A num_timepoints * num_channels * num_neurons vector (see above description)
  *  num_templates: The dimension M of templates (num_neurons)
  *  template_length: The dimension N of templates (num timepoints)
- *  template_sum_squared: A 1x(num_templates*num_neighbor_channels) vector containing the template sum squared values
+ *  template_sum_squared: A 1xnum_templates vector containing the template sum squared values
  *  template_number: The index in the templates vector to compute the max likelihood for
- *  gamma: 1x(num_templates*num_neighbor_channels) vector containing the bias parameter
+ *  window_indices: A list of window numbers (0, 1, 2, 3,... each referring to a non-overlapping
+ *   window of width template_length. If this is null, we use the global id.
+ *  num_window_indices: The length of the window indices vector. If this value is zero, we
+ *   use the global id as our window index.
+ *  gamma: 1xnum_templates vector containing the bias parameter
  *  best_spike_indices [out]: A global vector (max length = 1xnum_workers) containing the indices within voltage
  *   within each window that have the best likelihood to add.
  *  best_spike_labels [out]: The template ids that we have added at additional spike_indices. Same
  *   restrictions as additional_spike_indices.
+ *  check_window_on_next_pass [out]: A boolean array of type UInt8 that can be used
+ *   to reduce the number of workers that need to be run on each pass. The indices
+ *   where this vector is > 0, correspond to the work ids that need to be run in the
+ *   next pass (e.g., if we "find(check_window_on_next_pass > 0)", we can pass this
+ *   list of indices into the next round, reducing the computation.
  */
 __kernel void compute_template_maximum_likelihood(
     __global voltage_type * restrict voltage,
@@ -278,27 +294,21 @@ __kernel void compute_template_maximum_likelihood(
     const unsigned int template_number,
     __global const float * restrict template_sum_squared,
     __global const float * restrict gamma,
+    __global const unsigned int * restrict window_indices,
+    const unsigned int num_window_indices,
     __global unsigned int * restrict best_spike_indices,
     __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
-    __global unsigned int * restrict work_ids,
-    const unsigned int n_work_ids,
-    __global unsigned int * restrict next_check_window,
-    const unsigned int n_windows)
+    __global unsigned char * restrict check_window_on_next_pass)
 {
-    const size_t id_ind = get_global_id(0);
-    if (id_ind > n_work_ids - 1)
+    const size_t global_id = get_global_id(0);
+    if (num_window_indices > 0 && window_indices != 0 && global_id >= num_window_indices)
     {
-        /* Extra worker with nothing to do */
-        return;
+        return; /* Extra worker with nothing to do */
     }
-    const size_t id = work_ids[id_ind];
+    const size_t id = (num_window_indices > 0 && window_indices != 0) ? window_indices[global_id] : global_id;
     unsigned int i;
-    unsigned int j;
-    unsigned int win_start;
-    unsigned int win_stop;
-    const unsigned int neighbor_wins = 1;
-    unsigned int needs_checked = 0;
+    unsigned int check_window = 0;
 
     /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
     /* All other spikes are ignored (previous window and next window) */
@@ -345,17 +355,22 @@ __kernel void compute_template_maximum_likelihood(
         }
         if ((current_maximum_likelihood > 0.0) && (start + i >= start_of_my_window) && (start + i <= end_of_my_window))
         {
-            needs_checked = 1;
+            check_window = 1;
         }
     }
-    if (needs_checked == 1)
+    if (check_window && check_window_on_next_pass != 0)
     {
-        /* This creates a race condition, but all are setting = 1 so shouldn't matter */
-        win_start = ((signed int) id - neighbor_wins <= 0) ? 0 : (id - neighbor_wins);
-        win_stop = (id + neighbor_wins + 1) > n_windows ? n_windows : (id + neighbor_wins + 1);
-        for (j = win_start; j < win_stop; j++)
+        check_window_on_next_pass[id] = 1;
+        if (best_spike_index_private >= start_of_my_window && best_spike_index_private <= end_of_my_window)
         {
-            next_check_window[j] = 1;
+            if (id > 0)
+            {
+                check_window_on_next_pass[id-1] = 1;
+            }
+            if (id + 1 < voltage_length / template_length)
+            {
+                check_window_on_next_pass[id+1] = 1;
+            }
         }
     }
 
@@ -391,8 +406,13 @@ __kernel void compute_template_maximum_likelihood(
  *  templates: A num_timepoints * num_channels * num_neurons vector (see above description)
  *  num_templates: The dimension M of templates (num_neurons)
  *  template_length: The dimension N of templates (num timepoints)
- *  template_sum_squared: A 1x(num_templates*num_neighbor_channels) vector containing the template sum squared values
- *  gamma: 1x(num_templates*num_neighbor_channels) vector containing the bias parameter
+ *  template_sum_squared: A 1xnum_templates vector containing the template sum squared values
+ *  gamma: 1xnum_templates vector containing the bias parameter
+ *  window_indices: A list of window numbers (0, 1, 2, 3,... each referring to a non-overlapping
+ *   window of width template_length. If this is null, we use the global id. See the
+ *   function compute_template_maximum_likelihood for more documentation.
+ *  num_window_indices: The length of the window indices vector. If this value is zero, we
+ *   use the global id as our window index.
  *  local_scatch: 1xnum_local_workers vector for computing the prefix_sum
  *  num_additional_spikes [out]: A global integer representing the number of additional spikes we have added
  *  additional_spike_indices [out]: A global vector (max length = 1xnum_workers) containing the indices within voltage
@@ -410,27 +430,36 @@ __kernel void binary_pursuit(
     const unsigned int template_length,
     __global const float * restrict template_sum_squared,
     __global const float * restrict gamma,
+    __global unsigned int * restrict window_indices,
+    const unsigned int num_window_indices,
     __global const unsigned int * restrict best_spike_indices,
     __global const unsigned int * restrict best_spike_labels,
     __global const float * restrict best_spike_likelihoods,
     __local unsigned int * restrict local_scratch,
     __global unsigned int * restrict num_additional_spikes,
     __global unsigned int * restrict additional_spike_indices,
-    __global unsigned int * restrict additional_spike_labels,
-    __global unsigned int * restrict work_ids,
-    const unsigned int n_work_ids)
+    __global unsigned int * restrict additional_spike_labels)
 {
-    const size_t id_ind = get_global_id(0);
-    size_t bad_id = 0;
-    if (id_ind > n_work_ids - 1)
-    {
-        /* Extra worker with nothing to do */
-        /* Just flag here, not return, so it can hit barrier */
-        bad_id = 1;
-    }
-    const size_t id = work_ids[id_ind];
+    const size_t global_id = get_global_id(0);
     const size_t local_id = get_local_id(0);
     const size_t local_size = get_local_size(0);
+    size_t id;
+    if (num_window_indices > 0 && window_indices != 0 && global_id >= num_window_indices)
+    {
+        /* Extra worker with nothing to do */
+        /* To ensure this doesn't do any work, we set the id beyond hte length of voltage */
+        id = (size_t) (voltage_length / template_length) + 1;
+    }
+    else if (num_window_indices == 0 || window_indices == 0)
+    {
+        /* No window id's passed, just use our global id */
+        id = global_id;
+    }
+    else
+    {
+        /* Used our passed window indices */
+        id = window_indices[global_id];
+    }
 
     /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
     /* All other spikes are ignored (previous window and next window) */
@@ -446,6 +475,7 @@ __kernel void binary_pursuit(
     /* Define a small local variable for our global offset */
     __local unsigned int global_offset;
 
+
     if (end_of_my_window < voltage_length - template_length && num_neighbor_channels > 0)
     {
         maximum_likelihood = best_spike_likelihoods[id];
@@ -455,9 +485,10 @@ __kernel void binary_pursuit(
             maximum_likelihood_index = best_spike_indices[id];
         }
     }
+
     /* If the best maximum likelihood is greater than zero and within our window */
     /* add the spike to the output */
-    if ((maximum_likelihood > 0.0) && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index <= end_of_my_window) && (bad_id == 0))
+    if ((maximum_likelihood > 0.0) && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index <= end_of_my_window))
     {
         local_scratch[local_id] = 1;
         has_spike = 1;

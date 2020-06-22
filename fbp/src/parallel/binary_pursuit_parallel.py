@@ -221,33 +221,11 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 fft_kernels.append(get_zero_phase_kernel(templates[n, t_win[0]:t_win[1]], clip_init_samples))
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
 
-        # Compute the template bias terms over all voltage data (fixed for each chunk)
-        spike_biases = np.zeros(templates.shape[0], dtype=np.float32)
-        # Compute bias separately for each neuron
-        for n in range(0, templates.shape[0]):
-            neighbor_bias = np.zeros(n_samples, dtype=np.float32)
-            for chan in range(0, n_chans):
-                if np.all(fft_kernels[n*n_chans + chan] == 0):
-                    # Unit is not defined over this channel so skip
-                    continue
-                neighbor_bias += np.float32(fftconvolve(
-                                                voltage[chan, :],
-                                                fft_kernels[n*n_chans + chan],
-                                                mode='same'))
-            # Use MAD to estimate STD of the noise and set bias at
-            # thresh_sigma standard deviations. The typical extremely large
-            # n value for neighbor_bias makes this calculation converge to
-            # normal distribution
-            # Assumes zero-centered (which median usually isn't)
-            MAD = np.median(np.abs(neighbor_bias))
-            std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            spike_biases[n] = np.float32(thresh_sigma*std_noise)
-
-        print("THESE ARE THEBIASES", spike_biases)
-        sub_spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
+        # Compute the template bias terms over voltage data
+        spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
         sample_duration = sampling_rate # One second
         if n_samples < sample_duration:
-            # This is stupid, but might make following code fail
+            # This is stupid, but would make following code fail
             sample_start_inds = [0]
             n_total_sample_points = n_samples
             sample_duration = n_samples
@@ -259,6 +237,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 sample_start_inds.append(cssi)
                 cssi += int(sampling_rate * 60) # pick index every minute
             n_total_sample_points = int(sampling_rate * len(sample_start_inds))
+        # Compute bias separately for each neuron, summed over channels
         for n in range(0, templates.shape[0]):
             neighbor_bias = np.zeros(n_total_sample_points, dtype=np.float32)
             for s_ind, s in enumerate(sample_start_inds):
@@ -275,8 +254,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             # Assumes zero-centered (which median usually isn't)
             MAD = np.median(np.abs(neighbor_bias))
             std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            sub_spike_biases[n] = np.float32(thresh_sigma*std_noise)
-        print("THESE ARE THE SUB BIASES", sub_spike_biases)
+            spike_biases[n] = np.float32(thresh_sigma*std_noise)
 
         # Delete stuff no longer needed for this chunk
         del neighbor_bias

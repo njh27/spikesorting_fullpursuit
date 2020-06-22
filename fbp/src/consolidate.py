@@ -874,11 +874,19 @@ class SegSummary(object):
                     clips_2[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_2[:, -1*best_shift:]
                 sample_select_2[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
-        # Only keep samples with data from at least one units
-        sample_select = np.logical_or(sample_select_1, sample_select_2)
-        clips_1 = clips_1[:, sample_select]
-        clips_2 = clips_2[:, sample_select]
-        return best_pair, best_shift, clips_1, clips_2
+        # Only keep samples with data from both units
+        sample_select = np.logical_and(sample_select_1, sample_select_2)
+        if np.any(sample_select):
+            clips_1 = clips_1[:, sample_select]
+            clips_2 = clips_2[:, sample_select]
+            return best_pair, best_shift, clips_1, clips_2
+        else:
+            # This is probably not a good match afterall
+            best_pair = []
+            best_shift = 0
+            clips_1 = None
+            clips_2 = None
+            return best_pair, best_shift, clips_1, clips_2
 
     def re_sort_two_units(self, clips_1, clips_2, use_weights=True, curr_chan_inds=None):
         if self.sort_info['add_peak_valley'] and curr_chan_inds is None:

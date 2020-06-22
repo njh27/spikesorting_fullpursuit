@@ -820,12 +820,7 @@ class SegSummary(object):
                     best_distance = curr_distance
                     best_shift = curr_shift
                     best_pair = [n1_ind, n2_ind]
-        if ~np.isinf(best_distance):
-            # Compare best distance to size of the template SSE to see if its reasonable
-            min_template_SSE = min(np.sum(self.summaries[best_pair[0]]['pursuit_template'] ** 2),
-                                    np.sum(self.summaries[best_pair[1]]['pursuit_template'] ** 2))
-            min_template_SSE /= (self.summaries[best_pair[0]]['pursuit_template'].shape[0] - np.abs(best_shift))
-        if np.isinf(best_distance) or (best_distance > 0.5 * min_template_SSE):
+        if np.isinf(best_distance):
             # Never found a match
             best_pair = []
             best_shift = 0
@@ -885,7 +880,11 @@ class SegSummary(object):
                 sample_select_2[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
         # Only keep samples with data from both units
         sample_select = np.logical_and(sample_select_1, sample_select_2)
-        if np.any(sample_select):
+        # Compare best distance to size of the template SSE to see if its reasonable
+        min_template_SSE = min(np.sum(self.summaries[best_pair[0]]['pursuit_template'] ** 2),
+                                np.sum(self.summaries[best_pair[1]]['pursuit_template'] ** 2))
+        min_template_SSE /= (self.summaries[best_pair[0]]['pursuit_template'].shape[0] - np.abs(best_shift))
+        if np.any(sample_select) and (best_distance < 0.5 * min_template_SSE):
             clips_1 = clips_1[:, sample_select]
             clips_2 = clips_2[:, sample_select]
             return best_pair, best_shift, clips_1, clips_2

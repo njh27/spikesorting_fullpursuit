@@ -21,6 +21,10 @@
 #define voltage_type float
 #endif
 
+/* Define NULL if it is not already defined by the compiler */
+#ifndef NULL 
+#define NULL ((void *)0)
+#endif
 
 /*----------------------------------------------------------------------------
  * NOTES ON PACKING OF VOLTAGES (E.G., `VOLTAGE` and `TEMPLATES` vectors):
@@ -302,11 +306,11 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned char * restrict check_window_on_next_pass)
 {
     const size_t global_id = get_global_id(0);
-    if (num_window_indices > 0 && window_indices != 0 && global_id >= num_window_indices)
+    if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
     {
         return; /* Extra worker with nothing to do */
     }
-    const size_t id = (num_window_indices > 0 && window_indices != 0) ? window_indices[global_id] : global_id;
+    const size_t id = (num_window_indices > 0 && window_indices != NULL) ? window_indices[global_id] : global_id;
     unsigned int i;
     unsigned int check_window = 0;
 
@@ -358,7 +362,7 @@ __kernel void compute_template_maximum_likelihood(
             check_window = 1;
         }
     }
-    if (check_window && check_window_on_next_pass != 0)
+    if (check_window && check_window_on_next_pass != NULL)
     {
         check_window_on_next_pass[id] = 1;
         if (best_spike_index_private >= start_of_my_window && best_spike_index_private <= end_of_my_window)
@@ -444,13 +448,13 @@ __kernel void binary_pursuit(
     const size_t local_id = get_local_id(0);
     const size_t local_size = get_local_size(0);
     size_t id;
-    if (num_window_indices > 0 && window_indices != 0 && global_id >= num_window_indices)
+    if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
     {
         /* Extra worker with nothing to do */
         /* To ensure this doesn't do any work, we set the id beyond hte length of voltage */
         id = (size_t) (voltage_length / template_length) + 1;
     }
-    else if (num_window_indices == 0 || window_indices == 0)
+    else if (num_window_indices == 0 || window_indices == NULL)
     {
         /* No window id's passed, just use our global id */
         id = global_id;

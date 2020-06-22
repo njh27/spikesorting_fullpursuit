@@ -25,7 +25,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['verbose'] = False
     settings['test_flag'] = False # Indicates a test run of parallel code that does NOT spawn multiple processes
     settings['log_dir'] = None # Directory where output logs will be saved as text files
-    settings['tmp_clips_dir'] = None # Directory where spike clips will be stored for transfer between processes (deleted at completion)
+    # settings['tmp_clips_dir'] = None # Directory where spike clips will be stored for transfer between processes (deleted at completion)
     settings['clip_width'] = [-6e-4, 10e-4]# Width of clip in seconds
     settings['do_branch_PCA'] = True # Use branch pca method to split clusters
     settings['do_branch_PCA_by_chan'] = False
@@ -246,12 +246,10 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
     do_ZCA_transform, filter_band is not used here but prevents errors from passing kwargs.
     """
     # Initialize variables in case this exits on error
-    crossings, neuron_labels, clips = [], [], []
+    crossings, neuron_labels = [], []
     exit_type = None
     def wrap_up():
         data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels]
-        with open(settings['tmp_clips_dir'] + '/temp_clips' + str(work_item['ID']) + '.pickle', 'wb') as fp:
-            pickle.dump(clips, fp, protocol=-1)
         data_dict['completed_items'].append(work_item['ID'])
         data_dict['exits_dict'][work_item['ID']] = exit_type
         data_dict['completed_items_queue'].put(work_item['ID'])
@@ -299,7 +297,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if crossings.size == 0:
             exit_type = "No crossings over threshold."
             # Raise error to force exit and wrap_up()
-            crossings, neuron_labels, clips = [], [], []
+            crossings, neuron_labels = [], []
             raise NoSpikesError
         min_cluster_size = (np.floor(settings['min_firing_rate'] * item_dict['n_samples'] / item_dict['sampling_rate'])).astype(np.int64)
         if min_cluster_size < 1:
@@ -474,7 +472,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if neuron_labels.size == 0:
             exit_type = "No clusters over min_firing_rate."
             # Raise error to force exit and wrap_up()
-            crossings, neuron_labels, clips = [], [], []
+            crossings, neuron_labels = [], []
             raise NoSpikesError
 
         exit_type = "Finished sorting clusters"
@@ -556,12 +554,12 @@ def spike_sort_parallel(Probe, **kwargs):
             rmtree(settings['log_dir'])
             time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
         os.makedirs(settings['log_dir'])
-    if settings['tmp_clips_dir'] is None:
-        settings['tmp_clips_dir'] = os.getcwd() + '/tmp_clips'
-    # Clear out room for temp clips in current directory
-    if os.path.exists(settings['tmp_clips_dir']):
-        rmtree(settings['tmp_clips_dir'])
-    os.mkdir(settings['tmp_clips_dir'])
+    # if settings['tmp_clips_dir'] is None:
+    #     settings['tmp_clips_dir'] = os.getcwd() + '/tmp_clips'
+    # # Clear out room for temp clips in current directory
+    # if os.path.exists(settings['tmp_clips_dir']):
+    #     rmtree(settings['tmp_clips_dir'])
+    # os.mkdir(settings['tmp_clips_dir'])
 
     # Convert segment duration and overlaps to indices from their values input
     # in seconds and adjust as needed
@@ -769,9 +767,9 @@ def spike_sort_parallel(Probe, **kwargs):
                     max_gpu_memory=settings['max_gpu_memory'])
         sort_data.extend(seg_data)
 
-    # Delete directory containing clips
-    if os.path.exists(settings['tmp_clips_dir']):
-        rmtree(settings['tmp_clips_dir'])
+    # # Delete directory containing clips
+    # if os.path.exists(settings['tmp_clips_dir']):
+    #     rmtree(settings['tmp_clips_dir'])
 
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info

@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 import os
 from fbp.src.consolidate import SegSummary
+from fbp.src.parallel.segment_parallel import get_multichannel_clips
 from fbp.src.parallel import binary_pursuit_parallel
 
 
@@ -48,22 +49,40 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                         absolute_refractory_period=12e-4,
                         kernels_path=None, max_gpu_memory=None):
 
+    # Get numpy view of voltage for clips and binary pursuit
+    seg_volts_buffer = data_dict['segment_voltages'][seg_number][0]
+    seg_volts_shape = data_dict['segment_voltages'][seg_number][1]
+    voltage = np.frombuffer(seg_volts_buffer, dtype=v_dtype).reshape(seg_volts_shape)
+    # Make a dictionary with all info needed for get_multichannel_clips
+    clips_dict = {'sampling_rate': sort_info['sampling_rate'],
+                  'n_samples': sort_info['n_samples'],
+                  'v_dtype': v_dtype}
+
     # Need to build this in format used for consolidate functions
     seg_data = []
     seg_w_items = []
+    original_neighbors = []
     for wi_ind, w_item in enumerate(work_items):
         if w_item['seg_number'] != seg_number:
             continue
         # Always do this to match with seg_data
         seg_w_items.append(w_item)
         if w_item['ID'] in data_dict['results_dict'].keys():
+            # Reset neighbors to all channels for full binary pursuit
+            original_neighbors.append(w_item['neighbors'])
+            w_item['neighbors'] = np.arange(0, voltage.shape[0], dtype=np.int64)
             if len(data_dict['results_dict'][w_item['ID']][0]) == 0:
                 # This work item found nothing (or raised an exception)
                 seg_data.append([[], [], [], [], w_item['ID']])
                 continue
-            with open(sort_info['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle', 'rb') as fp:
-                clips = pickle.load(fp)
-            os.remove(sort_info['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle')
+            # with open(sort_info['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle', 'rb') as fp:
+            #     clips = pickle.load(fp)
+
+            clips, _ = get_multichannel_clips(clips_dict, voltage,
+                                    data_dict['results_dict'][w_item['ID']][0],
+                                    clip_width=sort_info['clip_width'])
+
+            # os.remove(sort_info['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle')
             # Insert list of crossings, labels, clips, binary pursuit spikes
             seg_data.append([data_dict['results_dict'][w_item['ID']][0],
                               data_dict['results_dict'][w_item['ID']][1],
@@ -87,6 +106,15 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
     neurons = seg_summary.summaries
 
+    # Return the original neighbors to the work items that were reset
+    orig_neigh_ind = 0
+    for wi_ind, w_item in enumerate(work_items):
+        if w_item['seg_number'] != seg_number:
+            continue
+        if w_item['ID'] in data_dict['results_dict'].keys():
+            w_item['neighbors'] = original_neighbors[orig_neigh_ind]
+            orig_neigh_ind += 1
+
     if len(neurons) == 0:
         # All data this segment found nothing (or raised an exception)
         seg_data = []
@@ -109,16 +137,12 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     next_label = 0
     for n in neurons:
         if not n['deleted_as_redundant']:
-            templates.append(n['expanded_template'])
+            templates.append(n['template'])
             template_labels.append(next_label)
             next_label += 1
     template_labels = np.array(template_labels, dtype=np.int64)
 
     del seg_summary
-
-    seg_volts_buffer = data_dict['segment_voltages'][seg_number][0]
-    seg_volts_shape = data_dict['segment_voltages'][seg_number][1]
-    voltage = np.frombuffer(seg_volts_buffer, dtype=v_dtype).reshape(seg_volts_shape)
 
     templates = np.vstack(templates)
     print("Starting full binary pursuit search with", template_labels.shape[0], "templates in segment", seg_number)
@@ -163,17 +187,18 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                 chan_labels.append(neuron_labels[select])
                 chan_bp_bool.append(bp_bool[select])
 
-                unit_clips = np.zeros((np.count_nonzero(select),
-                                       curr_item['neighbors'].shape[0] * \
-                                       sort_info['n_samples_per_chan']),
-                                       dtype=v_dtype)
-
-                # Map clips from all channels to current channel neighborhood
-                for neigh in range(0, curr_item['neighbors'].shape[0]):
-                    chan_ind = curr_item['neighbors'][neigh]
-                    unit_clips[:, neigh*sort_info['n_samples_per_chan']:(neigh+1)*sort_info['n_samples_per_chan']] = \
-                            clips[select, chan_ind*sort_info['n_samples_per_chan']:(chan_ind+1)*sort_info['n_samples_per_chan']]
-                chan_clips.append(unit_clips)
+                # unit_clips = np.zeros((np.count_nonzero(select),
+                #                        curr_item['neighbors'].shape[0] * \
+                #                        sort_info['n_samples_per_chan']),
+                #                        dtype=v_dtype)
+                #
+                # # Map clips from all channels to current channel neighborhood
+                # for neigh in range(0, curr_item['neighbors'].shape[0]):
+                #     chan_ind = curr_item['neighbors'][neigh]
+                #     unit_clips[:, neigh*sort_info['n_samples_per_chan']:(neigh+1)*sort_info['n_samples_per_chan']] = \
+                #             clips[select, chan_ind*sort_info['n_samples_per_chan']:(chan_ind+1)*sort_info['n_samples_per_chan']]
+                # chan_clips.append(unit_clips)
+                chan_clips.append(clips[select, :])
 
             # Adjust crossings for seg start time
             chan_events = np.hstack(chan_events)

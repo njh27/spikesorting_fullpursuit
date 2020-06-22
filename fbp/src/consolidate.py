@@ -746,12 +746,14 @@ class SegSummary(object):
                 neuron['quality_score'] = neuron['snr'] * (1-neuron['fraction_mua']) \
                                                 * (neuron['spike_indices'].shape[0])
 
-                # Get 'expanded template' over all channels
-                curr_t = np.zeros(self.sort_info['n_samples_per_chan'] * self.sort_info['n_channels'], dtype=self.v_dtype)
-                t_index = [neuron['neighbors'][0] * self.sort_info['n_samples_per_chan'],
-                           (neuron['neighbors'][-1] + 1) * self.sort_info['n_samples_per_chan']]
-                curr_t[t_index[0]:t_index[1]] = neuron['template']
-                neuron['expanded_template'] = curr_t
+                # # Get 'expanded template' over all channels
+                # curr_t = np.zeros(self.sort_info['n_samples_per_chan'] * self.sort_info['n_channels'], dtype=self.v_dtype)
+                # t_index = [neuron['neighbors'][0] * self.sort_info['n_samples_per_chan'],
+                #            (neuron['neighbors'][-1] + 1) * self.sort_info['n_samples_per_chan']]
+                # curr_t[t_index[0]:t_index[1]] = neuron['template']
+                # neuron['template'] = curr_t
+
+
                 neuron['deleted_as_redundant'] = False
 
                 self.summaries.append(neuron)
@@ -773,8 +775,8 @@ class SegSummary(object):
                     # Must be within each other's neighborhoods
                     previously_compared_pairs.append([n1_ind, n2_ind])
                     continue
-                cross_corr = np.correlate(n1['expanded_template'],
-                                          n2['expanded_template'],
+                cross_corr = np.correlate(n1['template'],
+                                          n2['template'],
                                           mode='full')
                 max_corr_ind = np.argmax(cross_corr)
                 curr_shift = max_corr_ind - cross_corr.shape[0]//2
@@ -783,14 +785,14 @@ class SegSummary(object):
                     continue
                 # Align and truncate template and compute distance
                 if curr_shift > 0:
-                    shiftn1 = n1['expanded_template'][curr_shift:]
-                    shiftn2 = n2['expanded_template'][:-1*curr_shift]
+                    shiftn1 = n1['template'][curr_shift:]
+                    shiftn2 = n2['template'][:-1*curr_shift]
                 elif curr_shift < 0:
-                    shiftn1 = n1['expanded_template'][:curr_shift]
-                    shiftn2 = n2['expanded_template'][-1*curr_shift:]
+                    shiftn1 = n1['template'][:curr_shift]
+                    shiftn2 = n2['template'][-1*curr_shift:]
                 else:
-                    shiftn1 = n1['expanded_template']
-                    shiftn2 = n2['expanded_template']
+                    shiftn1 = n1['template']
+                    shiftn2 = n2['template']
                 # Must normalize distance per data point else reward big shifts
                 curr_distance = np.sum((shiftn1 - shiftn2) ** 2) / shiftn1.shape[0]
                 if curr_distance < best_distance:
@@ -977,12 +979,12 @@ class SegSummary(object):
                 #         method='channel_template_pca', merge_only=True,
                 #         curr_chan_inds=None, use_weights=True)
                 is_merged = self.re_sort_two_units(clips_1, clips_2, curr_chan_inds=None)
-                # print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
-                # # plt.plot(self.summaries[best_pair[0]]['expanded_template'])
-                # # plt.plot(self.summaries[best_pair[1]]['expanded_template'])
-                # plt.plot(np.mean(clips_1, axis=0))
-                # plt.plot(np.mean(clips_2, axis=0))
-                # plt.show()
+                print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
+                # plt.plot(self.summaries[best_pair[0]]['template'])
+                # plt.plot(self.summaries[best_pair[1]]['template'])
+                plt.plot(np.mean(clips_1, axis=0))
+                plt.plot(np.mean(clips_2, axis=0))
+                plt.show()
             if is_merged:
                 # Delete the unit with the fewest spikes
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:

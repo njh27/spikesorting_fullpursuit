@@ -764,8 +764,12 @@ class SegSummary(object):
                     else:
                         new_neighbors.append(chan)
                         new_clips.append(neuron['clips'][:, chan_index[0]:chan_index[1]])
-                neuron['neighbors'] = np.array(new_neighbors, dtype=np.int64)
-                neuron['clips'] = np.hstack(new_clips)
+                if len(new_neighbors) > 0:
+                    neuron['neighbors'] = np.array(new_neighbors, dtype=np.int64)
+                    neuron['clips'] = np.hstack(new_clips)
+                else:
+                    # Neuron is total trash so don't even append to summaries
+                    continue
 
                 neuron['deleted_as_redundant'] = False
 

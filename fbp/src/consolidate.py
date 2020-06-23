@@ -740,7 +740,6 @@ class SegSummary(object):
                 # Recompute template and store output
                 neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
                 neuron['snr'] = self.get_snr(neuron)
-                print("NEURON SNR IS", neuron['snr'], "channel", neuron['channel'])
                 if neuron['snr'] < 1.5:
                     # SNR this low indicates true garbage that will only slow
                     # binary pursuit so skip it outright
@@ -911,24 +910,24 @@ class SegSummary(object):
         orig_neuron_labels = np.ones(clips.shape[0], dtype=np.int64)
         orig_neuron_labels[clips_1.shape[0]:] = 2
 
-        scores = preprocessing.compute_template_pca(clips, orig_neuron_labels,
-                    curr_chan_inds, self.sort_info['check_components'],
-                    self.sort_info['max_components'],
-                    add_peak_valley=self.sort_info['add_peak_valley'],
-                    use_weights=True)
+        # scores = preprocessing.compute_template_pca(clips, orig_neuron_labels,
+        #             curr_chan_inds, self.sort_info['check_components'],
+        #             self.sort_info['max_components'],
+        #             add_peak_valley=self.sort_info['add_peak_valley'],
+        #             use_weights=True)
         # scores = preprocessing.compute_pca(clips,
         #             self.sort_info['check_components'],
         #             self.sort_info['max_components'],
         #             add_peak_valley=self.sort_info['add_peak_valley'],
         #             curr_chan_inds=curr_chan_inds)
 
-        # # Projection onto templates, weighted by number of spikes
-        # t1 = np.mean(clips_1, axis=0)
-        # t2 = np.mean(clips_2, axis=0)
-        # if use_weights:
-        #     t1 *= (clips_1.shape[0] / clips.shape[0])
-        #     t2 *= (clips_2.shape[0] / clips.shape[0])
-        # scores = clips @ np.vstack((t1, t2)).T
+        # Projection onto templates, weighted by number of spikes
+        t1 = np.mean(clips_1, axis=0)
+        t2 = np.mean(clips_2, axis=0)
+        if use_weights:
+            t1 *= (clips_1.shape[0] / clips.shape[0])
+            t2 *= (clips_2.shape[0] / clips.shape[0])
+        scores = clips @ np.vstack((t1, t2)).T
 
         scores = np.float64(scores)
 

@@ -368,7 +368,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 n_loops += 1
                 if n_loops % 10 == 0:
                     print("Starting loop", n_loops, "for this chunk")
-                    print("Next round has", np.count_nonzero(next_check_window), "windows to check")
+                    print("Next round has", new_window_indices.shape[0], "windows to check")
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for template_index in range(0, templates.shape[0]):
                     for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):

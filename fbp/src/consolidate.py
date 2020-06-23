@@ -696,6 +696,8 @@ class SegSummary(object):
         """
         self.summaries = []
         for n_wi in range(0, self.n_items):
+            if self.sort_data[n_wi][2].shape[1] != self.sort_info['n_samples_per_chan'] * self.sort_info['n_channels']:
+                raise ValueError("Clips must include data for all channels")
             cluster_labels = np.unique(self.sort_data[n_wi][1])
             for neuron_label in cluster_labels:
                 neuron = {}
@@ -739,7 +741,7 @@ class SegSummary(object):
                 neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
                 neuron['snr'] = self.get_snr(neuron)
                 print("NEURON SNR IS", neuron['snr'], "channel", neuron['channel'])
-                if neuron['snr'] < 1.:
+                if neuron['snr'] < 1.5:
                     # SNR this low indicates true garbage that will only slow
                     # binary pursuit so skip it outright
                     continue

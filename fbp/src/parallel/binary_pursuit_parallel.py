@@ -448,12 +448,10 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 # Ensure that num_additional_spikes is equal to zero for the next pass
                 cl.enqueue_copy(queue, num_additional_spikes_buffer, np.zeros(1, dtype=np.uint32), wait_for=next_wait_event)
                 chunk_total_additional_spikes += num_additional_spikes[0]
-                # if n_loops >= 2:
-                #     print("BREAKING OUT")
-                #     break
                 num_additional_spikes[0] = 0
                 queue.finish()
                 if new_window_indices.shape[0] > max_enqueue_pursuit:
+                    # Shouldn't really be necessary with queue.finish() but potentially helpful
                     time.sleep(1)
 
             additional_spike_indices_buffer.release()

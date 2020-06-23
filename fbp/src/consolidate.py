@@ -764,6 +764,7 @@ class SegSummary(object):
                 neuron['pursuit_template'] = np.copy(neuron['template'])
                 # Set template channels with peak less than half threshold to 0
                 # This will be used for align shifting and merge testing
+                # NOTE: This new neighborhood only applies for use internally
                 new_neighbors = []
                 new_clips = []
                 for chan in range(0, neuron['neighbors'].shape[0]):
@@ -909,7 +910,7 @@ class SegSummary(object):
         clips = np.vstack((clips_1, clips_2))
         orig_neuron_labels = np.ones(clips.shape[0], dtype=np.int64)
         orig_neuron_labels[clips_1.shape[0]:] = 2
-        
+
         scores = preprocessing.compute_template_pca(clips, orig_neuron_labels,
                     curr_chan_inds, self.sort_info['check_components'],
                     self.sort_info['max_components'],

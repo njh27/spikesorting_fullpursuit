@@ -273,7 +273,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         # Loop over chunks
         for chunk_number, start_index in enumerate(chunk_onsets):
             stop_index = np.uint32(min(n_samples, start_index + num_indices_per_chunk))
-            print("Starting chunk number", chunk_number, "from", start_index, "to", stop_index, flush=True)
+            print("Starting chunk number", chunk_number, "from", start_index, "to", stop_index, "samples", flush=True)
             chunk_voltage = np.float32(voltage[:, start_index:stop_index])
             chunk_voltage_length = np.uint32(stop_index - start_index)
             # Reshape voltage over channels into a single 1D vector
@@ -368,6 +368,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 n_loops += 1
                 if n_loops % 10 == 0:
                     print("Starting loop", n_loops, "for this chunk")
+                    print("Next round has", np.count_nonzero(next_check_window), "windows to check")
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for template_index in range(0, templates.shape[0]):
                     for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
@@ -394,13 +395,12 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
 
                 cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=next_wait_event)
                 # print("Added", num_additional_spikes[0], "secret spikes", flush=True)
-                # Read out the data from next_check_window_buffer
-                # Already waited for pursuit to finish above
-                next_wait_event = [cl.enqueue_copy(queue, next_check_window, next_check_window_buffer, wait_for=None)]
-                print("Next round has", np.count_nonzero(next_check_window))
                 if (num_additional_spikes[0] == 0):
                     break # Converged, no spikes added in last pass
 
+                # Read out the data from next_check_window_buffer
+                # Already waited for pursuit to finish above
+                next_wait_event = [cl.enqueue_copy(queue, next_check_window, next_check_window_buffer, wait_for=None)]
                 # Use next_check_window data to determine window indices for next pass
                 new_window_indices = np.uint32(np.nonzero(next_check_window)[0])
                 # Copy the new window indices to the window indices buffer

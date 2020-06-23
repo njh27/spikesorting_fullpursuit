@@ -35,7 +35,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
     settings['check_components'] = None # Number of PCs to check. None means all
     settings['max_components'] = 10 # Max number to use, of those checked
-    settings['min_firing_rate'] = 1. # Neurons with fewer threshold crossings than this are removed
+    settings['min_firing_rate'] = 0. # Neurons with fewer threshold crossings than this are removed
     settings['p_value_cut_thresh'] = 0.05
     settings['max_gpu_memory'] = None # Use as much memory as possible
     settings['save_1_cpu'] = True
@@ -319,7 +319,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         keep_clips = preprocessing.keep_max_on_main(clips, curr_chan_inds)
         clips = clips[keep_clips, :]
         crossings = crossings[keep_clips]
-
         curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
         if settings['verbose']: print("After keep max on main removed", np.count_nonzero(~keep_clips), "clips", flush=True)
 

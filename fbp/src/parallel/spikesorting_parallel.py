@@ -763,7 +763,7 @@ def spike_sort_parallel(Probe, **kwargs):
                       'n_segments': len(segment_onsets)})
 
     for seg_number in range(0, len(segment_onsets)):
-        seg_data, overlap_indices = full_binary_pursuit.full_binary_pursuit(work_items,
+        seg_data = full_binary_pursuit.full_binary_pursuit(work_items,
                     data_dict, seg_number, sort_info, Probe.v_dtype,
                     overlap_ratio_threshold=2,
                     absolute_refractory_period=20e-4,
@@ -774,7 +774,6 @@ def spike_sort_parallel(Probe, **kwargs):
     # # Delete directory containing clips
     # if os.path.exists(settings['tmp_clips_dir']):
     #     rmtree(settings['tmp_clips_dir'])
-    sort_info['overlap_indices'] = overlap_indices
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info
 

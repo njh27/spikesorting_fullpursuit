@@ -482,6 +482,8 @@ def calc_overlap_ratio(n1_spikes, n2_spikes, max_samples):
     n2_spike_train = compute_spike_trains(n2_spikes[n2_start:n2_stop],
                                           max_samples, overlap_win)
     num_hits = np.count_nonzero(np.logical_and(n1_spike_train, n2_spike_train))
+    if num_hits == 0:
+        return 0.
     n1_misses = np.count_nonzero(np.logical_and(n1_spike_train, ~n2_spike_train))
     n2_misses = np.count_nonzero(np.logical_and(n2_spike_train, ~n1_spike_train))
     overlap_ratio = max(num_hits / (num_hits + n1_misses),

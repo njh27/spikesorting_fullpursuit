@@ -321,6 +321,11 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings = crossings[keep_clips]
         curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
         if settings['verbose']: print("After keep max on main removed", np.count_nonzero(~keep_clips), "clips", flush=True)
+        if crossings.size == 0:
+            exit_type = "No crossings over threshold."
+            # Raise error to force exit and wrap_up()
+            crossings, neuron_labels = [], []
+            raise NoSpikesError
 
         exit_type = "Found first clips"
 
@@ -758,7 +763,7 @@ def spike_sort_parallel(Probe, **kwargs):
                       'n_segments': len(segment_onsets)})
 
     for seg_number in range(0, len(segment_onsets)):
-        seg_data = full_binary_pursuit.full_binary_pursuit(work_items,
+        seg_data, overlap_indices = full_binary_pursuit.full_binary_pursuit(work_items,
                     data_dict, seg_number, sort_info, Probe.v_dtype,
                     overlap_ratio_threshold=2,
                     absolute_refractory_period=20e-4,
@@ -769,7 +774,7 @@ def spike_sort_parallel(Probe, **kwargs):
     # # Delete directory containing clips
     # if os.path.exists(settings['tmp_clips_dir']):
     #     rmtree(settings['tmp_clips_dir'])
-
+    sort_info['overlap_indices'] = overlap_indices
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info
 

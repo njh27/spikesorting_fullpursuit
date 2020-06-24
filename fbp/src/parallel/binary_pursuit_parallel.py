@@ -544,4 +544,4 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
 
-    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, overlap_indices

@@ -150,7 +150,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # plt.plot(templates.T)
     # plt.show()
 
-    crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
+    crossings, neuron_labels, bp_bool, clips, overlap_indices = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, template_labels, sort_info['sampling_rate'],
                     v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
                     thresh_sigma=1.645, kernels_path=None,
@@ -219,4 +219,4 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Make everything compatible with regular consolidate.WorkItemSummary
     sort_info['binary_pursuit_only'] = True
 
-    return seg_data
+    return seg_data, overlap_indices

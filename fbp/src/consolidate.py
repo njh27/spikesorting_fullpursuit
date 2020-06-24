@@ -698,7 +698,7 @@ class SegSummary(object):
         """
         self.summaries = []
         for n_wi in range(0, self.n_items):
-            if len(self.sort_data[n_wi][0]) == []:
+            if len(self.sort_data[n_wi][0]) == 0:
                 # No data for this item
                 continue
             if self.sort_data[n_wi][2].shape[1] != self.sort_info['n_samples_per_chan'] * self.sort_info['n_channels']:

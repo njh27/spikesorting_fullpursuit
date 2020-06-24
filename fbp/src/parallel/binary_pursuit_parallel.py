@@ -454,6 +454,28 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     # Shouldn't really be necessary with queue.finish() but potentially helpful
                     time.sleep(1)
 
+                best_spike_likelihoods = np.zeros(num_template_widths, dtype=np.float32)
+                best_spike_labels = np.zeros(num_template_widths, dtype=np.uint32)
+                best_spike_indices = np.zeros(num_template_widths, dtype=np.uint32)
+                cl.enqueue_copy(queue, best_spike_likelihoods, best_spike_likelihoods_buffer, wait_for=next_wait_event)
+                cl.enqueue_copy(queue, best_spike_labels, best_spike_labels_buffer, wait_for=next_wait_event)
+                cl.enqueue_copy(queue, best_spike_indices, best_spike_indices_buffer, wait_for=next_wait_event)
+
+                print("RATIOS", spike_biases / -template_sum_squared)
+                bias_ratios = spike_biases / -template_sum_squared
+                overlap_indices = []
+                added_bool = np.in1d(best_spike_indices, additional_spike_indices)
+                for spk in range(0, best_spike_likelihoods.shape[0]):
+                    if not added_bool[spk] or best_spike_likelihoods[spk] <= 0:
+                        continue
+                    spk_l = best_spike_labels[spk]
+                    lh_ratio = (best_spike_likelihoods[spk] + spike_biases[spk_l]) / -template_sum_squared[spk_l]
+                    if lh_ratio < (1-bias_ratios[spk_l]) or lh_ratio > (1 + bias_ratios[spk_l]):
+                        overlap_indices.append(best_spike_indices[spk])
+                overlap_indices = np.array(overlap_indices)
+                print("FOUND", overlap_indices.shape[0], "OVERLAP INDICES")
+                break
+
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()
             spike_biases_buffer.release()

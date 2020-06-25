@@ -181,6 +181,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         # Get all of our kernels
         compute_residual_kernel = prg.compute_residual
         compute_template_maximum_likelihood_kernel = prg.compute_template_maximum_likelihood
+        overlap_recheck_indices_kernel = prg.overlap_recheck_indices
+        check_overlap_reassignments_kernel = prg.check_overlap_reassignments
         binary_pursuit_kernel = prg.binary_pursuit
         get_adjusted_clips_kernel = prg.get_adjusted_clips
 
@@ -313,9 +315,12 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             best_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
             window_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.arange(0, num_template_widths, 1, dtype=np.uint32))
             next_check_window_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint8))
+            overlap_recheck_window_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint8))
+            overlap_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.arange(0, num_template_widths, 1, dtype=np.uint32))
 
             # This is separate storage for transferring data from next check, NOT A HOST (maybe could be)
             next_check_window = np.zeros(num_template_widths, dtype=np.uint8)
+            overlap_recheck_window = np.zeros(num_template_widths, dtype=np.uint8)
 
             # Set input arguments for template maximum likelihood kernel
             compute_template_maximum_likelihood_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
@@ -333,7 +338,31 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             compute_template_maximum_likelihood_kernel.set_arg(12, best_spike_labels_buffer) # Storage for peak likelihood label
             compute_template_maximum_likelihood_kernel.set_arg(13, best_spike_likelihoods_buffer) # Storage for peak likelihood value
             compute_template_maximum_likelihood_kernel.set_arg(14, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
+            compute_template_maximum_likelihood_kernel.set_arg(15, overlap_recheck_window_buffer)
 
+            # Set input arguments for template maximum likelihood kernel
+            overlap_recheck_indices_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
+            overlap_recheck_indices_kernel.set_arg(1, chunk_voltage_length) # Length of chunk voltage
+            overlap_recheck_indices_kernel.set_arg(2, n_chans) # number of neighboring channels
+            overlap_recheck_indices_kernel.set_arg(3, template_buffer) # Our template buffer, created previously
+            overlap_recheck_indices_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of unique neurons, M
+            overlap_recheck_indices_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
+            overlap_recheck_indices_kernel.set_arg(6, np.uint32(0)) # Template number
+            overlap_recheck_indices_kernel.set_arg(7, np.uint32(0)) # Main template shift index
+            overlap_recheck_indices_kernel.set_arg(8, np.uint32(10)) # +/- Shift indices to check
+            overlap_recheck_indices_kernel.set_arg(9, template_sum_squared_buffer) # Sum of squared templated
+            overlap_recheck_indices_kernel.set_arg(10, spike_biases_buffer) # Bias
+            overlap_recheck_indices_kernel.set_arg(11, overlap_indices_buffer) # Actual window indices to check
+            overlap_recheck_indices_kernel.set_arg(12, np.uint32(num_template_widths)) # Number of actual window indices to check
+            overlap_recheck_indices_kernel.set_arg(13, best_spike_indices_buffer) # Storage for peak likelihood index
+            overlap_recheck_indices_kernel.set_arg(14, best_spike_labels_buffer) # Storage for peak likelihood label
+            overlap_recheck_indices_kernel.set_arg(15, best_spike_likelihoods_buffer) # Storage for peak likelihood value
+
+            check_overlap_reassignments_kernel.set_arg(0, overlap_indices_buffer) # Actual window indices to check
+            check_overlap_reassignments_kernel.set_arg(1, np.uint32(num_template_widths)) # Number of actual window indices to check
+            check_overlap_reassignments_kernel.set_arg(2, best_spike_indices_buffer) # Storage for peak likelihood index
+            check_overlap_reassignments_kernel.set_arg(3, best_spike_likelihoods_buffer) # Storage for peak likelihood value
+            check_overlap_reassignments_kernel.set_arg(4, overlap_recheck_window_buffer)
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
@@ -382,6 +411,52 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                         queue.finish()
                         next_wait_event = [temp_ml_event]
 
+
+                # Read out the data from overlap_recheck_window_buffer
+                next_wait_event = [cl.enqueue_copy(queue, overlap_recheck_window, overlap_recheck_window_buffer, wait_for=next_wait_event)]
+                queue.finish() # Needs to finish copy before deciding indices
+                # Use overlap_recheck_window data to determine window indices for overlap recheck
+                overlap_window_indices = np.uint32(np.nonzero(overlap_recheck_window)[0])
+                # Copy the overlap window indices to the overlap indices buffer
+                next_wait_event = [cl.enqueue_copy(queue, overlap_indices_buffer, overlap_window_indices, wait_for=next_wait_event)]
+                # Reset number of indices to check for overlap recheck kernel
+                total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
+
+                n_fix_shifts = 10
+                n_second_shifts = 10
+                overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
+                overlap_recheck_indices_kernel.set_arg(12, np.uint32((overlap_window_indices.shape[0])) # Number of actual window indices to check
+                check_overlap_reassignments_kernel.set_arg(1, np.uint32((overlap_window_indices.shape[0])) # Number of actual window indices to check
+                for template_index in range(0, templates.shape[0]):
+                    for fix_index in range(-1*n_fix_shifts, n_fix_shifts+1):
+                        overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
+                        overlap_recheck_indices_kernel.set_arg(7, np.uint32(fix_index)) # Main template shift index
+                        for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
+                            # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
+                            overlap_event = cl.enqueue_nd_range_kernel(queue,
+                                                  overlap_recheck_indices_kernel,
+                                                  (n_to_enqueue, ), (pursuit_local_work_size, ),
+                                                  global_work_offset=(enqueue_step, ),
+                                                  wait_for=next_wait_event)
+                            queue.finish()
+                            next_wait_event = [overlap_event]
+                for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
+                    # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
+                    overlap_event = cl.enqueue_nd_range_kernel(queue,
+                                          check_overlap_reassignments_kernel,
+                                          (n_to_enqueue, ), (pursuit_local_work_size, ),
+                                          global_work_offset=(enqueue_step, ),
+                                          wait_for=next_wait_event)
+                    queue.finish()
+                    next_wait_event = [overlap_event]
+                # Reset overlap_recheck_window for next pass and copy to GPU
+                overlap_recheck_window[:] = 0
+                next_wait_event = [cl.enqueue_copy(queue, overlap_recheck_window_buffer, overlap_recheck_window, wait_for=next_wait_event)]
+
+
+
+
+
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
                     # time.sleep(.1)
@@ -401,6 +476,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 # Read out the data from next_check_window_buffer
                 # Already waited for pursuit to finish above
                 next_wait_event = [cl.enqueue_copy(queue, next_check_window, next_check_window_buffer, wait_for=None)]
+                queue.finish() # Needs to finish copy before deciding indices
                 # Use next_check_window data to determine window indices for next pass
                 new_window_indices = np.uint32(np.nonzero(next_check_window)[0])
                 # Copy the new window indices to the window indices buffer
@@ -453,27 +529,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 if new_window_indices.shape[0] > max_enqueue_pursuit:
                     # Shouldn't really be necessary with queue.finish() but potentially helpful
                     time.sleep(1)
-
-                best_spike_likelihoods = np.zeros(num_template_widths, dtype=np.float32)
-                best_spike_labels = np.zeros(num_template_widths, dtype=np.uint32)
-                best_spike_indices = np.zeros(num_template_widths, dtype=np.uint32)
-                cl.enqueue_copy(queue, best_spike_likelihoods, best_spike_likelihoods_buffer, wait_for=next_wait_event)
-                cl.enqueue_copy(queue, best_spike_labels, best_spike_labels_buffer, wait_for=next_wait_event)
-                cl.enqueue_copy(queue, best_spike_indices, best_spike_indices_buffer, wait_for=next_wait_event)
-
-                print("RATIOS", spike_biases / -template_sum_squared)
-                bias_ratios = spike_biases / -template_sum_squared
-                overlap_indices = []
-                added_bool = np.in1d(best_spike_indices, additional_spike_indices)
-                for spk in range(0, best_spike_likelihoods.shape[0]):
-                    if not added_bool[spk] or best_spike_likelihoods[spk] <= 0:
-                        continue
-                    spk_l = best_spike_labels[spk]
-                    lh_ratio = (best_spike_likelihoods[spk] + spike_biases[spk_l]) / -template_sum_squared[spk_l]
-                    if lh_ratio < (1-bias_ratios[spk_l]) or lh_ratio > (1 + bias_ratios[spk_l]):
-                        overlap_indices.append(best_spike_indices[spk])
-                overlap_indices = np.array(overlap_indices)
-                print("FOUND", overlap_indices.shape[0], "OVERLAP INDICES")
+                print("BREAKING AFTER ONE ITERATION!!!!!!!!!!!")
                 break
 
             additional_spike_indices_buffer.release()
@@ -484,6 +540,9 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             best_spike_indices_buffer.release()
             window_indices_buffer.release()
             next_check_window_buffer.release()
+            overlap_recheck_window_buffer.release()
+            overlap_indices_buffer.release()
+
 
             # Read out the adjusted spikes here before releasing
             # the residual voltage. Only do this if there are spikes to get clips of
@@ -566,4 +625,4 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
 
-    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, overlap_indices
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, overlap_indices+clip_init_samples

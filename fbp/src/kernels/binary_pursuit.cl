@@ -22,7 +22,7 @@
 #endif
 
 /* Define NULL if it is not already defined by the compiler */
-#ifndef NULL 
+#ifndef NULL
 #define NULL ((void *)0)
 #endif
 
@@ -303,7 +303,8 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned int * restrict best_spike_indices,
     __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
-    __global unsigned char * restrict check_window_on_next_pass)
+    __global unsigned char * restrict check_window_on_next_pass,
+    __global unsigned char * restrict overlap_recheck)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -339,6 +340,7 @@ __kernel void compute_template_maximum_likelihood(
     __private float best_spike_likelihood_private = best_spike_likelihoods[id];
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
+    __private float raw_likelihood;
 
     if (template_number == 0)
     {
@@ -377,6 +379,21 @@ __kernel void compute_template_maximum_likelihood(
             }
         }
     }
+    if ((best_spike_likelihood_private > 0.0) && (best_spike_index_private >= start_of_my_window) && (best_spike_index_private <= end_of_my_window))
+    {
+        /* Best spike is in current window so check whether it violates its expected delta likelihood */
+        /* If yes, flag this spike for recheck, else set recheck back to zero */
+        raw_likelihood = best_spike_likelihood_private + gamma[best_spike_label_private];
+        if ((raw_likelihood < -1*template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private])
+            || (raw_likelihood > -1*template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]))
+        {
+            overlap_recheck[id] = 1;
+        }
+        else
+        {
+            overlap_recheck[id] = 0;
+        }
+    }
 
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;
@@ -384,6 +401,223 @@ __kernel void compute_template_maximum_likelihood(
     best_spike_indices[id] = best_spike_index_private;
     return;
 }
+
+/* Kernel chooses the current best_spike_label for its window ID and fixes its
+placement at the index best_spike_indices[best_spike_label] + fixed_shift_index.
+It then proceeds to compute the likelihood for the combination of this best unit
+at its new shifted fixed index, and the unit corresponding to template_number
+for all possible shifts +/- n_shift points relative to the fixed shift index.
+If the likelihood is improved over the current best likelihood in this window,
+the best_spike_likelihood for this window is updated, and best_spike_indices for
+this window is assigned as best_spike_indices[best_spike_label] + fixed_shift_index.
+The label for the best unit is unchanged. The test template indicated by template
+number and its optimal shift generating the peak likelihood are disregarded.
+Must be followed by a call to check_overlap_reassignments to guaruntee that
+indices are able to be added without interferring with other spikes.
+*/
+__kernel void overlap_recheck_indices(
+    __global voltage_type * restrict voltage,
+    const unsigned int voltage_length,
+    const unsigned int num_neighbor_channels,
+    __global const voltage_type * restrict templates,
+    const unsigned int num_templates,
+    const unsigned int template_length,
+    const unsigned int template_number,
+    const signed int fixed_shift_index,
+    const unsigned int n_shift_points,
+    __global const float * restrict template_sum_squared,
+    __global const float * restrict gamma,
+    __global const unsigned int * restrict window_indices,
+    const unsigned int num_window_indices,
+    __global unsigned int * restrict best_spike_indices,
+    __global unsigned int * restrict best_spike_labels,
+    __global float * restrict best_spike_likelihoods)
+{
+    const size_t global_id = get_global_id(0);
+    if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
+    {
+        return; /* Extra worker with nothing to do */
+    }
+    const size_t id = (num_window_indices > 0 && window_indices != NULL) ? window_indices[global_id] : global_id;
+    unsigned int i;
+    unsigned int j;
+
+    /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
+    /* All other spikes are ignored (previous window and next window) */
+    // const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
+    // const unsigned int end_of_my_window = (id + 1) * template_length - 1;
+    // const unsigned int start = (template_length > start_of_my_window) ? 0 : (start_of_my_window - template_length);
+    // const unsigned int stop = (end_of_my_window + template_length) > voltage_length ? voltage_length : (end_of_my_window + template_length);
+
+    if (num_neighbor_channels == 0)
+    {
+        return; /* Invalid number of channels (must be >= 1) */
+    }
+    if (end_of_my_window >= voltage_length - template_length)
+    {
+        return; /* Nothing to do, the end of the current window exceeds the bounds of voltage */
+    }
+
+    /* Cache the data from the global buffers so that we only have to write to them once */
+    __private float best_spike_likelihood_private = best_spike_likelihoods[id];
+    __private unsigned int best_spike_label_private = best_spike_labels[id];
+    __private unsigned int best_spike_index_private = best_spike_indices[id];
+    __private float template_likelihood_at_index;
+    __private float shifted_template_sse;
+    __private float shift_sum;
+    __private unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_index;
+    __private unsigned int delta_index;
+
+    /* Get likelihood for the current best spike label at the input fixed index relative to best index */
+    template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
+        absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
+        template_sum_squared, gamma);
+    /* Need to remove additive quantities to get appropriate distributivity of convolution */
+    template_likelihood_at_index = template_likelihood_at_index - template_sum_squared[best_spike_label_private]; //+ gamma[best_spike_label_private]?
+
+    /* Find absolute voltage indices we will check within shift range */
+    const unsigned int shift_start = (n_shift_points > absolute_fixed_index) ? 0 : (absolute_fixed_index - n_shift_points);
+    const unsigned int shift_stop = ((n_shift_points + absolute_fixed_index) > voltage_length) ? voltage_length : (absolute_fixed_index + n_shift_points);
+
+    /* Compute the likelihood for adding the template given the position of the fixed best unit */
+    for (i = 0; i < (unsigned) shift_stop - shift_start; i++)
+    {
+        float current_maximum_likelihood = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
+            i + shift_start, templates, num_templates, template_length, template_number,
+            template_sum_squared, gamma);
+        /* Need to remove additive quantities to get appropriate distributivity of convolution */
+        current_maximum_likelihood = current_maximum_likelihood - template_sum_squared[template_number]; //+ gamma[template_number]?
+
+        /* Compute the template sum squared for the combined templates at current shift */
+        if ((i + shift_start) < absolute_fixed_index)
+        {
+            shifted_template_sse = 0.0;
+            delta_index = absolute_fixed_index - (i + shift_start);
+            for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
+            {
+                unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
+                unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
+                for (j = 0; j < (delta_index + template_length); j++)
+                {
+                    /* Data only available for test template */
+                    if (j < delta_index)
+                    {
+                        shifted_template_sse = shifted_template_sse + templates[template_offset + j] * templates[template_offset + j];
+                    }
+                    /* Data available for both templates */
+                    if ((j >= delta_index) && (j < template_length))
+                    {
+                        shift_sum = templates[template_offset + j] + templates[fixed_template_offset + j - delta_index];
+                        shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
+                    }
+                    /* Data only available for fixed template */
+                    if (j >= template_length)
+                    {
+                        shifted_template_sse = shifted_template_sse + templates[fixed_template_offset + j - delta_index] * templates[fixed_template_offset + j - delta_index];
+                    }
+                }
+            }
+        }
+        else
+        {
+            shifted_template_sse = 0.0;
+            delta_index = (i + shift_start) - absolute_fixed_index;
+            for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
+            {
+                unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
+                unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
+                for (j = 0; j < (delta_index + template_length); j++)
+                {
+                    /* Data only available for fixed template */
+                    if (j < delta_index)
+                    {
+                        shifted_template_sse = shifted_template_sse + templates[fixed_template_offset + j] * templates[fixed_template_offset + j];
+                    }
+                    /* Data available for both templates */
+                    if ((j >= delta_index) && (j < template_length))
+                    {
+                        shift_sum = templates[template_offset + j - delta_index] + templates[fixed_template_offset + j];
+                        shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
+                    }
+                    /* Data only available for test template */
+                    if (j >= template_length)
+                    {
+                        shifted_template_sse = shifted_template_sse + templates[template_offset + j - delta_index] * templates[template_offset + j - delta_index];
+                    }
+                }
+            }
+        }
+        /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
+        current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index
+        /* Correct current likelihood for the shifted template sse */
+        current_maximum_likelihood = current_maximum_likelihood - 0.5 * shifted_template_sse;
+
+        /* Current shifted likelihood beats previous best */
+        if (current_maximum_likelihood > best_spike_likelihood_private)
+        {
+            /* Reset the likelihood and best index. Label is FIXED. */
+            best_spike_likelihood_private = current_maximum_likelihood;
+            best_spike_index_private = absolute_fixed_index;
+        }
+    }
+    /* Write our results back to the global vectors */
+    best_spike_likelihoods[id] = best_spike_likelihood_private;
+    best_spike_labels[id] = best_spike_label_private;
+    best_spike_indices[id] = best_spike_index_private;
+    return;
+}
+
+/* If the new shifted index is outside
+the current window for this worker, it will check whether a spike was added
++/- 2 windows away (the closest a spike could have been added), and if so, will
+return, kicking the recheck can down the road until the next pass. */
+__kernel void check_overlap_reassignments(
+    __global const unsigned int * restrict window_indices,
+    const unsigned int num_window_indices,
+    __global unsigned int * restrict best_spike_indices,
+    __global float * restrict best_spike_likelihoods,
+    __global unsigned char * restrict overlap_recheck)
+{
+    const size_t global_id = get_global_id(0);
+    if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
+    {
+        return; /* Extra worker with nothing to do */
+    }
+    const size_t id = (num_window_indices > 0 && window_indices != NULL) ? window_indices[global_id] : global_id;
+    const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
+    const unsigned int end_of_my_window = (id + 1) * template_length - 1;
+
+    /* Since overlap_recheck spikes are all maximum likelihood in their window, */
+    /* we know there are no spikes in neighboring window. We instead must check */
+    /* two windows away for interference if a best index was moved out of its */
+    /* original window */
+    /* NOTE: I am not sure this is guarunteed to allow convergence with the */
+    /* policy of removing anything with a likelihood > 0.0 nearby */
+    if (best_spike_indices[id] < start_of_my_window)
+    {
+        if (id > 1)
+        {
+            if (best_spike_likelihoods[id - 2] > 0.0)
+            {
+                /* Another spike is too close by to move to this index so kick the can down the road */
+                best_spike_likelihoods[id] = 0.0
+            }
+        }
+    }
+    if (best_spike_indices[id] > end_of_my_window)
+    {
+        if (id < num_window_indices - 2)
+        {
+            if (best_spike_likelihoods[id + 2] > 0.0)
+            {
+                /* Another spike is too close by to move to this index so kick the can down the road */
+                best_spike_likelihoods[id] = 0.0
+            }
+        }
+    }
+    return;
+}
+
 
 /**
  * Kernel used to perform binary pursuit. The value of each residual voltage is checked

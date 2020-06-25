@@ -576,6 +576,7 @@ __kernel void check_overlap_reassignments(
     const unsigned int num_window_indices,
     __global unsigned int * restrict best_spike_indices,
     __global float * restrict best_spike_likelihoods,
+    __global unsigned char * restrict check_window_on_next_pass,
     __global unsigned char * restrict overlap_recheck)
 {
     const size_t global_id = get_global_id(0);
@@ -592,7 +593,8 @@ __kernel void check_overlap_reassignments(
     /* two windows away for interference if a best index was moved out of its */
     /* original window */
     /* NOTE: I am not sure this is guarunteed to allow convergence with the */
-    /* policy of removing anything with a likelihood > 0.0 nearby */
+    /* policy of removing anything with a likelihood > 0.0 nearby. Whether */
+    /* nearby units are also part of the overlap check must be considered. */
     if (best_spike_indices[id] < start_of_my_window)
     {
         if (id > 1)
@@ -601,6 +603,7 @@ __kernel void check_overlap_reassignments(
             {
                 /* Another spike is too close by to move to this index so kick the can down the road */
                 best_spike_likelihoods[id] = 0.0
+                /* NOTE: need to add a policy for reassigning check_window_on_next_pass
             }
         }
     }

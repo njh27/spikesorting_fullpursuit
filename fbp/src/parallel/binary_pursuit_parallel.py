@@ -358,12 +358,13 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             overlap_recheck_indices_kernel.set_arg(14, best_spike_labels_buffer) # Storage for peak likelihood label
             overlap_recheck_indices_kernel.set_arg(15, best_spike_likelihoods_buffer) # Storage for peak likelihood value
 
-            check_overlap_reassignments_kernel.set_arg(0, overlap_indices_buffer) # Actual window indices to check
-            check_overlap_reassignments_kernel.set_arg(1, np.uint32(num_template_widths)) # Number of actual window indices to check
-            check_overlap_reassignments_kernel.set_arg(2, best_spike_indices_buffer) # Storage for peak likelihood index
-            check_overlap_reassignments_kernel.set_arg(3, best_spike_likelihoods_buffer) # Storage for peak likelihood value
-            check_overlap_reassignments_kernel.set_arg(4, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
-            check_overlap_reassignments_kernel.set_arg(5, overlap_recheck_window_buffer)
+            check_overlap_reassignments_kernel.set_arg(0, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
+            check_overlap_reassignments_kernel.set_arg(1, overlap_indices_buffer) # Actual window indices to check
+            check_overlap_reassignments_kernel.set_arg(2, np.uint32(num_template_widths)) # Number of actual window indices to check
+            check_overlap_reassignments_kernel.set_arg(3, best_spike_indices_buffer) # Storage for peak likelihood index
+            check_overlap_reassignments_kernel.set_arg(4, best_spike_likelihoods_buffer) # Storage for peak likelihood value
+            check_overlap_reassignments_kernel.set_arg(5, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
+            check_overlap_reassignments_kernel.set_arg(6, overlap_recheck_window_buffer)
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
@@ -426,8 +427,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 n_fix_shifts = 10
                 n_second_shifts = 10
                 overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
-                overlap_recheck_indices_kernel.set_arg(12, np.uint32((overlap_window_indices.shape[0])) # Number of actual window indices to check
-                check_overlap_reassignments_kernel.set_arg(1, np.uint32((overlap_window_indices.shape[0])) # Number of actual window indices to check
+                overlap_recheck_indices_kernel.set_arg(12, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
+                check_overlap_reassignments_kernel.set_arg(2, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                 for template_index in range(0, templates.shape[0]):
                     for fix_index in range(-1*n_fix_shifts, n_fix_shifts+1):
                         overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
@@ -530,8 +531,6 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 if new_window_indices.shape[0] > max_enqueue_pursuit:
                     # Shouldn't really be necessary with queue.finish() but potentially helpful
                     time.sleep(1)
-                print("BREAKING AFTER ONE ITERATION!!!!!!!!!!!")
-                break
 
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()
@@ -626,4 +625,4 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
 
-    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, overlap_indices+clip_init_samples
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, None

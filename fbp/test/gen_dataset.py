@@ -81,7 +81,7 @@ class TestProbe(electrode.AbstractProbe):
             """
         start = max(channel - 2, 0)
         stop = min(channel + 3, self.num_channels)
-        # start, stop = 0, 8
+        start, stop = 0, 5
         return np.arange(start, stop)
 
 

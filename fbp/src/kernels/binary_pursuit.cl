@@ -441,11 +441,12 @@ __kernel void overlap_recheck_indices(
     const size_t id = (num_window_indices > 0 && window_indices != NULL) ? window_indices[global_id] : global_id;
     unsigned int i;
     unsigned int j;
+    unsigned int current_channel;
 
     /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
     /* All other spikes are ignored (previous window and next window) */
     // const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
-    // const unsigned int end_of_my_window = (id + 1) * template_length - 1;
+    const unsigned int end_of_my_window = (id + 1) * template_length - 1;
     // const unsigned int start = (template_length > start_of_my_window) ? 0 : (start_of_my_window - template_length);
     // const unsigned int stop = (end_of_my_window + template_length) > voltage_length ? voltage_length : (end_of_my_window + template_length);
 
@@ -548,7 +549,7 @@ __kernel void overlap_recheck_indices(
             }
         }
         /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
-        current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index
+        current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index;
         /* Correct current likelihood for the shifted template sse */
         current_maximum_likelihood = current_maximum_likelihood - 0.5 * shifted_template_sse;
 
@@ -572,6 +573,7 @@ the current window for this worker, it will check whether a spike was added
 +/- 2 windows away (the closest a spike could have been added), and if so, will
 return, kicking the recheck can down the road until the next pass. */
 __kernel void check_overlap_reassignments(
+    const unsigned int template_length,
     __global const unsigned int * restrict window_indices,
     const unsigned int num_window_indices,
     __global unsigned int * restrict best_spike_indices,
@@ -595,6 +597,9 @@ __kernel void check_overlap_reassignments(
     /* NOTE: I am not sure this is guarunteed to allow convergence with the */
     /* policy of removing anything with a likelihood > 0.0 nearby. Whether */
     /* nearby units are also part of the overlap check must be considered. */
+    /* NOTE: There is potential for a race condition with reassigning the */
+    /* likelihoods here. I think since it is only in cases of a shifted window */
+    /* it shouldn't actually matter */
     if (best_spike_indices[id] < start_of_my_window)
     {
         if (id > 1)
@@ -602,8 +607,9 @@ __kernel void check_overlap_reassignments(
             if (best_spike_likelihoods[id - 2] > 0.0)
             {
                 /* Another spike is too close by to move to this index so kick the can down the road */
-                best_spike_likelihoods[id] = 0.0
-                /* NOTE: need to add a policy for reassigning check_window_on_next_pass
+                best_spike_likelihoods[id] = 0.0;
+                /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
+                /* These have already been assigned as check windows as have their immediate neighbors */
             }
         }
     }
@@ -611,10 +617,13 @@ __kernel void check_overlap_reassignments(
     {
         if (id < num_window_indices - 2)
         {
-            if (best_spike_likelihoods[id + 2] > 0.0)
+            /* Requiring that overlap_recheck == 0 allows convergence and enacts */
+            /* the policy that in the event two neighbors are both rechecks, we */
+            /* keep the one to the left */
+            if ((best_spike_likelihoods[id + 2] > 0.0) && (overlap_recheck[id + 2] == 0))
             {
                 /* Another spike is too close by to move to this index so kick the can down the road */
-                best_spike_likelihoods[id] = 0.0
+                best_spike_likelihoods[id] = 0.0;
             }
         }
     }

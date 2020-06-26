@@ -537,7 +537,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     # Shouldn't really be necessary with queue.finish() but potentially helpful
                     time.sleep(1)
                 # print("!!! BREAKING AFTER ONE LOOP")
-                # break
+                # if n_loops == 3:
+                #     break
 
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()

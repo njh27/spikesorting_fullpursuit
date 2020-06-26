@@ -394,6 +394,10 @@ __kernel void compute_template_maximum_likelihood(
             overlap_recheck[id] = 0;
         }
     }
+    else
+    {
+        best_spike_likelihood_private = 0.0;
+    }
     /* Needs set to default? */
     // overlap_best_spike_indices[id] = best_spike_index_private
 
@@ -487,7 +491,7 @@ __kernel void overlap_recheck_indices(
         absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
         template_sum_squared, gamma);
     /* Need to remove additive quantities to get appropriate distributivity of convolution */
-    template_likelihood_at_index = template_likelihood_at_index - template_sum_squared[best_spike_label_private];// + gamma[best_spike_label_private];
+    template_likelihood_at_index = template_likelihood_at_index + gamma[best_spike_label_private];
 
     /* Find absolute voltage indices we will check within shift range */
     const unsigned int shift_start = (n_shift_points > absolute_fixed_index) ? 0 : (absolute_fixed_index - n_shift_points);
@@ -500,7 +504,7 @@ __kernel void overlap_recheck_indices(
             i + shift_start, templates, num_templates, template_length, template_number,
             template_sum_squared, gamma);
         /* Need to remove additive quantities to get appropriate distributivity of convolution */
-        current_maximum_likelihood = current_maximum_likelihood - template_sum_squared[template_number];// + gamma[template_number];
+        current_maximum_likelihood = current_maximum_likelihood + gamma[template_number];
 
         /* Compute the template sum squared for the combined templates at current shift */
         if ((i + shift_start) < absolute_fixed_index)
@@ -562,9 +566,7 @@ __kernel void overlap_recheck_indices(
             }
         }
         /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
-        current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index;
-        /* Correct current likelihood for the shifted template sse */
-        current_maximum_likelihood = current_maximum_likelihood - 0.5 * shifted_template_sse;
+        current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index - 0.5 * shifted_template_sse - gamma[best_spike_label_private];
 
         /* Current shifted likelihood beats previous best */
         if (current_maximum_likelihood > best_spike_likelihood_private)
@@ -615,7 +617,7 @@ __kernel void check_overlap_reassignments(
     /* NOTE: There is potential for a race condition with reassigning the */
     /* likelihoods here. I think since it is only in cases of a shifted window */
     /* it shouldn't actually matter */
-    if (best_spike_indices[id] < start_of_my_window)
+    if (overlap_best_spike_indices[id] < start_of_my_window)
     {
         if (id > 1)
         {
@@ -623,22 +625,32 @@ __kernel void check_overlap_reassignments(
             {
                 /* Another spike is too close by to move to this index so kick the can down the road */
                 best_spike_likelihoods[id] = 0.0;
-
+                /* Also kicks the can for its immediate neighbors */
+                best_spike_likelihoods[id+1] = 0.0;
+                best_spike_likelihoods[id-1] = 0.0;
+                /* But leave their recheck status the same? */
             }
             else
             {
-                /* We are adding this spike to a different window, so set old window to 0 */
-                best_spike_likelihoods[id + 1] = 0.0;
                 /* Assign likelihood to new window */
                 best_spike_likelihoods[id - 1] = best_spike_likelihoods[id];
                 best_spike_indices[id - 1] = overlap_best_spike_indices[id];
+                /* We are adding this spike to a different window, so set old window to 0 */
+                best_spike_likelihoods[id + 1] = 0.0;
+                best_spike_likelihoods[id] = 0.0;
                 /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
                 /* Main window has already been assigned as check windows as have their immediate neighbors */
                 check_window_on_next_pass[id - 2] = 1;
+                // check_window_on_next_pass[id + 1] = 0;
             }
         }
+        else
+        {
+          /* Just add the spike, neighboring window criteria should already be taken care of */
+          best_spike_indices[id] = overlap_best_spike_indices[id];
+        }
     }
-    else if (best_spike_indices[id] > end_of_my_window)
+    else if (overlap_best_spike_indices[id] > end_of_my_window)
     {
         if (id < num_window_indices - 2)
         {
@@ -649,18 +661,29 @@ __kernel void check_overlap_reassignments(
             {
                 /* Another spike is too close by to move to this index so kick the can down the road */
                 best_spike_likelihoods[id] = 0.0;
+                /* Also kicks the can for its immediate neighbors */
+                best_spike_likelihoods[id+1] = 0.0;
+                best_spike_likelihoods[id-1] = 0.0;
+                /* But leave their recheck status the same? */
             }
             else
             {
-                /* We are adding this spike to a different window, so set old window to 0 */
-                best_spike_likelihoods[id - 1] = 0.0;
                 /* Assign likelihood to new window */
                 best_spike_likelihoods[id + 1] = best_spike_likelihoods[id];
                 best_spike_indices[id + 1] = overlap_best_spike_indices[id];
+                /* We are adding this spike to a different window, so set old window to 0 */
+                best_spike_likelihoods[id - 1] = 0.0;
+                best_spike_likelihoods[id] = 0.0;
                 /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
                 /* Main window has already been assigned as check windows as have their immediate neighbors */
                 check_window_on_next_pass[id + 2] = 1;
+                // check_window_on_next_pass[id - 1] = 0;
             }
+        }
+        else
+        {
+          /* Just add the spike, neighboring window criteria should already be taken care of */
+          best_spike_indices[id] = overlap_best_spike_indices[id];
         }
     }
     else

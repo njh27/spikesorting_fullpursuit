@@ -536,6 +536,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 if new_window_indices.shape[0] > max_enqueue_pursuit:
                     # Shouldn't really be necessary with queue.finish() but potentially helpful
                     time.sleep(1)
+                # print("!!! BREAKING AFTER ONE LOOP")
+                # break
 
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()

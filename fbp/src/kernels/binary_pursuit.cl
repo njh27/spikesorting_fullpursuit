@@ -629,13 +629,16 @@ __kernel void check_overlap_reassignments(
             {
                 /* We are adding this spike to a different window, so set old window to 0 */
                 best_spike_likelihoods[id + 1] = 0.0;
+                /* Assign likelihood to new window */
+                best_spike_likelihoods[id - 1] = best_spike_likelihoods[id];
+                best_spike_indices[id - 1] = overlap_best_spike_indices[id];
                 /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
                 /* Main window has already been assigned as check windows as have their immediate neighbors */
                 check_window_on_next_pass[id - 2] = 1;
             }
         }
     }
-    if (best_spike_indices[id] > end_of_my_window)
+    else if (best_spike_indices[id] > end_of_my_window)
     {
         if (id < num_window_indices - 2)
         {
@@ -651,14 +654,21 @@ __kernel void check_overlap_reassignments(
             {
                 /* We are adding this spike to a different window, so set old window to 0 */
                 best_spike_likelihoods[id - 1] = 0.0;
+                /* Assign likelihood to new window */
+                best_spike_likelihoods[id + 1] = best_spike_likelihoods[id];
+                best_spike_indices[id + 1] = overlap_best_spike_indices[id];
                 /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
                 /* Main window has already been assigned as check windows as have their immediate neighbors */
                 check_window_on_next_pass[id + 2] = 1;
             }
         }
     }
-    /* Assign this overlap's best index as the best */
-    best_spike_indices[id] = overlap_best_spike_indices[id];
+    else
+    {
+      /* Assign this overlap's best index as the best */
+      best_spike_indices[id] = overlap_best_spike_indices[id];
+    }
+
     return;
 }
 

@@ -463,11 +463,19 @@ __kernel void overlap_recheck_indices(
     __private float best_spike_likelihood_private = best_spike_likelihoods[id];
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
+
+    if (((signed int) (best_spike_index_private + fixed_shift_index) < 0) || ((best_spike_index_private + fixed_shift_index) >= (voltage_length - template_length)))
+    {
+        return; // Fixed index is outside voltage range
+    }
+    
     __private float template_likelihood_at_index;
     __private float shifted_template_sse;
     __private float shift_sum;
     __private unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_index;
     __private unsigned int delta_index;
+
+
 
     /* Get likelihood for the current best spike label at the input fixed index relative to best index */
     template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,

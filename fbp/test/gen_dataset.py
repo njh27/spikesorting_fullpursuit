@@ -81,7 +81,7 @@ class TestProbe(electrode.AbstractProbe):
             """
         start = max(channel - 2, 0)
         stop = min(channel + 3, self.num_channels)
-        start, stop = 0, 5
+        start, stop = 0, 8
         return np.arange(start, stop)
 
 
@@ -294,6 +294,11 @@ class TestDataset(object):
             spiketrain[0:half_temp_width+2] = False # Ensure spike times will not overlap beginning
             spiketrain[-(half_temp_width+2):] = False # or overlap end
             self.actual_IDs[neuron] = np.nonzero(spiketrain)[0] - half_temp_width
+
+            if neuron == 1:
+                print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
+                self.actual_IDs[neuron] = self.actual_IDs[neuron-1] + np.random.randint(0, 15, self.actual_IDs[neuron-1].size)
+
             remove_IDs = np.zeros(self.actual_IDs[neuron].size, dtype=np.bool)
             for i, spk_ind in enumerate(self.actual_IDs[neuron]):
                 chan_scaling_factors = drift_funs[neuron](spk_ind)

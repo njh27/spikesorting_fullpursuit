@@ -424,8 +424,9 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 # Reset number of indices to check for overlap recheck kernel
                 total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
 
-                n_fix_shifts = 10
-                n_second_shifts = 10
+                print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")
+                n_fix_shifts = 40
+                n_second_shifts = 40
                 overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
                 overlap_recheck_indices_kernel.set_arg(12, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                 check_overlap_reassignments_kernel.set_arg(2, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
@@ -471,7 +472,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     next_wait_event = [pursuit_event]
 
                 cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=next_wait_event)
-                # print("Added", num_additional_spikes[0], "secret spikes", flush=True)
+                print("Added", num_additional_spikes[0], "secret spikes", flush=True)
                 if (num_additional_spikes[0] == 0):
                     break # Converged, no spikes added in last pass
 

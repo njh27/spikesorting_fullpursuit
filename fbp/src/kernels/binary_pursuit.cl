@@ -222,7 +222,7 @@ static float compute_maximum_likelihood(
     {
         return maximum_likelihood; /* Returns maximum likelihood = 0.0 */
     }
-    if (template_number >= template_length)
+    if (template_number >= num_templates)
     {
         return maximum_likelihood; /* Invalid template number, return 0.0 */
     }
@@ -434,7 +434,7 @@ __kernel void overlap_recheck_indices(
     const unsigned int n_shift_points,
     __global const float * restrict template_sum_squared,
     __global const float * restrict gamma,
-    __global const unsigned int * restrict window_indices,
+    __global const unsigned int * restrict overlap_window_indices,
     const unsigned int num_window_indices,
     __global unsigned int * restrict best_spike_indices,
     __global unsigned int * restrict best_spike_labels,
@@ -442,11 +442,11 @@ __kernel void overlap_recheck_indices(
     __global unsigned int * restrict overlap_best_spike_indices)
 {
     const size_t global_id = get_global_id(0);
-    if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
+    if (num_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_window_indices)
     {
         return; /* Extra worker with nothing to do */
     }
-    const size_t id = (num_window_indices > 0 && window_indices != NULL) ? window_indices[global_id] : global_id;
+    const size_t id = (num_window_indices > 0 && overlap_window_indices != NULL) ? overlap_window_indices[global_id] : global_id;
     unsigned int i;
     unsigned int j;
     unsigned int current_channel;
@@ -591,7 +591,7 @@ the current window for this worker, it will check whether a spike was added
 return, kicking the recheck can down the road until the next pass. */
 __kernel void check_overlap_reassignments(
     const unsigned int template_length,
-    __global const unsigned int * restrict window_indices,
+    __global const unsigned int * restrict overlap_window_indices,
     const unsigned int num_window_indices,
     __global unsigned int * restrict best_spike_indices,
     __global float * restrict best_spike_likelihoods,
@@ -600,11 +600,11 @@ __kernel void check_overlap_reassignments(
     __global unsigned int * restrict overlap_best_spike_indices)
 {
     const size_t global_id = get_global_id(0);
-    if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
+    if (num_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_window_indices)
     {
         return; /* Extra worker with nothing to do */
     }
-    const size_t id = (num_window_indices > 0 && window_indices != NULL) ? window_indices[global_id] : global_id;
+    const size_t id = (num_window_indices > 0 && overlap_window_indices != NULL) ? overlap_window_indices[global_id] : global_id;
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
     const unsigned int end_of_my_window = (id + 1) * template_length - 1;
 

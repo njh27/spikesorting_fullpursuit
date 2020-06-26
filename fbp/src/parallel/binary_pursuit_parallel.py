@@ -340,6 +340,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             compute_template_maximum_likelihood_kernel.set_arg(13, best_spike_likelihoods_buffer) # Storage for peak likelihood value
             compute_template_maximum_likelihood_kernel.set_arg(14, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
             compute_template_maximum_likelihood_kernel.set_arg(15, overlap_recheck_window_buffer)
+            compute_template_maximum_likelihood_kernel.set_arg(16, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
 
             # Set input arguments for template maximum likelihood kernel
             overlap_recheck_indices_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
@@ -422,43 +423,45 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 queue.finish() # Needs to finish copy before deciding indices
                 # Use overlap_recheck_window data to determine window indices for overlap recheck
                 overlap_window_indices = np.uint32(np.nonzero(overlap_recheck_window)[0])
-                # Copy the overlap window indices to the overlap indices buffer
-                next_wait_event = [cl.enqueue_copy(queue, overlap_indices_buffer, overlap_window_indices, wait_for=next_wait_event)]
-                queue.finish() # Needs to finish copy before checking indices
-                # Reset number of indices to check for overlap recheck kernel
-                total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
+                if overlap_window_indices.shape[0] > 0:
+                    # Still more flagged spikes to check
+                    print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")
+                    # Copy the overlap window indices to the overlap indices buffer
+                    next_wait_event = [cl.enqueue_copy(queue, overlap_indices_buffer, overlap_window_indices, wait_for=next_wait_event)]
+                    queue.finish() # Needs to finish copy before checking indices
+                    # Reset number of indices to check for overlap recheck kernel
+                    total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
 
-                print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")
-                n_fix_shifts = 10
-                n_second_shifts = 10
-                overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
-                overlap_recheck_indices_kernel.set_arg(12, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
-                check_overlap_reassignments_kernel.set_arg(2, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
-                for template_index in range(0, templates.shape[0]):
-                    for fix_index in range(-1*n_fix_shifts, n_fix_shifts+1):
-                        overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
-                        overlap_recheck_indices_kernel.set_arg(7, np.uint32(fix_index)) # Main template shift index
-                        for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
-                            # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
-                            overlap_event = cl.enqueue_nd_range_kernel(queue,
-                                                  overlap_recheck_indices_kernel,
-                                                  (n_to_enqueue, ), (pursuit_local_work_size, ),
-                                                  global_work_offset=(enqueue_step, ),
-                                                  wait_for=next_wait_event)
-                            queue.finish()
-                            next_wait_event = [overlap_event]
-                for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
-                    # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
-                    overlap_event = cl.enqueue_nd_range_kernel(queue,
-                                          check_overlap_reassignments_kernel,
-                                          (n_to_enqueue, ), (pursuit_local_work_size, ),
-                                          global_work_offset=(enqueue_step, ),
-                                          wait_for=next_wait_event)
-                    queue.finish()
-                    next_wait_event = [overlap_event]
-                # Reset overlap_recheck_window for next pass and copy to GPU
-                overlap_recheck_window[:] = 0
-                next_wait_event = [cl.enqueue_copy(queue, overlap_recheck_window_buffer, overlap_recheck_window, wait_for=next_wait_event)]
+                    n_fix_shifts = 10
+                    n_second_shifts = 10
+                    overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
+                    overlap_recheck_indices_kernel.set_arg(12, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
+                    check_overlap_reassignments_kernel.set_arg(2, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
+                    for template_index in range(0, templates.shape[0]):
+                        for fix_index in range(-1*n_fix_shifts, n_fix_shifts+1):
+                            overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
+                            overlap_recheck_indices_kernel.set_arg(7, np.uint32(fix_index)) # Main template shift index
+                            for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
+                                # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
+                                overlap_event = cl.enqueue_nd_range_kernel(queue,
+                                                      overlap_recheck_indices_kernel,
+                                                      (n_to_enqueue, ), (pursuit_local_work_size, ),
+                                                      global_work_offset=(enqueue_step, ),
+                                                      wait_for=next_wait_event)
+                                queue.finish()
+                                next_wait_event = [overlap_event]
+                    for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
+                        # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
+                        overlap_event = cl.enqueue_nd_range_kernel(queue,
+                                              check_overlap_reassignments_kernel,
+                                              (n_to_enqueue, ), (pursuit_local_work_size, ),
+                                              global_work_offset=(enqueue_step, ),
+                                              wait_for=next_wait_event)
+                        queue.finish()
+                        next_wait_event = [overlap_event]
+                    # Reset overlap_recheck_window for next pass and copy to GPU
+                    overlap_recheck_window[:] = 0
+                    next_wait_event = [cl.enqueue_copy(queue, overlap_recheck_window_buffer, overlap_recheck_window, wait_for=next_wait_event)]
 
 
 

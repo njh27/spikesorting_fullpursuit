@@ -304,7 +304,8 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
     __global unsigned char * restrict check_window_on_next_pass,
-    __global unsigned char * restrict overlap_recheck)
+    __global unsigned char * restrict overlap_recheck,
+    __global unsigned int * restrict overlap_best_spike_indices)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -399,7 +400,7 @@ __kernel void compute_template_maximum_likelihood(
         best_spike_likelihood_private = 0.0;
     }
     /* Needs set to default? */
-    // overlap_best_spike_indices[id] = best_spike_index_private
+    overlap_best_spike_indices[id] = best_spike_index_private;
 
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;
@@ -441,11 +442,11 @@ __kernel void overlap_recheck_indices(
     __global unsigned int * restrict overlap_best_spike_indices)
 {
     const size_t global_id = get_global_id(0);
-    if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
+    if (num_window_indices > 0 && overlap_best_spike_indices != NULL && global_id >= num_window_indices)
     {
         return; /* Extra worker with nothing to do */
     }
-    const size_t id = (num_window_indices > 0 && window_indices != NULL) ? window_indices[global_id] : global_id;
+    const size_t id = (num_window_indices > 0 && overlap_best_spike_indices != NULL) ? overlap_best_spike_indices[global_id] : global_id;
     unsigned int i;
     unsigned int j;
     unsigned int current_channel;
@@ -599,11 +600,11 @@ __kernel void check_overlap_reassignments(
     __global unsigned int * restrict overlap_best_spike_indices)
 {
     const size_t global_id = get_global_id(0);
-    if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
+    if (num_window_indices > 0 && overlap_best_spike_indices != NULL && global_id >= num_window_indices)
     {
         return; /* Extra worker with nothing to do */
     }
-    const size_t id = (num_window_indices > 0 && window_indices != NULL) ? window_indices[global_id] : global_id;
+    const size_t id = (num_window_indices > 0 && overlap_best_spike_indices != NULL) ? overlap_best_spike_indices[global_id] : global_id;
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
     const unsigned int end_of_my_window = (id + 1) * template_length - 1;
 

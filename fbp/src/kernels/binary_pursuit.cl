@@ -431,7 +431,8 @@ __kernel void overlap_recheck_indices(
     const unsigned int num_window_indices,
     __global unsigned int * restrict best_spike_indices,
     __global unsigned int * restrict best_spike_labels,
-    __global float * restrict best_spike_likelihoods)
+    __global float * restrict best_spike_likelihoods,
+    __global unsigned int * restrict overlap_best_spike_indices)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -464,6 +465,10 @@ __kernel void overlap_recheck_indices(
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
 
+    if (template_number == best_spike_label_private)
+    {
+        return; /* Assumes overlap is not from both the same spikes */
+    }
     if (((signed int) (best_spike_index_private + fixed_shift_index) < 0) || ((best_spike_index_private + fixed_shift_index) >= (voltage_length - template_length)))
     {
         return; // Fixed index is outside voltage range
@@ -474,8 +479,6 @@ __kernel void overlap_recheck_indices(
     __private float shift_sum;
     __private unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_index;
     __private unsigned int delta_index;
-
-
 
     /* Get likelihood for the current best spike label at the input fixed index relative to best index */
     template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
@@ -566,13 +569,14 @@ __kernel void overlap_recheck_indices(
         {
             /* Reset the likelihood and best index. Label is FIXED. */
             best_spike_likelihood_private = current_maximum_likelihood;
-            best_spike_index_private = absolute_fixed_index;
+            // best_spike_index_private = absolute_fixed_index;
+            overlap_best_spike_indices[id] = absolute_fixed_index;
         }
     }
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;
-    best_spike_labels[id] = best_spike_label_private;
-    best_spike_indices[id] = best_spike_index_private;
+    // best_spike_labels[id] = best_spike_label_private;
+    // best_spike_indices[id] = best_spike_index_private;
     return;
 }
 
@@ -587,7 +591,8 @@ __kernel void check_overlap_reassignments(
     __global unsigned int * restrict best_spike_indices,
     __global float * restrict best_spike_likelihoods,
     __global unsigned char * restrict check_window_on_next_pass,
-    __global unsigned char * restrict overlap_recheck)
+    __global unsigned char * restrict overlap_recheck,
+    __global unsigned int * restrict overlap_best_spike_indices)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -640,6 +645,8 @@ __kernel void check_overlap_reassignments(
             check_window_on_next_pass[id + 2] = 1;
         }
     }
+    /* Assign this overlap's best index as the best */
+    best_spike_indices[id] = overlap_best_spike_indices[id];
     return;
 }
 

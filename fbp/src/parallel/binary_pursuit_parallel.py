@@ -317,6 +317,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             next_check_window_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint8))
             overlap_recheck_window_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint8))
             overlap_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.arange(0, num_template_widths, 1, dtype=np.uint32))
+            overlap_best_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
 
             # This is separate storage for transferring data from next check, NOT A HOST (maybe could be)
             next_check_window = np.zeros(num_template_widths, dtype=np.uint8)
@@ -357,6 +358,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             overlap_recheck_indices_kernel.set_arg(13, best_spike_indices_buffer) # Storage for peak likelihood index
             overlap_recheck_indices_kernel.set_arg(14, best_spike_labels_buffer) # Storage for peak likelihood label
             overlap_recheck_indices_kernel.set_arg(15, best_spike_likelihoods_buffer) # Storage for peak likelihood value
+            overlap_recheck_indices_kernel.set_arg(16, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
 
             check_overlap_reassignments_kernel.set_arg(0, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
             check_overlap_reassignments_kernel.set_arg(1, overlap_indices_buffer) # Actual window indices to check
@@ -365,6 +367,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             check_overlap_reassignments_kernel.set_arg(4, best_spike_likelihoods_buffer) # Storage for peak likelihood value
             check_overlap_reassignments_kernel.set_arg(5, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
             check_overlap_reassignments_kernel.set_arg(6, overlap_recheck_window_buffer)
+            check_overlap_reassignments_kernel.set_arg(7, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)

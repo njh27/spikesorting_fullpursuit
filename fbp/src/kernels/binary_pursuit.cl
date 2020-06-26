@@ -482,7 +482,7 @@ __kernel void overlap_recheck_indices(
         absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
         template_sum_squared, gamma);
     /* Need to remove additive quantities to get appropriate distributivity of convolution */
-    template_likelihood_at_index = template_likelihood_at_index - template_sum_squared[best_spike_label_private]; //+ gamma[best_spike_label_private]?
+    template_likelihood_at_index = template_likelihood_at_index - template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private];
 
     /* Find absolute voltage indices we will check within shift range */
     const unsigned int shift_start = (n_shift_points > absolute_fixed_index) ? 0 : (absolute_fixed_index - n_shift_points);
@@ -495,7 +495,7 @@ __kernel void overlap_recheck_indices(
             i + shift_start, templates, num_templates, template_length, template_number,
             template_sum_squared, gamma);
         /* Need to remove additive quantities to get appropriate distributivity of convolution */
-        current_maximum_likelihood = current_maximum_likelihood - template_sum_squared[template_number]; //+ gamma[template_number]?
+        current_maximum_likelihood = current_maximum_likelihood - template_sum_squared[template_number] + gamma[template_number];
 
         /* Compute the template sum squared for the combined templates at current shift */
         if ((i + shift_start) < absolute_fixed_index)
@@ -618,12 +618,9 @@ __kernel void check_overlap_reassignments(
                 best_spike_likelihoods[id] = 0.0;
 
             }
-        }
-        if (id > 0)
-        {
-          /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
-          /* Main window has already been assigned as check windows as have their immediate neighbors */
-            check_window_on_next_pass[id - 1] = 1;
+            /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
+            /* Main window has already been assigned as check windows as have their immediate neighbors */
+            check_window_on_next_pass[id - 2] = 1;
         }
     }
     if (best_spike_indices[id] > end_of_my_window)
@@ -638,12 +635,9 @@ __kernel void check_overlap_reassignments(
                 /* Another spike is too close by to move to this index so kick the can down the road */
                 best_spike_likelihoods[id] = 0.0;
             }
-        }
-        if (id < num_window_indices - 1)
-        {
-          /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
-          /* Main window has already been assigned as check windows as have their immediate neighbors */
-            check_window_on_next_pass[id + 1] = 1;
+            /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
+            /* Main window has already been assigned as check windows as have their immediate neighbors */
+            check_window_on_next_pass[id + 2] = 1;
         }
     }
     return;

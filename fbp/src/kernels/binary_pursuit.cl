@@ -468,7 +468,7 @@ __kernel void overlap_recheck_indices(
     {
         return; // Fixed index is outside voltage range
     }
-    
+
     __private float template_likelihood_at_index;
     __private float shifted_template_sse;
     __private float shift_sum;
@@ -616,9 +616,14 @@ __kernel void check_overlap_reassignments(
             {
                 /* Another spike is too close by to move to this index so kick the can down the road */
                 best_spike_likelihoods[id] = 0.0;
-                /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
-                /* These have already been assigned as check windows as have their immediate neighbors */
+
             }
+        }
+        if (id > 0)
+        {
+          /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
+          /* Main window has already been assigned as check windows as have their immediate neighbors */
+            check_window_on_next_pass[id - 1] = 1;
         }
     }
     if (best_spike_indices[id] > end_of_my_window)
@@ -633,6 +638,12 @@ __kernel void check_overlap_reassignments(
                 /* Another spike is too close by to move to this index so kick the can down the road */
                 best_spike_likelihoods[id] = 0.0;
             }
+        }
+        if (id < num_window_indices - 1)
+        {
+          /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
+          /* Main window has already been assigned as check windows as have their immediate neighbors */
+            check_window_on_next_pass[id + 1] = 1;
         }
     }
     return;

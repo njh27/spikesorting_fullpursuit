@@ -216,6 +216,15 @@ class TestDataset(object):
             # Generate one spike train for each neuron
             spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
             self.actual_IDs[neuron] = np.where(spiketrain)[0]
+
+            if neuron == 1:
+                print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
+                n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 10
+                select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)
+                select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
+                self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 10, n_correlated_spikes)
+                self.actual_IDs[neuron].sort()
+
             for chan in range(0, self.num_channels):
                 # Apply spike train to every channel this neuron is present on
                 convolve_kernel = chan_scaling_factors[neuron][chan] * self.neuron_templates[template_inds[neuron], :]
@@ -297,7 +306,11 @@ class TestDataset(object):
 
             if neuron == 1:
                 print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
-                self.actual_IDs[neuron] = self.actual_IDs[neuron-1] + np.random.randint(0, 15, self.actual_IDs[neuron-1].size)
+                n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 10
+                select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)
+                select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
+                self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 10, n_correlated_spikes)
+                self.actual_IDs[neuron].sort()
 
             remove_IDs = np.zeros(self.actual_IDs[neuron].size, dtype=np.bool)
             for i, spk_ind in enumerate(self.actual_IDs[neuron]):

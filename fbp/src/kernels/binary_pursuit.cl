@@ -396,7 +396,7 @@ __kernel void compute_template_maximum_likelihood(
         }
     }
     /* Needs set to default? */
-    // overlap_best_spike_indices[id] = best_spike_index_private;
+    overlap_best_spike_indices[id] = best_spike_likelihood_private;
 
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;
@@ -605,27 +605,27 @@ __kernel void check_overlap_reassignments(
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
     const unsigned int end_of_my_window = (id + 1) * template_length - 1;
 
-    /* Check if this spike is maximal between its neighbors */
-    unsigned int is_best = 1;
-    if (id > 0)
-    {
-        if (best_spike_likelihoods[id] <= best_spike_likelihoods[id-1])
-        {
-            is_best = 0;
-        }
-    }
-    if (id < num_window_indices - 1)
-    {
-        if (best_spike_likelihoods[id] <= best_spike_likelihoods[id+1])
-        {
-            is_best = 0;
-        }
-    }
-    if (is_best == 0)
-    {
-        /* This spike won't be added this pass anyways so don't try */
-        return;
-    }
+    // /* Check if this spike is maximal between its neighbors */
+    // unsigned int is_best = 1;
+    // if (id > 0)
+    // {
+    //     if (overlap_best_spike_indices[id] <= overlap_best_spike_indices[id-1])
+    //     {
+    //         is_best = 0;
+    //     }
+    // }
+    // if (id < num_window_indices - 1)
+    // {
+    //     if (overlap_best_spike_indices[id] <= overlap_best_spike_indices[id+1])
+    //     {
+    //         is_best = 0;
+    //     }
+    // }
+    // if (is_best == 0)
+    // {
+    //     /* This spike won't be added this pass anyways so don't try */
+    //     return;
+    // }
 
     /* Since overlap_recheck spikes are all maximum likelihood in their window, */
     /* we know there are no spikes in neighboring window. We instead must check */
@@ -639,85 +639,107 @@ __kernel void check_overlap_reassignments(
     /* it shouldn't actually matter */
     if (best_spike_indices[id] < start_of_my_window)
     {
-        if (id > 1)
-        {
-            if (best_spike_likelihoods[id - 2] >= best_spike_likelihoods[id])
-            {
-                /* Another spike is too close by to move to this index so kick the can down the road */
-                best_spike_likelihoods[id] = 0.0;
-                /* Also kicks the can for its immediate neighbors */
-                best_spike_likelihoods[id+1] = 0.0;
-                best_spike_likelihoods[id-1] = 0.0;
-                /* But leave their recheck status the same? */
-            }
-            else
-            {
-                /* Assign likelihood to new window */
-                best_spike_likelihoods[id - 1] = best_spike_likelihoods[id];
-                best_spike_indices[id - 1] = best_spike_indices[id];
-                best_spike_labels[id - 1] = best_spike_labels[id];
-                /* We are adding this spike to a different window, so set old window to 0 */
-                // best_spike_likelihoods[id + 1] = 0.0;
-                best_spike_likelihoods[id] = 0.0;
-                // best_spike_likelihoods[id - 2] = 0.0;
-                /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
-                /* Main window has already been assigned as check windows as have their immediate neighbors */
-                check_window_on_next_pass[id - 2] = 1;
-            }
-        }
-        else
-        {
-            /* id == 1. Can't have id == 0 and overlap_best_spike_indices[id] < start_of_my_window */
-            /* Just add the spike, neighboring window criteria should already be taken care of */
-            best_spike_likelihoods[id - 1] = best_spike_likelihoods[id];
-            best_spike_indices[id - 1] = best_spike_indices[id];
-            best_spike_labels[id - 1] = best_spike_labels[id];
-            // best_spike_likelihoods[id + 1] = 0.0;
-            best_spike_likelihoods[id] = 0.0;
-        }
+        /* Assign likelihood to new window */
+        best_spike_likelihoods[id - 1] = overlap_best_spike_indices[id];
+        best_spike_indices[id - 1] = best_spike_indices[id];
+        best_spike_labels[id - 1] = best_spike_labels[id];
+        /* We are adding this spike to a different window, so set old window to 0 */
+        // best_spike_likelihoods[id + 1] = 0.0;
+        best_spike_likelihoods[id] = 0.0;
+        // best_spike_likelihoods[id - 2] = 0.0;
+        /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
+        /* Main window has already been assigned as check windows as have their immediate neighbors */
+        check_window_on_next_pass[id - 1] = 1;
+        // if (id > 0)
+        // {
+        //     // if (overlap_best_spike_indices[id - 2] >= overlap_best_spike_indices[id])
+        //     // {
+        //     //     /* Another spike is too close by to move to this index so kick the can down the road */
+        //     //     best_spike_likelihoods[id] = 0.0;
+        //     //     /* Also kicks the can for its immediate neighbors */
+        //     //     best_spike_likelihoods[id+1] = 0.0;
+        //     //     best_spike_likelihoods[id-1] = 0.0;
+        //     //     /* But leave their recheck status the same? */
+        //     // }
+        //     // else
+        //     // {
+        //     //     /* Assign likelihood to new window */
+        //     //     best_spike_likelihoods[id - 1] = overlap_best_spike_indices[id];
+        //     //     best_spike_indices[id - 1] = best_spike_indices[id];
+        //     //     best_spike_labels[id - 1] = best_spike_labels[id];
+        //     //     /* We are adding this spike to a different window, so set old window to 0 */
+        //     //     // best_spike_likelihoods[id + 1] = 0.0;
+        //     //     best_spike_likelihoods[id] = 0.0;
+        //     //     // best_spike_likelihoods[id - 2] = 0.0;
+        //     //     /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
+        //     //     /* Main window has already been assigned as check windows as have their immediate neighbors */
+        //     //     check_window_on_next_pass[id - 2] = 1;
+        //     // }
+        // }
+        // else
+        // {
+        //     /* id == 1. Can't have id == 0 and overlap_best_spike_indices[id] < start_of_my_window */
+        //     /* Just add the spike, neighboring window criteria should already be taken care of */
+        //     best_spike_likelihoods[id - 1] = overlap_best_spike_indices[id];
+        //     best_spike_indices[id - 1] = best_spike_indices[id];
+        //     best_spike_labels[id - 1] = best_spike_labels[id];
+        //     // best_spike_likelihoods[id + 1] = 0.0;
+        //     best_spike_likelihoods[id] = 0.0;
+        // }
     }
     else if (best_spike_indices[id] > end_of_my_window)
     {
-        if (id < num_window_indices - 2)
-        {
-            /* Requiring that overlap_recheck == 0 allows convergence and enacts */
-            /* the policy that in the event two neighbors are both rechecks, we */
-            /* keep the one to the left */
-            if ((best_spike_likelihoods[id + 2] >= best_spike_likelihoods[id]))// && (overlap_recheck[id + 2] == 0))
-            {
-                /* Another spike is too close by to move to this index so kick the can down the road */
-                best_spike_likelihoods[id] = 0.0;
-                /* Also kicks the can for its immediate neighbors */
-                best_spike_likelihoods[id+1] = 0.0;
-                best_spike_likelihoods[id-1] = 0.0;
-                /* But leave their recheck status the same? */
-            }
-            else
-            {
-                /* Assign likelihood to new window */
-                best_spike_likelihoods[id + 1] = best_spike_likelihoods[id];
-                best_spike_indices[id + 1] = best_spike_indices[id];
-                best_spike_labels[id + 1] = best_spike_labels[id];
-                /* We are adding this spike to a different window, so set old window to 0 */
-                // best_spike_likelihoods[id - 1] = 0.0;
-                best_spike_likelihoods[id] = 0.0;
-                // best_spike_likelihoods[id + 2] = 0.0;
-                /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
-                /* Main window has already been assigned as check windows as have their immediate neighbors */
-                check_window_on_next_pass[id + 2] = 1;
-                // check_window_on_next_pass[id - 1] = 0;
-            }
-        }
-        else
-        {
-            /* id == num_window_indices - 2. Can't have id == num_window_indices - 1 and best_spike_indices[id] > end_of_my_window */
-            /* Just add the spike, neighboring window criteria should already be taken care of */
-            best_spike_likelihoods[id + 1] = best_spike_likelihoods[id];
-            best_spike_indices[id + 1] = best_spike_indices[id];
-            best_spike_labels[id + 1] = best_spike_labels[id];
-            // best_spike_likelihoods[id - 1] = 0.0;
-            best_spike_likelihoods[id] = 0.0;
-        }
+        /* Assign likelihood to new window */
+        best_spike_likelihoods[id + 1] = overlap_best_spike_indices[id];
+        best_spike_indices[id + 1] = best_spike_indices[id];
+        best_spike_labels[id + 1] = best_spike_labels[id];
+        /* We are adding this spike to a different window, so set old window to 0 */
+        // best_spike_likelihoods[id + 1] = 0.0;
+        best_spike_likelihoods[id] = 0.0;
+        // best_spike_likelihoods[id - 2] = 0.0;
+        /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
+        /* Main window has already been assigned as check windows as have their immediate neighbors */
+        check_window_on_next_pass[id + 1] = 1;
+        // if (id < num_window_indices - 2)
+        // {
+        //     /* Requiring that overlap_recheck == 0 allows convergence and enacts */
+        //     /* the policy that in the event two neighbors are both rechecks, we */
+        //     /* keep the one to the left */
+        //     if ((overlap_best_spike_indices[id + 2] >= overlap_best_spike_indices[id]))// && (overlap_recheck[id + 2] == 0))
+        //     {
+        //         /* Another spike is too close by to move to this index so kick the can down the road */
+        //         best_spike_likelihoods[id] = 0.0;
+        //         /* Also kicks the can for its immediate neighbors */
+        //         best_spike_likelihoods[id+1] = 0.0;
+        //         best_spike_likelihoods[id-1] = 0.0;
+        //         /* But leave their recheck status the same? */
+        //     }
+        //     else
+        //     {
+        //         /* Assign likelihood to new window */
+        //         best_spike_likelihoods[id + 1] = overlap_best_spike_indices[id];
+        //         best_spike_indices[id + 1] = best_spike_indices[id];
+        //         best_spike_labels[id + 1] = best_spike_labels[id];
+        //         /* We are adding this spike to a different window, so set old window to 0 */
+        //         // best_spike_likelihoods[id - 1] = 0.0;
+        //         best_spike_likelihoods[id] = 0.0;
+        //         // best_spike_likelihoods[id + 2] = 0.0;
+        //         /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
+        //         /* Main window has already been assigned as check windows as have their immediate neighbors */
+        //         check_window_on_next_pass[id + 2] = 1;
+        //         // check_window_on_next_pass[id - 1] = 0;
+        //     }
+        // }
+        // else
+        // {
+        //     /* id == num_window_indices - 2. Can't have id == num_window_indices - 1 and best_spike_indices[id] > end_of_my_window */
+        //     /* Just add the spike, neighboring window criteria should already be taken care of */
+        //     best_spike_likelihoods[id + 1] = overlap_best_spike_indices[id];
+        //     best_spike_indices[id + 1] = best_spike_indices[id];
+        //     best_spike_labels[id + 1] = best_spike_labels[id];
+        //     // best_spike_likelihoods[id - 1] = 0.0;
+        //     best_spike_likelihoods[id] = 0.0;
+        // }
     }
     else
     {

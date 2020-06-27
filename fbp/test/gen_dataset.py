@@ -222,7 +222,7 @@ class TestDataset(object):
                 n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 10
                 select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)
                 select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
-                self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 10, n_correlated_spikes)
+                self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(5, 10, n_correlated_spikes)
                 self.actual_IDs[neuron].sort()
                 # Spike train is used for actual convolution so reset here
                 spiketrain[:] = False

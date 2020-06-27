@@ -385,8 +385,8 @@ __kernel void compute_template_maximum_likelihood(
         /* Best spike is in current window so check whether it violates its expected delta likelihood */
         /* If yes, flag this spike for recheck, else set recheck back to zero */
         raw_likelihood = best_spike_likelihood_private + gamma[best_spike_label_private];
-        if ((raw_likelihood < -1*template_sum_squared[best_spike_label_private] - .5*gamma[best_spike_label_private])
-            || (raw_likelihood > -1*template_sum_squared[best_spike_label_private] + .5*gamma[best_spike_label_private]))
+        if ((raw_likelihood < -1*template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private])
+            || (raw_likelihood > -1*template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]))
         {
             overlap_recheck[id] = 1;
         }

@@ -385,8 +385,8 @@ __kernel void compute_template_maximum_likelihood(
         /* Best spike is in current window so check whether it violates its expected delta likelihood */
         /* If yes, flag this spike for recheck, else set recheck back to zero */
         raw_likelihood = best_spike_likelihood_private + gamma[best_spike_label_private];
-        if ((raw_likelihood < -1*template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private])
-            || (raw_likelihood > -1*template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]))
+        if ((raw_likelihood < -1*template_sum_squared[best_spike_label_private] - 2*gamma[best_spike_label_private])
+            || (raw_likelihood > -1*template_sum_squared[best_spike_label_private] + 2*gamma[best_spike_label_private]))
         {
             overlap_recheck[id] = 1;
         }
@@ -398,6 +398,7 @@ __kernel void compute_template_maximum_likelihood(
     else
     {
         best_spike_likelihood_private = 0.0;
+        overlap_recheck[id] = 0;
     }
     /* Needs set to default? */
     overlap_best_spike_indices[id] = best_spike_index_private;
@@ -492,7 +493,7 @@ __kernel void overlap_recheck_indices(
         absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
         template_sum_squared, gamma);
     /* Need to remove additive quantities to get appropriate distributivity of convolution */
-    template_likelihood_at_index = template_likelihood_at_index + gamma[best_spike_label_private];
+    template_likelihood_at_index = template_likelihood_at_index + gamma[best_spike_label_private] - template_sum_squared[best_spike_label_private];
 
     /* Find absolute voltage indices we will check within shift range */
     const unsigned int shift_start = (n_shift_points > absolute_fixed_index) ? 0 : (absolute_fixed_index - n_shift_points);
@@ -505,7 +506,7 @@ __kernel void overlap_recheck_indices(
             i + shift_start, templates, num_templates, template_length, template_number,
             template_sum_squared, gamma);
         /* Need to remove additive quantities to get appropriate distributivity of convolution */
-        current_maximum_likelihood = current_maximum_likelihood + gamma[template_number];
+        current_maximum_likelihood = current_maximum_likelihood + gamma[template_number] - template_sum_squared[template_number];
 
         /* Compute the template sum squared for the combined templates at current shift */
         if ((i + shift_start) < absolute_fixed_index)

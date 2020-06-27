@@ -433,8 +433,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     # Reset number of indices to check for overlap recheck kernel
                     total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
 
-                    n_fix_shifts = 20
-                    n_second_shifts = 20
+                    n_fix_shifts = 25
+                    n_second_shifts = 25
 
                     or_voltage = np.zeros_like(chunk_voltage)
                     next_wait_event = [cl.enqueue_copy(queue, or_voltage, voltage_buffer, wait_for=next_wait_event)]
@@ -449,65 +449,65 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     next_wait_event = [cl.enqueue_copy(queue, overlap_best_spike_indices, overlap_best_spike_indices_buffer, wait_for=next_wait_event)]
                     queue.finish()
 
-                    import matplotlib.pyplot as plt
-                    best_win_ll = 0.
-                    best_win_shift_template = None
-                    best_fix_index = None
-                    for fix_index in range(-1*n_fix_shifts, n_fix_shifts+1):
-                        for template_index in range(0, templates.shape[0]):
-
-                            best_shifted_likelihood, best_shifted_template = overlap_recheck.overlap_recheck_indices(or_voltage, chunk_voltage_length, n_chans,
-                                    templates_vector, templates.shape[0], template_samples_per_chan, template_index,
-                                    fix_index, n_second_shifts, template_sum_squared, spike_biases, overlap_window_indices,
-                                    overlap_window_indices.shape[0], best_spike_indices, best_spike_labels, best_spike_likelihoods,
-                                    overlap_best_spike_indices)
-
-                            if best_shifted_likelihood > best_win_ll:
-                                best_win_ll = best_shifted_likelihood
-                                best_win_shift_template = best_shifted_template
-                                best_fix_index = fix_index
-
-                    print("Match indices", best_fix_index, best_spike_indices[overlap_window_indices[1]])
-                    plt.plot(best_win_shift_template)
-                    plt.show()
-
-
-                    check_window_on_next_pass = np.zeros(num_template_widths, dtype=np.uint8)
-                    next_wait_event = [cl.enqueue_copy(queue, check_window_on_next_pass, next_check_window_buffer, wait_for=None)]
-                    overlap_recheck.check_overlap_reassignments(template_samples_per_chan, overlap_window_indices,
-                            overlap_window_indices.shape[0], best_spike_indices, best_spike_labels, best_spike_likelihoods,
-                            check_window_on_next_pass, overlap_recheck_window,
-                            overlap_best_spike_indices)
-
+                    # import matplotlib.pyplot as plt
+                    # best_win_ll = 0.
+                    # best_win_shift_template = None
+                    # best_fix_index = None
+                    # for fix_index in range(-1*n_fix_shifts, n_fix_shifts+1):
+                    #     for template_index in range(0, templates.shape[0]):
+                    #
+                    #         best_shifted_likelihood, best_shifted_template = overlap_recheck.overlap_recheck_indices(or_voltage, chunk_voltage_length, n_chans,
+                    #                 templates_vector, templates.shape[0], template_samples_per_chan, template_index,
+                    #                 fix_index, n_second_shifts, template_sum_squared, spike_biases, overlap_window_indices,
+                    #                 overlap_window_indices.shape[0], best_spike_indices, best_spike_labels, best_spike_likelihoods,
+                    #                 overlap_best_spike_indices)
+                    #
+                    #         if best_shifted_likelihood > best_win_ll:
+                    #             best_win_ll = best_shifted_likelihood
+                    #             best_win_shift_template = best_shifted_template
+                    #             best_fix_index = fix_index
+                    #
+                    # print("Match indices", best_fix_index, best_spike_indices[overlap_window_indices[1]])
+                    # plt.plot(best_win_shift_template)
+                    # plt.show()
+                    #
+                    #
+                    # check_window_on_next_pass = np.zeros(num_template_widths, dtype=np.uint8)
+                    # next_wait_event = [cl.enqueue_copy(queue, check_window_on_next_pass, next_check_window_buffer, wait_for=None)]
+                    # overlap_recheck.check_overlap_reassignments(template_samples_per_chan, overlap_window_indices,
+                    #         overlap_window_indices.shape[0], best_spike_indices, best_spike_labels, best_spike_likelihoods,
+                    #         check_window_on_next_pass, overlap_recheck_window,
+                    #         overlap_best_spike_indices)
+                    #
                     out = np.copy(best_spike_indices[overlap_window_indices])
 
                     print("YOU CHANGED THE THRESHOLD CRITERIA FOR OVERLAPS!")
 
-                    # overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
-                    # overlap_recheck_indices_kernel.set_arg(12, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
-                    # check_overlap_reassignments_kernel.set_arg(2, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
-                    # for template_index in range(0, templates.shape[0]):
-                    #     for fix_index in range(-1*n_fix_shifts, n_fix_shifts+1):
-                    #         overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
-                    #         overlap_recheck_indices_kernel.set_arg(7, np.uint32(fix_index)) # Main template shift index
-                    #         for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
-                    #             # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
-                    #             overlap_event = cl.enqueue_nd_range_kernel(queue,
-                    #                                   overlap_recheck_indices_kernel,
-                    #                                   (n_to_enqueue, ), (pursuit_local_work_size, ),
-                    #                                   global_work_offset=(enqueue_step, ),
-                    #                                   wait_for=next_wait_event)
-                    #             queue.finish()
-                    #             next_wait_event = [overlap_event]
-                    # for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
-                    #     # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
-                    #     overlap_event = cl.enqueue_nd_range_kernel(queue,
-                    #                           check_overlap_reassignments_kernel,
-                    #                           (n_to_enqueue, ), (pursuit_local_work_size, ),
-                    #                           global_work_offset=(enqueue_step, ),
-                    #                           wait_for=next_wait_event)
-                    #     queue.finish()
-                    #     next_wait_event = [overlap_event]
+                    overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
+                    overlap_recheck_indices_kernel.set_arg(12, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
+                    check_overlap_reassignments_kernel.set_arg(2, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
+                    for template_index in range(0, templates.shape[0]):
+                        for fix_index in range(-1*n_fix_shifts, n_fix_shifts+1):
+                            overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
+                            overlap_recheck_indices_kernel.set_arg(7, np.uint32(fix_index)) # Main template shift index
+                            for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
+                                # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
+                                overlap_event = cl.enqueue_nd_range_kernel(queue,
+                                                      overlap_recheck_indices_kernel,
+                                                      (n_to_enqueue, ), (pursuit_local_work_size, ),
+                                                      global_work_offset=(enqueue_step, ),
+                                                      wait_for=next_wait_event)
+                                queue.finish()
+                                next_wait_event = [overlap_event]
+                    for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
+                        # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
+                        overlap_event = cl.enqueue_nd_range_kernel(queue,
+                                              check_overlap_reassignments_kernel,
+                                              (n_to_enqueue, ), (pursuit_local_work_size, ),
+                                              global_work_offset=(enqueue_step, ),
+                                              wait_for=next_wait_event)
+                        queue.finish()
+                        next_wait_event = [overlap_event]
 
 
                     # Reset overlap_recheck_window for next pass and copy to GPU
@@ -590,9 +590,9 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 if new_window_indices.shape[0] > max_enqueue_pursuit:
                     # Shouldn't really be necessary with queue.finish() but potentially helpful
                     time.sleep(1)
-                print("!!! BREAKING AFTER ONE LOOP")
-                if n_loops == 1:
-                    break
+                # print("!!! BREAKING AFTER ONE LOOP")
+                # if n_loops == 1:
+                #     break
 
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()

@@ -365,10 +365,11 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             check_overlap_reassignments_kernel.set_arg(1, overlap_window_indices_buffer) # Actual window indices to check
             check_overlap_reassignments_kernel.set_arg(2, np.uint32(num_template_widths)) # Number of actual window indices to check
             check_overlap_reassignments_kernel.set_arg(3, best_spike_indices_buffer) # Storage for peak likelihood index
-            check_overlap_reassignments_kernel.set_arg(4, best_spike_likelihoods_buffer) # Storage for peak likelihood value
-            check_overlap_reassignments_kernel.set_arg(5, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
-            check_overlap_reassignments_kernel.set_arg(6, overlap_recheck_window_buffer)
-            check_overlap_reassignments_kernel.set_arg(7, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
+            check_overlap_reassignments_kernel.set_arg(4, best_spike_labels_buffer) # Storage for peak likelihood label
+            check_overlap_reassignments_kernel.set_arg(5, best_spike_likelihoods_buffer) # Storage for peak likelihood value
+            check_overlap_reassignments_kernel.set_arg(6, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
+            check_overlap_reassignments_kernel.set_arg(7, overlap_recheck_window_buffer)
+            check_overlap_reassignments_kernel.set_arg(8, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
@@ -474,11 +475,11 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     check_window_on_next_pass = np.zeros(num_template_widths, dtype=np.uint8)
                     next_wait_event = [cl.enqueue_copy(queue, check_window_on_next_pass, next_check_window_buffer, wait_for=None)]
                     overlap_recheck.check_overlap_reassignments(template_samples_per_chan, overlap_window_indices,
-                            overlap_window_indices.shape[0], best_spike_indices, best_spike_likelihoods,
+                            overlap_window_indices.shape[0], best_spike_indices, best_spike_labels, best_spike_likelihoods,
                             check_window_on_next_pass, overlap_recheck_window,
                             overlap_best_spike_indices)
 
-                    out = np.copy(overlap_best_spike_indices[overlap_window_indices])
+                    out = np.copy(best_spike_indices[overlap_window_indices])
 
                     print("YOU CHANGED THE THRESHOLD CRITERIA FOR OVERLAPS!")
 

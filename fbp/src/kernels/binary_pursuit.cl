@@ -595,6 +595,7 @@ __kernel void check_overlap_reassignments(
     __global const unsigned int * restrict overlap_window_indices,
     const unsigned int num_window_indices,
     __global unsigned int * restrict best_spike_indices,
+    __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
     __global unsigned char * restrict check_window_on_next_pass,
     __global unsigned char * restrict overlap_recheck,
@@ -637,6 +638,7 @@ __kernel void check_overlap_reassignments(
                 /* Assign likelihood to new window */
                 best_spike_likelihoods[id - 1] = best_spike_likelihoods[id];
                 best_spike_indices[id - 1] = overlap_best_spike_indices[id];
+                best_spike_labels[id - 1] = best_spike_labels[id];
                 /* We are adding this spike to a different window, so set old window to 0 */
                 best_spike_likelihoods[id + 1] = 0.0;
                 best_spike_likelihoods[id] = 0.0;
@@ -648,8 +650,13 @@ __kernel void check_overlap_reassignments(
         }
         else
         {
-          /* Just add the spike, neighboring window criteria should already be taken care of */
-          best_spike_indices[id] = overlap_best_spike_indices[id];
+            /* id == 1. Can't have id == 0 and overlap_best_spike_indices[id] < start_of_my_window */
+            /* Just add the spike, neighboring window criteria should already be taken care of */
+            best_spike_likelihoods[id - 1] = best_spike_likelihoods[id];
+            best_spike_indices[id - 1] = overlap_best_spike_indices[id];
+            best_spike_labels[id - 1] = best_spike_labels[id];
+            best_spike_likelihoods[id + 1] = 0.0;
+            best_spike_likelihoods[id] = 0.0;
         }
     }
     else if (overlap_best_spike_indices[id] > end_of_my_window)
@@ -673,6 +680,7 @@ __kernel void check_overlap_reassignments(
                 /* Assign likelihood to new window */
                 best_spike_likelihoods[id + 1] = best_spike_likelihoods[id];
                 best_spike_indices[id + 1] = overlap_best_spike_indices[id];
+                best_spike_labels[id + 1] = best_spike_labels[id];
                 /* We are adding this spike to a different window, so set old window to 0 */
                 best_spike_likelihoods[id - 1] = 0.0;
                 best_spike_likelihoods[id] = 0.0;
@@ -684,8 +692,13 @@ __kernel void check_overlap_reassignments(
         }
         else
         {
-          /* Just add the spike, neighboring window criteria should already be taken care of */
-          best_spike_indices[id] = overlap_best_spike_indices[id];
+            /* id == num_window_indices - 2. Can't have id == num_window_indices - 1 and overlap_best_spike_indices[id] > end_of_my_window */
+            /* Just add the spike, neighboring window criteria should already be taken care of */
+            best_spike_likelihoods[id + 1] = best_spike_likelihoods[id];
+            best_spike_indices[id + 1] = overlap_best_spike_indices[id];
+            best_spike_labels[id + 1] = best_spike_labels[id];
+            best_spike_likelihoods[id - 1] = 0.0;
+            best_spike_likelihoods[id] = 0.0;
         }
     }
     else

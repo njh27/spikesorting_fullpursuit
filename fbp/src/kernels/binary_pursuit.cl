@@ -396,7 +396,7 @@ __kernel void compute_template_maximum_likelihood(
         }
     }
     /* Needs set to default? */
-    overlap_best_spike_indices[id] = best_spike_likelihood_private;
+    // overlap_best_spike_indices[id] = best_spike_likelihood_private;
 
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;
@@ -640,7 +640,7 @@ __kernel void check_overlap_reassignments(
     if (best_spike_indices[id] < start_of_my_window)
     {
         /* Assign likelihood to new window */
-        best_spike_likelihoods[id - 1] = overlap_best_spike_indices[id];
+        best_spike_likelihoods[id - 1] = best_spike_indices[id];
         best_spike_indices[id - 1] = best_spike_indices[id];
         best_spike_labels[id - 1] = best_spike_labels[id];
         /* We are adding this spike to a different window, so set old window to 0 */
@@ -690,7 +690,7 @@ __kernel void check_overlap_reassignments(
     else if (best_spike_indices[id] > end_of_my_window)
     {
         /* Assign likelihood to new window */
-        best_spike_likelihoods[id + 1] = overlap_best_spike_indices[id];
+        best_spike_likelihoods[id + 1] = best_spike_indices[id];
         best_spike_indices[id + 1] = best_spike_indices[id];
         best_spike_labels[id + 1] = best_spike_labels[id];
         /* We are adding this spike to a different window, so set old window to 0 */

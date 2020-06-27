@@ -436,18 +436,18 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     n_fix_shifts = 25
                     n_second_shifts = 25
 
-                    or_voltage = np.zeros_like(chunk_voltage)
-                    next_wait_event = [cl.enqueue_copy(queue, or_voltage, voltage_buffer, wait_for=next_wait_event)]
-
-                    best_spike_indices = np.zeros(num_template_widths, dtype=np.uint32)
-                    best_spike_labels = np.zeros(num_template_widths, dtype=np.uint32)
-                    best_spike_likelihoods = np.zeros(num_template_widths, dtype=np.float32)
-                    next_wait_event = [cl.enqueue_copy(queue, best_spike_indices, best_spike_indices_buffer, wait_for=next_wait_event)]
-                    next_wait_event = [cl.enqueue_copy(queue, best_spike_labels, best_spike_labels_buffer, wait_for=next_wait_event)]
-                    next_wait_event = [cl.enqueue_copy(queue, best_spike_likelihoods, best_spike_likelihoods_buffer, wait_for=next_wait_event)]
-                    overlap_best_spike_indices = np.zeros(num_template_widths, dtype=np.uint32)
-                    next_wait_event = [cl.enqueue_copy(queue, overlap_best_spike_indices, overlap_best_spike_indices_buffer, wait_for=next_wait_event)]
-                    queue.finish()
+                    # or_voltage = np.zeros_like(chunk_voltage)
+                    # next_wait_event = [cl.enqueue_copy(queue, or_voltage, voltage_buffer, wait_for=next_wait_event)]
+                    #
+                    # best_spike_indices = np.zeros(num_template_widths, dtype=np.uint32)
+                    # best_spike_labels = np.zeros(num_template_widths, dtype=np.uint32)
+                    # best_spike_likelihoods = np.zeros(num_template_widths, dtype=np.float32)
+                    # next_wait_event = [cl.enqueue_copy(queue, best_spike_indices, best_spike_indices_buffer, wait_for=next_wait_event)]
+                    # next_wait_event = [cl.enqueue_copy(queue, best_spike_labels, best_spike_labels_buffer, wait_for=next_wait_event)]
+                    # next_wait_event = [cl.enqueue_copy(queue, best_spike_likelihoods, best_spike_likelihoods_buffer, wait_for=next_wait_event)]
+                    # overlap_best_spike_indices = np.zeros(num_template_widths, dtype=np.uint32)
+                    # next_wait_event = [cl.enqueue_copy(queue, overlap_best_spike_indices, overlap_best_spike_indices_buffer, wait_for=next_wait_event)]
+                    # queue.finish()
 
                     # import matplotlib.pyplot as plt
                     # best_win_ll = 0.
@@ -479,7 +479,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     #         check_window_on_next_pass, overlap_recheck_window,
                     #         overlap_best_spike_indices)
                     #
-                    out = np.copy(best_spike_indices[overlap_window_indices])
+                    out = None #np.copy(best_spike_indices[overlap_window_indices])
 
                     print("YOU CHANGED THE THRESHOLD CRITERIA FOR OVERLAPS!")
 

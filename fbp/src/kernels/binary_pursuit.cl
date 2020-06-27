@@ -619,7 +619,7 @@ __kernel void check_overlap_reassignments(
     {
         if (id > 1)
         {
-            if (best_spike_likelihoods[id - 2] > 0.0)
+            if (best_spike_likelihoods[id - 2] > best_spike_likelihoods[id])
             {
                 /* Another spike is too close by to move to this index so kick the can down the road */
                 best_spike_likelihoods[id] = 0.0;
@@ -637,6 +637,7 @@ __kernel void check_overlap_reassignments(
                 /* We are adding this spike to a different window, so set old window to 0 */
                 best_spike_likelihoods[id + 1] = 0.0;
                 best_spike_likelihoods[id] = 0.0;
+                best_spike_likelihoods[id - 2] = 0.0;
                 /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
                 /* Main window has already been assigned as check windows as have their immediate neighbors */
                 check_window_on_next_pass[id - 2] = 1;
@@ -661,7 +662,7 @@ __kernel void check_overlap_reassignments(
             /* Requiring that overlap_recheck == 0 allows convergence and enacts */
             /* the policy that in the event two neighbors are both rechecks, we */
             /* keep the one to the left */
-            if ((best_spike_likelihoods[id + 2] > 0.0) && (overlap_recheck[id + 2] == 0))
+            if ((best_spike_likelihoods[id + 2] > best_spike_likelihoods[id]) && (overlap_recheck[id + 2] == 0))
             {
                 /* Another spike is too close by to move to this index so kick the can down the road */
                 best_spike_likelihoods[id] = 0.0;
@@ -679,6 +680,7 @@ __kernel void check_overlap_reassignments(
                 /* We are adding this spike to a different window, so set old window to 0 */
                 best_spike_likelihoods[id - 1] = 0.0;
                 best_spike_likelihoods[id] = 0.0;
+                best_spike_likelihoods[id + 2] = 0.0;
                 /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
                 /* Main window has already been assigned as check windows as have their immediate neighbors */
                 check_window_on_next_pass[id + 2] = 1;

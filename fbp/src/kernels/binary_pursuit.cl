@@ -468,6 +468,7 @@ __kernel void overlap_recheck_indices(
     __private float shift_sum;
     __private unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_index;
     __private signed int delta_index;
+    __private unsigned int n_shift_indices;
 
     /* Get likelihood for the current best spike label at the input fixed index relative to best index */
     template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
@@ -487,11 +488,25 @@ __kernel void overlap_recheck_indices(
 
         shifted_template_sse = 0.0;
         delta_index = absolute_fixed_index - (i + shift_start);
+        if (delta_index >= 0)
+        {
+            n_shift_indices = delta_index;
+        }
+        else
+        {
+            n_shift_indices = -1 * delta_index;
+        }
         for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
         {
             unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
             unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-            for (j = delta_index; j < template_length; j++)
+
+            // for (j = 0;, j < delta_index; j++)
+            // {
+            //       shifted_template_sse = shifted_template_sse +
+            // }
+
+            for (j = n_shift_indices; j < template_length; j++)
             {
                 /* Data available for both templates */
                 if (delta_index >= 0)

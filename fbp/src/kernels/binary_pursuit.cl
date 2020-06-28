@@ -501,7 +501,7 @@ __kernel void overlap_recheck_indices(
                 }
                 else
                 {
-                    shift_sum = templates[template_offset + j - delta_index] + templates[fixed_template_offset + j];
+                    shift_sum = templates[template_offset + j + delta_index] + templates[fixed_template_offset + j];
                     shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
                 }
             }
@@ -516,8 +516,16 @@ __kernel void overlap_recheck_indices(
             /* Reset the likelihood and best index. Label is FIXED. */
             best_spike_likelihood_private = current_maximum_likelihood;
             best_spike_index_private = absolute_fixed_index;
+
+
+            overlap_best_spike_indices[id] = 0;
+            if ((fixed_shift_index < -5) || (fixed_shift_index > 5))
+            {
+                overlap_best_spike_indices[id] = best_spike_index_private;
+            }
         }
     }
+
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;
     best_spike_indices[id] = best_spike_index_private;

@@ -491,61 +491,61 @@ __kernel void overlap_recheck_indices(
         /* Compute the template sum squared for the combined templates at current shift */
         if ((i + shift_start) < absolute_fixed_index)
         {
-           shifted_template_sse = 0.0;
-           delta_index = absolute_fixed_index - (i + shift_start);
-           for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
-           {
-               unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
-               unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-               for (j = 0; j < (delta_index + template_length); j++)
-               {
-                   /* Data only available for test template */
-                   if (j < delta_index)
-                   {
+            shifted_template_sse = 0.0;
+            delta_index = absolute_fixed_index - (i + shift_start);
+            for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
+            {
+                unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
+                unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
+                for (j = 0; j < (delta_index + template_length); j++)
+                {
+                    /* Data only available for test template */
+                    if (j < delta_index)
+                    {
                        shifted_template_sse = shifted_template_sse + templates[template_offset + j] * templates[template_offset + j];
-                   }
-                   /* Data available for both templates */
-                   if ((j >= delta_index) && (j < template_length))
-                   {
+                    }
+                    /* Data available for both templates */
+                    if ((j >= delta_index) && (j < template_length))
+                    {
                        shift_sum = templates[template_offset + j] + templates[fixed_template_offset + j - delta_index];
                        shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
-                   }
-                   /* Data only available for fixed template */
-                   if (j >= template_length)
-                   {
+                    }
+                    /* Data only available for fixed template */
+                    if (j >= template_length)
+                    {
                        shifted_template_sse = shifted_template_sse + templates[fixed_template_offset + j - delta_index] * templates[fixed_template_offset + j - delta_index];
-                   }
-               }
-           }
+                    }
+                }
+            }
         }
         else
         {
-           shifted_template_sse = 0.0;
-           delta_index = (i + shift_start) - absolute_fixed_index;
-           for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
-           {
-               unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
-               unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-               for (j = 0; j < (delta_index + template_length); j++)
-               {
-                   /* Data only available for fixed template */
-                   if (j < delta_index)
-                   {
+            shifted_template_sse = 0.0;
+            delta_index = (i + shift_start) - absolute_fixed_index;
+            for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
+            {
+                unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
+                unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
+                for (j = 0; j < (delta_index + template_length); j++)
+                {
+                    /* Data only available for fixed template */
+                    if (j < delta_index)
+                    {
                        shifted_template_sse = shifted_template_sse + templates[fixed_template_offset + j] * templates[fixed_template_offset + j];
-                   }
-                   /* Data available for both templates */
-                   if ((j >= delta_index) && (j < template_length))
-                   {
+                    }
+                    /* Data available for both templates */
+                    if ((j >= delta_index) && (j < template_length))
+                    {
                        shift_sum = templates[template_offset + j - delta_index] + templates[fixed_template_offset + j];
                        shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
-                   }
-                   /* Data only available for test template */
-                   if (j >= template_length)
-                   {
+                    }
+                    /* Data only available for test template */
+                    if (j >= template_length)
+                    {
                        shifted_template_sse = shifted_template_sse + templates[template_offset + j - delta_index] * templates[template_offset + j - delta_index];
-                   }
-               }
-           }
+                    }
+                }
+            }
         }
         /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
         current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index - 0.5 * shifted_template_sse;

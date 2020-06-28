@@ -340,7 +340,7 @@ __kernel void compute_template_maximum_likelihood(
     __private float best_spike_likelihood_private = best_spike_likelihoods[id];
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
-    __private float raw_likelihood;
+    __private float raw_sum_squares;
 
     if (template_number == 0)
     {
@@ -383,9 +383,9 @@ __kernel void compute_template_maximum_likelihood(
     {
         /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
         /* If yes, flag this spike for recheck, else set recheck back to zero */
-        raw_likelihood = best_spike_likelihood_private - template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private];
-        if ((raw_likelihood <  -1 * gamma[best_spike_label_private])
-            || (raw_likelihood > 1 * gamma[best_spike_label_private]))
+        raw_sum_squares = best_spike_likelihood_private - template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private];
+        if ((raw_sum_squares <  -1 * gamma[best_spike_label_private])
+            || (raw_sum_squares > 1 * gamma[best_spike_label_private]))
         {
             overlap_recheck[id] = 1;
         }

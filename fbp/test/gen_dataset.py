@@ -212,6 +212,7 @@ class TestDataset(object):
         self.actual_IDs = [[] for neur in range(0, len(firing_rates))]
         self.actual_templates = [np.zeros((0, self.neuron_templates.shape[1]), dtype=self.electrode_dtype) for neur in range(0, len(firing_rates))]
         voltage_array = self.gen_noise_voltage_array()
+        # voltage_array = np.zeros_like(voltage_array)
         for neuron in range(0, len(firing_rates)):
             # Generate one spike train for each neuron
             spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
@@ -219,10 +220,10 @@ class TestDataset(object):
 
             if neuron == 1:
                 print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
-                n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 10
+                n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 5
                 select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)
                 select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
-                self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(5, 10, n_correlated_spikes)
+                self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 20, n_correlated_spikes)
                 self.actual_IDs[neuron].sort()
                 # Spike train is used for actual convolution so reset here
                 spiketrain[:] = False

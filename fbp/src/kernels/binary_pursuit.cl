@@ -304,8 +304,7 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
     __global unsigned char * restrict check_window_on_next_pass,
-    __global unsigned char * restrict overlap_recheck,
-    __global unsigned int * restrict overlap_best_spike_indices)
+    __global unsigned char * restrict overlap_recheck)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -380,13 +379,13 @@ __kernel void compute_template_maximum_likelihood(
             }
         }
     }
-    if ((best_spike_likelihood_private > 0.0) && (best_spike_index_private >= start_of_my_window) && (best_spike_index_private <= end_of_my_window))
+    if (best_spike_likelihood_private > 0.0)
     {
-        /* Best spike is in current window so check whether it violates its expected delta likelihood */
+        /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
         /* If yes, flag this spike for recheck, else set recheck back to zero */
-        raw_likelihood = best_spike_likelihood_private + gamma[best_spike_label_private];
-        if ((raw_likelihood < -1*template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private])
-            || (raw_likelihood > -1*template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]))
+        raw_likelihood = best_spike_likelihood_private - template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private];
+        if ((raw_likelihood <  -1 * gamma[best_spike_label_private])
+            || (raw_likelihood > 1 * gamma[best_spike_label_private]))
         {
             overlap_recheck[id] = 1;
         }
@@ -395,8 +394,6 @@ __kernel void compute_template_maximum_likelihood(
             overlap_recheck[id] = 0;
         }
     }
-    /* Needs set to default? */
-    // overlap_best_spike_indices[id] = best_spike_likelihood_private;
 
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;
@@ -447,20 +444,9 @@ __kernel void overlap_recheck_indices(
     unsigned int j;
     unsigned int current_channel;
 
-    /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
-    /* All other spikes are ignored (previous window and next window) */
-    // const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
-    const unsigned int end_of_my_window = (id + 1) * template_length - 1;
-    // const unsigned int start = (template_length > start_of_my_window) ? 0 : (start_of_my_window - template_length);
-    // const unsigned int stop = (end_of_my_window + template_length) > voltage_length ? voltage_length : (end_of_my_window + template_length);
-
     if (num_neighbor_channels == 0)
     {
         return; /* Invalid number of channels (must be >= 1) */
-    }
-    if (end_of_my_window >= voltage_length - template_length)
-    {
-        return; /* Nothing to do, the end of the current window exceeds the bounds of voltage */
     }
 
     /* Cache the data from the global buffers so that we only have to write to them once */
@@ -481,14 +467,12 @@ __kernel void overlap_recheck_indices(
     __private float shifted_template_sse;
     __private float shift_sum;
     __private unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_index;
-    __private unsigned int delta_index;
+    __private signed int delta_index;
 
     /* Get likelihood for the current best spike label at the input fixed index relative to best index */
     template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
         absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
         template_sum_squared, gamma);
-    /* Need to remove additive quantities to get appropriate distributivity of convolution */
-    template_likelihood_at_index = template_likelihood_at_index + gamma[best_spike_label_private] - template_sum_squared[best_spike_label_private];
 
     /* Find absolute voltage indices we will check within shift range */
     const unsigned int shift_start = (n_shift_points > absolute_fixed_index) ? 0 : (absolute_fixed_index - n_shift_points);
@@ -500,70 +484,30 @@ __kernel void overlap_recheck_indices(
         float current_maximum_likelihood = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
             i + shift_start, templates, num_templates, template_length, template_number,
             template_sum_squared, gamma);
-        /* Need to remove additive quantities to get appropriate distributivity of convolution */
-        current_maximum_likelihood = current_maximum_likelihood + gamma[template_number] - template_sum_squared[template_number];
 
-        /* Compute the template sum squared for the combined templates at current shift */
-        if ((i + shift_start) < absolute_fixed_index)
+        shifted_template_sse = 0.0;
+        delta_index = absolute_fixed_index - (i + shift_start);
+        for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
         {
-            shifted_template_sse = 0.0;
-            delta_index = absolute_fixed_index - (i + shift_start);
-            for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
+            unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
+            unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
+            for (j = delta_index; j < template_length; j++)
             {
-                unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
-                unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-                for (j = 0; j < (delta_index + template_length); j++)
+                /* Data available for both templates */
+                if (delta_index >= 0)
                 {
-                    /* Data only available for test template */
-                    if (j < delta_index)
-                    {
-                        shifted_template_sse = shifted_template_sse + templates[template_offset + j] * templates[template_offset + j];
-                    }
-                    /* Data available for both templates */
-                    if ((j >= delta_index) && (j < template_length))
-                    {
-                        shift_sum = templates[template_offset + j] + templates[fixed_template_offset + j - delta_index];
-                        shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
-                    }
-                    /* Data only available for fixed template */
-                    if (j >= template_length)
-                    {
-                        shifted_template_sse = shifted_template_sse + templates[fixed_template_offset + j - delta_index] * templates[fixed_template_offset + j - delta_index];
-                    }
+                    shift_sum = templates[template_offset + j] + templates[fixed_template_offset + j - delta_index];
+                    shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
                 }
-            }
-        }
-        else
-        {
-            shifted_template_sse = 0.0;
-            delta_index = (i + shift_start) - absolute_fixed_index;
-            for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
-            {
-                unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
-                unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-                for (j = 0; j < (delta_index + template_length); j++)
+                else
                 {
-                    /* Data only available for fixed template */
-                    if (j < delta_index)
-                    {
-                        shifted_template_sse = shifted_template_sse + templates[fixed_template_offset + j] * templates[fixed_template_offset + j];
-                    }
-                    /* Data available for both templates */
-                    if ((j >= delta_index) && (j < template_length))
-                    {
-                        shift_sum = templates[template_offset + j - delta_index] + templates[fixed_template_offset + j];
-                        shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
-                    }
-                    /* Data only available for test template */
-                    if (j >= template_length)
-                    {
-                        shifted_template_sse = shifted_template_sse + templates[template_offset + j - delta_index] * templates[template_offset + j - delta_index];
-                    }
+                    shift_sum = templates[template_offset + j - delta_index] + templates[fixed_template_offset + j];
+                    shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
                 }
             }
         }
         /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
-        current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index - 0.5 * shifted_template_sse;
+        current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index - shifted_template_sse;
 
         /* Current shifted likelihood beats previous best */
         if (current_maximum_likelihood > best_spike_likelihood_private)
@@ -571,12 +515,10 @@ __kernel void overlap_recheck_indices(
             /* Reset the likelihood and best index. Label is FIXED. */
             best_spike_likelihood_private = current_maximum_likelihood;
             best_spike_index_private = absolute_fixed_index;
-            // overlap_best_spike_indices[id] = absolute_fixed_index;
         }
     }
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;
-    // best_spike_labels[id] = best_spike_label_private;
     best_spike_indices[id] = best_spike_index_private;
     return;
 }
@@ -605,38 +547,6 @@ __kernel void check_overlap_reassignments(
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
     const unsigned int end_of_my_window = (id + 1) * template_length - 1;
 
-    // /* Check if this spike is maximal between its neighbors */
-    // unsigned int is_best = 1;
-    // if (id > 0)
-    // {
-    //     if (overlap_best_spike_indices[id] <= overlap_best_spike_indices[id-1])
-    //     {
-    //         is_best = 0;
-    //     }
-    // }
-    // if (id < num_window_indices - 1)
-    // {
-    //     if (overlap_best_spike_indices[id] <= overlap_best_spike_indices[id+1])
-    //     {
-    //         is_best = 0;
-    //     }
-    // }
-    // if (is_best == 0)
-    // {
-    //     /* This spike won't be added this pass anyways so don't try */
-    //     return;
-    // }
-
-    /* Since overlap_recheck spikes are all maximum likelihood in their window, */
-    /* we know there are no spikes in neighboring window. We instead must check */
-    /* two windows away for interference if a best index was moved out of its */
-    /* original window */
-    /* NOTE: I am not sure this is guarunteed to allow convergence with the */
-    /* policy of removing anything with a likelihood > 0.0 nearby. Whether */
-    /* nearby units are also part of the overlap check must be considered. */
-    /* NOTE: There is potential for a race condition with reassigning the */
-    /* likelihoods here. I think since it is only in cases of a shifted window */
-    /* it shouldn't actually matter */
     if (best_spike_indices[id] < start_of_my_window)
     {
         /* Assign likelihood to new window */
@@ -644,48 +554,11 @@ __kernel void check_overlap_reassignments(
         best_spike_indices[id - 1] = best_spike_indices[id];
         best_spike_labels[id - 1] = best_spike_labels[id];
         /* We are adding this spike to a different window, so set old window to 0 */
-        // best_spike_likelihoods[id + 1] = 0.0;
         best_spike_likelihoods[id] = 0.0;
-        // best_spike_likelihoods[id - 2] = 0.0;
-        /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
-        /* Main window has already been assigned as check windows as have their immediate neighbors */
+        /* Reassigning nearby check_window_on_next_pass */
         check_window_on_next_pass[id - 1] = 1;
-        // if (id > 0)
-        // {
-        //     // if (overlap_best_spike_indices[id - 2] >= overlap_best_spike_indices[id])
-        //     // {
-        //     //     /* Another spike is too close by to move to this index so kick the can down the road */
-        //     //     best_spike_likelihoods[id] = 0.0;
-        //     //     /* Also kicks the can for its immediate neighbors */
-        //     //     best_spike_likelihoods[id+1] = 0.0;
-        //     //     best_spike_likelihoods[id-1] = 0.0;
-        //     //     /* But leave their recheck status the same? */
-        //     // }
-        //     // else
-        //     // {
-        //     //     /* Assign likelihood to new window */
-        //     //     best_spike_likelihoods[id - 1] = overlap_best_spike_indices[id];
-        //     //     best_spike_indices[id - 1] = best_spike_indices[id];
-        //     //     best_spike_labels[id - 1] = best_spike_labels[id];
-        //     //     /* We are adding this spike to a different window, so set old window to 0 */
-        //     //     // best_spike_likelihoods[id + 1] = 0.0;
-        //     //     best_spike_likelihoods[id] = 0.0;
-        //     //     // best_spike_likelihoods[id - 2] = 0.0;
-        //     //     /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
-        //     //     /* Main window has already been assigned as check windows as have their immediate neighbors */
-        //     //     check_window_on_next_pass[id - 2] = 1;
-        //     // }
-        // }
-        // else
-        // {
-        //     /* id == 1. Can't have id == 0 and overlap_best_spike_indices[id] < start_of_my_window */
-        //     /* Just add the spike, neighboring window criteria should already be taken care of */
-        //     best_spike_likelihoods[id - 1] = overlap_best_spike_indices[id];
-        //     best_spike_indices[id - 1] = best_spike_indices[id];
-        //     best_spike_labels[id - 1] = best_spike_labels[id];
-        //     // best_spike_likelihoods[id + 1] = 0.0;
-        //     best_spike_likelihoods[id] = 0.0;
-        // }
+        check_window_on_next_pass[id - 2] = 1;
+        check_window_on_next_pass[id] = 1;
     }
     else if (best_spike_indices[id] > end_of_my_window)
     {
@@ -694,59 +567,20 @@ __kernel void check_overlap_reassignments(
         best_spike_indices[id + 1] = best_spike_indices[id];
         best_spike_labels[id + 1] = best_spike_labels[id];
         /* We are adding this spike to a different window, so set old window to 0 */
-        // best_spike_likelihoods[id + 1] = 0.0;
         best_spike_likelihoods[id] = 0.0;
-        // best_spike_likelihoods[id - 2] = 0.0;
-        /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
-        /* Main window has already been assigned as check windows as have their immediate neighbors */
+        /* Reassigning nearby check_window_on_next_pass */
         check_window_on_next_pass[id + 1] = 1;
-        // if (id < num_window_indices - 2)
-        // {
-        //     /* Requiring that overlap_recheck == 0 allows convergence and enacts */
-        //     /* the policy that in the event two neighbors are both rechecks, we */
-        //     /* keep the one to the left */
-        //     if ((overlap_best_spike_indices[id + 2] >= overlap_best_spike_indices[id]))// && (overlap_recheck[id + 2] == 0))
-        //     {
-        //         /* Another spike is too close by to move to this index so kick the can down the road */
-        //         best_spike_likelihoods[id] = 0.0;
-        //         /* Also kicks the can for its immediate neighbors */
-        //         best_spike_likelihoods[id+1] = 0.0;
-        //         best_spike_likelihoods[id-1] = 0.0;
-        //         /* But leave their recheck status the same? */
-        //     }
-        //     else
-        //     {
-        //         /* Assign likelihood to new window */
-        //         best_spike_likelihoods[id + 1] = overlap_best_spike_indices[id];
-        //         best_spike_indices[id + 1] = best_spike_indices[id];
-        //         best_spike_labels[id + 1] = best_spike_labels[id];
-        //         /* We are adding this spike to a different window, so set old window to 0 */
-        //         // best_spike_likelihoods[id - 1] = 0.0;
-        //         best_spike_likelihoods[id] = 0.0;
-        //         // best_spike_likelihoods[id + 2] = 0.0;
-        //         /* NOTE: Do we need to add a policy for reassigning check_window_on_next_pass? */
-        //         /* Main window has already been assigned as check windows as have their immediate neighbors */
-        //         check_window_on_next_pass[id + 2] = 1;
-        //         // check_window_on_next_pass[id - 1] = 0;
-        //     }
-        // }
-        // else
-        // {
-        //     /* id == num_window_indices - 2. Can't have id == num_window_indices - 1 and best_spike_indices[id] > end_of_my_window */
-        //     /* Just add the spike, neighboring window criteria should already be taken care of */
-        //     best_spike_likelihoods[id + 1] = overlap_best_spike_indices[id];
-        //     best_spike_indices[id + 1] = best_spike_indices[id];
-        //     best_spike_labels[id + 1] = best_spike_labels[id];
-        //     // best_spike_likelihoods[id - 1] = 0.0;
-        //     best_spike_likelihoods[id] = 0.0;
-        // }
+        check_window_on_next_pass[id + 2] = 1;
+        check_window_on_next_pass[id] = 1;
     }
     else
     {
-      /* Assign this overlap's best index as the best */
-      best_spike_indices[id] = best_spike_indices[id];
+        /* Assign this overlap's best index as the best */
+        best_spike_indices[id] = best_spike_indices[id];
+        check_window_on_next_pass[id] = 1;
+        check_window_on_next_pass[id + 1] = 1;
+        check_window_on_next_pass[id - 1] = 1;
     }
-
     return;
 }
 

@@ -340,7 +340,6 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             compute_template_maximum_likelihood_kernel.set_arg(13, best_spike_likelihoods_buffer) # Storage for peak likelihood value
             compute_template_maximum_likelihood_kernel.set_arg(14, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
             compute_template_maximum_likelihood_kernel.set_arg(15, overlap_recheck_window_buffer)
-            compute_template_maximum_likelihood_kernel.set_arg(16, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
 
             # Set input arguments for template maximum likelihood kernel
             overlap_recheck_indices_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
@@ -433,8 +432,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     # Reset number of indices to check for overlap recheck kernel
                     total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
 
-                    n_fix_shifts = 20
-                    n_second_shifts = 40
+                    n_fix_shifts = 30
+                    n_second_shifts = 30
 
                     # or_voltage = np.zeros_like(chunk_voltage)
                     # next_wait_event = [cl.enqueue_copy(queue, or_voltage, voltage_buffer, wait_for=next_wait_event)]

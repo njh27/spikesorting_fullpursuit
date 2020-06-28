@@ -349,7 +349,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             overlap_recheck_indices_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of unique neurons, M
             overlap_recheck_indices_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
             overlap_recheck_indices_kernel.set_arg(6, np.uint32(0)) # Template number
-            overlap_recheck_indices_kernel.set_arg(7, np.uint32(0)) # Main template shift index
+            overlap_recheck_indices_kernel.set_arg(7, np.int32(0)) # Main template shift index
             overlap_recheck_indices_kernel.set_arg(8, np.uint32(10)) # +/- Shift indices to check
             overlap_recheck_indices_kernel.set_arg(9, template_sum_squared_buffer) # Sum of squared templated
             overlap_recheck_indices_kernel.set_arg(10, spike_biases_buffer) # Bias
@@ -488,7 +488,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     for template_index in range(0, templates.shape[0]):
                         for fix_index in range(-1*n_fix_shifts, n_fix_shifts+1):
                             overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
-                            overlap_recheck_indices_kernel.set_arg(7, np.uint32(fix_index)) # Main template shift index
+                            overlap_recheck_indices_kernel.set_arg(7, np.int32(fix_index)) # Main template shift index
                             for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
                                 # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
                                 overlap_event = cl.enqueue_nd_range_kernel(queue,
@@ -513,11 +513,21 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     overlap_recheck_window[:] = 0
                     next_wait_event = [cl.enqueue_copy(queue, overlap_recheck_window_buffer, overlap_recheck_window, wait_for=next_wait_event)]
 
+
+                    # best_spike_indices = np.zeros(num_template_widths, dtype=np.uint32)
+                    # best_spike_labels = np.zeros(num_template_widths, dtype=np.uint32)
+                    # best_spike_likelihoods = np.zeros(num_template_widths, dtype=np.float32)
+                    # next_wait_event = [cl.enqueue_copy(queue, best_spike_indices, best_spike_indices_buffer, wait_for=next_wait_event)]
+                    # next_wait_event = [cl.enqueue_copy(queue, best_spike_labels, best_spike_labels_buffer, wait_for=next_wait_event)]
+                    # next_wait_event = [cl.enqueue_copy(queue, best_spike_likelihoods, best_spike_likelihoods_buffer, wait_for=next_wait_event)]
+                    # overlap_best_spike_indices = np.zeros(num_template_widths, dtype=np.uint32)
+                    # next_wait_event = [cl.enqueue_copy(queue, overlap_best_spike_indices, overlap_best_spike_indices_buffer, wait_for=next_wait_event)]
+                    # queue.finish()
                     overlap_best_spike_indices = np.zeros(num_template_widths, dtype=np.uint32)
                     next_wait_event = [cl.enqueue_copy(queue, overlap_best_spike_indices, overlap_best_spike_indices_buffer, wait_for=next_wait_event)]
                     queue.finish()
                     if n_loops == 1:
-                        out = np.nonzero(overlap_best_spike_indices)[0] + clip_init_samples
+                        out = overlap_best_spike_indices[np.nonzero(overlap_best_spike_indices)[0]] + clip_init_samples
 
 
 

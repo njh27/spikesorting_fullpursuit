@@ -379,13 +379,13 @@ __kernel void compute_template_maximum_likelihood(
             }
         }
     }
-    if (best_spike_likelihood_private > 0.0)
+    if (best_spike_likelihood_private > 0.0 && best_spike_index_private >= start_of_my_window && best_spike_index_private <= end_of_my_window)
     {
         /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
         /* If yes, flag this spike for recheck, else set recheck back to zero */
-        raw_sum_squares = best_spike_likelihood_private - template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private];
-        if ((raw_sum_squares <  -1 * gamma[best_spike_label_private])
-            || (raw_sum_squares > 1 * gamma[best_spike_label_private]))
+        raw_sum_squares = best_spike_likelihood_private + gamma[best_spike_label_private];
+        if ((raw_sum_squares <  -1 * template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private])
+            || (raw_sum_squares > -1 * template_sum_squared[best_spike_label_private] + 1 * gamma[best_spike_label_private]))
         {
             overlap_recheck[id] = 1;
         }
@@ -454,10 +454,10 @@ __kernel void overlap_recheck_indices(
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
 
-    if (template_number == best_spike_label_private)
-    {
-        return; /* Assumes overlap is not from both the same spikes */
-    }
+    // if (template_number == best_spike_label_private)
+    // {
+    //     return; /* Assumes overlap is not from both the same spikes */
+    // }
     if (((signed int) (best_spike_index_private + fixed_shift_index) < 0) || ((best_spike_index_private + fixed_shift_index) >= (voltage_length - template_length)))
     {
         return; // Fixed index is outside voltage range
@@ -508,6 +508,7 @@ __kernel void overlap_recheck_indices(
         }
         /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
         current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index - shifted_template_sse;
+        current_maximum_likelihood = current_maximum_likelihood + gamma[template_number] + gamma[best_spike_label_private];
 
         /* Current shifted likelihood beats previous best */
         if (current_maximum_likelihood > best_spike_likelihood_private)

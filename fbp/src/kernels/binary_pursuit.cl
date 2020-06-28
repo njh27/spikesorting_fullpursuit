@@ -454,10 +454,10 @@ __kernel void overlap_recheck_indices(
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
 
-    // if (template_number == best_spike_label_private)
-    // {
-    //     return; /* Assumes overlap is not from both the same spikes */
-    // }
+    if (template_number == best_spike_label_private)
+    {
+        return; /* Assumes overlap is not from both the same spikes */
+    }
     if (((signed int) (best_spike_index_private + fixed_shift_index) < 0) || ((best_spike_index_private + fixed_shift_index) >= (voltage_length - template_length)))
     {
         return; // Fixed index is outside voltage range
@@ -560,7 +560,7 @@ __kernel void overlap_recheck_indices(
 
 
             overlap_best_spike_indices[id] = 0;
-            if ((fixed_shift_index < 5) || (fixed_shift_index > 5))
+            if ((fixed_shift_index < -10) || (fixed_shift_index > 10))
             {
                 overlap_best_spike_indices[id] = best_spike_index_private;
             }

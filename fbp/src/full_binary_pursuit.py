@@ -150,6 +150,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # plt.plot(templates.T)
     # plt.show()
 
+    # thresh_sigma = 1.645, 1.96, 2.576
     crossings, neuron_labels, bp_bool, clips, overlap_indices = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, template_labels, sort_info['sampling_rate'],
                     v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],

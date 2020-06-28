@@ -432,8 +432,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     # Reset number of indices to check for overlap recheck kernel
                     total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
 
-                    n_fix_shifts = 20
-                    n_second_shifts = 20
+                    n_fix_shifts = 40
+                    n_second_shifts = 40
 
                     # or_voltage = np.zeros_like(chunk_voltage)
                     # next_wait_event = [cl.enqueue_copy(queue, or_voltage, voltage_buffer, wait_for=next_wait_event)]
@@ -507,8 +507,6 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                                               wait_for=next_wait_event)
                         queue.finish()
                         next_wait_event = [overlap_event]
-
-
                     # Reset overlap_recheck_window for next pass and copy to GPU
                     overlap_recheck_window[:] = 0
                     next_wait_event = [cl.enqueue_copy(queue, overlap_recheck_window_buffer, overlap_recheck_window, wait_for=next_wait_event)]

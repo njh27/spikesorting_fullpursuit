@@ -508,7 +508,7 @@ __kernel void overlap_recheck_indices(
         }
         /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
         current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index - shifted_template_sse;
-        current_maximum_likelihood = current_maximum_likelihood + gamma[template_number] + gamma[best_spike_label_private];
+        // current_maximum_likelihood = current_maximum_likelihood + gamma[template_number] + gamma[best_spike_label_private];
 
         /* Current shifted likelihood beats previous best */
         if (current_maximum_likelihood > best_spike_likelihood_private)

@@ -221,16 +221,18 @@ class TestDataset(object):
 
 
 
-            # if neuron == 1:
-            #     print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
-            #     n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 5
-            #     select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)
-            #     select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
-            #     self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(5, 15, n_correlated_spikes)
-            #     self.actual_IDs[neuron].sort()
-            #     # Spike train is used for actual convolution so reset here
-            #     spiketrain[:] = False
-            #     spiketrain[self.actual_IDs[neuron]] = True
+            if neuron == 1:
+                print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
+                n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 5
+                select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)
+                select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
+                self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 20, n_correlated_spikes)
+                self.actual_IDs[neuron].sort()
+                # Spike train is used for actual convolution so reset here
+                spiketrain[:] = False
+                spiketrain[self.actual_IDs[neuron]] = True
+
+
 
             for chan in range(0, self.num_channels):
                 # Apply spike train to every channel this neuron is present on

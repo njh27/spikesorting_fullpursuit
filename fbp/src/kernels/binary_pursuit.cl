@@ -304,7 +304,8 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
     __global unsigned char * restrict check_window_on_next_pass,
-    __global unsigned char * restrict overlap_recheck)
+    __global unsigned char * restrict overlap_recheck,
+    __global unsigned int * restrict overlap_best_spike_indices)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -369,36 +370,30 @@ __kernel void compute_template_maximum_likelihood(
         check_window_on_next_pass[id] = 1;
         if (best_spike_index_private >= start_of_my_window && best_spike_index_private <= end_of_my_window)
         {
-            if (id > 0)
+
+            /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
+            /* If yes, flag this spike for recheck, else set recheck back to zero */
+            raw_sum_squares = best_spike_likelihood_private + gamma[best_spike_label_private];
+            if ((raw_sum_squares <  -1 * template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private])
+                || (raw_sum_squares > -1 * template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]))
             {
-                check_window_on_next_pass[id-1] = 1;
+                overlap_recheck[id] = 1;
             }
-            if (id + 1 < voltage_length / template_length)
+            else
             {
-                check_window_on_next_pass[id+1] = 1;
+                overlap_recheck[id] = 0;
             }
-        }
-    }
-    if (best_spike_likelihood_private > 0.0 && best_spike_index_private >= start_of_my_window && best_spike_index_private <= end_of_my_window)
-    {
-        /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
-        /* If yes, flag this spike for recheck, else set recheck back to zero */
-        raw_sum_squares = best_spike_likelihood_private + gamma[best_spike_label_private];
-        if ((raw_sum_squares <  -1 * template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private])
-            || (raw_sum_squares > -1 * template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]))
-        {
-            overlap_recheck[id] = 1;
         }
         else
         {
             overlap_recheck[id] = 0;
         }
     }
-
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;
     best_spike_labels[id] = best_spike_label_private;
     best_spike_indices[id] = best_spike_index_private;
+    overlap_best_spike_indices[id] = best_spike_index_private;
     return;
 }
 
@@ -428,18 +423,18 @@ __kernel void overlap_recheck_indices(
     __global const float * restrict template_sum_squared,
     __global const float * restrict gamma,
     __global const unsigned int * restrict overlap_window_indices,
-    const unsigned int num_window_indices,
+    const unsigned int num_overlap_window_indices,
     __global unsigned int * restrict best_spike_indices,
     __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
     __global unsigned int * restrict overlap_best_spike_indices)
 {
     const size_t global_id = get_global_id(0);
-    if (num_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_window_indices)
+    if (num_overlap_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_overlap_window_indices)
     {
         return; /* Extra worker with nothing to do */
     }
-    const size_t id = (num_window_indices > 0 && overlap_window_indices != NULL) ? overlap_window_indices[global_id] : global_id;
+    const size_t id = (num_overlap_window_indices > 0 && overlap_window_indices != NULL) ? overlap_window_indices[global_id] : global_id;
     unsigned int i;
     unsigned int j;
     unsigned int current_channel;
@@ -556,21 +551,12 @@ __kernel void overlap_recheck_indices(
         {
             /* Reset the likelihood and best index. Label is FIXED. */
             best_spike_likelihood_private = current_maximum_likelihood;
-            // best_spike_index_private = absolute_fixed_index;
             overlap_best_spike_indices[id] = absolute_fixed_index;
-
-
-            // overlap_best_spike_indices[id] = 0;
-            // if ((fixed_shift_index >= -7 && fixed_shift_index <= -2) || (fixed_shift_index <= 7 && fixed_shift_index >= 2))
-            // {
-            //     overlap_best_spike_indices[id] = best_spike_index_private;
-            // }
         }
     }
 
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;
-    best_spike_indices[id] = best_spike_index_private;
     return;
 }
 
@@ -579,58 +565,31 @@ the current window for this worker, it will check whether a spike was added
 +/- 2 windows away (the closest a spike could have been added), and if so, will
 return, kicking the recheck can down the road until the next pass. */
 __kernel void check_overlap_reassignments(
+    const unsigned int voltage_length,
     const unsigned int template_length,
     __global const unsigned int * restrict overlap_window_indices,
-    const unsigned int num_window_indices,
+    const unsigned int num_overlap_window_indices,
     __global unsigned int * restrict best_spike_indices,
-    __global unsigned int * restrict best_spike_labels,
-    __global float * restrict best_spike_likelihoods,
     __global unsigned char * restrict check_window_on_next_pass,
-    __global unsigned char * restrict overlap_recheck,
     __global unsigned int * restrict overlap_best_spike_indices)
 {
     const size_t global_id = get_global_id(0);
-    if (num_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_window_indices)
+    if (num_overlap_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_overlap_window_indices)
     {
         return; /* Extra worker with nothing to do */
     }
-    const size_t id = (num_window_indices > 0 && overlap_window_indices != NULL) ? overlap_window_indices[global_id] : global_id;
+    const size_t id = (num_overlap_window_indices > 0 && overlap_window_indices != NULL) ? overlap_window_indices[global_id] : global_id;
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
     const unsigned int end_of_my_window = (id + 1) * template_length - 1;
 
-    if (overlap_best_spike_indices[id] < start_of_my_window)
+    best_spike_indices[id] = overlap_best_spike_indices[id];
+    if ((overlap_best_spike_indices[id] < start_of_my_window) && (id > 1))
     {
-        /* Assign likelihood to new window */
-        best_spike_likelihoods[id - 1] = best_spike_likelihoods[id];
-        best_spike_indices[id - 1] = overlap_best_spike_indices[id];
-        best_spike_labels[id - 1] = best_spike_labels[id];
-        /* We are adding this spike to a different window, so set old window to 0 */
-        best_spike_likelihoods[id] = 0.0;
-        /* Reassigning nearby check_window_on_next_pass */
-        check_window_on_next_pass[id - 1] = 1;
         check_window_on_next_pass[id - 2] = 1;
-        check_window_on_next_pass[id] = 1;
     }
-    else if (overlap_best_spike_indices[id] > end_of_my_window)
+    if ((overlap_best_spike_indices[id] > end_of_my_window) && (id + 2 < voltage_length / template_length))
     {
-        /* Assign likelihood to new window */
-        best_spike_likelihoods[id + 1] = best_spike_likelihoods[id];
-        best_spike_indices[id + 1] = overlap_best_spike_indices[id];
-        best_spike_labels[id + 1] = best_spike_labels[id];
-        /* We are adding this spike to a different window, so set old window to 0 */
-        best_spike_likelihoods[id] = 0.0;
-        /* Reassigning nearby check_window_on_next_pass */
-        check_window_on_next_pass[id + 1] = 1;
         check_window_on_next_pass[id + 2] = 1;
-        check_window_on_next_pass[id] = 1;
-    }
-    else
-    {
-        /* Assign this overlap's best index as the best */
-        best_spike_indices[id] = overlap_best_spike_indices[id];
-        check_window_on_next_pass[id] = 1;
-        check_window_on_next_pass[id + 1] = 1;
-        check_window_on_next_pass[id - 1] = 1;
     }
     return;
 }
@@ -693,7 +652,9 @@ __kernel void binary_pursuit(
     __local unsigned int * restrict local_scratch,
     __global unsigned int * restrict num_additional_spikes,
     __global unsigned int * restrict additional_spike_indices,
-    __global unsigned int * restrict additional_spike_labels)
+    __global unsigned int * restrict additional_spike_labels,
+    __global unsigned char * restrict overlap_recheck,
+    __global unsigned char * restrict check_window_on_next_pass)
 {
     const size_t global_id = get_global_id(0);
     const size_t local_id = get_local_id(0);
@@ -734,25 +695,34 @@ __kernel void binary_pursuit(
     if (end_of_my_window < voltage_length - template_length && num_neighbor_channels > 0)
     {
         maximum_likelihood = best_spike_likelihoods[id];
-        if (maximum_likelihood > 0)
+        if (maximum_likelihood > 0.0)
         {
             maximum_likelihood_neuron = best_spike_labels[id];
             maximum_likelihood_index = best_spike_indices[id];
         }
     }
 
-    /* If the best maximum likelihood is greater than zero and within our window */
-    /* add the spike to the output */
-    if ((maximum_likelihood > 0.0) && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index <= end_of_my_window))
+    /* If the best maximum likelihood is greater than zero and (within our window */
+    /* or was an overlap recheck) add the spike to the output */
+    local_scratch[local_id] = 0;
+    has_spike = 0;
+    if (maximum_likelihood > 0.0)
     {
-        local_scratch[local_id] = 1;
-        has_spike = 1;
+        if (((maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index <= end_of_my_window)) || (overlap_recheck[id] == 1))
+        {
+            local_scratch[local_id] = 1;
+            has_spike = 1;
+            if (id > 0)
+            {
+                check_window_on_next_pass[id-1] = 1;
+            }
+            if (id + 1 < voltage_length / template_length)
+            {
+                check_window_on_next_pass[id+1] = 1;
+            }
+        }
     }
-    else
-    {
-        local_scratch[local_id] = 0;
-        has_spike = 0;
-    }
+
     barrier(CLK_LOCAL_MEM_FENCE); /* Wait for all workers to get here */
     prefix_local_sum(local_scratch); /* Compute the prefix sum to give our offset into spike indices) */
 

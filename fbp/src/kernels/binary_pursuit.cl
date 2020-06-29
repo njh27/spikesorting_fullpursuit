@@ -374,8 +374,8 @@ __kernel void compute_template_maximum_likelihood(
             /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
             /* If yes, flag this spike for recheck, else set recheck back to zero */
             raw_sum_squares = best_spike_likelihood_private + gamma[best_spike_label_private];
-            if ((raw_sum_squares <  -1 * template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private])
-                || (raw_sum_squares > -1 * template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]))
+            if ((raw_sum_squares <  -1 * template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private]/2)
+                || (raw_sum_squares > -1 * template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]/2))
             {
                 overlap_recheck[id] = 1;
             }
@@ -449,10 +449,10 @@ __kernel void overlap_recheck_indices(
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
 
-    if (template_number == best_spike_label_private)
-    {
-        return; /* Assumes overlap is not from both the same spikes */
-    }
+    // if (template_number == best_spike_label_private)
+    // {
+    //     return; /* Assumes overlap is not from both the same spikes */
+    // }
     if (((signed int) (best_spike_index_private + fixed_shift_index) < 0) || ((best_spike_index_private + fixed_shift_index) >= (voltage_length - template_length)))
     {
         return; // Fixed index is outside voltage range
@@ -471,8 +471,8 @@ __kernel void overlap_recheck_indices(
     template_likelihood_at_index = template_likelihood_at_index + gamma[best_spike_label_private] - template_sum_squared[best_spike_label_private];
 
     /* Find absolute voltage indices we will check within shift range */
-    const unsigned int shift_start = (n_shift_points > absolute_fixed_index) ? 0 : (absolute_fixed_index - n_shift_points);
-    const unsigned int shift_stop = ((n_shift_points + absolute_fixed_index) > voltage_length) ? voltage_length : (absolute_fixed_index + n_shift_points);
+    const unsigned int shift_start = (n_shift_points > best_spike_index_private) ? 0 : (best_spike_index_private - n_shift_points);
+    const unsigned int shift_stop = ((n_shift_points + best_spike_index_private) > voltage_length) ? voltage_length : (best_spike_index_private + n_shift_points);
 
     /* Compute the likelihood for adding the template given the position of the fixed best unit */
     for (i = 0; i < (unsigned) shift_stop - shift_start; i++)

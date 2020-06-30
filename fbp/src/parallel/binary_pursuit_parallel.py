@@ -7,109 +7,117 @@ from fbp.src.sort import reorder_labels
 from fbp.src import segment, overlap_recheck
 from fbp.src.parallel import segment_parallel
 from fbp.src.consolidate import find_overlapping_spike_bool
+from fbp.src.c_cython import sort_cython
 from scipy.signal import fftconvolve
 
 import matplotlib.pyplot as plt
 
 
 
-def remove_overlap_templates(templates, spike_biases, template_samples_per_chan, n_chans):
-
-    templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
-    if templates.shape[0] < 3:
-        # Need at least 3 templates to have 1 be an overlap of 2
-        return templates_to_delete
-    max_shift_indices = template_samples_per_chan // 2
-    template_SS = np.sum(templates * templates, axis=1)
-    template_raw_sum = np.sum(templates, axis=1)
-    templates_to_check = [x for x in range(0, templates.shape[0])]
-    # Each unit takes a turn as a putative overlap
-    while len(templates_to_check) > 0:
-        # p_ov = templates_to_check.pop()
-        # Then try to reconstruct it with all remaining units
-        closest_SS = np.inf
-        closest_SS_pair = None
-        closest_SS_p_ov = None
-        for p_ov in templates_to_check:
-            for n1 in range(0, templates.shape[0]):
-                if template_SS[n1] > template_SS[p_ov] or n1 == p_ov or templates_to_delete[n1]:
-                    # p_ov can't be a sum of n1 if n1 is bigger
-                    continue
-                for n2 in range(n1, templates.shape[0]):
-                    if (template_SS[n2] > template_SS[p_ov]) or (n2 == p_ov) or templates_to_delete[n2]:
-                        # p_ov can't be a sum of n2 if n2 is bigger
-                        continue
-                    # if np.abs(template_raw_sum[n1] + template_raw_sum[n2] - template_raw_sum[p_ov]) < closest_SS:
-                    #     closest_SS = np.abs(template_raw_sum[n1] + template_raw_sum[n2] - template_raw_sum[p_ov])
-                    #     closest_SS_pair = [n1, n2]
-
-                    # if closest_SS_pair is None:
-                    #     # No prospective pair found for this p_ov
-                    #     continue
-                    # print("TESTING OVERLAP FOR", n1, n2, "sum for p_ov")
-                    # plt.plot(templates[n1])
-                    # plt.plot(templates[n2])
-                    # plt.plot(templates[p_ov])
-                    # plt.show()
-                    # NOTE: This is a 'lazy' shift because it does not shift within
-                    # each channel window separately
-                    sum_template = np.zeros(templates.shape[1])
-                    for shift1 in range(-max_shift_indices, max_shift_indices+1):
-                        for shift2 in range(-max_shift_indices, max_shift_indices+1):
-                            sum_template[:] = 0
-
-                            if shift1 == 0:
-                                sum_template += templates[n1, :]
-                            elif shift1 > 0:
-                                sum_template[0:-shift1] += templates[n1, shift1:]
-                            else:
-                                sum_template[-shift1:] += templates[n1, 0:shift1]
-
-                            if shift2 == 0:
-                                sum_template += templates[n2, :]
-                            elif shift2 > 0:
-                                sum_template[0:-shift2] += templates[n2, shift2:]
-                            else:
-                                sum_template[-shift2:] += templates[n2, 0:shift2]
-
-                            curr_SS = np.sum((sum_template - templates[p_ov, :]) ** 2) / template_SS[p_ov]
-
-                            if curr_SS < closest_SS:
-                                closest_SS = curr_SS
-                                closest_SS_pair = [n1, n2]
-                                closest_SS_p_ov = p_ov
-
-        if closest_SS_p_ov is None:
-            print("No shifts even tested")
-            break
-            continue
-        print("FOUND CLOSEST SS ratio", closest_SS, "biases are", spike_biases[closest_SS_p_ov], spike_biases[closest_SS_pair[0]], spike_biases[closest_SS_pair[1]])
-        print("THE RAW SS WAS", closest_SS * template_SS[closest_SS_p_ov])
-        # if closest_SS < 2*spike_biases[n1] + 2*spike_biases[n2]:
-        #     templates_to_delete[closest_SS_p_ov] = True
-        #     templates_to_check.remove(closest_SS_p_ov)
-        #     print("REMOVING THIS TEMPLATE")
-        #     plt.plot(templates[closest_SS_p_ov, :])
-        #     plt.show()
-        # else:
-        #     break
-        if closest_SS < .10:
-            templates_to_delete[closest_SS_p_ov] = True
-            templates_to_check.remove(closest_SS_p_ov)
-            print("REMOVING THIS TEMPLATE")
-            plt.plot(templates[closest_SS_p_ov, :])
-            plt.show()
-        else:
-            break
-
-    print("KEEPING THESE TEMPLATES")
-    for t in range(0, templates.shape[0]):
-        if templates_to_delete[t]:
-            continue
-        plt.plot(templates[t, :])
-        plt.show()
-
-    return templates_to_delete
+# def remove_overlap_templates(templates, spike_biases, template_samples_per_chan):
+#
+#     print("START CYTHON")
+#     c_tempdel = sort_cython.remove_overlap_templates(templates, template_samples_per_chan)
+#     print("END CYTHON")
+#
+#     templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+#     if templates.shape[0] < 3:
+#         # Need at least 3 templates to have 1 be an overlap of 2
+#         return templates_to_delete
+#     max_shift_indices = template_samples_per_chan // 2
+#     template_SS = np.sum(templates * templates, axis=1)
+#     templates_to_delete[template_SS == 0] = True
+#     template_raw_sum = np.sum(templates, axis=1)
+#     templates_to_check = [x for x in range(0, templates.shape[0])]
+#     # Each unit takes a turn as a putative overlap
+#     while len(templates_to_check) > 0:
+#         # p_ov = templates_to_check.pop()
+#         # Then try to reconstruct it with all remaining units
+#         closest_SS = np.inf
+#         closest_SS_pair = None
+#         closest_SS_p_ov = None
+#         for p_ov in templates_to_check:
+#             for n1 in range(0, templates.shape[0]):
+#                 if template_SS[n1] > template_SS[p_ov] or n1 == p_ov or templates_to_delete[n1]:
+#                     # p_ov can't be a sum of n1 if n1 is bigger
+#                     continue
+#                 for n2 in range(n1, templates.shape[0]):
+#                     if (template_SS[n2] > template_SS[p_ov]) or (n2 == p_ov) or templates_to_delete[n2]:
+#                         # p_ov can't be a sum of n2 if n2 is bigger
+#                         continue
+#                     # if np.abs(template_raw_sum[n1] + template_raw_sum[n2] - template_raw_sum[p_ov]) < closest_SS:
+#                     #     closest_SS = np.abs(template_raw_sum[n1] + template_raw_sum[n2] - template_raw_sum[p_ov])
+#                     #     closest_SS_pair = [n1, n2]
+#
+#                     # if closest_SS_pair is None:
+#                     #     # No prospective pair found for this p_ov
+#                     #     continue
+#                     # print("TESTING OVERLAP FOR", n1, n2, "sum for p_ov")
+#                     # plt.plot(templates[n1])
+#                     # plt.plot(templates[n2])
+#                     # plt.plot(templates[p_ov])
+#                     # plt.show()
+#                     # NOTE: This is a 'lazy' shift because it does not shift within
+#                     # each channel window separately
+#                     sum_template = np.zeros(templates.shape[1])
+#                     for shift1 in range(-max_shift_indices, max_shift_indices+1):
+#                         for shift2 in range(-max_shift_indices, max_shift_indices+1):
+#                             sum_template[:] = 0
+#
+#                             if shift1 == 0:
+#                                 sum_template += templates[n1, :]
+#                             elif shift1 > 0:
+#                                 sum_template[0:-shift1] += templates[n1, shift1:]
+#                             else:
+#                                 sum_template[-shift1:] += templates[n1, 0:shift1]
+#
+#                             if shift2 == 0:
+#                                 sum_template += templates[n2, :]
+#                             elif shift2 > 0:
+#                                 sum_template[0:-shift2] += templates[n2, shift2:]
+#                             else:
+#                                 sum_template[-shift2:] += templates[n2, 0:shift2]
+#
+#                             curr_SS = np.sum((sum_template - templates[p_ov, :]) ** 2) / template_SS[p_ov]
+#
+#                             if curr_SS < closest_SS:
+#                                 closest_SS = curr_SS
+#                                 closest_SS_pair = [n1, n2]
+#                                 closest_SS_p_ov = p_ov
+#                                 # print("closest SS is", closest_SS)
+#
+#         if closest_SS_p_ov is None:
+#             print("No shifts even tested")
+#             break
+#         print("THE RAW SS WAS", closest_SS * template_SS[closest_SS_p_ov], closest_SS)
+#         # if closest_SS < 2*spike_biases[n1] + 2*spike_biases[n2]:
+#         #     templates_to_delete[closest_SS_p_ov] = True
+#         #     templates_to_check.remove(closest_SS_p_ov)
+#         #     print("REMOVING THIS TEMPLATE")
+#         #     plt.plot(templates[closest_SS_p_ov, :])
+#         #     plt.show()
+#         # else:
+#         #     break
+#         if closest_SS < .10:
+#             templates_to_delete[closest_SS_p_ov] = True
+#             templates_to_check.remove(closest_SS_p_ov)
+#             # print("REMOVING THIS TEMPLATE")
+#             # plt.plot(templates[closest_SS_p_ov, :])
+#             # plt.show()
+#         else:
+#             break
+#
+#     # print("KEEPING THESE TEMPLATES")
+#     # for t in range(0, templates.shape[0]):
+#     #     if templates_to_delete[t]:
+#     #         continue
+#     #     plt.plot(templates[t, :])
+#     #     plt.show()
+#
+#
+#     print(templates_to_delete, c_tempdel)
+#
+#     return templates_to_delete
 
 
 def get_zero_phase_kernel(x, x_center):
@@ -366,8 +374,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         # Delete stuff no longer needed for this chunk
         del neighbor_bias
 
-        templates_to_delete = remove_overlap_templates(templates, 2*spike_biases/thresh_sigma,
-                                            template_samples_per_chan, n_chans)
+        templates_to_delete = sort_cython.remove_overlap_templates(templates,
+                                                    template_samples_per_chan)
         # Remake template labels, numbered from 0-n and templates_vector
         templates = templates[~templates_to_delete, :]
         template_labels = [x for x in range(0, templates.shape[0])]
@@ -376,6 +384,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
         template_sum_squared = template_sum_squared[~templates_to_delete]
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
+        spike_biases = spike_biases[~templates_to_delete]
 
         print("Reduced number of templates to", templates.shape[0])
 
@@ -631,6 +640,11 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 next_wait_event.append(cl.enqueue_copy(queue, additional_spike_labels, additional_spike_labels_buffer, wait_for=None))
                 chunk_total_additional_spike_indices.append(additional_spike_indices)
                 chunk_total_additional_spike_labels.append(additional_spike_labels)
+
+                # if num_additional_spikes[0] > 1:
+                #     print("NUMBER UNIQUE ADDITIONAL SPIKE INDICES", np.unique(additional_spike_indices).shape[0], "of", additional_spike_indices.shape[0], "total")
+                #     additional_spike_indices.sort()
+                #     print("Their min sorted diff is", np.amin(np.diff(additional_spike_indices)))
 
                 # We have added additional spikes this pass, so we need to subtract them off
                 # by calling the compute_residuals kernel. Most of the arguments are the

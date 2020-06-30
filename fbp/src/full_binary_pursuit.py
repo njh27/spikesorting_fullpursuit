@@ -134,25 +134,22 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         return seg_data
 
     templates = []
-    template_labels = []
     next_label = 0
     for n in neurons:
         if not n['deleted_as_redundant']:
             templates.append(n['pursuit_template'])
-            template_labels.append(next_label)
             next_label += 1
-    template_labels = np.array(template_labels, dtype=np.int64)
 
     del seg_summary
 
     templates = np.vstack(templates)
-    print("Starting full binary pursuit search with", template_labels.shape[0], "templates in segment", seg_number)
+    print("Starting full binary pursuit search with", templates.shape[0], "templates in segment", seg_number)
     # plt.plot(templates.T)
     # plt.show()
 
     # thresh_sigma = 1.645, 1.96, 2.576
     crossings, neuron_labels, bp_bool, clips, overlap_indices = binary_pursuit_parallel.binary_pursuit(
-                    templates, voltage, template_labels, sort_info['sampling_rate'],
+                    templates, voltage, sort_info['sampling_rate'],
                     v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
                     thresh_sigma=1.645, kernels_path=None,
                     max_gpu_memory=max_gpu_memory)

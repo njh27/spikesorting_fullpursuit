@@ -554,7 +554,7 @@ __kernel void overlap_recheck_indices(
         {
             /* Reset the likelihood and best index. Label is FIXED. */
             best_spike_likelihood_private = current_maximum_likelihood;
-            if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index))
+            if (0)//((actual_current_maximum_likelihood > actual_template_likelihood_at_index))
             {
                 /* The best shifted match unit has better likelihood than the main label */
                 overlap_best_spike_labels[id] = template_number;
@@ -585,6 +585,7 @@ __kernel void check_overlap_reassignments(
     const unsigned int num_overlap_window_indices,
     __global unsigned int * restrict best_spike_indices,
     __global unsigned int * restrict best_spike_labels,
+    __global const float * restrict best_spike_likelihoods,
     __global unsigned char * restrict check_window_on_next_pass,
     __global unsigned int * restrict overlap_best_spike_indices,
     __global unsigned int * restrict overlap_best_spike_labels)

@@ -9,6 +9,107 @@ from fbp.src.parallel import segment_parallel
 from fbp.src.consolidate import find_overlapping_spike_bool
 from scipy.signal import fftconvolve
 
+import matplotlib.pyplot as plt
+
+
+
+def remove_overlap_templates(templates, spike_biases, template_samples_per_chan, n_chans):
+
+    templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    if templates.shape[0] < 3:
+        # Need at least 3 templates to have 1 be an overlap of 2
+        return templates_to_delete
+    max_shift_indices = template_samples_per_chan // 2
+    template_SS = np.sum(templates * templates, axis=1)
+    template_raw_sum = np.sum(templates, axis=1)
+    templates_to_check = [x for x in range(0, templates.shape[0])]
+    # Each unit takes a turn as a putative overlap
+    while len(templates_to_check) > 0:
+        # p_ov = templates_to_check.pop()
+        # Then try to reconstruct it with all remaining units
+        closest_SS = np.inf
+        closest_SS_pair = None
+        closest_SS_p_ov = None
+        for p_ov in templates_to_check:
+            for n1 in range(0, templates.shape[0]):
+                if template_SS[n1] > template_SS[p_ov] or n1 == p_ov or templates_to_delete[n1]:
+                    # p_ov can't be a sum of n1 if n1 is bigger
+                    continue
+                for n2 in range(n1, templates.shape[0]):
+                    if (template_SS[n2] > template_SS[p_ov]) or (n2 == p_ov) or templates_to_delete[n2]:
+                        # p_ov can't be a sum of n2 if n2 is bigger
+                        continue
+                    # if np.abs(template_raw_sum[n1] + template_raw_sum[n2] - template_raw_sum[p_ov]) < closest_SS:
+                    #     closest_SS = np.abs(template_raw_sum[n1] + template_raw_sum[n2] - template_raw_sum[p_ov])
+                    #     closest_SS_pair = [n1, n2]
+
+                    # if closest_SS_pair is None:
+                    #     # No prospective pair found for this p_ov
+                    #     continue
+                    # print("TESTING OVERLAP FOR", n1, n2, "sum for p_ov")
+                    # plt.plot(templates[n1])
+                    # plt.plot(templates[n2])
+                    # plt.plot(templates[p_ov])
+                    # plt.show()
+                    # NOTE: This is a 'lazy' shift because it does not shift within
+                    # each channel window separately
+                    sum_template = np.zeros(templates.shape[1])
+                    for shift1 in range(-max_shift_indices, max_shift_indices+1):
+                        for shift2 in range(-max_shift_indices, max_shift_indices+1):
+                            sum_template[:] = 0
+
+                            if shift1 == 0:
+                                sum_template += templates[n1, :]
+                            elif shift1 > 0:
+                                sum_template[0:-shift1] += templates[n1, shift1:]
+                            else:
+                                sum_template[-shift1:] += templates[n1, 0:shift1]
+
+                            if shift2 == 0:
+                                sum_template += templates[n2, :]
+                            elif shift2 > 0:
+                                sum_template[0:-shift2] += templates[n2, shift2:]
+                            else:
+                                sum_template[-shift2:] += templates[n2, 0:shift2]
+
+                            curr_SS = np.sum((sum_template - templates[p_ov, :]) ** 2) / template_SS[p_ov]
+
+                            if curr_SS < closest_SS:
+                                closest_SS = curr_SS
+                                closest_SS_pair = [n1, n2]
+                                closest_SS_p_ov = p_ov
+
+        if closest_SS_p_ov is None:
+            print("No shifts even tested")
+            break
+            continue
+        print("FOUND CLOSEST SS ratio", closest_SS, "biases are", spike_biases[closest_SS_p_ov], spike_biases[closest_SS_pair[0]], spike_biases[closest_SS_pair[1]])
+        print("THE RAW SS WAS", closest_SS * template_SS[closest_SS_p_ov])
+        # if closest_SS < 2*spike_biases[n1] + 2*spike_biases[n2]:
+        #     templates_to_delete[closest_SS_p_ov] = True
+        #     templates_to_check.remove(closest_SS_p_ov)
+        #     print("REMOVING THIS TEMPLATE")
+        #     plt.plot(templates[closest_SS_p_ov, :])
+        #     plt.show()
+        # else:
+        #     break
+        if closest_SS < .10:
+            templates_to_delete[closest_SS_p_ov] = True
+            templates_to_check.remove(closest_SS_p_ov)
+            print("REMOVING THIS TEMPLATE")
+            plt.plot(templates[closest_SS_p_ov, :])
+            plt.show()
+        else:
+            break
+
+    print("KEEPING THESE TEMPLATES")
+    for t in range(0, templates.shape[0]):
+        if templates_to_delete[t]:
+            continue
+        plt.plot(templates[t, :])
+        plt.show()
+
+    return templates_to_delete
 
 
 def get_zero_phase_kernel(x, x_center):
@@ -34,7 +135,7 @@ def get_zero_phase_kernel(x, x_center):
     return kernel
 
 
-def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
+def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                    clip_width, template_samples_per_chan, thresh_sigma=1.645,
                    kernels_path=None, max_gpu_memory=None):
     """
@@ -84,11 +185,21 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
     n_samples = voltage.shape[1]
     chan_win, clip_width = segment_parallel.time_window_to_samples(clip_width, sampling_rate)
 
-    # Templates must be float32
+    # Templates must be a 2D float32
+    if templates.ndim == 1:
+        templates = np.reshape(templates, (1, -1))
     templates = np.float32(templates)
     # Reshape our templates so that instead of being an MxN array, this
     # becomes a 1x(M*N) vector. The first template should be in the first N points
     templates_vector = templates.reshape(templates.size).astype(np.float32)
+
+    # Make template labels, numbered from 0-n
+    template_labels = [x for x in range(0, templates.shape[0])]
+
+    # Adjust event_indices so that they refer to the start of the clip to be
+    # subtracted.
+    clip_init_samples = int(np.abs(chan_win[0]))
+    template_labels = np.uint32(template_labels)
 
     # Load OpenCL code from a file (stored as a string)
     if kernels_path is None:
@@ -125,11 +236,6 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
     with cl.CommandQueue(ctx) as queue:
         prg = cl.Program(ctx, kernels)
         prg.build() # David has a bunch of PYOPENCL_BUILD_OPTIONS used here
-
-        # Adjust event_indices so that they refer to the start of the clip to be
-        # subtracted.
-        clip_init_samples = int(np.abs(chan_win[0]))
-        template_labels = np.uint32(template_labels)
 
         # Determine the segment size that we need to use to fit into the
         # memory on this GPU device.
@@ -206,7 +312,6 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         num_additional_spikes = np.zeros(1, dtype=np.uint32)
 
         # Set-up any buffers/lists that are not dependent on chunks
-        template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
         fft_kernels = []
         secret_spike_indices = []
         secret_spike_labels = []
@@ -221,7 +326,6 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
                 fft_kernels.append(get_zero_phase_kernel(templates[n, t_win[0]:t_win[1]], clip_init_samples))
-        template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
 
         # Compute the template bias terms over voltage data
         spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
@@ -257,10 +361,24 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             print("DIVIDING BIAS BY 2")
             MAD = np.median(np.abs(neighbor_bias)) / 2
             std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            spike_biases[n] = np.float32(thresh_sigma*std_noise)
+            print("SET BIAS TO ZERO!")
+            spike_biases[n] = np.float(0)#np.float32(thresh_sigma*std_noise)
 
         # Delete stuff no longer needed for this chunk
         del neighbor_bias
+
+        templates_to_delete = remove_overlap_templates(templates, 2*spike_biases/thresh_sigma,
+                                            template_samples_per_chan, n_chans)
+        # Remake template labels, numbered from 0-n and templates_vector
+        templates = templates[~templates_to_delete, :]
+        template_labels = [x for x in range(0, templates.shape[0])]
+        template_labels = np.uint32(np.array(template_labels))
+        templates_vector = templates.reshape(templates.size).astype(np.float32)
+        template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
+        template_sum_squared = template_sum_squared[~templates_to_delete]
+        template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
+
+        print("Reduced number of templates to", templates.shape[0])
 
         # Determine our chunk onset indices, making sure that each new start
         # index overlaps the previous chunk by 3 template widths so that no
@@ -371,9 +489,10 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             check_overlap_reassignments_kernel.set_arg(3, np.uint32(num_template_widths)) # Number of actual window indices to check
             check_overlap_reassignments_kernel.set_arg(4, best_spike_indices_buffer) # Storage for peak likelihood index
             check_overlap_reassignments_kernel.set_arg(5, best_spike_labels_buffer) # Storage for peak likelihood label
-            check_overlap_reassignments_kernel.set_arg(6, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
-            check_overlap_reassignments_kernel.set_arg(7, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
-            check_overlap_reassignments_kernel.set_arg(8, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
+            check_overlap_reassignments_kernel.set_arg(6, best_spike_likelihoods_buffer) # Storage for peak likelihood value
+            check_overlap_reassignments_kernel.set_arg(7, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
+            check_overlap_reassignments_kernel.set_arg(8, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
+            check_overlap_reassignments_kernel.set_arg(9, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
@@ -440,8 +559,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     # Reset number of indices to check for overlap recheck kernel
                     total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
 
-                    n_fix_shifts = 10
-                    n_second_shifts = 10
+                    n_fix_shifts = 40
+                    n_second_shifts = 40
                     overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
                     overlap_recheck_indices_kernel.set_arg(12, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     for template_index in range(0, templates.shape[0]):
@@ -621,6 +740,10 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 all_chunk_labels_buffer.release()
                 all_adjusted_clips_buffer.release()
 
+                cl.enqueue_copy(queue, chunk_voltage, voltage_buffer, wait_for=clip_events)
+                out = np.reshape(chunk_voltage, (n_chans, -1))
+
+
             # Release buffers before going on to next chunk
             voltage_buffer.release()
             num_additional_spikes_buffer.release()
@@ -641,4 +764,4 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
 
-    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, None
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, out

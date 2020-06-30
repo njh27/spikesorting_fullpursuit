@@ -808,6 +808,8 @@ class SegSummary(object):
                     # Must be within each other's neighborhoods
                     previously_compared_pairs.append([n1_ind, n2_ind])
                     continue
+                # NOTE: This is a 'lazy' shift because it does not shift within
+                # each channel window separately
                 cross_corr = np.correlate(n1['pursuit_template'],
                                           n2['pursuit_template'],
                                           mode='full')

@@ -361,8 +361,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             print("DIVIDING BIAS BY 2")
             MAD = np.median(np.abs(neighbor_bias)) / 2
             std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            print("SET BIAS TO ZERO!")
-            spike_biases[n] = np.float(0)#np.float32(thresh_sigma*std_noise)
+            spike_biases[n] = np.float32(thresh_sigma*std_noise)
 
         # Delete stuff no longer needed for this chunk
         del neighbor_bias
@@ -489,10 +488,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             check_overlap_reassignments_kernel.set_arg(3, np.uint32(num_template_widths)) # Number of actual window indices to check
             check_overlap_reassignments_kernel.set_arg(4, best_spike_indices_buffer) # Storage for peak likelihood index
             check_overlap_reassignments_kernel.set_arg(5, best_spike_labels_buffer) # Storage for peak likelihood label
-            check_overlap_reassignments_kernel.set_arg(6, best_spike_likelihoods_buffer) # Storage for peak likelihood value
-            check_overlap_reassignments_kernel.set_arg(7, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
-            check_overlap_reassignments_kernel.set_arg(8, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
-            check_overlap_reassignments_kernel.set_arg(9, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
+            check_overlap_reassignments_kernel.set_arg(6, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
+            check_overlap_reassignments_kernel.set_arg(7, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
+            check_overlap_reassignments_kernel.set_arg(8, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)

@@ -369,8 +369,8 @@ __kernel void compute_template_maximum_likelihood(
     /* All other spikes are ignored (previous window and next window) */
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
     const unsigned int end_of_my_window = (id + 1) * template_length;
-    const unsigned int start = (2*template_length > start_of_my_window) ? 0 : (start_of_my_window - 2*template_length);
-    const unsigned int stop = (end_of_my_window + 2*template_length) > voltage_length ? voltage_length : (end_of_my_window + 2*template_length);
+    const unsigned int start = (template_length > start_of_my_window) ? 0 : (start_of_my_window - template_length);
+    const unsigned int stop = (end_of_my_window + template_length) > voltage_length ? voltage_length : (end_of_my_window + template_length);
 
     if (template_number >= template_length)
     {

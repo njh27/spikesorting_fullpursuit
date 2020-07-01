@@ -354,10 +354,7 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned char * restrict check_window_on_next_pass,
     __global unsigned char * restrict overlap_recheck,
     __global unsigned int * restrict overlap_best_spike_indices,
-    __global unsigned int * restrict overlap_best_spike_labels,
-    __global unsigned int * restrict peak_shift,
-    __global unsigned int * restrict peak_chan,
-    __global signed int * restrict peak_sign)
+    __global unsigned int * restrict overlap_best_spike_labels)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -408,14 +405,9 @@ __kernel void compute_template_maximum_likelihood(
             template_sum_squared, gamma);
         if (current_maximum_likelihood > best_spike_likelihood_private)
         {
-            char is_extreme = is_local_extremum(voltage, voltage_length,
-                    start + i, template_number, peak_chan, peak_sign, peak_shift);
-            if (is_extreme == 1)
-            {
-                best_spike_likelihood_private = current_maximum_likelihood;
-                best_spike_label_private = template_number;
-                best_spike_index_private = start + i;
-            }
+            best_spike_likelihood_private = current_maximum_likelihood;
+            best_spike_label_private = template_number;
+            best_spike_index_private = start + i;
         }
         if ((current_maximum_likelihood > 0.0) && (start + i >= start_of_my_window) && (start + i < end_of_my_window))
         {
@@ -486,10 +478,7 @@ __kernel void overlap_recheck_indices(
     __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
     __global unsigned int * restrict overlap_best_spike_indices,
-    __global unsigned int * restrict overlap_best_spike_labels,
-    __global unsigned int * restrict peak_shift,
-    __global unsigned int * restrict peak_chan,
-    __global signed int * restrict peak_sign)
+    __global unsigned int * restrict overlap_best_spike_labels)
 {
     const size_t global_id = get_global_id(0);
     if (num_overlap_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_overlap_window_indices)
@@ -591,46 +580,20 @@ __kernel void overlap_recheck_indices(
         /* Current shifted likelihood beats previous best */
         if (current_maximum_likelihood > best_spike_likelihood_private)
         {
-
-            // char is_extreme_fixed = is_local_extremum(voltage, voltage_length,
-            //         absolute_fixed_index, best_spike_label_private, peak_chan, peak_sign, peak_shift);
-            //
-            // char is_extreme_shift = is_local_extremum(voltage, voltage_length,
-            //         i + shift_start, template_number, peak_chan, peak_sign, peak_shift);
-            //
-            // char is_extreme = 0;
-            // if ((is_extreme_fixed == 1) && (is_extreme_shift == 1))
-            // {
-            //     is_extreme = 1;
-            // }
-
             /* Reset the likelihood and best index. Label is FIXED. */
             if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index))
             {
-                char is_extreme = is_local_extremum(voltage, voltage_length,
-                        i + shift_start, template_number, peak_chan, peak_sign, peak_shift);
-
-                /* THIS WOULD NEED TO CHECK OVERFLOW EDGE CASES !!*/
-                if (is_extreme == 1)
-                {
-                    /* The best shifted match unit has better likelihood than the main label */
-                    best_spike_likelihood_private = current_maximum_likelihood;
-                    overlap_best_spike_labels[id] = template_number;
-                    overlap_best_spike_indices[id] = i + shift_start;
-                }
+                /* The best shifted match unit has better likelihood than the main label */
+                best_spike_likelihood_private = current_maximum_likelihood;
+                overlap_best_spike_labels[id] = template_number;
+                overlap_best_spike_indices[id] = i + shift_start;
             }
             else
             {
-                char is_extreme = is_local_extremum(voltage, voltage_length,
-                        absolute_fixed_index, best_spike_label_private, peak_chan, peak_sign, peak_shift);
-                /* THIS WOULD NEED TO CHECK OVERFLOW EDGE CASES !!*/
-                if (is_extreme == 1)
-                {
-                    /* The main label has better likelihood than best shifted match */
-                    best_spike_likelihood_private = current_maximum_likelihood;
-                    overlap_best_spike_labels[id] = best_spike_label_private;
-                    overlap_best_spike_indices[id] = absolute_fixed_index;
-                }
+                /* The main label has better likelihood than best shifted match */
+                best_spike_likelihood_private = current_maximum_likelihood;
+                overlap_best_spike_labels[id] = best_spike_label_private;
+                overlap_best_spike_indices[id] = absolute_fixed_index;
             }
         }
     }

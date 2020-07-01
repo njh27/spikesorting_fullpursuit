@@ -183,14 +183,14 @@ def combine_two_neurons(neuron1, neuron2):
     # Remove any identical index duplicates (either from error or
     # from combining overlapping segments), preferentially keeping
     # the waveform most similar to its channel's template
-    keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
-    combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-    combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
-    combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
-    for chan in combined_neuron['channel']:
-        combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
-    channel_selector = channel_selector[keep_bool]
-    snr_by_unit = snr_by_unit[keep_bool]
+    # keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
+    # combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
+    # combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+    # combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
+    # for chan in combined_neuron['channel']:
+    #     combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
+    # channel_selector = channel_selector[keep_bool]
+    # snr_by_unit = snr_by_unit[keep_bool]
 
     # Recompute things of interest like SNR and templates by channel as the
     # average over all data from that channel and store for output
@@ -738,11 +738,11 @@ class SegSummary(object):
                 # from combining overlapping segments), preferentially keeping
                 # the waveform best aligned to the template
                 neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
-                keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
-                                neuron['clips'], neuron["template"],
-                                tol_inds=neuron['duplicate_tol_inds'])
-                neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                neuron['clips'] = neuron['clips'][keep_bool, :]
+                # keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
+                #                 neuron['clips'], neuron["template"],
+                #                 tol_inds=neuron['duplicate_tol_inds'])
+                # neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                # neuron['clips'] = neuron['clips'][keep_bool, :]
 
                 # Recompute template and store output
                 neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
@@ -2045,160 +2045,6 @@ class WorkItemSummary(object):
                     if self.verbose: print("In leftover labels (882) added real label", next_real_label, chan, curr_seg)
                     next_real_label += 1
 
-                # Make sure newly stitched segment labels are separate from
-                # their nearest template match. This should help in instances
-                # where one of the stitched units is mixed in one segment, but
-                # in the other segment the units are separable (due to, for
-                # instance, drift). This can help maintain segment continuity if
-                # a unit exists in both segments but only has enough spikes/
-                # separation to be sorted in one of the segments.
-                # Do this by considering curr and next seg combined
-                # NOTE: This could also be done by considering ALL previous
-                # segments combined or once at the end over all data combined
-                # joint_clips = np.vstack((self.sort_data[chan][curr_seg][2],
-                #                          self.sort_data[chan][next_seg][2]))
-                # joint_labels = np.hstack((self.sort_data[chan][curr_seg][1],
-                #                           self.sort_data[chan][next_seg][1]))
-                # joint_templates, temp_labels = segment.calculate_templates(
-                #                         joint_clips, joint_labels)
-                #
-                # # Find all pairs of templates that are mutually closest
-                # tmp_reassign = np.zeros_like(joint_labels)
-                # temp_labels = temp_labels.tolist()
-                # previously_compared_pairs = []
-                # # Could have been shifted above so reset here
-                # curr_chan_inds = np.arange(main_win[0], main_win[1], dtype=np.int64)
-                # while len(temp_labels) > 0:
-                #     best_pair = self.find_nearest_joint_pair(
-                #                     joint_templates, temp_labels,
-                #                     previously_compared_pairs)
-                #     if len(best_pair) == 0:
-                #         break
-                #     previously_compared_pairs.append(best_pair)
-                #     # Perform a split only between minimum distance pair
-                #     c1, c2 = best_pair[0], best_pair[1]
-                #     c1_select = joint_labels == c1
-                #     clips_1 = joint_clips[c1_select, :]
-                #     c2_select = joint_labels == c2
-                #     clips_2 = joint_clips[c2_select, :]
-                #
-                #     # This does NOT currently consider shifts. Using shifts here
-                #     # gets complicated and poses additional risk for errors.
-                #     if clips_1.shape[0] == 1 or clips_2.shape[0] == 2:
-                #         ismerged = True
-                #     else:
-                #         ismerged, labels_1, labels_2 = self.merge_test_two_units(
-                #                 clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                #                 method='channel_template_pca', split_only=True,
-                #                 curr_chan_inds=curr_chan_inds, use_weights=False)
-                #     if ismerged:
-                #         # This can happen if the split cutpoint forces
-                #         # a merge so check and skip
-                #         # Remove label with fewest spikes
-                #         if clips_1.shape[0] >= clips_2.shape[0]:
-                #             remove_l = best_pair[1]
-                #         else:
-                #             remove_l = best_pair[0]
-                #         for x in reversed(range(0, len(temp_labels))):
-                #             if temp_labels[x] == remove_l:
-                #                 del temp_labels[x]
-                #                 del joint_templates[x]
-                #                 break
-                #         continue
-                #
-                #     # Compute the neuron quality scores for each unit being
-                #     # compared BEFORE reassigning based on split
-                #     # Compute ignoring spike count
-                #     unit_1_score_pre = 0
-                #     unit_2_score_pre = 0
-                #     for curr_l in [c1, c2]:
-                #         if curr_l in self.sort_data[chan][curr_seg][1]:
-                #             mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
-                #             select = self.sort_data[chan][curr_seg][1] == curr_l
-                #             curr_snr = self.get_snr(chan, curr_seg, np.mean(self.sort_data[chan][curr_seg][2][select, :], axis=0))
-                #             if curr_l == c1:
-                #                 unit_1_score_pre += curr_snr * (1 - mua_ratio)# * np.count_nonzero(select)
-                #             else:
-                #                 unit_2_score_pre += curr_snr * (1 - mua_ratio)# * np.count_nonzero(select)
-                #         if curr_l in self.sort_data[chan][next_seg][1]:
-                #             mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
-                #             select = self.sort_data[chan][next_seg][1] == curr_l
-                #             curr_snr = self.get_snr(chan, next_seg, np.mean(self.sort_data[chan][next_seg][2][select, :], axis=0))
-                #             if curr_l == c1:
-                #                 unit_1_score_pre += curr_snr * (1 - mua_ratio)# * np.count_nonzero(select)
-                #             else:
-                #                 unit_2_score_pre += curr_snr * (1 - mua_ratio)# * np.count_nonzero(select)
-                #
-                #     # Reassign spikes in c1 that split into c2
-                #     # The merge test was done on joint clips and labels, so
-                #     # we have to figure out where their indices all came from
-                #     tmp_reassign[:] = 0
-                #     tmp_reassign[c1_select] = labels_1
-                #     tmp_reassign[c2_select] = labels_2
-                #     curr_reassign_index_to_c1 = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 1
-                #     curr_original_index_to_c1 = self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c1]
-                #     self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c1] = c1
-                #     curr_reassign_index_to_c2 = tmp_reassign[0:self.sort_data[chan][curr_seg][1].size] == 2
-                #     curr_original_index_to_c2 = self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c2]
-                #     self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c2] = c2
-                #
-                #     # Repeat for assignments in next_seg
-                #     next_reassign_index_to_c1 = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 1
-                #     next_original_index_to_c1 = self.sort_data[chan][next_seg][1][next_reassign_index_to_c1]
-                #     self.sort_data[chan][next_seg][1][next_reassign_index_to_c1] = c1
-                #     next_reassign_index_to_c2 = tmp_reassign[self.sort_data[chan][curr_seg][1].size:] == 2
-                #     next_original_index_to_c2 = self.sort_data[chan][next_seg][1][next_reassign_index_to_c2]
-                #     self.sort_data[chan][next_seg][1][next_reassign_index_to_c2] = c2
-                #
-                #     # Check if split was a good idea and undo it if not. Basically,
-                #     # if at least one of the units saw a 10% or greater improvement
-                #     # in their quality score due to the split, we will stick with
-                #     # the split. Otherwise, it probably didn't help or hurt, and
-                #     # we should stick with the original sorter output.
-                #     unit_1_score_post = 0
-                #     unit_2_score_post = 0
-                #     for curr_l in [c1, c2]:
-                #         if curr_l in self.sort_data[chan][curr_seg][1]:
-                #             mua_ratio = self.get_fraction_mua_to_peak(chan, curr_seg, curr_l)
-                #             select = self.sort_data[chan][curr_seg][1] == curr_l
-                #             curr_snr = self.get_snr(chan, curr_seg, np.mean(self.sort_data[chan][curr_seg][2][select, :], axis=0))
-                #             if curr_l == c1:
-                #                 unit_1_score_post += curr_snr * (1 - mua_ratio)# * np.count_nonzero(select)
-                #             else:
-                #                 unit_2_score_post += curr_snr * (1 - mua_ratio)# * np.count_nonzero(select)
-                #         if curr_l in self.sort_data[chan][next_seg][1]:
-                #             mua_ratio = self.get_fraction_mua_to_peak(chan, next_seg, curr_l)
-                #             select = self.sort_data[chan][next_seg][1] == curr_l
-                #             curr_snr = self.get_snr(chan, next_seg, np.mean(self.sort_data[chan][next_seg][2][select, :], axis=0))
-                #             if curr_l == c1:
-                #                 unit_1_score_post += curr_snr * (1 - mua_ratio)# * np.count_nonzero(select)
-                #             else:
-                #                 unit_2_score_post += curr_snr * (1 - mua_ratio)# * np.count_nonzero(select)
-                #
-                #     if (unit_1_score_post > unit_1_score_pre) and (unit_2_score_post > unit_2_score_pre):
-                #         undo_split = False
-                #     else:
-                #         undo_split = True
-                #     if undo_split:
-                #         if self.verbose: print("undoing split between", c1, c2)
-                #         if 2 in labels_1:
-                #             self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c2] = curr_original_index_to_c2
-                #             self.sort_data[chan][next_seg][1][next_reassign_index_to_c2] = next_original_index_to_c2
-                #         if 1 in labels_2:
-                #             self.sort_data[chan][curr_seg][1][curr_reassign_index_to_c1] = curr_original_index_to_c1
-                #             self.sort_data[chan][next_seg][1][next_reassign_index_to_c1] = next_original_index_to_c1
-                #     # NOTE: Not sure if this should depend on whether we split or not?
-                #     # Remove label with fewest spikes
-                #     if clips_1.shape[0] >= clips_2.shape[0]:
-                #         remove_l = best_pair[1]
-                #     else:
-                #         remove_l = best_pair[0]
-                #     for x in reversed(range(0, len(temp_labels))):
-                #         if temp_labels[x] == remove_l:
-                #             del temp_labels[x]
-                #             del joint_templates[x]
-                #             break
-
                 # If we made it here then we are not starting a new seg
                 start_new_seg = False
                 if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels, np.unique(self.sort_data[chan][curr_seg][1]), np.unique(self.sort_data[chan][next_seg][1]))
@@ -2738,102 +2584,6 @@ class WorkItemSummary(object):
                 else:
                     # Maximum overlap is less than minimum required so done
                     break
-        # # Now looking for overlaps not only between channels, but between segments
-        # # so use the largest reasonable overlap time window
-        # overlap_time = self.half_clip_inds/self.sort_info['sampling_rate'] #self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]
-        # for seg in range(0, self.n_segments-1):
-        #     n1_remaining = [x for x in range(0, len(self.neuron_summary_by_seg[seg]))
-        #                     if self.neuron_summary_by_seg[seg][x]['next_seg_link'] is None]
-        #     bad_n1 = []
-        #     for n_ind in n1_remaining:
-        #         if self.neuron_summary_by_seg[seg][n_ind]['deleted_as_redundant']:
-        #             bad_n1.append(n_ind)
-        #         # elif self.neuron_summary_by_seg[seg][n_ind]['fraction_mua'] > self.max_mua_ratio:
-        #         #     bad_n1.append(n_ind)
-        #         # elif self.neuron_summary_by_seg[seg][n_ind]['snr'] < self.min_snr:
-        #         #     bad_n1.append(n_ind)
-        #         # elif np.isnan(self.neuron_summary_by_seg[seg][n_ind]['fraction_mua']):
-        #         #     bad_n1.append(n_ind)
-        #     for dn in bad_n1:
-        #         n1_remaining.remove(dn)
-        #     while len(n1_remaining) > 0:
-        #         best_n1_score = 0.
-        #         best_n1_ind = 0
-        #         # Choose the best n1_remaining
-        #         for n1_ind in n1_remaining:
-        #             if self.neuron_summary_by_seg[seg][n1_ind]['quality_score'] > best_n1_score:
-        #                 best_n1_score = self.neuron_summary_by_seg[seg][n1_ind]['quality_score']
-        #                 best_n1_ind = n1_ind
-        #         n1_ind = best_n1_ind
-        #         n1 = self.neuron_summary_by_seg[seg][best_n1_ind]
-        #
-        #         best_n2_score = 0.
-        #         min_SSE = np.inf
-        #         max_overlap_ratio = -np.inf
-        #         if verbose: print("Chose best n1 from channel", n1['channel'], "in segment", seg)
-        #         if verbose: print("This n1 has quality", n1['quality_score'], "MUA", n1['fraction_mua'], 'snr', n1['snr'], "n spikes", n1['spike_indices'].shape[0])
-        #         # Choose the best n2 match for n1 in the subsequent segment
-        #         # that satisfies thresholds
-        #         for n2_ind, n2 in enumerate(self.neuron_summary_by_seg[seg+1]):
-        #             # Only choose from neighborhood
-        #             if n1['channel'] not in n2['neighbors']:
-        #                 continue
-        #             # Only choose from 'available' units
-        #             if verbose: print("Checking n2 from channel", n2['channel'], "in segment", seg)
-        #             if verbose: print("This n2 has previous link", n2['prev_seg_link'], "and deleted redundant", n2['deleted_as_redundant'])
-        #             if verbose: print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
-        #             if n2['prev_seg_link'] is None and not n2['deleted_as_redundant']:
-        #                 # if n2['fraction_mua'] > self.max_mua_ratio:
-        #                 #     continue
-        #                 # if n2['snr'] < self.min_snr:
-        #                 #     continue
-        #                 curr_overlap = self.get_overlap_ratio(
-        #                         seg, n1_ind, seg+1, n2_ind, overlap_time)
-        #                 if curr_overlap < self.min_overlapping_spikes:
-        #                     continue
-        #
-        #                 # Not sure whether to check for these or ignore them...
-        #                 # # Now we must choose the best n2 to make it here
-        #                 # if np.isnan(n2['fraction_mua']) and np.isnan(n1['fraction_mua']):
-        #                 #     # Both invalid MUA, so pick on SNR
-        #                 #     n2_score = n2['snr']
-        #                 # elif np.isnan(n2['fraction_mua']) or np.isnan(n1['fraction_mua']):
-        #                 #     # Only one unit has invalid MUA so don't link
-        #                 #     continue
-        #                 # else:
-        #                 #     n2_score = n2['quality_score']
-        #                 # if n2_score > best_n2_score:
-        #                 #     best_n2_score = n2_score
-        #                 #     max_overlap_pair = [n1_ind, n2_ind]
-        #
-        #                 if verbose: print("This n2 from channel", n2['channel'], "in segment", seg, "has enough overlap")
-        #                 if verbose: print("This n2 has quality", n2['quality_score'], "MUA", n2['fraction_mua'], 'snr', n2['snr'], "n spikes", n2['spike_indices'].shape[0])
-        #
-        #                 # If we made it here, the overlap is sufficient to link
-        #                 # Link to the closest template match by SSE
-        #                 # Templates aligned over all channels, so no need to have
-        #                 # super wide shift limit
-        #                 # template_SSE = self.get_shifted_neighborhood_SSE(n1, n2, self.half_clip_inds)
-        #                 # # Weight template SSE by overlap to include both terms
-        #                 # # (lower numbers are better)
-        #                 # template_SSE *= (1 - curr_overlap)
-        #                 # if verbose: print("n2 has SSE of", template_SSE, "vs min of", min_SSE)
-        #                 # if template_SSE < min_SSE:
-        #                 #     max_overlap_ratio = curr_overlap
-        #                 #     min_SSE = template_SSE
-        #                 #     max_overlap_pair = [n1_ind, n2_ind]
-        #                 if curr_overlap > max_overlap_ratio:
-        #                     max_overlap_ratio = curr_overlap
-        #                     max_overlap_pair = [n1_ind, n2_ind]
-        #
-        #         if max_overlap_ratio > 0:
-        #             # Found a match that satisfies thresholds so link them
-        #             self.neuron_summary_by_seg[seg][max_overlap_pair[0]]['next_seg_link'] = max_overlap_pair[1]
-        #             self.neuron_summary_by_seg[seg+1][max_overlap_pair[1]]['prev_seg_link'] = max_overlap_pair[0]
-        #             n1_remaining.remove(max_overlap_pair[0])
-        #         else:
-        #             # Best remaining n1 could not find an n2 match so remove it
-        #             n1_remaining.remove(n1_ind)
 
     def stitch_neurons(self):
         start_seg = 0
@@ -3017,16 +2767,16 @@ class WorkItemSummary(object):
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping
         # the waveform most similar to its channel's template
-        keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
-        combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-        combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
-        combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
-        for chan in combined_neuron['channel']:
-            combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
-        channel_selector = channel_selector[keep_bool]
-        threshold_by_unit = threshold_by_unit[keep_bool] # NOTE: not currently output...
-        segment_by_unit = segment_by_unit[keep_bool]
-        snr_by_unit = snr_by_unit[keep_bool]
+        # keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
+        # combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
+        # combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+        # combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
+        # for chan in combined_neuron['channel']:
+        #     combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
+        # channel_selector = channel_selector[keep_bool]
+        # threshold_by_unit = threshold_by_unit[keep_bool] # NOTE: not currently output...
+        # segment_by_unit = segment_by_unit[keep_bool]
+        # snr_by_unit = snr_by_unit[keep_bool]
 
         # Recompute things of interest like SNR and templates by channel as the
         # average over all data from that channel and store for output

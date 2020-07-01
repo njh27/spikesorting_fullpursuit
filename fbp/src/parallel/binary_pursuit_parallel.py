@@ -279,9 +279,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             print("DIVIDING BIAS BY 2")
             MAD = np.median(np.abs(neighbor_bias)) / 2
             std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            print("SET BIAS TO ZERO !!!")
-            spike_biases[n] = np.float32(0)
-            # spike_biases[n] = np.float32(thresh_sigma*std_noise)
+            # print("SET BIAS TO ZERO !!!")
+            # spike_biases[n] = np.float32(0)
+            spike_biases[n] = np.float32(thresh_sigma*std_noise)
 
         # Delete stuff no longer needed for this chunk
         del neighbor_bias
@@ -476,8 +476,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     # Reset number of indices to check for overlap recheck kernel
                     total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
 
-                    n_fix_shifts = 20
-                    n_second_shifts = 20
+                    n_fix_shifts = 40
+                    n_second_shifts = 40
                     overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
                     overlap_recheck_indices_kernel.set_arg(12, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     for template_index in range(0, templates.shape[0]):

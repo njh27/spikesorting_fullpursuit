@@ -284,6 +284,7 @@ static float is_local_extremum(
             is_extreme = 1;
         }
     }
+    is_extreme = 1;
     return is_extreme;
 }
 
@@ -521,7 +522,7 @@ __kernel void overlap_recheck_indices(
 
     __private float template_likelihood_at_index;
     __private float shifted_template_sse;
-    __private float shift_sum;
+    __private float shift_prod;
     __private unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_index;
     __private unsigned int delta_index;
 
@@ -555,21 +556,11 @@ __kernel void overlap_recheck_indices(
                 unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
                 for (j = 0; j < (delta_index + template_length); j++)
                 {
-                    /* Data only available for test template */
-                    if (j < delta_index)
-                    {
-                       shifted_template_sse = shifted_template_sse + templates[template_offset + j] * templates[template_offset + j];
-                    }
                     /* Data available for both templates */
                     if ((j >= delta_index) && (j < template_length))
                     {
-                       shift_sum = templates[template_offset + j] + templates[fixed_template_offset + j - delta_index];
-                       shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
-                    }
-                    /* Data only available for fixed template */
-                    if (j >= template_length)
-                    {
-                       shifted_template_sse = shifted_template_sse + templates[fixed_template_offset + j - delta_index] * templates[fixed_template_offset + j - delta_index];
+                       shift_prod = templates[template_offset + j] * templates[fixed_template_offset + j - delta_index];
+                       shifted_template_sse = shifted_template_sse + shift_prod;
                     }
                 }
             }
@@ -584,28 +575,18 @@ __kernel void overlap_recheck_indices(
                 unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
                 for (j = 0; j < (delta_index + template_length); j++)
                 {
-                    /* Data only available for fixed template */
-                    if (j < delta_index)
-                    {
-                       shifted_template_sse = shifted_template_sse + templates[fixed_template_offset + j] * templates[fixed_template_offset + j];
-                    }
                     /* Data available for both templates */
                     if ((j >= delta_index) && (j < template_length))
                     {
-                       shift_sum = templates[template_offset + j - delta_index] + templates[fixed_template_offset + j];
-                       shifted_template_sse = shifted_template_sse + shift_sum * shift_sum;
-                    }
-                    /* Data only available for test template */
-                    if (j >= template_length)
-                    {
-                       shifted_template_sse = shifted_template_sse + templates[template_offset + j - delta_index] * templates[template_offset + j - delta_index];
+                       shift_prod = templates[template_offset + j - delta_index] * templates[fixed_template_offset + j];
+                       shifted_template_sse = shifted_template_sse + shift_prod;
                     }
                 }
             }
         }
         /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
-        current_maximum_likelihood = current_maximum_likelihood + template_likelihood_at_index - 0.5 * shifted_template_sse;
-        current_maximum_likelihood = current_maximum_likelihood - gamma[template_number] - gamma[best_spike_label_private];
+        current_maximum_likelihood = actual_current_maximum_likelihood + actual_template_likelihood_at_index - shifted_template_sse;
+        // current_maximum_likelihood = current_maximum_likelihood + gamma[best_spike_label_private] + gamma[template_number];
 
         /* Current shifted likelihood beats previous best */
         if (current_maximum_likelihood > best_spike_likelihood_private)

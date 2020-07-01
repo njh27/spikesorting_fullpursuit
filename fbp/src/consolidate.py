@@ -291,8 +291,10 @@ def find_overlapping_spike_bool(spikes_1, spikes_2, overlap_tol):
         elif spikes_1[ind1] > spikes_2[ind2] + overlap_tol:
             ind2 += 1
         else:
-            overlap_bool[ind1] = True
-            ind2 += 1
+            while (ind1 < spikes_1.shape[0]) and spikes_1[ind1] <= spikes_2[ind2] + overlap_tol:
+                overlap_bool[ind1] = True
+                ind1 += 1
+
     return overlap_bool
 
 
@@ -757,12 +759,13 @@ class SegSummary(object):
                 neuron['quality_score'] = neuron['snr'] * (1-neuron['fraction_mua']) \
                                                 * (neuron['spike_indices'].shape[0])
 
-                # # Get 'expanded template' over all channels
-                # curr_t = np.zeros(self.sort_info['n_samples_per_chan'] * self.sort_info['n_channels'], dtype=self.v_dtype)
-                # t_index = [neuron['neighbors'][0] * self.sort_info['n_samples_per_chan'],
-                #            (neuron['neighbors'][-1] + 1) * self.sort_info['n_samples_per_chan']]
-                # curr_t[t_index[0]:t_index[1]] = neuron['template']
-                # neuron['template'] = curr_t
+                # Get noise standard deviation estimate for template
+                neuron['template_std'] = np.std(np.sum((neuron['clips'] ** 2), axis=1))
+                neuron_SS = np.sum(neuron['template']**2)
+                print("STD is", neuron['template_std'], "SUM square is", neuron_SS)
+                if neuron_SS < 3 * neuron['template_std']:
+                    continue
+
 
                 # Preserve full template for binary pursuit
                 neuron['pursuit_template'] = np.copy(neuron['template'])
@@ -2329,12 +2332,13 @@ class WorkItemSummary(object):
                     # from combining overlapping segments), preferentially keeping
                     # the waveform best aligned to the template
                     neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
-                    keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
-                                    neuron['clips'], neuron["template"],
-                                    tol_inds=neuron['duplicate_tol_inds'])
-                    neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                    neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][keep_bool]
-                    neuron['clips'] = neuron['clips'][keep_bool, :]
+                    # keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
+                    #                 neuron['clips'], neuron["template"],
+                    #                 tol_inds=neuron['duplicate_tol_inds'])
+                    # neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                    # neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][keep_bool]
+                    # neuron['clips'] = neuron['clips'][keep_bool, :]
+                    print("SKIPPED DUPLICATE REMOVAL")
 
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)

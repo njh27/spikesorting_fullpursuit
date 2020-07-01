@@ -330,7 +330,9 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.cdivision(True)    # turn division by zero checking off
-def remove_overlap_templates(np.ndarray[float, ndim=2] templates, int64_t template_samples_per_chan):
+def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
+                             int64_t template_samples_per_chan,
+                             np.ndarray[float, ndim=1] template_thresholds):
 
     cdef np.ndarray[np.npy_bool, ndim=1, cast=True] templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
     if templates.shape[0] < 3:
@@ -422,7 +424,8 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates, int64_t templa
             print("No shifts even tested")
             break
         print("THE RAW SS WAS", closest_SS * template_SS[closest_SS_p_ov], closest_SS)
-        if closest_SS < .10:
+        print("Threshold is", template_thresholds[closest_SS_p_ov])
+        if closest_SS * template_SS[closest_SS_p_ov] < template_thresholds[closest_SS_p_ov]:
             templates_to_delete[closest_SS_p_ov] = True
             templates_to_check.remove(closest_SS_p_ov)
         else:

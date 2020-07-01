@@ -4,6 +4,7 @@ import os
 from fbp.src.consolidate import SegSummary
 from fbp.src.parallel.segment_parallel import get_multichannel_clips
 from fbp.src.parallel import binary_pursuit_parallel
+from fbp.src.c_cython import sort_cython
 
 
 
@@ -103,6 +104,24 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     seg_summary = SegSummary(seg_data, seg_w_items, sort_info, v_dtype,
                         absolute_refractory_period=absolute_refractory_period,
                         verbose=False)
+
+    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+    templates = []
+    template_thresholds = []
+    for n in seg_summary.summaries:
+        templates.append(n['pursuit_template'])
+        template_thresholds.append(2 * n['template_std'])
+
+    templates = np.float32(np.vstack(templates))
+    template_thresholds = np.array(template_thresholds, dtype=np.float32)
+    templates_to_delete = sort_cython.remove_overlap_templates(templates,
+                            sort_info['n_samples_per_chan'], template_thresholds)
+    # Remove these redundant templates from summary before sharpening
+    for x in reversed(range(0, len(seg_summary.summaries))):
+        if templates_to_delete[x]:
+            del seg_summary.summaries[x]
+    print("Reduced number of templates to", len(seg_summary.summaries))
+
     seg_summary.sharpen_across_chans()
     # seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
     neurons = seg_summary.summaries
@@ -139,6 +158,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         if not n['deleted_as_redundant']:
             templates.append(n['pursuit_template'])
             next_label += 1
+            plt.plot(n['pursuit_template'])
+            plt.show()
 
     del seg_summary
 

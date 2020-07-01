@@ -401,9 +401,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             curr_num_clusters = np.zeros(1, dtype=np.int64)
         if settings['verbose']: print("Currently", curr_num_clusters.size, "different clusters", flush=True)
 
-        crossings, neuron_labels, _ = segment_parallel.align_events_with_template(
-                        item_dict, voltage[chan, :], neuron_labels, crossings,
-                        clip_width=settings['clip_width'])
+        # crossings, neuron_labels, _ = segment_parallel.align_events_with_template(
+        #                 item_dict, voltage[chan, :], neuron_labels, crossings,
+        #                 clip_width=settings['clip_width'])
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                         item_dict, voltage[neighbors, :],
                                         crossings, clip_width=settings['clip_width'])

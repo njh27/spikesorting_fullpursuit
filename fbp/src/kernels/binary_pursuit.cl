@@ -241,6 +241,53 @@ static float compute_maximum_likelihood(
     return maximum_likelihood;
 }
 
+
+static float is_local_extremum(
+    __global voltage_type * restrict voltage,
+    unsigned int voltage_length,
+    const unsigned int index,
+    const unsigned int template_number,
+    __global const unsigned int * restrict template_max_chan,
+    __global const signed int * restrict template_extremum_sign,
+    __global const unsigned int * restrict  n_indices_to_extremum)
+{
+    /* Given a template number, an index, the channel with largest deviation for */
+    /* this template, sign of the max deviation on this channel, and the number */
+    /* of indices from the start of the channel template to its extremum */
+
+    unsigned int voltage_offset = index + (voltage_length * template_max_chan[template_number]);
+
+    char is_extreme = 0;
+
+    if ((index + n_indices_to_extremum[template_number] > voltage_length - 2) || (index + n_indices_to_extremum[template_number] - 1 <= 0))
+    {
+        /* Can't check at the end of voltage, return true to allow convergence */
+        is_extreme = 1;
+        return is_extreme;
+    }
+
+    if (template_extremum_sign[template_number] > 0)
+    {
+        if ((voltage[voltage_offset + n_indices_to_extremum[template_number]] >= voltage[voltage_offset + n_indices_to_extremum[template_number] - 1]) &&
+            (voltage[voltage_offset + n_indices_to_extremum[template_number]] >= voltage[voltage_offset + n_indices_to_extremum[template_number] + 1]))
+        {
+            /* This is local maximum */
+            is_extreme = 1;
+        }
+    }
+    else
+    {
+        if ((voltage[voltage_offset + n_indices_to_extremum[template_number]] <= voltage[voltage_offset + n_indices_to_extremum[template_number] - 1]) &&
+            (voltage[voltage_offset + n_indices_to_extremum[template_number]] <= voltage[voltage_offset + n_indices_to_extremum[template_number] + 1]))
+        {
+            /* This is local minimum */
+            is_extreme = 1;
+        }
+    }
+    return is_extreme;
+}
+
+
 /**
  * Kernel used to identify the template and index that maximimizes the
  * likelihood within a small window. This should be called successively,
@@ -306,7 +353,10 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned char * restrict check_window_on_next_pass,
     __global unsigned char * restrict overlap_recheck,
     __global unsigned int * restrict overlap_best_spike_indices,
-    __global unsigned int * restrict overlap_best_spike_labels)
+    __global unsigned int * restrict overlap_best_spike_labels,
+    __global unsigned int * restrict peak_shift,
+    __global unsigned int * restrict peak_chan,
+    __global signed int * restrict peak_sign)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -320,7 +370,7 @@ __kernel void compute_template_maximum_likelihood(
     /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
     /* All other spikes are ignored (previous window and next window) */
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
-    const unsigned int end_of_my_window = (id + 1) * template_length - 1;
+    const unsigned int end_of_my_window = (id + 1) * template_length;
     const unsigned int start = (template_length > start_of_my_window) ? 0 : (start_of_my_window - template_length);
     const unsigned int stop = (end_of_my_window + template_length) > voltage_length ? voltage_length : (end_of_my_window + template_length);
 
@@ -357,11 +407,16 @@ __kernel void compute_template_maximum_likelihood(
             template_sum_squared, gamma);
         if (current_maximum_likelihood > best_spike_likelihood_private)
         {
-            best_spike_likelihood_private = current_maximum_likelihood;
-            best_spike_label_private = template_number;
-            best_spike_index_private = start + i;
+            char is_extreme = is_local_extremum(voltage, voltage_length,
+                    start + i, template_number, peak_chan, peak_sign, peak_shift);
+            if (is_extreme == 1)
+            {
+                best_spike_likelihood_private = current_maximum_likelihood;
+                best_spike_label_private = template_number;
+                best_spike_index_private = start + i;
+            }
         }
-        if ((current_maximum_likelihood > 0.0) && (start + i >= start_of_my_window) && (start + i <= end_of_my_window))
+        if ((current_maximum_likelihood > 0.0) && (start + i >= start_of_my_window) && (start + i < end_of_my_window))
         {
             check_window = 1;
         }
@@ -369,7 +424,7 @@ __kernel void compute_template_maximum_likelihood(
     if (check_window && check_window_on_next_pass != NULL)
     {
         check_window_on_next_pass[id] = 1;
-        if (best_spike_index_private >= start_of_my_window && best_spike_index_private <= end_of_my_window)
+        if (best_spike_index_private >= start_of_my_window && best_spike_index_private < end_of_my_window)
         {
 
             /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
@@ -430,7 +485,10 @@ __kernel void overlap_recheck_indices(
     __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
     __global unsigned int * restrict overlap_best_spike_indices,
-    __global unsigned int * restrict overlap_best_spike_labels)
+    __global unsigned int * restrict overlap_best_spike_labels,
+    __global unsigned int * restrict peak_shift,
+    __global unsigned int * restrict peak_chan,
+    __global signed int * restrict peak_sign)
 {
     const size_t global_id = get_global_id(0);
     if (num_overlap_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_overlap_window_indices)
@@ -552,19 +610,46 @@ __kernel void overlap_recheck_indices(
         /* Current shifted likelihood beats previous best */
         if (current_maximum_likelihood > best_spike_likelihood_private)
         {
+
+            // char is_extreme_fixed = is_local_extremum(voltage, voltage_length,
+            //         absolute_fixed_index, best_spike_label_private, peak_chan, peak_sign, peak_shift);
+            //
+            // char is_extreme_shift = is_local_extremum(voltage, voltage_length,
+            //         i + shift_start, template_number, peak_chan, peak_sign, peak_shift);
+            //
+            // char is_extreme = 0;
+            // if ((is_extreme_fixed == 1) && (is_extreme_shift == 1))
+            // {
+            //     is_extreme = 1;
+            // }
+
             /* Reset the likelihood and best index. Label is FIXED. */
-            best_spike_likelihood_private = current_maximum_likelihood;
             if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index))
             {
-                /* The best shifted match unit has better likelihood than the main label */
-                overlap_best_spike_labels[id] = template_number;
-                overlap_best_spike_indices[id] = i + shift_start;
+                char is_extreme = is_local_extremum(voltage, voltage_length,
+                        i + shift_start, template_number, peak_chan, peak_sign, peak_shift);
+
+                /* THIS WOULD NEED TO CHECK OVERFLOW EDGE CASES !!*/
+                if (is_extreme == 1)
+                {
+                    /* The best shifted match unit has better likelihood than the main label */
+                    best_spike_likelihood_private = current_maximum_likelihood;
+                    overlap_best_spike_labels[id] = template_number;
+                    overlap_best_spike_indices[id] = i + shift_start;
+                }
             }
             else
             {
-                /* The main label has better likelihood than best shifted match */
-                overlap_best_spike_labels[id] = best_spike_label_private;
-                overlap_best_spike_indices[id] = absolute_fixed_index;
+                char is_extreme = is_local_extremum(voltage, voltage_length,
+                        absolute_fixed_index, best_spike_label_private, peak_chan, peak_sign, peak_shift);
+                /* THIS WOULD NEED TO CHECK OVERFLOW EDGE CASES !!*/
+                if (is_extreme == 1)
+                {
+                    /* The main label has better likelihood than best shifted match */
+                    best_spike_likelihood_private = current_maximum_likelihood;
+                    overlap_best_spike_labels[id] = best_spike_label_private;
+                    overlap_best_spike_indices[id] = absolute_fixed_index;
+                }
             }
         }
     }
@@ -596,7 +681,7 @@ __kernel void check_overlap_reassignments(
     }
     const size_t id = (num_overlap_window_indices > 0 && overlap_window_indices != NULL) ? overlap_window_indices[global_id] : global_id;
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
-    const unsigned int end_of_my_window = (id + 1) * template_length - 1;
+    const unsigned int end_of_my_window = (id + 1) * template_length;
 
     best_spike_indices[id] = overlap_best_spike_indices[id];
     best_spike_labels[id] = overlap_best_spike_labels[id];
@@ -604,7 +689,7 @@ __kernel void check_overlap_reassignments(
     {
         check_window_on_next_pass[id - 2] = 1;
     }
-    if ((overlap_best_spike_indices[id] > end_of_my_window) && (id + 2 < voltage_length / template_length))
+    if ((overlap_best_spike_indices[id] >= end_of_my_window) && (id + 2 < voltage_length / template_length))
     {
         check_window_on_next_pass[id + 2] = 1;
     }
@@ -697,7 +782,7 @@ __kernel void binary_pursuit(
     /* Only spikes found within [id * template_length, id + 1 * template_length] are added to the output */
     /* All other spikes are ignored (previous window and next window) */
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
-    const unsigned int end_of_my_window = (id + 1) * template_length - 1;
+    const unsigned int end_of_my_window = (id + 1) * template_length;
 
     /* Define our private variables */
     unsigned int maximum_likelihood_neuron = 0;
@@ -725,7 +810,7 @@ __kernel void binary_pursuit(
     has_spike = 0;
     if (maximum_likelihood > 0.0)
     {
-        if (((maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index <= end_of_my_window)) || (overlap_recheck[id] == 1))
+        if (((maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)) || (overlap_recheck[id] == 1))
         {
             local_scratch[local_id] = 1;
             has_spike = 1;

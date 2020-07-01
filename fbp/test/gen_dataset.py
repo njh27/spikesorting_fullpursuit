@@ -220,6 +220,11 @@ class TestDataset(object):
             self.actual_IDs[neuron] = np.where(spiketrain)[0]
 
 
+            # if neuron == 1:
+            #     overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron-1], overlap_tol=162)
+            #     self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
+            #     spiketrain[:] = False
+            #     spiketrain[self.actual_IDs[neuron]] = True
 
             if neuron == 1:
                 print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")

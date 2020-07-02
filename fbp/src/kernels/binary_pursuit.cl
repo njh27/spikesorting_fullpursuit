@@ -509,17 +509,17 @@ __kernel void overlap_recheck_indices(
         return; // Fixed index is outside voltage range
     }
 
-    __private float template_likelihood_at_index;
     __private float shifted_template_sse;
     __private float shift_prod;
     __private unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_index;
     __private unsigned int delta_index;
 
+    float current_maximum_likelihood;
+
     /* Get likelihood for the current best spike label at the input fixed index relative to best index */
     float actual_template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
         absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
         template_sum_squared, gamma);
-    template_likelihood_at_index = actual_template_likelihood_at_index - template_sum_squared[best_spike_label_private];
 
     /* Find absolute voltage indices we will check within shift range */
     const unsigned int shift_start = (n_shift_points > best_spike_index_private) ? 0 : (best_spike_index_private - n_shift_points);
@@ -532,7 +532,7 @@ __kernel void overlap_recheck_indices(
            i + shift_start, templates, num_templates, template_length, template_number,
            template_sum_squared, gamma);
         /* Need to remove additive quantities to get appropriate distributivity of convolution */
-        float current_maximum_likelihood = actual_current_maximum_likelihood - template_sum_squared[template_number];
+        // float current_maximum_likelihood = actual_current_maximum_likelihood - template_sum_squared[template_number];
 
         /* Compute the template sum squared for the combined templates at current shift */
         if ((i + shift_start) < absolute_fixed_index)
@@ -581,7 +581,7 @@ __kernel void overlap_recheck_indices(
         if (current_maximum_likelihood > best_spike_likelihood_private)
         {
             /* Reset the likelihood and best index. Label is FIXED. */
-            if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index))
+            if (actual_current_maximum_likelihood > actual_template_likelihood_at_index)
             {
                 /* The best shifted match unit has better likelihood than the main label */
                 best_spike_likelihood_private = current_maximum_likelihood;

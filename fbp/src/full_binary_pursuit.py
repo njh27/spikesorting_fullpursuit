@@ -172,7 +172,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     crossings, neuron_labels, bp_bool, clips, overlap_indices = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, sort_info['sampling_rate'],
                     v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
-                    thresh_sigma=1.645, kernels_path=None,
+                    thresh_sigma=2.576, kernels_path=None,
                     max_gpu_memory=max_gpu_memory)
 
     chans_to_template_labels = {}

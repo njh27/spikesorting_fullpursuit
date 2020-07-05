@@ -417,26 +417,26 @@ __kernel void compute_template_maximum_likelihood(
     if (check_window && check_window_on_next_pass != NULL)
     {
         check_window_on_next_pass[id] = 1;
-        if (best_spike_index_private >= start_of_my_window && best_spike_index_private < end_of_my_window)
-        {
-
-            /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
-            /* If yes, flag this spike for recheck, else set recheck back to zero */
-            raw_sum_squares = best_spike_likelihood_private + gamma[best_spike_label_private];
-            if ((raw_sum_squares <  -1 * template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private]/2)
-                || (raw_sum_squares > -1 * template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]/2))
-            {
-                overlap_recheck[id] = 1;
-            }
-            else
-            {
-                overlap_recheck[id] = 0;
-            }
-        }
-        else
-        {
-            overlap_recheck[id] = 0;
-        }
+    }
+    if (best_spike_index_private >= start_of_my_window && best_spike_index_private < end_of_my_window)
+    {
+        overlap_recheck[id] = 1;
+        // /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
+        // /* If yes, flag this spike for recheck, else set recheck back to zero */
+        // raw_sum_squares = best_spike_likelihood_private + gamma[best_spike_label_private];
+        // if ((raw_sum_squares <  -1 * template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private]/2)
+        //     || (raw_sum_squares > -1 * template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]/2))
+        // {
+        //     overlap_recheck[id] = 1;
+        // }
+        // else
+        // {
+        //     overlap_recheck[id] = 0;
+        // }
+    }
+    else
+    {
+        overlap_recheck[id] = 0;
     }
     /* Write our results back to the global vectors */
     best_spike_likelihoods[id] = best_spike_likelihood_private;

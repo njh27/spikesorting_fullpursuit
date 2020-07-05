@@ -285,7 +285,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             print("MAD AND STD", MAD, std_noise)
             # print("SET BIAS TO ZERO !!!")
             # spike_biases[n] = np.float32(0)
-            spike_biases[n] = np.float32(np.sqrt(-1*template_sum_squared[n]) * thresh_sigma * std_noise)
+            spike_biases[n] = np.float32(thresh_sigma * std_noise)
             print("SPIKE BIAS IS", spike_biases[n])
 
         # Delete stuff no longer needed for this chunk

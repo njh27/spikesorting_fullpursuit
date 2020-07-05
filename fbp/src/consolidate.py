@@ -760,7 +760,7 @@ class SegSummary(object):
                                                 * (neuron['spike_indices'].shape[0])
 
                 # Get noise standard deviation estimate for template
-                neuron['template_std'] = np.std(np.sum((neuron['clips'] - neuron["template"]) ** 2), axis=1))
+                neuron['template_std'] = np.std(np.sum((neuron['clips'] - neuron["template"]) ** 2, axis=1))
                 neuron_SS = np.sum(neuron['template']**2)
                 print("STD is", neuron['template_std'], "SUM square is", neuron_SS)
                 # if neuron_SS < 3 * neuron['template_std']:

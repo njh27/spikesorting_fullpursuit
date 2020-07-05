@@ -110,7 +110,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     template_thresholds = []
     for n in seg_summary.summaries:
         templates.append(n['pursuit_template'])
-        template_thresholds.append(2 * n['template_std'])
+        template_thresholds.append(3 * n['template_std'])
 
     templates = np.float32(np.vstack(templates))
     template_thresholds = np.array(template_thresholds, dtype=np.float32)

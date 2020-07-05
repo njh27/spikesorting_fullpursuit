@@ -36,6 +36,80 @@ def get_zero_phase_kernel(x, x_center):
     return kernel
 
 
+def compute_shift_indices(templates, samples_per_chan, n_chans):
+
+    template_pre_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.uint32)
+    template_post_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.uint32)
+
+    # This will be vector of pseudo voltage to convolve summed templates
+    sum_voltage = np.zeros((n_chans, 3 * samples_per_chan))
+    # And corresponding likelihood functions
+    L_fixed = np.zeros(3*samples_per_chan)
+    L_shift = np.zeros(3*samples_per_chan)
+    max_shift = int(samples_per_chan // 2)
+    # NOTE: Need to add 1 to size of failed_assignments to include 0 shift at failed_assignments[max_shift]
+    failed_assignments = np.zeros(2*max_shift+1, dtype=np.bool)
+
+    for f in range(0, templates.shape[0]):
+        fixed_t = templates[f, :]
+        fixed_t_ss = .5 * np.sum(fixed_t ** 2)
+        # Reference index for max value of fixed template
+        fixed_ind = np.argmax(np.abs(fixed_t)) % samples_per_chan + samples_per_chan
+        for s in range(0, templates.shape[0]):
+            shift_t = templates[s, :]
+            shift_t_ss = .5 * np.sum(shift_t ** 2)
+            shift_peak_ind = np.argmax(np.abs(shift_t)) % samples_per_chan + samples_per_chan
+            failed_assignments[:] = False
+            for shift in range(-max_shift, max_shift+1):
+                # Reset variables for this shift
+                shift_ind = shift_peak_ind + shift
+                L_fixed[:] = 0
+                L_shift[:] = 0
+                sum_voltage[:] = 0
+
+                # Compute template convolution aspect of likelihood function over channels
+                for chan in range(0, n_chans):
+                    # Create pseudo voltage containing both templates offset by shift indices
+                    sum_voltage[chan, samples_per_chan:2*samples_per_chan] = fixed_t[chan*samples_per_chan:(chan+1)*samples_per_chan]
+                    if shift < 0:
+                        sum_voltage[chan, samples_per_chan+shift:2*samples_per_chan+shift] += shift_t[chan*samples_per_chan:(chan+1)*samples_per_chan]
+                    else:
+                        sum_voltage[chan, samples_per_chan+shift:2*samples_per_chan+shift] += shift_t[chan*samples_per_chan:(chan+1)*samples_per_chan]
+                    L_fixed += np.convolve(sum_voltage[chan, :], fixed_t[chan*samples_per_chan:(chan+1)*samples_per_chan], mode='same')
+                    L_shift += np.convolve(sum_voltage[chan, :], shift_t[chan*samples_per_chan:(chan+1)*samples_per_chan], mode='same')
+
+                # Add template aspect of likelihood function and find peak indices
+                L_fixed -= fixed_t_ss
+                L_shift -= shift_t_ss
+                fixed_max_ind = np.argmax(L_fixed)
+                shift_max_ind = np.argmax(L_shift)
+
+                # For some reason peak convolution is off by 1 index...
+                if np.all(fixed_t == shift_t):
+                    if fixed_max_ind - 1 != fixed_ind and shift_max_ind - 1 != shift_ind:
+                        # This would be an incorrect assignment and/or index
+                        failed_assignments[shift + max_shift] = True
+                elif L_fixed[fixed_max_ind] > L_shift[shift_max_ind]:
+                    # Would add fixed template
+                    if fixed_max_ind - 1 != fixed_ind:
+                        # This would be an incorrect assignment and/or index
+                        failed_assignments[shift + max_shift] = True
+                else:
+                    # Would add shift template
+                    if shift_max_ind - 1 != shift_ind:
+                        # This would be an incorrect assignment and/or index
+                        failed_assignments[shift + max_shift] = True
+
+            if np.count_nonzero(failed_assignments) == 0:
+                n_pre_inds = 0
+                n_post_inds = 0
+            else:
+                n_pre_inds = np.argmax(failed_assignments) - max_shift
+                # NOTE: Subtracting 1 will give inclusive indices. Not subtracting 1 gives the slice range used here.
+                n_post_inds = failed_assignments.shape[0] - np.argmax(failed_assignments[-1::-1]) - max_shift
+
+    return template_pre_inds, template_post_inds
+
 
 def get_template_info(templates, template_samples_per_chan, n_chans):
 
@@ -482,8 +556,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     # Reset number of indices to check for overlap recheck kernel
                     total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
 
-                    n_fix_shifts = 10
-                    n_second_shifts = 10
+                    n_fix_shifts = 27
+                    n_second_shifts = 27
                     overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
                     overlap_recheck_indices_kernel.set_arg(12, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     for template_index in range(0, templates.shape[0]):

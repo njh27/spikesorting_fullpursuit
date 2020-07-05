@@ -262,26 +262,31 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 cssi += int(sampling_rate * 60) # pick index every minute
             n_total_sample_points = int(sampling_rate * len(sample_start_inds))
         # Compute bias separately for each neuron, summed over channels
+        neighbor_bias = np.zeros(n_total_sample_points, dtype=np.float32)
         for n in range(0, templates.shape[0]):
-            neighbor_bias = np.zeros(n_total_sample_points, dtype=np.float32)
+            neighbor_bias[:] = 0
             for s_ind, s in enumerate(sample_start_inds):
                 for chan in range(0, n_chans):
+                    # neighbor_bias[s_ind*sample_duration:(s_ind+1)*sample_duration] += np.float32(
+                    #                             fftconvolve(
+                    #                             voltage[chan, s:s+sample_duration],
+                    #                             fft_kernels[n*n_chans + chan],
+                    #                             mode='same'))
                     neighbor_bias[s_ind*sample_duration:(s_ind+1)*sample_duration] += np.float32(
-                                                fftconvolve(
-                                                voltage[chan, s:s+sample_duration],
-                                                fft_kernels[n*n_chans + chan],
-                                                mode='same'))
+                            voltage[chan, s:s+sample_duration])
             # Use MAD to estimate STD of the noise and set bias at
             # thresh_sigma standard deviations. The typical extremely large
             # n value for neighbor_bias makes this calculation converge to
             # normal distribution
             # Assumes zero-centered (which median usually isn't)
-            print("DIVIDING BIAS BY 2")
-            MAD = np.median(np.abs(neighbor_bias)) / 2
+            # print("DIVIDING BIAS BY 2")
+            MAD = np.median(np.abs(neighbor_bias))
             std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            print("SET BIAS TO ZERO !!!")
-            spike_biases[n] = np.float32(0)
-            # spike_biases[n] = np.float32(thresh_sigma*std_noise)
+            print("MAD AND STD", MAD, std_noise)
+            # print("SET BIAS TO ZERO !!!")
+            # spike_biases[n] = np.float32(0)
+            spike_biases[n] = np.float32(np.sqrt(-1*template_sum_squared[n]) * thresh_sigma * std_noise)
+            print("SPIKE BIAS IS", spike_biases[n])
 
         # Delete stuff no longer needed for this chunk
         del neighbor_bias
@@ -476,8 +481,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     # Reset number of indices to check for overlap recheck kernel
                     total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
 
-                    n_fix_shifts = 10
-                    n_second_shifts = 10
+                    n_fix_shifts = 15
+                    n_second_shifts = 15
                     overlap_recheck_indices_kernel.set_arg(8, np.uint32(n_second_shifts)) # +/- Shift indices to check
                     overlap_recheck_indices_kernel.set_arg(12, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     for template_index in range(0, templates.shape[0]):

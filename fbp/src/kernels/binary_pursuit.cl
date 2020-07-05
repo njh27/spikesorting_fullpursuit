@@ -418,7 +418,7 @@ __kernel void compute_template_maximum_likelihood(
     {
         check_window_on_next_pass[id] = 1;
     }
-    /* Must set overlap_recheck to 1 IF AND ONLY IF a spike will be added in this */
+    /* Must set overlap_recheck to 1 ONLY IF a spike will be added in this */
     /* window by binary pursuit. */
     if ((best_spike_likelihood_private > 0.0) && (best_spike_index_private >= start_of_my_window) && (best_spike_index_private < end_of_my_window))
     {
@@ -502,10 +502,6 @@ __kernel void overlap_recheck_indices(
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
 
-    // if (template_number == best_spike_label_private)
-    // {
-    //     return; /* Assumes overlap is not from both the same spikes */
-    // }
     if (((signed int) (best_spike_index_private + fixed_shift_index) < 0) || ((best_spike_index_private + fixed_shift_index) >= (voltage_length - template_length)))
     {
         return; // Fixed index is outside voltage range
@@ -577,6 +573,7 @@ __kernel void overlap_recheck_indices(
         }
         /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
         current_maximum_likelihood = actual_current_maximum_likelihood + actual_template_likelihood_at_index - shifted_template_sse;
+        /* NOTE: Need to figure out what the gamma is for the overlap template... */
         // current_maximum_likelihood = current_maximum_likelihood + gamma[best_spike_label_private] + gamma[template_number];
 
         /* Current shifted likelihood beats previous best */

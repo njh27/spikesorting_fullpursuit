@@ -415,6 +415,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             check_overlap_reassignments_kernel.set_arg(6, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
             check_overlap_reassignments_kernel.set_arg(7, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
             check_overlap_reassignments_kernel.set_arg(8, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
+            check_overlap_reassignments_kernel.set_arg(9, overlap_recheck_window_buffer)
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)

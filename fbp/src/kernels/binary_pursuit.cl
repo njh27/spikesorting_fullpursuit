@@ -418,7 +418,9 @@ __kernel void compute_template_maximum_likelihood(
     {
         check_window_on_next_pass[id] = 1;
     }
-    if (best_spike_index_private >= start_of_my_window && best_spike_index_private < end_of_my_window)
+    /* Must set overlap_recheck to 1 IF AND ONLY IF a spike will be added in this */
+    /* window by binary pursuit. */
+    if ((best_spike_likelihood_private > 0.0) && (best_spike_index_private >= start_of_my_window) && (best_spike_index_private < end_of_my_window))
     {
         overlap_recheck[id] = 1;
         // /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
@@ -616,7 +618,8 @@ __kernel void check_overlap_reassignments(
     __global unsigned int * restrict best_spike_labels,
     __global unsigned char * restrict check_window_on_next_pass,
     __global unsigned int * restrict overlap_best_spike_indices,
-    __global unsigned int * restrict overlap_best_spike_labels)
+    __global unsigned int * restrict overlap_best_spike_labels,
+    __global unsigned char * restrict overlap_recheck)
 {
     const size_t global_id = get_global_id(0);
     if (num_overlap_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_overlap_window_indices)
@@ -631,7 +634,23 @@ __kernel void check_overlap_reassignments(
     best_spike_labels[id] = overlap_best_spike_labels[id];
     if ((overlap_best_spike_indices[id] < start_of_my_window) && (id > 1))
     {
-        check_window_on_next_pass[id - 2] = 1;
+        if (overlap_recheck[id - 2] == 1)
+        {
+            /* To avoid situation where both units try to move into same window, */
+            /* Arbitrarily have the window to the right (the current window) */
+            /* give up and wait for a future iteration */
+            /* Setting these to zero ensures we won't try to add later */
+            overlap_recheck[id] = 0;
+            best_spike_indices[id] = 0;
+            /* But we should still recheck its neighbors as if it were added */
+            check_window_on_next_pass[id - 1] = 1;
+            check_window_on_next_pass[id] = 1;
+            check_window_on_next_pass[id + 1] = 1;
+        }
+        else
+        {
+            check_window_on_next_pass[id - 2] = 1;
+        }
     }
     if ((overlap_best_spike_indices[id] >= end_of_my_window) && (id + 2 < voltage_length / template_length))
     {

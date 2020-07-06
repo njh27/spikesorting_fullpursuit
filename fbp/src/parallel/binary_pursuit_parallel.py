@@ -37,9 +37,12 @@ def get_zero_phase_kernel(x, x_center):
 
 
 def compute_shift_indices(templates, samples_per_chan, n_chans):
-
-    template_pre_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.uint32)
-    template_post_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.uint32)
+    """ Performs the max likelihood computation for various shifts of all pairwise
+    templates in the absence of noise to determine the range of indices at which
+    the algorithm will fail to correctly identify a spike label or index. """
+    # Output is a flat matrix lookup for pairwise pre and post shift indices
+    template_pre_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
+    template_post_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
 
     # This will be vector of pseudo voltage to convolve summed templates
     sum_voltage = np.zeros((n_chans, 3 * samples_per_chan))
@@ -55,10 +58,12 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
         fixed_t_ss = .5 * np.sum(fixed_t ** 2)
         # Reference index for max value of fixed template
         fixed_ind = np.argmax(np.abs(fixed_t)) % samples_per_chan + samples_per_chan
+        fixed_phase = ((samples_per_chan+1) // 2 - np.argmax(np.abs(fixed_t)) % samples_per_chan)
         for s in range(0, templates.shape[0]):
             shift_t = templates[s, :]
             shift_t_ss = .5 * np.sum(shift_t ** 2)
             shift_peak_ind = np.argmax(np.abs(shift_t)) % samples_per_chan + samples_per_chan
+            shift_phase = ((samples_per_chan+1) // 2 - np.argmax(np.abs(shift_t)) % samples_per_chan)
             failed_assignments[:] = False
             for shift in range(-max_shift, max_shift+1):
                 # Reset variables for this shift
@@ -86,27 +91,27 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
 
                 # For some reason peak convolution is off by 1 index...
                 if np.all(fixed_t == shift_t):
-                    if fixed_max_ind - 1 != fixed_ind and shift_max_ind - 1 != shift_ind:
+                    if ((fixed_max_ind + fixed_phase - 1) != fixed_ind) and ((shift_max_ind + shift_phase - 1) != shift_ind):
                         # This would be an incorrect assignment and/or index
                         failed_assignments[shift + max_shift] = True
                 elif L_fixed[fixed_max_ind] > L_shift[shift_max_ind]:
                     # Would add fixed template
-                    if fixed_max_ind - 1 != fixed_ind:
+                    if (fixed_max_ind + fixed_phase - 1) != fixed_ind:
                         # This would be an incorrect assignment and/or index
                         failed_assignments[shift + max_shift] = True
                 else:
                     # Would add shift template
-                    if shift_max_ind - 1 != shift_ind:
+                    if (shift_max_ind + shift_phase - 1) != shift_ind:
                         # This would be an incorrect assignment and/or index
                         failed_assignments[shift + max_shift] = True
 
             if np.count_nonzero(failed_assignments) == 0:
-                n_pre_inds = 0
-                n_post_inds = 0
+                template_pre_inds[f*templates.shape[0] + s] = 0
+                template_post_inds[f*templates.shape[0] + s] = 0
             else:
-                n_pre_inds = np.argmax(failed_assignments) - max_shift
+                template_pre_inds[f*templates.shape[0] + s] = np.argmax(failed_assignments) - max_shift
                 # NOTE: Subtracting 1 will give inclusive indices. Not subtracting 1 gives the slice range used here.
-                n_post_inds = failed_assignments.shape[0] - np.argmax(failed_assignments[-1::-1]) - max_shift
+                template_post_inds[f*templates.shape[0] + s] = failed_assignments.shape[0] - np.argmax(failed_assignments[-1::-1]) - max_shift
 
     return template_pre_inds, template_post_inds
 

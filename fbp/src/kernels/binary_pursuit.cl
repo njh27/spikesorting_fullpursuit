@@ -470,8 +470,6 @@ __kernel void overlap_recheck_indices(
     const unsigned int num_templates,
     const unsigned int template_length,
     const unsigned int template_number,
-    const signed int fixed_shift_index,
-    const unsigned int n_shift_points,
     __global const float * restrict template_sum_squared,
     __global const float * restrict gamma,
     __global const unsigned int * restrict overlap_window_indices,
@@ -480,7 +478,9 @@ __kernel void overlap_recheck_indices(
     __global unsigned int * restrict best_spike_labels,
     __global float * restrict best_spike_likelihoods,
     __global unsigned int * restrict overlap_best_spike_indices,
-    __global unsigned int * restrict overlap_best_spike_labels)
+    __global unsigned int * restrict overlap_best_spike_labels,
+    __global signed int * restrict template_pre_inds,
+    __global signed int * restrict template_post_inds)
 {
     const size_t global_id = get_global_id(0);
     if (num_overlap_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_overlap_window_indices)
@@ -488,7 +488,7 @@ __kernel void overlap_recheck_indices(
         return; /* Extra worker with nothing to do */
     }
     const size_t id = (num_overlap_window_indices > 0 && overlap_window_indices != NULL) ? overlap_window_indices[global_id] : global_id;
-    unsigned int i;
+    unsigned int i, k;
     unsigned int j;
     unsigned int current_channel;
 
@@ -502,97 +502,103 @@ __kernel void overlap_recheck_indices(
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
 
-    if (((signed int) (best_spike_index_private + fixed_shift_index) < 0) || ((best_spike_index_private + fixed_shift_index) >= (voltage_length - template_length)))
-    {
-        return; // Fixed index is outside voltage range
-    }
-
     __private float shifted_template_sse;
     __private float shift_prod;
-    __private unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_index;
+    __private unsigned int absolute_fixed_index, absolute_shift_index;
     __private unsigned int delta_index;
 
     float current_maximum_likelihood;
 
-    /* Get likelihood for the current best spike label at the input fixed index relative to best index */
-    float actual_template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
-        absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
-        template_sum_squared, gamma);
+    __private const signed int first_shift = template_pre_inds[best_spike_label_private*num_templates + template_number];
+    __private const signed int last_shift = template_post_inds[best_spike_label_private*num_templates + template_number];
+    if (last_shift - first_shift == 0)
+    {
+        return; /* Everything should be correct for these templates */
+    }
 
     /* Find absolute voltage indices we will check within shift range */
-    const unsigned int shift_start = (n_shift_points > best_spike_index_private) ? 0 : (best_spike_index_private - n_shift_points);
-    const unsigned int shift_stop = ((n_shift_points + best_spike_index_private) > voltage_length) ? voltage_length : (best_spike_index_private + n_shift_points);
+    __private const signed int shift_start = ((signed int) best_spike_index_private + first_shift < 0) ? 0 : ((signed int) best_spike_index_private + first_shift);
+    __private const signed int shift_stop = ((signed int) best_spike_index_private + last_shift) > ((signed int) voltage_length - (signed int) template_length) ? (voltage_length - template_length): ((signed int) best_spike_index_private + last_shift);
+    __private const unsigned int n_shift_points = shift_stop - shift_start;
 
-    /* Compute the likelihood for adding the template given the position of the fixed best unit */
-    for (i = 0; i < (unsigned) shift_stop - shift_start; i++)
+    for (k = 0; k < n_shift_points; k++)
     {
-        float actual_current_maximum_likelihood = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
-           i + shift_start, templates, num_templates, template_length, template_number,
-           template_sum_squared, gamma);
-        /* Need to remove additive quantities to get appropriate distributivity of convolution */
-        // float current_maximum_likelihood = actual_current_maximum_likelihood - template_sum_squared[template_number];
+        absolute_fixed_index = shift_start + k;
+        /* Get likelihood for the current best spike label at the input fixed index relative to best index */
+        float actual_template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
+            absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
+            template_sum_squared, gamma);
 
-        /* Compute the template sum squared for the combined templates at current shift */
-        if ((i + shift_start) < absolute_fixed_index)
+        /* Compute the likelihood for adding the template given the position of the fixed best unit */
+        for (i = 0; i < n_shift_points; i++)
         {
-            shifted_template_sse = 0.0;
-            delta_index = absolute_fixed_index - (i + shift_start);
-            for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
+            absolute_shift_index = shift_start + i;
+            float actual_current_maximum_likelihood = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
+               absolute_shift_index, templates, num_templates, template_length, template_number,
+               template_sum_squared, gamma);
+
+            /* Compute the template sum squared for the combined templates at current shift */
+            if (absolute_shift_index < absolute_fixed_index)
             {
-                unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
-                unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-                for (j = 0; j < (delta_index + template_length); j++)
+                shifted_template_sse = 0.0;
+                delta_index = absolute_fixed_index - absolute_shift_index;
+                for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
                 {
-                    /* Data available for both templates */
-                    if ((j >= delta_index) && (j < template_length))
+                    unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
+                    unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
+                    for (j = 0; j < (delta_index + template_length); j++)
                     {
-                       shift_prod = templates[template_offset + j] * templates[fixed_template_offset + j - delta_index];
-                       shifted_template_sse = shifted_template_sse + shift_prod;
+                        /* Data available for both templates */
+                        if ((j >= delta_index) && (j < template_length))
+                        {
+                           shift_prod = templates[template_offset + j] * templates[fixed_template_offset + j - delta_index];
+                           shifted_template_sse = shifted_template_sse + shift_prod;
+                        }
                     }
                 }
-            }
-        }
-        else
-        {
-            shifted_template_sse = 0.0;
-            delta_index = (i + shift_start) - absolute_fixed_index;
-            for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
-            {
-                unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
-                unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-                for (j = 0; j < (delta_index + template_length); j++)
-                {
-                    /* Data available for both templates */
-                    if ((j >= delta_index) && (j < template_length))
-                    {
-                       shift_prod = templates[template_offset + j - delta_index] * templates[fixed_template_offset + j];
-                       shifted_template_sse = shifted_template_sse + shift_prod;
-                    }
-                }
-            }
-        }
-        /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
-        current_maximum_likelihood = actual_current_maximum_likelihood + actual_template_likelihood_at_index - shifted_template_sse;
-        /* NOTE: Need to figure out what the gamma is for the overlap template... */
-        // current_maximum_likelihood = current_maximum_likelihood + gamma[best_spike_label_private] + gamma[template_number];
-
-        /* Current shifted likelihood beats previous best */
-        if (current_maximum_likelihood > best_spike_likelihood_private)
-        {
-            /* Reset the likelihood and best index. Label is FIXED. */
-            if (actual_current_maximum_likelihood > actual_template_likelihood_at_index)
-            {
-                /* The best shifted match unit has better likelihood than the main label */
-                best_spike_likelihood_private = current_maximum_likelihood;
-                overlap_best_spike_labels[id] = template_number;
-                overlap_best_spike_indices[id] = i + shift_start;
             }
             else
             {
-                /* The main label has better likelihood than best shifted match */
-                best_spike_likelihood_private = current_maximum_likelihood;
-                overlap_best_spike_labels[id] = best_spike_label_private;
-                overlap_best_spike_indices[id] = absolute_fixed_index;
+                shifted_template_sse = 0.0;
+                delta_index = absolute_shift_index - absolute_fixed_index;
+                for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
+                {
+                    unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
+                    unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
+                    for (j = 0; j < (delta_index + template_length); j++)
+                    {
+                        /* Data available for both templates */
+                        if ((j >= delta_index) && (j < template_length))
+                        {
+                           shift_prod = templates[template_offset + j - delta_index] * templates[fixed_template_offset + j];
+                           shifted_template_sse = shifted_template_sse + shift_prod;
+                        }
+                    }
+                }
+            }
+            /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
+            current_maximum_likelihood = actual_current_maximum_likelihood + actual_template_likelihood_at_index - shifted_template_sse;
+            /* NOTE: Need to figure out what the gamma is for the overlap template... */
+            // current_maximum_likelihood = current_maximum_likelihood + gamma[best_spike_label_private] + gamma[template_number];
+
+            /* Current shifted likelihood beats previous best */
+            if (current_maximum_likelihood > best_spike_likelihood_private)
+            {
+                /* Reset the likelihood and best index. Label is FIXED. */
+                if (actual_current_maximum_likelihood > actual_template_likelihood_at_index)
+                {
+                    /* The best shifted match unit has better likelihood than the main label */
+                    best_spike_likelihood_private = current_maximum_likelihood;
+                    overlap_best_spike_labels[id] = template_number;
+                    overlap_best_spike_indices[id] = absolute_shift_index;
+                }
+                else
+                {
+                    /* The main label has better likelihood than best shifted match */
+                    best_spike_likelihood_private = current_maximum_likelihood;
+                    overlap_best_spike_labels[id] = best_spike_label_private;
+                    overlap_best_spike_indices[id] = absolute_fixed_index;
+                }
             }
         }
     }

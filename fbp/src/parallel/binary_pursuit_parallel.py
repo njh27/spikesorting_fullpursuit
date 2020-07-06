@@ -59,7 +59,7 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
         # Reference index for max value of fixed template
         fixed_ind = np.argmax(np.abs(fixed_t)) % samples_per_chan + samples_per_chan
         fixed_phase = ((samples_per_chan+1) // 2 - np.argmax(np.abs(fixed_t)) % samples_per_chan)
-        for s in range(0, templates.shape[0]):
+        for s in range(f, templates.shape[0]):
             shift_t = templates[s, :]
             shift_t_ss = .5 * np.sum(shift_t ** 2)
             shift_peak_ind = np.argmax(np.abs(shift_t)) % samples_per_chan + samples_per_chan
@@ -90,7 +90,7 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
                 shift_max_ind = np.argmax(L_shift)
 
                 # For some reason peak convolution is off by 1 index...
-                if np.all(fixed_t == shift_t):
+                if f == s:
                     if ((fixed_max_ind + fixed_phase - 1) != fixed_ind) and ((shift_max_ind + shift_phase - 1) != shift_ind):
                         # This would be an incorrect assignment and/or index
                         failed_assignments[shift + max_shift] = True
@@ -108,10 +108,17 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
             if np.count_nonzero(failed_assignments) == 0:
                 template_pre_inds[f*templates.shape[0] + s] = 0
                 template_post_inds[f*templates.shape[0] + s] = 0
+                # Will be the same for reflective pairing
+                template_pre_inds[s*templates.shape[0] + f] = 0
+                template_post_inds[s*templates.shape[0] + f] = 0
             else:
                 template_pre_inds[f*templates.shape[0] + s] = np.argmax(failed_assignments) - max_shift
                 # NOTE: Subtracting 1 will give inclusive indices. Not subtracting 1 gives the slice range used here.
                 template_post_inds[f*templates.shape[0] + s] = failed_assignments.shape[0] - np.argmax(failed_assignments[-1::-1]) - max_shift
+
+                # For the same pair in opposite order, these indices are REVERSED
+                template_pre_inds[s*templates.shape[0] + f] = -1 * template_post_inds[f*templates.shape[0] + s] + 1 # Add to undo slice
+                template_post_inds[s*templates.shape[0] + f] = -1 * template_pre_inds[f*templates.shape[0] + s] + 1
 
     return template_pre_inds, template_post_inds
 
@@ -376,6 +383,10 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         # peak_chan_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=peak_chan)
         # peak_sign_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=peak_sign)
 
+        template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
+        template_pre_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_pre_inds)
+        template_post_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_post_inds)
+
         # Determine our chunk onset indices, making sure that each new start
         # index overlaps the previous chunk by 3 template widths so that no
         # spikes are missed by binary pursuit
@@ -481,8 +492,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_recheck_indices_kernel.set_arg(15, best_spike_likelihoods_buffer) # Storage for peak likelihood value
             overlap_recheck_indices_kernel.set_arg(16, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
             overlap_recheck_indices_kernel.set_arg(17, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
-            # overlap_recheck_indices_kernel.set_arg(18, peak_shift_buffer)
-            # overlap_recheck_indices_kernel.set_arg(19, peak_chan_buffer)
+            overlap_recheck_indices_kernel.set_arg(18, template_pre_inds_buffer)
+            overlap_recheck_indices_kernel.set_arg(19, template_post_inds_buffer)
             # overlap_recheck_indices_kernel.set_arg(20, peak_sign_buffer)
 
             check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage

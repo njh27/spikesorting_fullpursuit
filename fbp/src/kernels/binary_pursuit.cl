@@ -390,7 +390,6 @@ __kernel void compute_template_maximum_likelihood(
     __private float best_spike_likelihood_private = best_spike_likelihoods[id];
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
-    __private float raw_sum_squares;
 
     if (template_number == 0)
     {
@@ -423,18 +422,6 @@ __kernel void compute_template_maximum_likelihood(
     if ((best_spike_likelihood_private > 0.0) && (best_spike_index_private >= start_of_my_window) && (best_spike_index_private < end_of_my_window))
     {
         overlap_recheck[id] = 1;
-        // /* Best spike is greater than zero so check whether it violates its expected delta likelihood */
-        // /* If yes, flag this spike for recheck, else set recheck back to zero */
-        // raw_sum_squares = best_spike_likelihood_private + gamma[best_spike_label_private];
-        // if ((raw_sum_squares <  -1 * template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private]/2)
-        //     || (raw_sum_squares > -1 * template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]/2))
-        // {
-        //     overlap_recheck[id] = 1;
-        // }
-        // else
-        // {
-        //     overlap_recheck[id] = 0;
-        // }
     }
     else
     {
@@ -480,7 +467,8 @@ __kernel void overlap_recheck_indices(
     __global unsigned int * restrict overlap_best_spike_indices,
     __global unsigned int * restrict overlap_best_spike_labels,
     __global signed int * restrict template_pre_inds,
-    __global signed int * restrict template_post_inds)
+    __global signed int * restrict template_post_inds,
+    const float gamma_noise)
 {
     const size_t global_id = get_global_id(0);
     if (num_overlap_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_overlap_window_indices)
@@ -507,7 +495,7 @@ __kernel void overlap_recheck_indices(
     __private unsigned int absolute_fixed_index, absolute_shift_index;
     __private unsigned int delta_index;
 
-    float current_maximum_likelihood;
+    float current_maximum_likelihood, full_template_sum_squared;
 
     __private const signed int first_shift = template_pre_inds[best_spike_label_private*num_templates + template_number];
     __private const signed int last_shift = template_post_inds[best_spike_label_private*num_templates + template_number];
@@ -577,9 +565,18 @@ __kernel void overlap_recheck_indices(
                 }
             }
             /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
-            current_maximum_likelihood = actual_current_maximum_likelihood + actual_template_likelihood_at_index - shifted_template_sse;
-            /* NOTE: Need to figure out what the gamma is for the overlap template... */
-            // current_maximum_likelihood = current_maximum_likelihood + gamma[best_spike_label_private] + gamma[template_number];
+            current_maximum_likelihood = actual_current_maximum_likelihood + actual_template_likelihood_at_index - shifted_template_sse;;
+            /* To compute likelihood for shifted sum template, first remove gamma term */
+            /* leaving behind the sum of convolutions with voltage for each individual template */
+            current_maximum_likelihood = current_maximum_likelihood + gamma[best_spike_label_private] + gamma[template_number];
+
+            /* Add missing pieces of template sum squared due to overlap */
+            /* to get the sum of squares for the full shifted sum template. */
+            /* These are input as negative values so keep them that way */
+            full_template_sum_squared = template_sum_squared[best_spike_label_private] + template_sum_squared[template_number] - shifted_template_sse;
+
+            /* Use full template sum squares to compute gamma term for shifted template */
+            current_maximum_likelihood = current_maximum_likelihood - sqrt(-1*full_template_sum_squared) * gamma_noise;
 
             /* Current shifted likelihood beats previous best */
             if (current_maximum_likelihood > best_spike_likelihood_private)

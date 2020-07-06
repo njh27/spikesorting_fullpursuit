@@ -349,29 +349,21 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             n_total_sample_points = int(sampling_rate * len(sample_start_inds))
         # Compute bias separately for each neuron, summed over channels
         neighbor_bias = np.zeros(n_total_sample_points, dtype=np.float32)
+        for s_ind, s in enumerate(sample_start_inds):
+            for chan in range(0, n_chans):
+                neighbor_bias[s_ind*sample_duration:(s_ind+1)*sample_duration] += np.float32(
+                        voltage[chan, s:s+sample_duration])
+        # Use MAD to estimate STD of the noise and set bias at
+        # thresh_sigma standard deviations. The typical extremely large
+        # n value for neighbor_bias makes this calculation converge to
+        # normal distribution
+        # Assumes zero-centered (which median usually isn't)
+        MAD = np.median(np.abs(neighbor_bias))
+        std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
+        print("MAD AND STD", MAD, std_noise)
+        gamma_noise = np.float32(thresh_sigma * std_noise)
         for n in range(0, templates.shape[0]):
-            neighbor_bias[:] = 0
-            for s_ind, s in enumerate(sample_start_inds):
-                for chan in range(0, n_chans):
-                    # neighbor_bias[s_ind*sample_duration:(s_ind+1)*sample_duration] += np.float32(
-                    #                             fftconvolve(
-                    #                             voltage[chan, s:s+sample_duration],
-                    #                             fft_kernels[n*n_chans + chan],
-                    #                             mode='same'))
-                    neighbor_bias[s_ind*sample_duration:(s_ind+1)*sample_duration] += np.float32(
-                            voltage[chan, s:s+sample_duration])
-            # Use MAD to estimate STD of the noise and set bias at
-            # thresh_sigma standard deviations. The typical extremely large
-            # n value for neighbor_bias makes this calculation converge to
-            # normal distribution
-            # Assumes zero-centered (which median usually isn't)
-            # print("DIVIDING BIAS BY 2")
-            MAD = np.median(np.abs(neighbor_bias))
-            std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            print("MAD AND STD", MAD, std_noise)
-            # print("SET BIAS TO ZERO !!!")
-            # spike_biases[n] = np.float32(0)
-            spike_biases[n] = np.float32(np.sqrt(-1*template_sum_squared[n]) * thresh_sigma * std_noise)
+            spike_biases[n] = np.float32(np.sqrt(-1 * template_sum_squared[n]) * gamma_noise)
             print("SPIKE BIAS IS", spike_biases[n])
 
         # Delete stuff no longer needed for this chunk
@@ -379,17 +371,11 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
         template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
-        # peak_shift_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=peak_shift)
-        # peak_chan_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=peak_chan)
-        # peak_sign_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=peak_sign)
 
-        n_max_shift_inds = 40
+        n_max_shift_inds = template_samples_per_chan // 2
         template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
         template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
         template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
-
-        # template_pre_inds -= 5
-        # template_post_inds += 5
 
         template_pre_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_pre_inds)
         template_post_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_post_inds)
@@ -499,7 +485,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_recheck_indices_kernel.set_arg(15, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
             overlap_recheck_indices_kernel.set_arg(16, template_pre_inds_buffer)
             overlap_recheck_indices_kernel.set_arg(17, template_post_inds_buffer)
-            # overlap_recheck_indices_kernel.set_arg(20, peak_sign_buffer)
+            overlap_recheck_indices_kernel.set_arg(18, gamma_noise) # Noise variance term
 
             check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
             check_overlap_reassignments_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template

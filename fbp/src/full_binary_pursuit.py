@@ -122,8 +122,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             del seg_summary.summaries[x]
     print("Reduced number of templates to", len(seg_summary.summaries))
 
-    print("SHARPEN IS OFF!!!!")
-    # seg_summary.sharpen_across_chans()
+    # print("SHARPEN IS OFF!!!!")
+    seg_summary.sharpen_across_chans()
     # seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
     neurons = seg_summary.summaries
 

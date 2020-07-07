@@ -46,28 +46,35 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
 
     # This will be vector of pseudo voltage to convolve summed templates
     sum_voltage = np.zeros((n_chans, 3 * samples_per_chan))
+    L_phase = np.zeros(3*samples_per_chan)
+
+    # Reference index for max value of each template. Get empirically because
+    # nonlinear phase shift is confusing
+    ref_inds = np.zeros(templates.shape[0], dtype=np.int64)
+    for t in range(0, templates.shape[0]):
+        L_phase[:] = 0
+        for chan in range(0, n_chans):
+            sum_voltage[chan, samples_per_chan:2*samples_per_chan] = templates[t, :][chan*samples_per_chan:(chan+1)*samples_per_chan]
+            L_phase += np.convolve(sum_voltage[chan, :], templates[t, :][chan*samples_per_chan:(chan+1)*samples_per_chan], mode='same')
+        ref_inds[t] = np.argmax(L_phase)
+
     # And corresponding likelihood functions
     L_fixed = np.zeros(3*samples_per_chan)
     L_shift = np.zeros(3*samples_per_chan)
     max_shift = int(samples_per_chan // 2)
     # NOTE: Need to add 1 to size of failed_assignments to include 0 shift at failed_assignments[max_shift]
     failed_assignments = np.zeros(2*max_shift+1, dtype=np.bool)
-
     for f in range(0, templates.shape[0]):
         fixed_t = templates[f, :]
         fixed_t_ss = .5 * np.sum(fixed_t ** 2)
-        # Reference index for max value of fixed template
-        fixed_ind = np.argmax(np.abs(fixed_t)) % samples_per_chan + samples_per_chan
-        fixed_phase = ((samples_per_chan+1) // 2 - np.argmax(np.abs(fixed_t)) % samples_per_chan)
+        fixed_ind = ref_inds[f]
         for s in range(f, templates.shape[0]):
             shift_t = templates[s, :]
             shift_t_ss = .5 * np.sum(shift_t ** 2)
-            shift_peak_ind = np.argmax(np.abs(shift_t)) % samples_per_chan + samples_per_chan
-            shift_phase = ((samples_per_chan+1) // 2 - np.argmax(np.abs(shift_t)) % samples_per_chan)
             failed_assignments[:] = False
             for shift in range(-max_shift, max_shift+1):
                 # Reset variables for this shift
-                shift_ind = shift_peak_ind + shift
+                shift_ind = ref_inds[s] + shift
                 L_fixed[:] = 0
                 L_shift[:] = 0
                 sum_voltage[:] = 0
@@ -89,19 +96,18 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
                 fixed_max_ind = np.argmax(L_fixed)
                 shift_max_ind = np.argmax(L_shift)
 
-                # For some reason peak convolution is off by 1 index...
                 if f == s:
-                    if ((fixed_max_ind + fixed_phase - 1) != fixed_ind) and ((shift_max_ind + shift_phase - 1) != shift_ind):
+                    if fixed_max_ind != fixed_ind and shift_max_ind != shift_ind:
                         # This would be an incorrect assignment and/or index
                         failed_assignments[shift + max_shift] = True
                 elif L_fixed[fixed_max_ind] > L_shift[shift_max_ind]:
                     # Would add fixed template
-                    if (fixed_max_ind + fixed_phase - 1) != fixed_ind:
+                    if fixed_max_ind != fixed_ind:
                         # This would be an incorrect assignment and/or index
                         failed_assignments[shift + max_shift] = True
                 else:
                     # Would add shift template
-                    if (shift_max_ind + shift_phase - 1) != shift_ind:
+                    if shift_max_ind != shift_ind:
                         # This would be an incorrect assignment and/or index
                         failed_assignments[shift + max_shift] = True
 
@@ -373,7 +379,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
 
-        n_max_shift_inds = template_samples_per_chan // 2
+        n_max_shift_inds = template_samples_per_chan // 4
         template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
         # template_pre_inds -= -4
         # template_post_inds += -2

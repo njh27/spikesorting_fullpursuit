@@ -361,6 +361,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         MAD = np.median(np.abs(neighbor_bias))
         std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
         print("MAD AND STD", MAD, std_noise)
+        # print("SETTING GAMMA NOISE TO ZERO !!!")
         gamma_noise = np.float32(thresh_sigma * std_noise)
         for n in range(0, templates.shape[0]):
             spike_biases[n] = np.float32(np.sqrt(-1 * template_sum_squared[n]) * gamma_noise)
@@ -374,8 +375,12 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
         n_max_shift_inds = template_samples_per_chan // 2
         template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
+        # template_pre_inds -= -4
+        # template_post_inds += -2
         template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
         template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
+        print("PRE SHIFT INDS", template_pre_inds)
+        print("POST SHIFT INDS", template_post_inds)
 
         template_pre_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_pre_inds)
         template_post_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_post_inds)
@@ -696,6 +701,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_window_indices_buffer.release()
             overlap_best_spike_indices_buffer.release()
             overlap_best_spike_labels_buffer.release()
+            template_pre_inds_buffer.release()
+            template_post_inds_buffer.release()
 
 
             # Read out the adjusted spikes here before releasing

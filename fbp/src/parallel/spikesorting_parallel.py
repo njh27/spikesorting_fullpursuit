@@ -751,6 +751,13 @@ def spike_sort_parallel(Probe, **kwargs):
             processes[done_index].join()
             processes[done_index].close()
             del processes[done_index]
+    # Make sure all the processes finish up and close even though they should
+    # have finished above
+    while len(processes) > 0:
+        p = processes.pop()
+        p.join()
+        p.close()
+        del p
 
     sort_data = []
     sort_info = settings

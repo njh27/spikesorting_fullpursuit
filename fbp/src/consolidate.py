@@ -276,7 +276,7 @@ def zero_symmetric_ccg(spikes_1, spikes_2, samples_window=40, d_samples=40, retu
         return counts, samples_axis
 
 
-def find_overlapping_spike_bool(spikes_1, spikes_2, overlap_tol):
+def find_overlapping_spike_bool(spikes_1, spikes_2, overlap_tol, except_equal=False):
     """ Finds an index into spikes_1 that indicates whether a spike index of spike_2
         occurs within +/- overlap_tol of a spike index in spikes_1.  Spikes_1 and 2
         are numpy arrays of spike indices in units of samples. Input spikes_1 and
@@ -286,7 +286,9 @@ def find_overlapping_spike_bool(spikes_1, spikes_2, overlap_tol):
     ind1 = 0
     ind2 = 0
     while (ind1 < spikes_1.shape[0]) and (ind2 < spikes_2.shape[0]):
-        if spikes_1[ind1] < spikes_2[ind2] - overlap_tol:
+        if except_equal and spikes_1[ind1] == spikes_2[ind2]:
+            ind1 += 1
+        elif spikes_1[ind1] < spikes_2[ind2] - overlap_tol:
             ind1 += 1
         elif spikes_1[ind1] > spikes_2[ind2] + overlap_tol:
             ind2 += 1

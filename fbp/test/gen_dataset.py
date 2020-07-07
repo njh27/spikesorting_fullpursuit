@@ -233,6 +233,9 @@ class TestDataset(object):
                 select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
                 self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 20, n_correlated_spikes)
                 self.actual_IDs[neuron].sort()
+                overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
+                self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
+                self.actual_IDs[neuron] = np.unique(self.actual_IDs[neuron])
                 # Spike train is used for actual convolution so reset here
                 spiketrain[:] = False
                 spiketrain[self.actual_IDs[neuron]] = True

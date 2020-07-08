@@ -110,16 +110,18 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     template_thresholds = []
     for n in seg_summary.summaries:
         templates.append(n['pursuit_template'])
-        template_thresholds.append(3 * n['template_std'])
+        template_thresholds.append(n['template_noise_threshold'])
 
     templates = np.float32(np.vstack(templates))
     template_thresholds = np.array(template_thresholds, dtype=np.float32)
     templates_to_delete = sort_cython.remove_overlap_templates(templates,
                             sort_info['n_samples_per_chan'], template_thresholds)
+
     # Remove these redundant templates from summary before sharpening
     for x in reversed(range(0, len(seg_summary.summaries))):
         if templates_to_delete[x]:
             del seg_summary.summaries[x]
+    # print("TEMPLATE REDUCTION IS OFF !!!!!")
     print("Reduced number of templates to", len(seg_summary.summaries))
 
     # print("SHARPEN IS OFF!!!!")

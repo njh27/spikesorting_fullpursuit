@@ -373,14 +373,12 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
         for p_ov in templates_to_check:
             p_ov_offset = p_ov * temp_y
             for n1 in range(0, temp_x - 1):
-                if (n1 == p_ov) or (templates_to_delete[n1]):
-                    # (template_SS[n1] > template_SS[p_ov])
+                if (n1 == p_ov) or (templates_to_delete[n1]) or (template_SS[n1] > template_SS[p_ov]):
                     # p_ov can't be a sum of n1 if n1 is bigger
                     continue
                 n1_offset = n1 * temp_y
                 for n2 in range(n1+1, temp_x):
-                    if (n2 == p_ov) or (templates_to_delete[n2]):
-                        # (template_SS[n2] > template_SS[p_ov])
+                    if (n2 == p_ov) or (templates_to_delete[n2]) or (template_SS[n2] > template_SS[p_ov]):
                         # p_ov can't be a sum of n2 if n2 is bigger
                         continue
                     n2_offset = n2 * temp_y
@@ -425,11 +423,12 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
         print("THE RAW SS WAS", closest_SS)
         print("Threshold is", template_thresholds[closest_SS_p_ov])
         print("SS accounted for ratio", closest_SS / template_thresholds[closest_SS_p_ov])
-        print("closest pair", closest_SS_pair)
+        print("SS ADJUSTED ratio", (closest_SS+template_thresholds[closest_SS_p_ov]) / template_thresholds[closest_SS_p_ov])
         if closest_SS_pair is None:
             print("No shifts even tested")
             break
-        if closest_SS < template_thresholds[closest_SS_p_ov]:
+        # if closest_SS < template_thresholds[closest_SS_p_ov]:
+        if closest_SS / template_thresholds[closest_SS_p_ov] > .85:
             templates_to_delete[closest_SS_p_ov] = True
             templates_to_check.remove(closest_SS_p_ov)
         else:

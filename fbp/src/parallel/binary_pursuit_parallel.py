@@ -129,21 +129,6 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
     return template_pre_inds, template_post_inds
 
 
-def get_template_info(templates, template_samples_per_chan, n_chans):
-
-    peak_shift = np.zeros(templates.shape[0], dtype=np.uint32)
-    peak_chan = np.zeros(templates.shape[0], dtype=np.uint32)
-    peak_sign = np.zeros(templates.shape[0], dtype=np.int32)
-    for t in range(0, templates.shape[0]):
-        peak_ind = np.argmax(np.abs(templates[t, :]))
-        peak_shift[t] = peak_ind % template_samples_per_chan
-        peak_chan[t] = peak_ind // template_samples_per_chan
-        peak_sign[t] = np.sign(templates[t, peak_ind])
-
-    print("FOUND TEMPALTE INFO AS SHIFT", peak_shift, "chan", peak_chan, "sign", peak_sign)
-    return peak_shift, peak_chan, peak_sign
-
-
 def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                    clip_width, template_samples_per_chan, thresh_sigma=1.645,
                    kernels_path=None, max_gpu_memory=None):
@@ -198,7 +183,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
     if templates.ndim == 1:
         templates = np.reshape(templates, (1, -1))
     templates = np.float32(templates)
-    peak_shift, peak_chan, peak_sign = get_template_info(templates, template_samples_per_chan, n_chans)
     # Reshape our templates so that instead of being an MxN array, this
     # becomes a 1x(M*N) vector. The first template should be in the first N points
     templates_vector = templates.reshape(templates.size).astype(np.float32)

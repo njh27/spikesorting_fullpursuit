@@ -762,11 +762,13 @@ class SegSummary(object):
                                                 * (neuron['spike_indices'].shape[0])
 
                 # Get noise standard deviation estimate for template
-                neuron['template_std'] = np.std(np.sum((neuron['clips'] - neuron["template"]) ** 2, axis=1))
+                background_noise_std = neuron['threshold'] / self.sort_info['sigma']
+                neuron['template_noise_threshold'] = 2 * np.sqrt(np.sum(neuron['template']**2)) * 1.96 * background_noise_std
+                # neuron['template_noise_threshold'] = np.mean(np.mean((neuron['clips'] - neuron["template"]) ** 2, axis=1))
                 neuron_SS = np.sum(neuron['template']**2)
-                print("STD is", neuron['template_std'], "SUM square is", neuron_SS)
-                # if neuron_SS < 3 * neuron['template_std']:
-                #     continue
+                print("Noise threshold is", neuron['template_noise_threshold'], "SUM square is", neuron_SS)
+                if neuron_SS < neuron['template_noise_threshold']:
+                    continue
 
 
                 # Preserve full template for binary pursuit
@@ -1008,12 +1010,45 @@ class SegSummary(object):
         neuron_labels_2 = neuron_labels[clips_1.shape[0]:]
         return clips_merged, neuron_labels_1, neuron_labels_2
 
+    def merge_templates(self, neuron1_ind, neuron2_ind, shift):
+        """ Returns weighted average of neuron1 and 2 templates, accounting for
+        the shift alignment offset 'shift'. Done in the same way as
+        find_nearest_shifted_pair such that neuron2 is shifted in the same way. """
+        n1 = self.summaries[neuron1_ind]
+        n2 = self.summaries[neuron2_ind]
+        merged_template = np.zeros(n1['pursuit_template'].shape[0])
+        if shift != 0:
+            shift_template_2 = np.zeros(n2['pursuit_template'].shape[0])
+            for chan in range(0, self.sort_info['n_channels']):
+                chan_temp_2 = n2['pursuit_template'][chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan']]
+                if shift > 0:
+                    shift_template_2[chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan'] - shift] = \
+                                    chan_temp_2[:-1*shift]
+                else:
+                    shift_template_2[chan*self.sort_info['n_samples_per_chan'] - shift:(chan+1)*self.sort_info['n_samples_per_chan']] = \
+                                    chan_temp_2[:, -1*shift:]
+        else:
+            shift_template_2 = n2['pursuit_template']
+
+        n1_weight = n1['spike_indices'].shape[0] / (n1['spike_indices'].shape[0] + n2['spike_indices'].shape[0])
+        merged_template = n1_weight * n1['pursuit_template'] + (1 - n1_weight) * shift_template_2
+
+        print("MADE THIS TEMPLATE")
+        plt.plot(merged_template)
+        plt.show()
+        print("FROM THESE TEMPLATES")
+        plt.plot(n1['pursuit_template'])
+        plt.plot(n2['pursuit_template'])
+        plt.show()
+        return merged_template
+
     def sharpen_across_chans(self):
         """
         """
         inds_to_delete = []
         remaining_inds = [x for x in range(0, len(self.summaries))]
         previously_compared_pairs = []
+        templates_to_merge = []
         while len(remaining_inds) > 1:
             best_pair, best_shift, clips_1, clips_2, = \
                             self.find_nearest_shifted_pair(remaining_inds,
@@ -1044,9 +1079,11 @@ class SegSummary(object):
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:
                     inds_to_delete.append(best_pair[1])
                     remaining_inds.remove(best_pair[1])
+                    templates_to_merge.append([best_pair[0], best_pair[1], best_shift])
                 else:
                     inds_to_delete.append(best_pair[0])
                     remaining_inds.remove(best_pair[0])
+                    templates_to_merge.append([best_pair[1], best_pair[0], best_shift])
             else:
                 # These mutually closest failed so do not repeat either
                 remaining_inds.remove(best_pair[0])
@@ -1057,6 +1094,15 @@ class SegSummary(object):
                 # else:
                 #     remaining_inds.remove(best_pair[1])
             previously_compared_pairs.append(best_pair)
+
+        for merge_item in templates_to_merge:
+            merged_template = self.merge_templates(merge_item[0], merge_item[1], merge_item[2])
+            # Update new weighted merged template
+            self.summaries[merge_item[0]]['pursuit_template'] = merged_template
+            # Also update number of spikes so that future merges can have the
+            # correct weighting. These are no long in correspondence with the clips
+            # and not sorted so it is assumed they will not be used again
+            self.summaries[merge_item[0]]['spike_indices'] = np.hstack((self.summaries[merge_item[0]]['spike_indices'], self.summaries[merge_item[1]]['spike_indices']))
 
         # Delete merged units
         inds_to_delete.sort()

@@ -751,14 +751,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 all_chunk_bool = np.zeros(all_chunk_crossings.shape[0], dtype=np.bool)
                 all_chunk_bool[0:chunk_total_additional_spikes] = True
                 secret_spike_bool.append(all_chunk_bool)
-
                 all_chunk_crossings_buffer.release()
                 all_chunk_labels_buffer.release()
                 all_adjusted_clips_buffer.release()
-
-                cl.enqueue_copy(queue, chunk_voltage, voltage_buffer, wait_for=clip_events)
-                out = np.reshape(chunk_voltage, (n_chans, -1))
-
 
             # Release buffers before going on to next chunk
             voltage_buffer.release()
@@ -780,4 +775,4 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
 
-    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, out
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips

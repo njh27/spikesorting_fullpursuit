@@ -377,25 +377,25 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             # curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
             # if settings['verbose']: print("After re-sort", curr_num_clusters.size, "different clusters", flush=True)
             #
-            # crossings, any_merged = check_spike_alignment(clips,
-            #                 crossings, neuron_labels, curr_chan_inds, settings)
-            # if any_merged:
-            #     # Resort based on new clip alignment
-            #     if settings['verbose']: print("Re-sorting after check spike alignment")
-            #     clips, valid_event_indices = segment_parallel.get_multichannel_clips(
-            #                                     item_dict, voltage[neighbors, :],
-            #                                     crossings, clip_width=settings['clip_width'])
-            #     crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
-            #     scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
-            #                 settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
-            #                 curr_chan_inds=np.arange(0, curr_chan_inds.size))
-            #     n_random = max(100, np.around(crossings.size / 100)) if settings['use_rand_init'] else 0
-            #     neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
-            #     neuron_labels = sort.merge_clusters(scores, neuron_labels,
-            #                         split_only = False,
-            #                         p_value_cut_thresh=settings['p_value_cut_thresh'])
-            #
-            # curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
+            crossings, any_merged = check_spike_alignment(clips,
+                            crossings, neuron_labels, curr_chan_inds, settings)
+            if any_merged:
+                # Resort based on new clip alignment
+                if settings['verbose']: print("Re-sorting after check spike alignment")
+                clips, valid_event_indices = segment_parallel.get_multichannel_clips(
+                                                item_dict, voltage[neighbors, :],
+                                                crossings, clip_width=settings['clip_width'])
+                crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
+                scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
+                            settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
+                            curr_chan_inds=np.arange(0, curr_chan_inds.size))
+                n_random = max(100, np.around(crossings.size / 100)) if settings['use_rand_init'] else 0
+                neuron_labels = sort.initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
+                neuron_labels = sort.merge_clusters(scores, neuron_labels,
+                                    split_only = False,
+                                    p_value_cut_thresh=settings['p_value_cut_thresh'])
+
+            curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
         else:
             neuron_labels = np.zeros(1, dtype=np.int64)
             curr_num_clusters = np.zeros(1, dtype=np.int64)
@@ -751,6 +751,13 @@ def spike_sort_parallel(Probe, **kwargs):
             processes[done_index].join()
             processes[done_index].close()
             del processes[done_index]
+    # Make sure all the processes finish up and close even though they should
+    # have finished above
+    while len(processes) > 0:
+        p = processes.pop()
+        p.join()
+        p.close()
+        del p
 
     sort_data = []
     sort_info = settings

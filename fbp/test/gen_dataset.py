@@ -81,7 +81,7 @@ class TestProbe(electrode.AbstractProbe):
             """
         start = max(channel - 2, 0)
         stop = min(channel + 3, self.num_channels)
-        # start, stop = 0, 8
+        start, stop = 0, 5
         return np.arange(start, stop)
 
 
@@ -148,7 +148,8 @@ class TestDataset(object):
 
         # Generate the spiketrain
         last_spike_index = -np.inf
-        for i in range(0, spiketrain.size):
+        # Do not add any spikes for the first and last 5 ms
+        for i in range(int(5*self.samples_per_second / 1000), spiketrain.size - int(5*self.samples_per_second / 1000)):
             if (i - last_spike_index) / self.samples_per_second > tau_ref:
                 spiketrain[i] = random_nums[i] < firing_rate / self.samples_per_second
                 if spiketrain[i]:
@@ -212,10 +213,35 @@ class TestDataset(object):
         self.actual_IDs = [[] for neur in range(0, len(firing_rates))]
         self.actual_templates = [np.zeros((0, self.neuron_templates.shape[1]), dtype=self.electrode_dtype) for neur in range(0, len(firing_rates))]
         voltage_array = self.gen_noise_voltage_array()
+        # voltage_array = np.zeros_like(voltage_array)
         for neuron in range(0, len(firing_rates)):
             # Generate one spike train for each neuron
             spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
             self.actual_IDs[neuron] = np.where(spiketrain)[0]
+
+
+            # if neuron == 1:
+            #     overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron-1], overlap_tol=162)
+            #     self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
+            #     spiketrain[:] = False
+            #     spiketrain[self.actual_IDs[neuron]] = True
+
+            if neuron == 1:
+                print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
+                n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 3
+                select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)
+                select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
+                self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 20, n_correlated_spikes)
+                self.actual_IDs[neuron].sort()
+                overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
+                self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
+                self.actual_IDs[neuron] = np.unique(self.actual_IDs[neuron])
+                # Spike train is used for actual convolution so reset here
+                spiketrain[:] = False
+                spiketrain[self.actual_IDs[neuron]] = True
+
+
+
             for chan in range(0, self.num_channels):
                 # Apply spike train to every channel this neuron is present on
                 convolve_kernel = chan_scaling_factors[neuron][chan] * self.neuron_templates[template_inds[neuron], :]
@@ -294,6 +320,15 @@ class TestDataset(object):
             spiketrain[0:half_temp_width+2] = False # Ensure spike times will not overlap beginning
             spiketrain[-(half_temp_width+2):] = False # or overlap end
             self.actual_IDs[neuron] = np.nonzero(spiketrain)[0] - half_temp_width
+
+            if neuron == 1:
+                print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
+                n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 10
+                select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)
+                select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
+                self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 10, n_correlated_spikes)
+                self.actual_IDs[neuron].sort()
+
             remove_IDs = np.zeros(self.actual_IDs[neuron].size, dtype=np.bool)
             for i, spk_ind in enumerate(self.actual_IDs[neuron]):
                 chan_scaling_factors = drift_funs[neuron](spk_ind)

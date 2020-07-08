@@ -4,10 +4,12 @@ import platform as sys_platform
 import re
 import time
 from fbp.src.sort import reorder_labels
-from fbp.src import segment
+from fbp.src import segment, overlap_recheck
 from fbp.src.parallel import segment_parallel
 from fbp.src.consolidate import find_overlapping_spike_bool
 from scipy.signal import fftconvolve
+
+import matplotlib.pyplot as plt
 
 
 
@@ -34,7 +36,100 @@ def get_zero_phase_kernel(x, x_center):
     return kernel
 
 
-def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
+def compute_shift_indices(templates, samples_per_chan, n_chans):
+    """ Performs the max likelihood computation for various shifts of all pairwise
+    templates in the absence of noise to determine the range of indices at which
+    the algorithm will fail to correctly identify a spike label or index. """
+    # Output is a flat matrix lookup for pairwise pre and post shift indices
+    template_pre_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
+    template_post_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
+
+    # This will be vector of pseudo voltage to convolve summed templates
+    sum_voltage = np.zeros((n_chans, 3 * samples_per_chan))
+    L_phase = np.zeros(3*samples_per_chan)
+
+    # Reference index for max value of each template. Get empirically because
+    # nonlinear phase shift is confusing
+    ref_inds = np.zeros(templates.shape[0], dtype=np.int64)
+    for t in range(0, templates.shape[0]):
+        L_phase[:] = 0
+        for chan in range(0, n_chans):
+            sum_voltage[chan, samples_per_chan:2*samples_per_chan] = templates[t, :][chan*samples_per_chan:(chan+1)*samples_per_chan]
+            L_phase += np.convolve(sum_voltage[chan, :], templates[t, :][chan*samples_per_chan:(chan+1)*samples_per_chan], mode='same')
+        ref_inds[t] = np.argmax(L_phase)
+
+    # And corresponding likelihood functions
+    L_fixed = np.zeros(3*samples_per_chan)
+    L_shift = np.zeros(3*samples_per_chan)
+    max_shift = int(samples_per_chan // 2)
+    # NOTE: Need to add 1 to size of failed_assignments to include 0 shift at failed_assignments[max_shift]
+    failed_assignments = np.zeros(2*max_shift+1, dtype=np.bool)
+    for f in range(0, templates.shape[0]):
+        fixed_t = templates[f, :]
+        fixed_t_ss = .5 * np.sum(fixed_t ** 2)
+        fixed_ind = ref_inds[f]
+        for s in range(f, templates.shape[0]):
+            shift_t = templates[s, :]
+            shift_t_ss = .5 * np.sum(shift_t ** 2)
+            failed_assignments[:] = False
+            for shift in range(-max_shift, max_shift+1):
+                # Reset variables for this shift
+                shift_ind = ref_inds[s] + shift
+                L_fixed[:] = 0
+                L_shift[:] = 0
+                sum_voltage[:] = 0
+
+                # Compute template convolution aspect of likelihood function over channels
+                for chan in range(0, n_chans):
+                    # Create pseudo voltage containing both templates offset by shift indices
+                    sum_voltage[chan, samples_per_chan:2*samples_per_chan] = fixed_t[chan*samples_per_chan:(chan+1)*samples_per_chan]
+                    if shift < 0:
+                        sum_voltage[chan, samples_per_chan+shift:2*samples_per_chan+shift] += shift_t[chan*samples_per_chan:(chan+1)*samples_per_chan]
+                    else:
+                        sum_voltage[chan, samples_per_chan+shift:2*samples_per_chan+shift] += shift_t[chan*samples_per_chan:(chan+1)*samples_per_chan]
+                    L_fixed += np.convolve(sum_voltage[chan, :], fixed_t[chan*samples_per_chan:(chan+1)*samples_per_chan], mode='same')
+                    L_shift += np.convolve(sum_voltage[chan, :], shift_t[chan*samples_per_chan:(chan+1)*samples_per_chan], mode='same')
+
+                # Add template aspect of likelihood function and find peak indices
+                L_fixed -= fixed_t_ss
+                L_shift -= shift_t_ss
+                fixed_max_ind = np.argmax(L_fixed)
+                shift_max_ind = np.argmax(L_shift)
+
+                if f == s:
+                    if fixed_max_ind != fixed_ind and shift_max_ind != shift_ind:
+                        # This would be an incorrect assignment and/or index
+                        failed_assignments[shift + max_shift] = True
+                elif L_fixed[fixed_max_ind] > L_shift[shift_max_ind]:
+                    # Would add fixed template
+                    if fixed_max_ind != fixed_ind:
+                        # This would be an incorrect assignment and/or index
+                        failed_assignments[shift + max_shift] = True
+                else:
+                    # Would add shift template
+                    if shift_max_ind != shift_ind:
+                        # This would be an incorrect assignment and/or index
+                        failed_assignments[shift + max_shift] = True
+
+            if np.count_nonzero(failed_assignments) == 0:
+                template_pre_inds[f*templates.shape[0] + s] = 0
+                template_post_inds[f*templates.shape[0] + s] = 0
+                # Will be the same for reflective pairing
+                template_pre_inds[s*templates.shape[0] + f] = 0
+                template_post_inds[s*templates.shape[0] + f] = 0
+            else:
+                template_pre_inds[f*templates.shape[0] + s] = np.argmax(failed_assignments) - max_shift
+                # NOTE: Subtracting 1 will give inclusive indices. Not subtracting 1 gives the slice range used here.
+                template_post_inds[f*templates.shape[0] + s] = failed_assignments.shape[0] - np.argmax(failed_assignments[-1::-1]) - max_shift
+
+                # For the same pair in opposite order, these indices are REVERSED
+                template_pre_inds[s*templates.shape[0] + f] = -1 * template_post_inds[f*templates.shape[0] + s] + 1 # Add to undo slice
+                template_post_inds[s*templates.shape[0] + f] = -1 * template_pre_inds[f*templates.shape[0] + s] + 1
+
+    return template_pre_inds, template_post_inds
+
+
+def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                    clip_width, template_samples_per_chan, thresh_sigma=1.645,
                    kernels_path=None, max_gpu_memory=None):
     """
@@ -84,11 +179,21 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
     n_samples = voltage.shape[1]
     chan_win, clip_width = segment_parallel.time_window_to_samples(clip_width, sampling_rate)
 
-    # Templates must be float32
+    # Templates must be a 2D float32
+    if templates.ndim == 1:
+        templates = np.reshape(templates, (1, -1))
     templates = np.float32(templates)
     # Reshape our templates so that instead of being an MxN array, this
     # becomes a 1x(M*N) vector. The first template should be in the first N points
     templates_vector = templates.reshape(templates.size).astype(np.float32)
+
+    # Make template labels, numbered from 0-n
+    template_labels = [x for x in range(0, templates.shape[0])]
+
+    # Adjust event_indices so that they refer to the start of the clip to be
+    # subtracted.
+    clip_init_samples = int(np.abs(chan_win[0]))
+    template_labels = np.uint32(template_labels)
 
     # Load OpenCL code from a file (stored as a string)
     if kernels_path is None:
@@ -125,11 +230,6 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
     with cl.CommandQueue(ctx) as queue:
         prg = cl.Program(ctx, kernels)
         prg.build() # David has a bunch of PYOPENCL_BUILD_OPTIONS used here
-
-        # Adjust event_indices so that they refer to the start of the clip to be
-        # subtracted.
-        clip_init_samples = int(np.abs(chan_win[0]))
-        template_labels = np.uint32(template_labels)
 
         # Determine the segment size that we need to use to fit into the
         # memory on this GPU device.
@@ -181,6 +281,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         # Get all of our kernels
         compute_residual_kernel = prg.compute_residual
         compute_template_maximum_likelihood_kernel = prg.compute_template_maximum_likelihood
+        overlap_recheck_indices_kernel = prg.overlap_recheck_indices
+        check_overlap_reassignments_kernel = prg.check_overlap_reassignments
         binary_pursuit_kernel = prg.binary_pursuit
         get_adjusted_clips_kernel = prg.get_adjusted_clips
 
@@ -204,7 +306,6 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         num_additional_spikes = np.zeros(1, dtype=np.uint32)
 
         # Set-up any buffers/lists that are not dependent on chunks
-        template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
         fft_kernels = []
         secret_spike_indices = []
         secret_spike_labels = []
@@ -219,7 +320,6 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
                 fft_kernels.append(get_zero_phase_kernel(templates[n, t_win[0]:t_win[1]], clip_init_samples))
-        template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
 
         # Compute the template bias terms over voltage data
         spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
@@ -238,26 +338,42 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 cssi += int(sampling_rate * 60) # pick index every minute
             n_total_sample_points = int(sampling_rate * len(sample_start_inds))
         # Compute bias separately for each neuron, summed over channels
+        neighbor_bias = np.zeros(n_total_sample_points, dtype=np.float32)
+        for s_ind, s in enumerate(sample_start_inds):
+            for chan in range(0, n_chans):
+                neighbor_bias[s_ind*sample_duration:(s_ind+1)*sample_duration] += np.float32(
+                        voltage[chan, s:s+sample_duration])
+        # Use MAD to estimate STD of the noise and set bias at
+        # thresh_sigma standard deviations. The typical extremely large
+        # n value for neighbor_bias makes this calculation converge to
+        # normal distribution
+        # Assumes zero-centered (which median usually isn't)
+        MAD = np.median(np.abs(neighbor_bias))
+        std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
+        print("MAD AND STD", MAD, std_noise)
+        # print("SETTING GAMMA NOISE TO ZERO !!!")
+        gamma_noise = np.float32(thresh_sigma * std_noise)
         for n in range(0, templates.shape[0]):
-            neighbor_bias = np.zeros(n_total_sample_points, dtype=np.float32)
-            for s_ind, s in enumerate(sample_start_inds):
-                for chan in range(0, n_chans):
-                    neighbor_bias[s_ind*sample_duration:(s_ind+1)*sample_duration] += np.float32(
-                                                fftconvolve(
-                                                voltage[chan, s:s+sample_duration],
-                                                fft_kernels[n*n_chans + chan],
-                                                mode='same'))
-            # Use MAD to estimate STD of the noise and set bias at
-            # thresh_sigma standard deviations. The typical extremely large
-            # n value for neighbor_bias makes this calculation converge to
-            # normal distribution
-            # Assumes zero-centered (which median usually isn't)
-            MAD = np.median(np.abs(neighbor_bias))
-            std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            spike_biases[n] = np.float32(thresh_sigma*std_noise)
+            spike_biases[n] = np.float32(np.sqrt(-1 * template_sum_squared[n]) * gamma_noise)
+            print("SPIKE BIAS IS", spike_biases[n])
 
         # Delete stuff no longer needed for this chunk
         del neighbor_bias
+
+        template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
+        template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
+
+        n_max_shift_inds = template_samples_per_chan // 4
+        template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
+        # template_pre_inds -= -4
+        # template_post_inds += -2
+        template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
+        template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
+        print("PRE SHIFT INDS", template_pre_inds)
+        print("POST SHIFT INDS", template_post_inds)
+
+        template_pre_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_pre_inds)
+        template_post_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_post_inds)
 
         # Determine our chunk onset indices, making sure that each new start
         # index overlaps the previous chunk by 3 template widths so that no
@@ -313,9 +429,14 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             best_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
             window_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.arange(0, num_template_widths, 1, dtype=np.uint32))
             next_check_window_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint8))
+            overlap_recheck_window_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint8))
+            overlap_window_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.arange(0, num_template_widths, 1, dtype=np.uint32))
+            overlap_best_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
+            overlap_best_spike_labels_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
 
             # This is separate storage for transferring data from next check, NOT A HOST (maybe could be)
             next_check_window = np.zeros(num_template_widths, dtype=np.uint8)
+            overlap_recheck_window = np.zeros(num_template_widths, dtype=np.uint8)
 
             # Set input arguments for template maximum likelihood kernel
             compute_template_maximum_likelihood_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
@@ -333,7 +454,44 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             compute_template_maximum_likelihood_kernel.set_arg(12, best_spike_labels_buffer) # Storage for peak likelihood label
             compute_template_maximum_likelihood_kernel.set_arg(13, best_spike_likelihoods_buffer) # Storage for peak likelihood value
             compute_template_maximum_likelihood_kernel.set_arg(14, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
+            compute_template_maximum_likelihood_kernel.set_arg(15, overlap_recheck_window_buffer)
+            compute_template_maximum_likelihood_kernel.set_arg(16, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
+            compute_template_maximum_likelihood_kernel.set_arg(17, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
+            # compute_template_maximum_likelihood_kernel.set_arg(18, peak_shift_buffer)
+            # compute_template_maximum_likelihood_kernel.set_arg(19, peak_chan_buffer)
+            # compute_template_maximum_likelihood_kernel.set_arg(20, peak_sign_buffer)
 
+            # Set input arguments for template maximum likelihood kernel
+            overlap_recheck_indices_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
+            overlap_recheck_indices_kernel.set_arg(1, chunk_voltage_length) # Length of chunk voltage
+            overlap_recheck_indices_kernel.set_arg(2, n_chans) # number of neighboring channels
+            overlap_recheck_indices_kernel.set_arg(3, template_buffer) # Our template buffer, created previously
+            overlap_recheck_indices_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of unique neurons, M
+            overlap_recheck_indices_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
+            overlap_recheck_indices_kernel.set_arg(6, np.uint32(0)) # Template number
+            overlap_recheck_indices_kernel.set_arg(7, template_sum_squared_buffer) # Sum of squared templated
+            overlap_recheck_indices_kernel.set_arg(8, spike_biases_buffer) # Bias
+            overlap_recheck_indices_kernel.set_arg(9, overlap_window_indices_buffer) # Actual window indices to check
+            overlap_recheck_indices_kernel.set_arg(10, np.uint32(num_template_widths)) # Number of actual window indices to check
+            overlap_recheck_indices_kernel.set_arg(11, best_spike_indices_buffer) # Storage for peak likelihood index
+            overlap_recheck_indices_kernel.set_arg(12, best_spike_labels_buffer) # Storage for peak likelihood label
+            overlap_recheck_indices_kernel.set_arg(13, best_spike_likelihoods_buffer) # Storage for peak likelihood value
+            overlap_recheck_indices_kernel.set_arg(14, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
+            overlap_recheck_indices_kernel.set_arg(15, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
+            overlap_recheck_indices_kernel.set_arg(16, template_pre_inds_buffer)
+            overlap_recheck_indices_kernel.set_arg(17, template_post_inds_buffer)
+            overlap_recheck_indices_kernel.set_arg(18, gamma_noise) # Noise variance term
+
+            check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
+            check_overlap_reassignments_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
+            check_overlap_reassignments_kernel.set_arg(2, overlap_window_indices_buffer) # Actual window indices to check
+            check_overlap_reassignments_kernel.set_arg(3, np.uint32(num_template_widths)) # Number of actual window indices to check
+            check_overlap_reassignments_kernel.set_arg(4, best_spike_indices_buffer) # Storage for peak likelihood index
+            check_overlap_reassignments_kernel.set_arg(5, best_spike_labels_buffer) # Storage for peak likelihood label
+            check_overlap_reassignments_kernel.set_arg(6, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
+            check_overlap_reassignments_kernel.set_arg(7, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
+            check_overlap_reassignments_kernel.set_arg(8, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
+            check_overlap_reassignments_kernel.set_arg(9, overlap_recheck_window_buffer)
 
             # Construct a local buffer (unsigned int * local_work_size)
             local_buffer = cl.LocalMemory(4 * pursuit_local_work_size)
@@ -356,6 +514,8 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             binary_pursuit_kernel.set_arg(14, num_additional_spikes_buffer) # Output, total number of additional spikes
             binary_pursuit_kernel.set_arg(15, additional_spike_indices_buffer) # Additional spike indices
             binary_pursuit_kernel.set_arg(16, additional_spike_labels_buffer) # Additional spike labels
+            binary_pursuit_kernel.set_arg(17, overlap_recheck_window_buffer)
+            binary_pursuit_kernel.set_arg(18, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
 
             # Run the kernel until num_additional_spikes is zero
             chunk_total_additional_spikes = 0
@@ -369,6 +529,7 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 if n_loops % 10 == 0:
                     print("Starting loop", n_loops, "for this chunk")
                     print("Next round has", new_window_indices.shape[0], "windows to check")
+
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for template_index in range(0, templates.shape[0]):
                     for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
@@ -382,6 +543,45 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                         queue.finish()
                         next_wait_event = [temp_ml_event]
 
+
+                # Read out the data from overlap_recheck_window_buffer
+                next_wait_event = [cl.enqueue_copy(queue, overlap_recheck_window, overlap_recheck_window_buffer, wait_for=next_wait_event)]
+                queue.finish() # Needs to finish copy before deciding indices
+                # Use overlap_recheck_window data to determine window indices for overlap recheck
+                overlap_window_indices = np.uint32(np.nonzero(overlap_recheck_window)[0])
+                if overlap_window_indices.shape[0] > 0:
+                    # Still more flagged spikes to check
+                    print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")
+                    # Copy the overlap window indices to the overlap indices buffer
+                    next_wait_event = [cl.enqueue_copy(queue, overlap_window_indices_buffer, overlap_window_indices, wait_for=next_wait_event)]
+                    queue.finish() # Needs to finish copy before checking indices
+                    # Reset number of indices to check for overlap recheck kernel
+                    total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
+
+                    overlap_recheck_indices_kernel.set_arg(10, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
+                    for template_index in range(0, templates.shape[0]):
+                        overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
+                        for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
+                            # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
+                            overlap_event = cl.enqueue_nd_range_kernel(queue,
+                                                  overlap_recheck_indices_kernel,
+                                                  (n_to_enqueue, ), (pursuit_local_work_size, ),
+                                                  global_work_offset=(enqueue_step, ),
+                                                  wait_for=next_wait_event)
+                            queue.finish()
+                            next_wait_event = [overlap_event]
+
+                    check_overlap_reassignments_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
+                    for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
+                        # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
+                        overlap_event = cl.enqueue_nd_range_kernel(queue,
+                                              check_overlap_reassignments_kernel,
+                                              (n_to_enqueue, ), (pursuit_local_work_size, ),
+                                              global_work_offset=(enqueue_step, ),
+                                              wait_for=next_wait_event)
+                        queue.finish()
+                        next_wait_event = [overlap_event]
+
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
                     # time.sleep(.1)
@@ -394,13 +594,17 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                     next_wait_event = [pursuit_event]
 
                 cl.enqueue_copy(queue, num_additional_spikes, num_additional_spikes_buffer, wait_for=next_wait_event)
-                # print("Added", num_additional_spikes[0], "secret spikes", flush=True)
+                print("Added", num_additional_spikes[0], "secret spikes", flush=True)
                 if (num_additional_spikes[0] == 0):
                     break # Converged, no spikes added in last pass
 
+                # Reset overlap_recheck_window for next pass and copy to GPU
+                overlap_recheck_window[:] = 0
+                next_wait_event = [cl.enqueue_copy(queue, overlap_recheck_window_buffer, overlap_recheck_window, wait_for=next_wait_event)]
                 # Read out the data from next_check_window_buffer
                 # Already waited for pursuit to finish above
                 next_wait_event = [cl.enqueue_copy(queue, next_check_window, next_check_window_buffer, wait_for=None)]
+                queue.finish() # Needs to finish copy before deciding indices
                 # Use next_check_window data to determine window indices for next pass
                 new_window_indices = np.uint32(np.nonzero(next_check_window)[0])
                 # Copy the new window indices to the window indices buffer
@@ -423,6 +627,20 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 next_wait_event.append(cl.enqueue_copy(queue, additional_spike_labels, additional_spike_labels_buffer, wait_for=None))
                 chunk_total_additional_spike_indices.append(additional_spike_indices)
                 chunk_total_additional_spike_labels.append(additional_spike_labels)
+
+                # closest_ind = np.argmin(np.abs(additional_spike_indices - (290853 - clip_init_samples)))
+                # closest_val = additional_spike_indices[closest_ind]
+                # if np.abs(closest_val - (290853 - clip_init_samples)) < 80:
+                #     print("CLIP init samples are", clip_init_samples)
+                #     print("At NLOOP", n_loops, "found index", closest_val)
+                # if num_additional_spikes[0] > 1:
+                #     print("NUMBER UNIQUE ADDITIONAL SPIKE INDICES", np.unique(additional_spike_indices).shape[0], "of", additional_spike_indices.shape[0], "total")
+                #     if num_additional_spikes[0] > 10:
+                #         print("last values are", additional_spike_indices[-10:])
+                #
+                #     additional_spike_indices.sort()
+                #     print("Their min sorted diff is", np.amin(np.diff(additional_spike_indices)))
+
 
                 # We have added additional spikes this pass, so we need to subtract them off
                 # by calling the compute_residuals kernel. Most of the arguments are the
@@ -450,9 +668,16 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 chunk_total_additional_spikes += num_additional_spikes[0]
                 num_additional_spikes[0] = 0
                 queue.finish()
-                if new_window_indices.shape[0] > max_enqueue_pursuit:
-                    # Shouldn't really be necessary with queue.finish() but potentially helpful
-                    time.sleep(1)
+                # if new_window_indices.shape[0] > max_enqueue_pursuit:
+                #     # Shouldn't really be necessary with queue.finish() but potentially helpful
+                #     time.sleep(1)
+
+                # best_spike_likelihoods = np.zeros(num_template_widths, dtype=np.float32)
+                # next_wait_event = [cl.enqueue_copy(queue, best_spike_likelihoods_buffer, best_spike_likelihoods, wait_for=next_wait_event)]
+
+                # print("!!! BREAKING AFTER ONE LOOP")
+                # if n_loops == 2:
+                #     break
 
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()
@@ -462,6 +687,13 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
             best_spike_indices_buffer.release()
             window_indices_buffer.release()
             next_check_window_buffer.release()
+            overlap_recheck_window_buffer.release()
+            overlap_window_indices_buffer.release()
+            overlap_best_spike_indices_buffer.release()
+            overlap_best_spike_labels_buffer.release()
+            template_pre_inds_buffer.release()
+            template_post_inds_buffer.release()
+
 
             # Read out the adjusted spikes here before releasing
             # the residual voltage. Only do this if there are spikes to get clips of
@@ -524,6 +756,10 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
                 all_chunk_labels_buffer.release()
                 all_adjusted_clips_buffer.release()
 
+                cl.enqueue_copy(queue, chunk_voltage, voltage_buffer, wait_for=clip_events)
+                out = np.reshape(chunk_voltage, (n_chans, -1))
+
+
             # Release buffers before going on to next chunk
             voltage_buffer.release()
             num_additional_spikes_buffer.release()
@@ -544,4 +780,4 @@ def binary_pursuit(templates, voltage, template_labels, sampling_rate, v_dtype,
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
 
-    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, out

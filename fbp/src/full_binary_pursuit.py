@@ -4,6 +4,7 @@ import os
 from fbp.src.consolidate import SegSummary
 from fbp.src.parallel.segment_parallel import get_multichannel_clips
 from fbp.src.parallel import binary_pursuit_parallel
+from fbp.src.c_cython import sort_cython
 
 
 
@@ -103,6 +104,27 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     seg_summary = SegSummary(seg_data, seg_w_items, sort_info, v_dtype,
                         absolute_refractory_period=absolute_refractory_period,
                         verbose=False)
+
+    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+    templates = []
+    template_thresholds = []
+    for n in seg_summary.summaries:
+        templates.append(n['pursuit_template'])
+        template_thresholds.append(n['template_noise_threshold'])
+
+    templates = np.float32(np.vstack(templates))
+    template_thresholds = np.array(template_thresholds, dtype=np.float32)
+    templates_to_delete = sort_cython.remove_overlap_templates(templates,
+                            sort_info['n_samples_per_chan'], template_thresholds)
+
+    # Remove these redundant templates from summary before sharpening
+    for x in reversed(range(0, len(seg_summary.summaries))):
+        if templates_to_delete[x]:
+            del seg_summary.summaries[x]
+    # print("TEMPLATE REDUCTION IS OFF !!!!!")
+    print("Reduced number of templates to", len(seg_summary.summaries))
+
+    # print("SHARPEN IS OFF!!!!")
     seg_summary.sharpen_across_chans()
     # seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
     neurons = seg_summary.summaries
@@ -134,26 +156,26 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         return seg_data
 
     templates = []
-    template_labels = []
     next_label = 0
     for n in neurons:
         if not n['deleted_as_redundant']:
             templates.append(n['pursuit_template'])
-            template_labels.append(next_label)
             next_label += 1
-    template_labels = np.array(template_labels, dtype=np.int64)
+            plt.plot(n['pursuit_template'])
+            plt.show()
 
     del seg_summary
 
     templates = np.vstack(templates)
-    print("Starting full binary pursuit search with", template_labels.shape[0], "templates in segment", seg_number)
+    print("Starting full binary pursuit search with", templates.shape[0], "templates in segment", seg_number)
     # plt.plot(templates.T)
     # plt.show()
 
-    crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
-                    templates, voltage, template_labels, sort_info['sampling_rate'],
+    # thresh_sigma = 1.645, 1.96, 2.576
+    crossings, neuron_labels, bp_bool, clips, overlap_indices = binary_pursuit_parallel.binary_pursuit(
+                    templates, voltage, sort_info['sampling_rate'],
                     v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
-                    thresh_sigma=1.645, kernels_path=None,
+                    thresh_sigma=1.96, kernels_path=None,
                     max_gpu_memory=max_gpu_memory)
 
     chans_to_template_labels = {}

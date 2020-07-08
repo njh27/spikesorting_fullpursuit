@@ -422,13 +422,13 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
 
         print("THE RAW SS WAS", closest_SS)
         print("Threshold is", template_thresholds[closest_SS_p_ov])
-        print("SS accounted for ratio", closest_SS / template_thresholds[closest_SS_p_ov])
-        print("SS ADJUSTED ratio", (closest_SS+template_thresholds[closest_SS_p_ov]) / template_thresholds[closest_SS_p_ov])
+        print("SS accounted for ratio", 1 - (closest_SS / template_SS[closest_SS_p_ov]))
+        print("SS ADJUSTED ratio", 1 - (closest_SS+template_thresholds[closest_SS_p_ov]) / template_SS[closest_SS_p_ov])
         if closest_SS_pair is None:
             print("No shifts even tested")
             break
         # if closest_SS < template_thresholds[closest_SS_p_ov]:
-        if closest_SS / template_thresholds[closest_SS_p_ov] > .85:
+        if 1 - (closest_SS / template_SS[closest_SS_p_ov]) > .85:
             templates_to_delete[closest_SS_p_ov] = True
             templates_to_check.remove(closest_SS_p_ov)
         else:

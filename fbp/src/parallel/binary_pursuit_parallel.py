@@ -351,7 +351,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         MAD = np.median(np.abs(neighbor_bias))
         std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
         print("MAD AND STD", MAD, std_noise)
-        # print("SETTING GAMMA NOISE TO ZERO !!!")
+        print("SETTING GAMMA NOISE TO ZERO !!!")
         gamma_noise = np.float32(thresh_sigma * std_noise)
         for n in range(0, templates.shape[0]):
             spike_biases[n] = np.float32(np.sqrt(-1 * template_sum_squared[n]) * gamma_noise)

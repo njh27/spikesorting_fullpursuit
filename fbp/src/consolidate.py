@@ -762,13 +762,14 @@ class SegSummary(object):
                                                 * (neuron['spike_indices'].shape[0])
 
                 # Get noise standard deviation estimate for template
-                background_noise_std = neuron['threshold'] / self.sort_info['sigma']
-                neuron['template_noise_threshold'] = 2 * np.sqrt(np.sum(neuron['template']**2)) * 1.96 * background_noise_std
-                # neuron['template_noise_threshold'] = np.mean(np.mean((neuron['clips'] - neuron["template"]) ** 2, axis=1))
-                neuron_SS = np.sum(neuron['template']**2)
-                print("Noise threshold is", neuron['template_noise_threshold'], "SUM square is", neuron_SS)
-                if neuron_SS < neuron['template_noise_threshold']:
-                    continue
+                neuron['template_noise_threshold'] = 0.
+                # background_noise_std = neuron['threshold'] / self.sort_info['sigma']
+                # neuron['template_noise_threshold'] = 2 * np.sqrt(np.sum(neuron['template']**2)) * 1.96 * background_noise_std
+                # # neuron['template_noise_threshold'] = np.mean(np.mean((neuron['clips'] - neuron["template"]) ** 2, axis=1))
+                # neuron_SS = np.sum(neuron['template']**2)
+                # print("Noise threshold is", neuron['template_noise_threshold'], "SUM square is", neuron_SS)
+                # if neuron_SS < neuron['template_noise_threshold']:
+                #     continue
 
 
                 # Preserve full template for binary pursuit
@@ -1022,24 +1023,25 @@ class SegSummary(object):
             for chan in range(0, self.sort_info['n_channels']):
                 chan_temp_2 = n2['pursuit_template'][chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan']]
                 if shift > 0:
-                    shift_template_2[chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan'] - shift] = \
+                    shift_template_2[chan*self.sort_info['n_samples_per_chan'] + shift:(chan+1)*self.sort_info['n_samples_per_chan']] = \
                                     chan_temp_2[:-1*shift]
                 else:
-                    shift_template_2[chan*self.sort_info['n_samples_per_chan'] - shift:(chan+1)*self.sort_info['n_samples_per_chan']] = \
-                                    chan_temp_2[:, -1*shift:]
+                    shift_template_2[chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan'] + shift] = \
+                                    chan_temp_2[-1*shift:]
         else:
             shift_template_2 = n2['pursuit_template']
 
         n1_weight = n1['spike_indices'].shape[0] / (n1['spike_indices'].shape[0] + n2['spike_indices'].shape[0])
         merged_template = n1_weight * n1['pursuit_template'] + (1 - n1_weight) * shift_template_2
 
-        print("MADE THIS TEMPLATE")
-        plt.plot(merged_template)
-        plt.show()
-        print("FROM THESE TEMPLATES")
-        plt.plot(n1['pursuit_template'])
-        plt.plot(n2['pursuit_template'])
-        plt.show()
+        if shift != 0:
+            print("MADE THIS TEMPLATE for shift", shift)
+            plt.plot(merged_template)
+            plt.show()
+            print("FROM THESE TEMPLATES")
+            plt.plot(n1['pursuit_template'])
+            plt.plot(shift_template_2)
+            plt.show()
         return merged_template
 
     def sharpen_across_chans(self):
@@ -1083,7 +1085,9 @@ class SegSummary(object):
                 else:
                     inds_to_delete.append(best_pair[0])
                     remaining_inds.remove(best_pair[0])
-                    templates_to_merge.append([best_pair[1], best_pair[0], best_shift])
+                    # Invert shift because merge_templates assumes shift relative
+                    # to first unit (best_pair[0])
+                    templates_to_merge.append([best_pair[1], best_pair[0], -1*best_shift])
             else:
                 # These mutually closest failed so do not repeat either
                 remaining_inds.remove(best_pair[0])

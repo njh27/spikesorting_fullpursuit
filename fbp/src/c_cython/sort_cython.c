@@ -8205,7 +8205,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  * 
  *         print("THE RAW SS WAS", closest_SS)             # <<<<<<<<<<<<<<
  *         print("Threshold is", template_thresholds[closest_SS_p_ov])
- *         print("SS accounted for ratio", closest_SS / template_thresholds[closest_SS_p_ov])
+ *         print("SS accounted for ratio", 1 - (closest_SS / template_SS[closest_SS_p_ov]))
  */
     __pyx_t_2 = PyFloat_FromDouble(__pyx_v_closest_SS); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 423, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
@@ -8226,8 +8226,8 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  * 
  *         print("THE RAW SS WAS", closest_SS)
  *         print("Threshold is", template_thresholds[closest_SS_p_ov])             # <<<<<<<<<<<<<<
- *         print("SS accounted for ratio", closest_SS / template_thresholds[closest_SS_p_ov])
- *         print("SS ADJUSTED ratio", (closest_SS+template_thresholds[closest_SS_p_ov]) / template_thresholds[closest_SS_p_ov])
+ *         print("SS accounted for ratio", 1 - (closest_SS / template_SS[closest_SS_p_ov]))
+ *         print("SS ADJUSTED ratio", 1 - (closest_SS+template_thresholds[closest_SS_p_ov]) / template_SS[closest_SS_p_ov])
  */
     __pyx_t_42 = __pyx_v_closest_SS_p_ov;
     __pyx_t_2 = PyFloat_FromDouble((*__Pyx_BufPtrStrided1d(float *, __pyx_pybuffernd_template_thresholds.rcbuffer->pybuffer.buf, __pyx_t_42, __pyx_pybuffernd_template_thresholds.diminfo[0].strides))); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 424, __pyx_L1_error)
@@ -8248,12 +8248,12 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     /* "sort_cython.pyx":425
  *         print("THE RAW SS WAS", closest_SS)
  *         print("Threshold is", template_thresholds[closest_SS_p_ov])
- *         print("SS accounted for ratio", closest_SS / template_thresholds[closest_SS_p_ov])             # <<<<<<<<<<<<<<
- *         print("SS ADJUSTED ratio", (closest_SS+template_thresholds[closest_SS_p_ov]) / template_thresholds[closest_SS_p_ov])
+ *         print("SS accounted for ratio", 1 - (closest_SS / template_SS[closest_SS_p_ov]))             # <<<<<<<<<<<<<<
+ *         print("SS ADJUSTED ratio", 1 - (closest_SS+template_thresholds[closest_SS_p_ov]) / template_SS[closest_SS_p_ov])
  *         if closest_SS_pair is None:
  */
     __pyx_t_43 = __pyx_v_closest_SS_p_ov;
-    __pyx_t_2 = PyFloat_FromDouble((__pyx_v_closest_SS / (*__Pyx_BufPtrStrided1d(float *, __pyx_pybuffernd_template_thresholds.rcbuffer->pybuffer.buf, __pyx_t_43, __pyx_pybuffernd_template_thresholds.diminfo[0].strides)))); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 425, __pyx_L1_error)
+    __pyx_t_2 = PyFloat_FromDouble((1.0 - (__pyx_v_closest_SS / (*__Pyx_BufPtrCContig1d(float *, __pyx_pybuffernd_template_SS.rcbuffer->pybuffer.buf, __pyx_t_43, __pyx_pybuffernd_template_SS.diminfo[0].strides))))); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 425, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __pyx_t_4 = PyTuple_New(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 425, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
@@ -8270,14 +8270,14 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
 
     /* "sort_cython.pyx":426
  *         print("Threshold is", template_thresholds[closest_SS_p_ov])
- *         print("SS accounted for ratio", closest_SS / template_thresholds[closest_SS_p_ov])
- *         print("SS ADJUSTED ratio", (closest_SS+template_thresholds[closest_SS_p_ov]) / template_thresholds[closest_SS_p_ov])             # <<<<<<<<<<<<<<
+ *         print("SS accounted for ratio", 1 - (closest_SS / template_SS[closest_SS_p_ov]))
+ *         print("SS ADJUSTED ratio", 1 - (closest_SS+template_thresholds[closest_SS_p_ov]) / template_SS[closest_SS_p_ov])             # <<<<<<<<<<<<<<
  *         if closest_SS_pair is None:
  *             print("No shifts even tested")
  */
     __pyx_t_44 = __pyx_v_closest_SS_p_ov;
     __pyx_t_45 = __pyx_v_closest_SS_p_ov;
-    __pyx_t_2 = PyFloat_FromDouble(((__pyx_v_closest_SS + (*__Pyx_BufPtrStrided1d(float *, __pyx_pybuffernd_template_thresholds.rcbuffer->pybuffer.buf, __pyx_t_44, __pyx_pybuffernd_template_thresholds.diminfo[0].strides))) / (*__Pyx_BufPtrStrided1d(float *, __pyx_pybuffernd_template_thresholds.rcbuffer->pybuffer.buf, __pyx_t_45, __pyx_pybuffernd_template_thresholds.diminfo[0].strides)))); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 426, __pyx_L1_error)
+    __pyx_t_2 = PyFloat_FromDouble((1.0 - ((__pyx_v_closest_SS + (*__Pyx_BufPtrStrided1d(float *, __pyx_pybuffernd_template_thresholds.rcbuffer->pybuffer.buf, __pyx_t_44, __pyx_pybuffernd_template_thresholds.diminfo[0].strides))) / (*__Pyx_BufPtrCContig1d(float *, __pyx_pybuffernd_template_SS.rcbuffer->pybuffer.buf, __pyx_t_45, __pyx_pybuffernd_template_SS.diminfo[0].strides))))); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 426, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
     __pyx_t_4 = PyTuple_New(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 426, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_4);
@@ -8293,8 +8293,8 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
     /* "sort_cython.pyx":427
- *         print("SS accounted for ratio", closest_SS / template_thresholds[closest_SS_p_ov])
- *         print("SS ADJUSTED ratio", (closest_SS+template_thresholds[closest_SS_p_ov]) / template_thresholds[closest_SS_p_ov])
+ *         print("SS accounted for ratio", 1 - (closest_SS / template_SS[closest_SS_p_ov]))
+ *         print("SS ADJUSTED ratio", 1 - (closest_SS+template_thresholds[closest_SS_p_ov]) / template_SS[closest_SS_p_ov])
  *         if closest_SS_pair is None:             # <<<<<<<<<<<<<<
  *             print("No shifts even tested")
  *             break
@@ -8304,7 +8304,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     if (__pyx_t_24) {
 
       /* "sort_cython.pyx":428
- *         print("SS ADJUSTED ratio", (closest_SS+template_thresholds[closest_SS_p_ov]) / template_thresholds[closest_SS_p_ov])
+ *         print("SS ADJUSTED ratio", 1 - (closest_SS+template_thresholds[closest_SS_p_ov]) / template_SS[closest_SS_p_ov])
  *         if closest_SS_pair is None:
  *             print("No shifts even tested")             # <<<<<<<<<<<<<<
  *             break
@@ -8319,13 +8319,13 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *             print("No shifts even tested")
  *             break             # <<<<<<<<<<<<<<
  *         # if closest_SS < template_thresholds[closest_SS_p_ov]:
- *         if closest_SS / template_thresholds[closest_SS_p_ov] > .85:
+ *         if 1 - (closest_SS / template_SS[closest_SS_p_ov]) > .85:
  */
       goto __pyx_L14_break;
 
       /* "sort_cython.pyx":427
- *         print("SS accounted for ratio", closest_SS / template_thresholds[closest_SS_p_ov])
- *         print("SS ADJUSTED ratio", (closest_SS+template_thresholds[closest_SS_p_ov]) / template_thresholds[closest_SS_p_ov])
+ *         print("SS accounted for ratio", 1 - (closest_SS / template_SS[closest_SS_p_ov]))
+ *         print("SS ADJUSTED ratio", 1 - (closest_SS+template_thresholds[closest_SS_p_ov]) / template_SS[closest_SS_p_ov])
  *         if closest_SS_pair is None:             # <<<<<<<<<<<<<<
  *             print("No shifts even tested")
  *             break
@@ -8335,17 +8335,17 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     /* "sort_cython.pyx":431
  *             break
  *         # if closest_SS < template_thresholds[closest_SS_p_ov]:
- *         if closest_SS / template_thresholds[closest_SS_p_ov] > .85:             # <<<<<<<<<<<<<<
+ *         if 1 - (closest_SS / template_SS[closest_SS_p_ov]) > .85:             # <<<<<<<<<<<<<<
  *             templates_to_delete[closest_SS_p_ov] = True
  *             templates_to_check.remove(closest_SS_p_ov)
  */
     __pyx_t_46 = __pyx_v_closest_SS_p_ov;
-    __pyx_t_24 = (((__pyx_v_closest_SS / (*__Pyx_BufPtrStrided1d(float *, __pyx_pybuffernd_template_thresholds.rcbuffer->pybuffer.buf, __pyx_t_46, __pyx_pybuffernd_template_thresholds.diminfo[0].strides))) > .85) != 0);
+    __pyx_t_24 = (((1.0 - (__pyx_v_closest_SS / (*__Pyx_BufPtrCContig1d(float *, __pyx_pybuffernd_template_SS.rcbuffer->pybuffer.buf, __pyx_t_46, __pyx_pybuffernd_template_SS.diminfo[0].strides)))) > .85) != 0);
     if (__pyx_t_24) {
 
       /* "sort_cython.pyx":432
  *         # if closest_SS < template_thresholds[closest_SS_p_ov]:
- *         if closest_SS / template_thresholds[closest_SS_p_ov] > .85:
+ *         if 1 - (closest_SS / template_SS[closest_SS_p_ov]) > .85:
  *             templates_to_delete[closest_SS_p_ov] = True             # <<<<<<<<<<<<<<
  *             templates_to_check.remove(closest_SS_p_ov)
  *         else:
@@ -8354,7 +8354,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       *__Pyx_BufPtrStrided1d(npy_bool *, __pyx_pybuffernd_templates_to_delete.rcbuffer->pybuffer.buf, __pyx_t_47, __pyx_pybuffernd_templates_to_delete.diminfo[0].strides) = 1;
 
       /* "sort_cython.pyx":433
- *         if closest_SS / template_thresholds[closest_SS_p_ov] > .85:
+ *         if 1 - (closest_SS / template_SS[closest_SS_p_ov]) > .85:
  *             templates_to_delete[closest_SS_p_ov] = True
  *             templates_to_check.remove(closest_SS_p_ov)             # <<<<<<<<<<<<<<
  *         else:
@@ -8370,7 +8370,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       /* "sort_cython.pyx":431
  *             break
  *         # if closest_SS < template_thresholds[closest_SS_p_ov]:
- *         if closest_SS / template_thresholds[closest_SS_p_ov] > .85:             # <<<<<<<<<<<<<<
+ *         if 1 - (closest_SS / template_SS[closest_SS_p_ov]) > .85:             # <<<<<<<<<<<<<<
  *             templates_to_delete[closest_SS_p_ov] = True
  *             templates_to_check.remove(closest_SS_p_ov)
  */
@@ -28837,7 +28837,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GIVEREF(__pyx_tuple__5);
 
   /* "sort_cython.pyx":428
- *         print("SS ADJUSTED ratio", (closest_SS+template_thresholds[closest_SS_p_ov]) / template_thresholds[closest_SS_p_ov])
+ *         print("SS ADJUSTED ratio", 1 - (closest_SS+template_thresholds[closest_SS_p_ov]) / template_SS[closest_SS_p_ov])
  *         if closest_SS_pair is None:
  *             print("No shifts even tested")             # <<<<<<<<<<<<<<
  *             break

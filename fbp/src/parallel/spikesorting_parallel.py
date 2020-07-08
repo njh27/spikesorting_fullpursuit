@@ -608,10 +608,6 @@ def spike_sort_parallel(Probe, **kwargs):
     if settings['do_ZCA_transform']:
         zca_cushion = (2 * np.ceil(np.amax(np.abs(settings['clip_width'])) \
                      * Probe.sampling_rate)).astype(np.int64)
-        # thresholds, _ = single_thresholds_and_samples(Probe.voltage, settings['sigma'])
-        # zca_matrix = preprocessing.get_noise_sampled_zca_matrix(Probe.voltage,
-        #                 thresholds, settings['sigma'],
-        #                 zca_cushion, n_samples=1e7)
 
     # Build the sorting work items
     init_dict['segment_voltages'] = []

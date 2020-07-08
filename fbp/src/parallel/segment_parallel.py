@@ -27,10 +27,10 @@ def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0., a
         min_index = np.argmin(window_clip)
         min_value = window_clip[min_index]
         if max_value > -1 * min_value:
-            # Max value is huge compared to min value, use max index
+            # Max value is greater, use max index
             events[evt] = start + max_index
         elif min_value < -1 * max_value:
-            # Min value is huge (negative) compared to max, use min index
+            # Min value is greater, use min index
             events[evt] = start + min_index
         else:
             # Arbitrarily choose the negative going peak

@@ -399,7 +399,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             # Create our buffers on the graphics cards.
             # Essentially all we are doing is copying each of our arrays to the graphics card.
             voltage_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=chunk_voltage)
-            full_likelihood_function_buffer = cl.Buffer(ctx, mf.READ_WRITE, size=(np.dtype(np.float32).itemsize * chunk_voltage_length * templates.shape[0]))
+            # full_likelihood_function_buffer = cl.Buffer(ctx, mf.READ_WRITE, size=(np.dtype(np.float32).itemsize * chunk_voltage_length * templates.shape[0]))
+            full_likelihood_function_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(chunk_voltage_length * templates.shape[0], dtype=np.float32))
 
             # Set arguments that are the same every iteration
             compute_residual_kernel.set_arg(0, voltage_buffer) # location where chunk voltage is stored

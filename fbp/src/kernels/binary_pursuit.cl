@@ -516,7 +516,7 @@ __kernel void overlap_recheck_indices(
         /* Too close to the end of voltage to check these shifts so just quit */
         return;
     }
-    __private const unsigned int n_shift_points = shift_stop - shift_start;
+    __private const unsigned int n_shift_points = (unsigned int) shift_stop - (unsigned int) shift_start;
 
     const unsigned int fixed_likelihood_function_offset = best_spike_label_private * voltage_length + (unsigned int) shift_start;
     const unsigned int shift_likelihood_function_offset = template_number * voltage_length + (unsigned int) shift_start;
@@ -524,7 +524,7 @@ __kernel void overlap_recheck_indices(
     unsigned int i, j, k, current_channel;
     for (k = 0; k < n_shift_points; k++)
     {
-        absolute_fixed_index = shift_start + k;
+        absolute_fixed_index = (unsigned int) shift_start + k;
         /* Get likelihood for the current best spike label at the input fixed index relative to best index */
         // float actual_template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
         //     absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
@@ -540,7 +540,7 @@ __kernel void overlap_recheck_indices(
         /* Compute the likelihood for adding the template given the position of the fixed best unit */
         for (i = 0; i < n_shift_points; i++)
         {
-            absolute_shift_index = shift_start + i;
+            absolute_shift_index = (unsigned int) shift_start + i;
             // float actual_current_maximum_likelihood = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
             //    absolute_shift_index, templates, num_templates, template_length, template_number,
             //    template_sum_squared, gamma);

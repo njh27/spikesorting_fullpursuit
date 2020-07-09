@@ -354,7 +354,8 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned char * restrict check_window_on_next_pass,
     __global unsigned char * restrict overlap_recheck,
     __global unsigned int * restrict overlap_best_spike_indices,
-    __global unsigned int * restrict overlap_best_spike_labels)
+    __global unsigned int * restrict overlap_best_spike_labels,
+    __global float * restrict full_likelihood_function)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -371,6 +372,7 @@ __kernel void compute_template_maximum_likelihood(
     const unsigned int end_of_my_window = (id + 1) * template_length;
     const unsigned int start = (template_length > start_of_my_window) ? 0 : (start_of_my_window - template_length);
     const unsigned int stop = (end_of_my_window + template_length) > voltage_length ? voltage_length : (end_of_my_window + template_length);
+    const unsigned int full_likelihood_function_offset = template_number * voltage_length + start;
 
     if (template_number >= template_length)
     {
@@ -408,6 +410,13 @@ __kernel void compute_template_maximum_likelihood(
             best_spike_label_private = template_number;
             best_spike_index_private = start + i;
         }
+
+        if ((start + i >= start_of_my_window) && (start + i < end_of_my_window))
+        {
+            /* This is already offset by 'start' indices so only need to add i */
+            full_likelihood_function[full_likelihood_function_offset + i] = current_maximum_likelihood;
+        }
+
         if ((current_maximum_likelihood > 0.0) && (start + i >= start_of_my_window) && (start + i < end_of_my_window))
         {
             check_window = 1;
@@ -468,7 +477,8 @@ __kernel void overlap_recheck_indices(
     __global unsigned int * restrict overlap_best_spike_labels,
     __global signed int * restrict template_pre_inds,
     __global signed int * restrict template_post_inds,
-    const float gamma_noise)
+    const float gamma_noise,
+    __global float * restrict full_likelihood_function)
 {
     const size_t global_id = get_global_id(0);
     if (num_overlap_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_overlap_window_indices)
@@ -503,14 +513,20 @@ __kernel void overlap_recheck_indices(
     __private const signed int shift_stop = ((signed int) best_spike_index_private + last_shift) > ((signed int) voltage_length - (signed int) template_length) ? (voltage_length - template_length): ((signed int) best_spike_index_private + last_shift);
     __private const unsigned int n_shift_points = shift_stop - shift_start;
 
+    const unsigned int fixed_likelihood_function_offset = best_spike_label_private * voltage_length + shift_start;
+    const unsigned int shift_likelihood_function_offset = template_number * voltage_length + shift_start;
+
     unsigned int i, j, k, current_channel;
     for (k = 0; k < n_shift_points; k++)
     {
         absolute_fixed_index = shift_start + k;
         /* Get likelihood for the current best spike label at the input fixed index relative to best index */
-        float actual_template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
-            absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
-            template_sum_squared, gamma);
+        // float actual_template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
+        //     absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
+        //     template_sum_squared, gamma);
+
+        float actual_template_likelihood_at_index = full_likelihood_function[fixed_likelihood_function_offset + k];
+
         if (actual_template_likelihood_at_index <= 0.0)
         {
             continue;
@@ -520,9 +536,12 @@ __kernel void overlap_recheck_indices(
         for (i = 0; i < n_shift_points; i++)
         {
             absolute_shift_index = shift_start + i;
-            float actual_current_maximum_likelihood = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
-               absolute_shift_index, templates, num_templates, template_length, template_number,
-               template_sum_squared, gamma);
+            // float actual_current_maximum_likelihood = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
+            //    absolute_shift_index, templates, num_templates, template_length, template_number,
+            //    template_sum_squared, gamma);
+
+            float actual_current_maximum_likelihood = full_likelihood_function[shift_likelihood_function_offset + i];
+
             if (actual_current_maximum_likelihood <= 0.0)
             {
                continue;

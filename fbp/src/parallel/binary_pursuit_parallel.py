@@ -363,7 +363,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         n_max_shift_inds = template_samples_per_chan // 4
         template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
         print("Max pre ind", np.amin(template_pre_inds), "Max post ind", np.amax(template_post_inds))
-        n_max_shift_inds = 30
         template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
         template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
 
@@ -398,6 +397,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             # Create our buffers on the graphics cards.
             # Essentially all we are doing is copying each of our arrays to the graphics card.
             voltage_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=chunk_voltage)
+            full_likelihood_function_buffer = cl.Buffer(ctx, mf.READ_WRITE, size=(np.dtype(np.float32).itemsize * chunk_voltage_length * templates.shape[0]))
 
             # Set arguments that are the same every iteration
             compute_residual_kernel.set_arg(0, voltage_buffer) # location where chunk voltage is stored
@@ -452,7 +452,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             compute_template_maximum_likelihood_kernel.set_arg(15, overlap_recheck_window_buffer)
             compute_template_maximum_likelihood_kernel.set_arg(16, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
             compute_template_maximum_likelihood_kernel.set_arg(17, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
-            # compute_template_maximum_likelihood_kernel.set_arg(18, peak_shift_buffer)
+            compute_template_maximum_likelihood_kernel.set_arg(18, full_likelihood_function_buffer)
             # compute_template_maximum_likelihood_kernel.set_arg(19, peak_chan_buffer)
             # compute_template_maximum_likelihood_kernel.set_arg(20, peak_sign_buffer)
 
@@ -476,6 +476,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_recheck_indices_kernel.set_arg(16, template_pre_inds_buffer)
             overlap_recheck_indices_kernel.set_arg(17, template_post_inds_buffer)
             overlap_recheck_indices_kernel.set_arg(18, gamma_noise) # Noise variance term
+            overlap_recheck_indices_kernel.set_arg(19, full_likelihood_function_buffer)
 
             check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
             check_overlap_reassignments_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template

@@ -362,7 +362,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
 
-        n_max_shift_pre_inds = (template_samples_per_chan) - 1
+        n_max_shift_inds = (template_samples_per_chan) - 1
         template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
         print("Max pre ind", np.amin(template_pre_inds), "Max post ind", np.amax(template_post_inds))
         template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds

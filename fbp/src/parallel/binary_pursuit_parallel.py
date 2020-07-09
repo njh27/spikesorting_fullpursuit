@@ -362,8 +362,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
         n_max_shift_inds = template_samples_per_chan // 4
         template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
-        # template_pre_inds -= -4
-        # template_post_inds += -2
+        print("Max pre ind", np.amin(template_pre_inds), "Max post ind", np.amax(template_post_inds))
+        n_max_shift_inds = 30
         template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
         template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
 
@@ -528,7 +528,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for template_index in range(0, templates.shape[0]):
                     for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
-                        # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
                         compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(template_index)) # Template number
                         temp_ml_event = cl.enqueue_nd_range_kernel(queue,
                                               compute_template_maximum_likelihood_kernel,
@@ -557,7 +556,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     for template_index in range(0, templates.shape[0]):
                         overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
                         for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
-                            # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
                             overlap_event = cl.enqueue_nd_range_kernel(queue,
                                                   overlap_recheck_indices_kernel,
                                                   (n_to_enqueue, ), (pursuit_local_work_size, ),
@@ -567,8 +565,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                             next_wait_event = [overlap_event]
 
                     check_overlap_reassignments_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
+                    queue.finish()
                     for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
-                        # time.sleep(.1) # Giving OS a second here seems to help from timeout crashes ('Out of Resources Error')
                         overlap_event = cl.enqueue_nd_range_kernel(queue,
                                               check_overlap_reassignments_kernel,
                                               (n_to_enqueue, ), (pursuit_local_work_size, ),
@@ -579,7 +577,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
-                    # time.sleep(.1)
                     pursuit_event = cl.enqueue_nd_range_kernel(queue,
                                           binary_pursuit_kernel,
                                           (n_to_enqueue, ), (pursuit_local_work_size, ),
@@ -650,7 +647,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
                 n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
                 for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
-                    # time.sleep(.1)
                     residual_event = cl.enqueue_nd_range_kernel(queue,
                                            compute_residual_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),
@@ -663,12 +659,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 chunk_total_additional_spikes += num_additional_spikes[0]
                 num_additional_spikes[0] = 0
                 queue.finish()
-                # if new_window_indices.shape[0] > max_enqueue_pursuit:
-                #     # Shouldn't really be necessary with queue.finish() but potentially helpful
-                #     time.sleep(1)
-
-                # best_spike_likelihoods = np.zeros(num_template_widths, dtype=np.float32)
-                # next_wait_event = [cl.enqueue_copy(queue, best_spike_likelihoods_buffer, best_spike_likelihoods, wait_for=next_wait_event)]
 
                 # print("!!! BREAKING AFTER ONE LOOP")
                 # if n_loops == 2:
@@ -728,7 +718,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 n_to_enqueue = min(total_work_size_clips, max_enqueue_resid)
                 print("Getting adjusted clips", flush=True)
                 for enqueue_step in np.arange(0, total_work_size_clips, max_enqueue_resid, dtype=np.uint32):
-                    # time.sleep(.1)
                     clip_event = cl.enqueue_nd_range_kernel(queue,
                                            get_adjusted_clips_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),

@@ -362,7 +362,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
 
-        n_max_shift_inds = (template_samples_per_chan // 2) - 1
+        n_max_shift_pre_inds = (template_samples_per_chan) - 1
         template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
         print("Max pre ind", np.amin(template_pre_inds), "Max post ind", np.amax(template_post_inds))
         template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
@@ -530,8 +530,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for template_index in range(0, templates.shape[0]):
+                    compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(template_index)) # Template number
                     for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
-                        compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(template_index)) # Template number
                         temp_ml_event = cl.enqueue_nd_range_kernel(queue,
                                               compute_template_maximum_likelihood_kernel,
                                               (n_to_enqueue, ), (pursuit_local_work_size, ),

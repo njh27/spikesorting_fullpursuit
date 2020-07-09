@@ -552,6 +552,11 @@ __kernel void overlap_recheck_indices(
             {
                 shifted_template_sse = 0.0;
                 delta_index = absolute_fixed_index - absolute_shift_index;
+                if (delta_index >= template_length)
+                {
+                    /* Templates have no points of overlap */
+                    continue;
+                }
                 for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
                 {
                     unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
@@ -571,6 +576,11 @@ __kernel void overlap_recheck_indices(
             {
                 shifted_template_sse = 0.0;
                 delta_index = absolute_shift_index - absolute_fixed_index;
+                if (delta_index >= template_length)
+                {
+                    /* Templates have no points of overlap */
+                    continue;
+                }
                 for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
                 {
                     unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);

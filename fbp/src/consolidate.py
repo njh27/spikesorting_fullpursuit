@@ -1034,14 +1034,6 @@ class SegSummary(object):
         n1_weight = n1['spike_indices'].shape[0] / (n1['spike_indices'].shape[0] + n2['spike_indices'].shape[0])
         merged_template = n1_weight * n1['pursuit_template'] + (1 - n1_weight) * shift_template_2
 
-        if shift != 0:
-            print("MADE THIS TEMPLATE for shift", shift)
-            plt.plot(merged_template)
-            plt.show()
-            print("FROM THESE TEMPLATES")
-            plt.plot(n1['pursuit_template'])
-            plt.plot(shift_template_2)
-            plt.show()
         return merged_template
 
     def sharpen_across_chans(self):

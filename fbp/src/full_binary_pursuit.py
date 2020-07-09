@@ -105,29 +105,30 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                         absolute_refractory_period=absolute_refractory_period,
                         verbose=False)
 
-    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
-    templates = []
-    template_thresholds = []
-    for n in seg_summary.summaries:
-        templates.append(n['pursuit_template'])
-        template_thresholds.append(n['template_noise_threshold'])
-
-    templates = np.float32(np.vstack(templates))
-    template_thresholds = np.array(template_thresholds, dtype=np.float32)
-    templates_to_delete = sort_cython.remove_overlap_templates(templates,
-                            sort_info['n_samples_per_chan'], template_thresholds)
-
-    # Remove these redundant templates from summary before sharpening
-    for x in reversed(range(0, len(seg_summary.summaries))):
-        if templates_to_delete[x]:
-            del seg_summary.summaries[x]
-    # print("TEMPLATE REDUCTION IS OFF !!!!!")
-    print("Reduced number of templates to", len(seg_summary.summaries))
-
     # print("SHARPEN IS OFF!!!!")
     seg_summary.sharpen_across_chans()
     # seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
     neurons = seg_summary.summaries
+
+    print("SKIPPING SUM TEMPLATES CHECK BECAUSE IT GETS TOO CRAZY")
+    # print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+    # templates = []
+    # template_thresholds = []
+    # for n in seg_summary.summaries:
+    #     templates.append(n['pursuit_template'])
+    #     template_thresholds.append(n['template_noise_threshold'])
+    #
+    # templates = np.float32(np.vstack(templates))
+    # template_thresholds = np.array(template_thresholds, dtype=np.float32)
+    # templates_to_delete = sort_cython.remove_overlap_templates(templates,
+    #                         sort_info['n_samples_per_chan'], template_thresholds)
+    #
+    # # Remove these redundant templates from summary before sharpening
+    # for x in reversed(range(0, len(seg_summary.summaries))):
+    #     if templates_to_delete[x]:
+    #         del seg_summary.summaries[x]
+    # # print("TEMPLATE REDUCTION IS OFF !!!!!")
+    # print("Reduced number of templates to", len(seg_summary.summaries))
 
     # Return the original neighbors to the work items that were reset
     orig_neigh_ind = 0
@@ -161,8 +162,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         if not n['deleted_as_redundant']:
             templates.append(n['pursuit_template'])
             next_label += 1
-            plt.plot(n['pursuit_template'])
-            plt.show()
+            # plt.plot(n['pursuit_template'])
+            # plt.show()
 
     del seg_summary
 

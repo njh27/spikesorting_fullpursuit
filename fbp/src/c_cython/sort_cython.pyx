@@ -412,20 +412,13 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
                             curr_SS = 0.0
                             for t_ind in range(0, temp_y):
                                 curr_SS += (sum_template_ptr[t_ind] - temp_ptr[p_ov_offset + t_ind]) * (sum_template_ptr[t_ind] - temp_ptr[p_ov_offset + t_ind])
-                            # curr_SS = curr_SS / template_SS[p_ov]
 
                             if curr_SS < closest_SS:
                                 closest_SS = curr_SS
                                 closest_SS_pair = [n1, n2]
                                 closest_SS_p_ov = p_ov
-                                # print("closest SS is", closest_SS)
 
-        print("THE RAW SS WAS", closest_SS)
-        print("Threshold is", template_thresholds[closest_SS_p_ov])
-        print("SS accounted for ratio", 1 - (closest_SS / template_SS[closest_SS_p_ov]))
-        print("SS ADJUSTED ratio", 1 - (closest_SS+template_thresholds[closest_SS_p_ov]) / template_SS[closest_SS_p_ov])
         if closest_SS_pair is None:
-            print("No shifts even tested")
             break
         # if closest_SS < template_thresholds[closest_SS_p_ov]:
         if 1 - (closest_SS / template_SS[closest_SS_p_ov]) > .85:
@@ -697,7 +690,6 @@ cdef double bound_grad_desc_fixed_point_abs(int64_t N, double[::1] I, double[::1
       next_t = (t - lower)/2 + lower
 
     f_t = fixed_point_abs(next_t, N, I, a2)
-    # print("NEXT T", next_t)
     # Get absolute value of change in f_t and t
     f_step = f_t - f_min
     if f_step < 0.0:

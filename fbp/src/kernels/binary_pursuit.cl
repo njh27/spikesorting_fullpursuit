@@ -511,12 +511,12 @@ __kernel void overlap_recheck_indices(
     /* Find absolute voltage indices we will check within shift range */
     __private const signed int shift_start = ((signed int) best_spike_index_private + first_shift < 0) ? 0 : ((signed int) best_spike_index_private + first_shift);
     __private const signed int shift_stop = ((signed int) best_spike_index_private + last_shift) > ((signed int) voltage_length - (signed int) template_length) ? (voltage_length - template_length): ((signed int) best_spike_index_private + last_shift);
-    if ((shift_start >= ((signed int) voltage_length - (signed int) template_length)) || (shift_start >= shift_stop))
+    __private const unsigned int n_shift_points = (unsigned int) shift_stop - (unsigned int) shift_start;
+    if ((shift_start + (signed int) n_shift_points >= ((signed int) voltage_length - (signed int) template_length)) || (shift_start >= shift_stop))
     {
         /* Too close to the end of voltage to check these shifts so just quit */
         return;
     }
-    __private const unsigned int n_shift_points = (unsigned int) shift_stop - (unsigned int) shift_start;
 
     const unsigned int fixed_likelihood_function_offset = best_spike_label_private * voltage_length + (unsigned int) shift_start;
     const unsigned int shift_likelihood_function_offset = template_number * voltage_length + (unsigned int) shift_start;

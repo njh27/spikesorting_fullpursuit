@@ -532,10 +532,10 @@ __kernel void overlap_recheck_indices(
 
         float actual_template_likelihood_at_index = full_likelihood_function[fixed_likelihood_function_offset + k];
 
-        if (actual_template_likelihood_at_index <= 0.0)
-        {
-            continue;
-        }
+        // if (actual_template_likelihood_at_index <= 0.0)
+        // {
+        //     continue;
+        // }
 
         /* Compute the likelihood for adding the template given the position of the fixed best unit */
         for (i = 0; i < n_shift_points; i++)
@@ -613,7 +613,7 @@ __kernel void overlap_recheck_indices(
             if (current_maximum_likelihood > best_spike_likelihood_private)
             {
                 /* Reset the likelihood and best index and label to maximum */
-                if (1)//((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
+                if ((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
                 {
                     /* The main label has better likelihood than best shifted match */
                     best_spike_likelihood_private = current_maximum_likelihood;

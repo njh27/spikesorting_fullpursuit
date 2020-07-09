@@ -532,10 +532,10 @@ __kernel void overlap_recheck_indices(
 
         float actual_template_likelihood_at_index = full_likelihood_function[fixed_likelihood_function_offset + k];
 
-        // if (actual_template_likelihood_at_index <= 0.0)
-        // {
-        //     continue;
-        // }
+        if (actual_template_likelihood_at_index <= 0.0)
+        {
+            continue;
+        }
 
         /* Compute the likelihood for adding the template given the position of the fixed best unit */
         for (i = 0; i < n_shift_points; i++)
@@ -566,14 +566,11 @@ __kernel void overlap_recheck_indices(
                 {
                     unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
                     unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-                    for (j = 0; j < (delta_index + template_length); j++)
+                    for (j = delta_index; j < template_length; j++)
                     {
                         /* Data available for both templates */
-                        if ((j >= delta_index) && (j < template_length))
-                        {
-                           shift_prod = templates[template_offset + j] * templates[fixed_template_offset + j - delta_index];
-                           shifted_template_sse = shifted_template_sse + shift_prod;
-                        }
+                        shift_prod = templates[template_offset + j] * templates[fixed_template_offset + j - delta_index];
+                        shifted_template_sse = shifted_template_sse + shift_prod;
                     }
                 }
             }
@@ -590,14 +587,10 @@ __kernel void overlap_recheck_indices(
                 {
                     unsigned int template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
                     unsigned int fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-                    for (j = 0; j < (delta_index + template_length); j++)
+                    for (j = delta_index; j < template_length; j++)
                     {
-                        /* Data available for both templates */
-                        if ((j >= delta_index) && (j < template_length))
-                        {
-                           shift_prod = templates[template_offset + j - delta_index] * templates[fixed_template_offset + j];
-                           shifted_template_sse = shifted_template_sse + shift_prod;
-                        }
+                        shift_prod = templates[template_offset + j - delta_index] * templates[fixed_template_offset + j];
+                        shifted_template_sse = shifted_template_sse + shift_prod;
                     }
                 }
             }
@@ -620,7 +613,7 @@ __kernel void overlap_recheck_indices(
             if (current_maximum_likelihood > best_spike_likelihood_private)
             {
                 /* Reset the likelihood and best index and label to maximum */
-                if ((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
+                if (1)//((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
                 {
                     /* The main label has better likelihood than best shifted match */
                     best_spike_likelihood_private = current_maximum_likelihood;

@@ -119,12 +119,12 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
                 template_post_inds[s*templates.shape[0] + f] = 0
             else:
                 template_pre_inds[f*templates.shape[0] + s] = np.argmax(failed_assignments) - max_shift
-                # NOTE: Subtracting 1 will give inclusive indices. Not subtracting 1 gives the slice range used here.
-                template_post_inds[f*templates.shape[0] + s] = failed_assignments.shape[0] - np.argmax(failed_assignments[-1::-1]) - max_shift
+                # NOTE: Subtracting 1 will give inclusive indices.
+                template_post_inds[f*templates.shape[0] + s] = failed_assignments.shape[0] - np.argmax(failed_assignments[-1::-1]) - max_shift - 1
 
                 # For the same pair in opposite order, these indices are REVERSED
-                template_pre_inds[s*templates.shape[0] + f] = -1 * template_post_inds[f*templates.shape[0] + s] + 1 # Add to undo slice
-                template_post_inds[s*templates.shape[0] + f] = -1 * template_pre_inds[f*templates.shape[0] + s] + 1
+                template_pre_inds[s*templates.shape[0] + f] = -1 * template_post_inds[f*templates.shape[0] + s]
+                template_post_inds[s*templates.shape[0] + f] = -1 * template_pre_inds[f*templates.shape[0] + s]
 
     return template_pre_inds, template_post_inds
 

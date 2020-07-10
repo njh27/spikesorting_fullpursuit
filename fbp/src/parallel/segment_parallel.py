@@ -173,11 +173,8 @@ def align_templates(probe_dict, chan_voltage, neuron_labels, event_indices, clip
     """ Aligns templates to each other and shift their event indices accordingly.
 
     This function determines the template for each cluster and then asks whether
-    the majority of clusters have templates with larger peak or valley. All
-    templates are then aligned on peak or valley according to the majority and
-    their constituent event_indices are shifted accordingly and returned. The
-    purpose is to align all events while ignoring the jitter in peak valley
-    alignment strategies caused by noise. """
+    each unit has a template with larger peak or valley. All templates are then
+    aligned such that their maximum absolute value is centered on the clip width. """
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
     clips, valid_inds = get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width=clip_width)
     event_indices = event_indices[valid_inds]
@@ -185,22 +182,12 @@ def align_templates(probe_dict, chan_voltage, neuron_labels, event_indices, clip
     window = np.abs(window)
     templates, labels = calculate_templates(clips, neuron_labels)
 
-    temp_peaks = []
-    for t_ind, t in enumerate(templates):
-        t_select = neuron_labels == labels[t_ind]
-        t_weight = np.count_nonzero(t_select) / clips.shape[0]
-        temp_peaks.append((np.amax(t) + np.amin(t)) * t_weight)
-
-    if np.mean(temp_peaks) > 0:
-        bias_up = True
-    else:
-        bias_up = False
     for t_ind in range(0, len(templates)):
         t = templates[t_ind]
         t_select = neuron_labels == labels[t_ind]
-        min_t = np.amin(t)
-        max_t = np.amax(t)
-        if bias_up:
+        min_t = np.abs(np.amin(t))
+        max_t = np.abs(np.amax(t))
+        if max_t > min_t:
             # Align everything on peak
             shift = np.argmax(t)
         else:

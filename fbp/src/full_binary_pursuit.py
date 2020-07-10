@@ -2,13 +2,101 @@ import numpy as np
 import pickle
 import os
 from fbp.src.consolidate import SegSummary
-from fbp.src.parallel.segment_parallel import get_multichannel_clips
+from fbp.src.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples
 from fbp.src.parallel import binary_pursuit_parallel
 from fbp.src.c_cython import sort_cython
 
 
 
 import matplotlib.pyplot as plt
+
+
+
+def remove_overlap_templates(templates, n_samples_per_chan, n_chans,
+                            n_pre_inds, n_post_inds, n_template_spikes):
+
+    def get_shifted_template(template, shift):
+        """ """
+        shifted_template = np.zeros_like(template)
+        for chan in range(0, n_chans):
+            chan_temp = template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan]
+            if shift > 0:
+                shifted_template[chan*n_samples_per_chan+shift:(chan+1)*n_samples_per_chan] = \
+                                chan_temp[:-shift]
+            else:
+                shifted_template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan+shift] = \
+                                chan_temp[-shift:]
+        return shifted_template
+
+
+    templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    if templates.shape[0] < 3:
+        # Need at least 3 templates for one to be sum of two others
+        return templates_to_delete
+    templates_SS = np.sum(templates ** 2, axis=1)
+    sum_n1_n2_template = np.zeros(templates.shape[1])
+
+    # Compute the possible template shifts up front so not iteratively repeating
+    # the same computation over and over again
+    all_template_shifts = []
+    for t in range(0, templates.shape[0]):
+        all_shifts = np.zeros((n_post_inds+1 + n_pre_inds, templates.shape[1]))
+        as_ind = 0
+        for s in range(-n_pre_inds, n_post_inds+1):
+            all_shifts[as_ind, :] = get_shifted_template(templates[t, :], s)
+            as_ind += 1
+        all_template_shifts.append(all_shifts)
+
+    for test_unit in range(0, templates.shape[0]):
+        test_template = templates[test_unit, :]
+
+        min_residual_SS = np.inf
+        best_pair = None
+        best_shifts = None
+        best_inds = None
+
+        for n1 in range(0, templates.shape[0]):
+            if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > templates_SS[test_unit]):
+                continue
+            template_1 = templates[n1, :]
+
+            for n2 in range(n1+1, templates.shape[0]):
+                if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > templates_SS[test_unit]):
+                    continue
+                template_2 = templates[n2, :]
+
+                s1_ind = 0
+                for shift1 in range(-n_pre_inds, n_post_inds+1):
+                    shifted_t1 = all_template_shifts[n1][s1_ind, :]
+                    s2_ind = 0
+                    for shift2 in range(-n_pre_inds, n_post_inds+1):
+                        # Copy data from t1 shift into sum
+                        sum_n1_n2_template[:] = shifted_t1[:]
+                        shifted_t2 = all_template_shifts[n2][s2_ind, :]
+                        sum_n1_n2_template += shifted_t2
+
+                        residual_SS = np.sum((test_template - sum_n1_n2_template) ** 2)
+                        if residual_SS < min_residual_SS:
+                            min_residual_SS = residual_SS
+                            best_pair = [n1, n2]
+                            best_shifts = [shift1, shift2]
+                            best_inds = [s1_ind, s2_ind]
+
+                        s2_ind += 1
+                    s1_ind += 1
+        print("MIN RESIDUAL", min_residual_SS)
+        if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:
+            templates_to_delete[test_unit] = True
+            # print("Deleting this template")
+            # plt.plot(templates[test_unit])
+            # plt.show()
+            # print("As a sum of these tempalates at shifts", best_shifts)
+            # plt.plot(all_template_shifts[best_pair[0]][best_inds[0], :])
+            # plt.plot(all_template_shifts[best_pair[1]][best_inds[1], :])
+            # plt.show()
+
+    return templates_to_delete
+
 
 
 
@@ -77,40 +165,32 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     #     plt.plot(n['pursuit_template'])
     #     plt.show()
 
-    print("SKIPPING SUM TEMPLATES CHECK BECAUSE ITS BROKEN")
-    # print("Checking", len(seg_summary.summaries), "neurons for potential sums")
-    # templates = []
-    # n_template_spikes = []
-    # for n in seg_summary.summaries:
-    #     templates.append(n['pursuit_template'])
-    #     n_template_spikes.append(n['spike_indices'].shape[0])
-    #
-    # templates = np.float32(np.vstack(templates))
-    # n_template_spikes = np.array(n_template_spikes, dtype=np.float32)
-    # templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
-    # for chan in range(0, sort_info['n_channels']):
-    #     expand_delete = np.zeros(templates.shape[0], dtype=np.bool)
-    #     chan_templates = templates[:, chan*sort_info['n_samples_per_chan']:(chan+1)*sort_info['n_samples_per_chan']]
-    #     # chan_templates = chan_templates[~templates_to_delete, :]
-    #     # Each work item has all the thresholds
-    #     chan_threshold = seg_w_items[0]['thresholds'][chan]
-    #     chans_over_cutoff = np.amax(np.abs(chan_templates), axis=1) > .25 * chan_threshold
-    #     chans_over_thresh = np.amax(np.abs(chan_templates), axis=1) > chan_threshold
-    #     chan_templates_to_delete = sort_cython.remove_overlap_templates(chan_templates[chans_over_cutoff, :],
-    #                             sort_info['n_samples_per_chan'], n_template_spikes)
-    #     expand_delete[chans_over_cutoff] = chan_templates_to_delete
-    #     # Indexing gets confusing here so just loop
-    #     for nt in range(templates_to_delete.shape[0]):
-    #         if templates_to_delete[nt]:
-    #             # Already deleting this so doesn't matter
-    #             continue
-    #         if expand_delete[nt]:
-    #             templates_to_delete[nt] = True
-    #
-    # # Remove these redundant templates from summary before sharpening
-    # for x in reversed(range(0, len(seg_summary.summaries))):
-    #     if templates_to_delete[x]:
-    #         del seg_summary.summaries[x]
+    # print("SKIPPING SUM TEMPLATES CHECK BECAUSE ITS BROKEN")
+    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+    templates = []
+    n_template_spikes = []
+    for n in seg_summary.summaries:
+        templates.append(n['pursuit_template'])
+        n_template_spikes.append(n['spike_indices'].shape[0])
+
+    chan_win, clip_width = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
+    templates = np.float32(np.vstack(templates))
+    n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
+    print("START PYTHON VERSION")
+    templates_to_delete = remove_overlap_templates(templates, sort_info['n_samples_per_chan'],
+                                sort_info['n_channels'],
+                                np.abs(chan_win[0]), np.abs(chan_win[1]),
+                                n_template_spikes)
+    print("START C CYTHON VERSION")
+    templates_to_delete = sort_cython.remove_overlap_templates(templates, int(sort_info['n_samples_per_chan']),
+                                int(sort_info['n_channels']),
+                                np.int64(np.abs(chan_win[0])), np.int64(np.abs(chan_win[1])),
+                                n_template_spikes)
+
+    # Remove these redundant templates from summary before sharpening
+    for x in reversed(range(0, len(seg_summary.summaries))):
+        if templates_to_delete[x]:
+            del seg_summary.summaries[x]
     # # print("TEMPLATE REDUCTION IS OFF !!!!!")
     # print("Reduced number of templates to", len(seg_summary.summaries))
     # plt.plot(templates[~templates_to_delete, :].T)

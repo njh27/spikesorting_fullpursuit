@@ -77,41 +77,42 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     #     plt.plot(n['pursuit_template'])
     #     plt.show()
 
-    # print("SKIPPING SUM TEMPLATES CHECK BECAUSE IT GETS TOO CRAZY")
-    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
-    templates = []
-    n_template_spikes = []
-    for n in seg_summary.summaries:
-        templates.append(n['pursuit_template'])
-        n_template_spikes.append(n['spike_indices'].shape[0])
-
-    templates = np.float32(np.vstack(templates))
-    n_template_spikes = np.array(n_template_spikes, dtype=np.float32)
-    templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
-    for chan in range(0, sort_info['n_channels']):
-        expand_delete = np.zeros(templates.shape[0], dtype=np.bool)
-        chan_templates = templates[:, chan*sort_info['n_samples_per_chan']:(chan+1)*sort_info['n_samples_per_chan']]
-        # chan_templates = chan_templates[~templates_to_delete, :]
-        # Each work item has all the thresholds
-        chan_threshold = seg_w_items[0]['thresholds'][chan]
-        chans_over_thresh = np.amax(np.abs(chan_templates), axis=1) > .25 * chan_threshold
-        chan_templates_to_delete = sort_cython.remove_overlap_templates(chan_templates[chans_over_thresh, :],
-                                sort_info['n_samples_per_chan'], n_template_spikes)
-        expand_delete[chans_over_thresh] = chan_templates_to_delete
-        # Indexing gets confusing here so just loop
-        for nt in range(templates_to_delete.shape[0]):
-            if templates_to_delete[nt]:
-                # Already deleting this so doesn't matter
-                continue
-            if expand_delete[nt]:
-                templates_to_delete[nt] = True
-
-    # Remove these redundant templates from summary before sharpening
-    for x in reversed(range(0, len(seg_summary.summaries))):
-        if templates_to_delete[x]:
-            del seg_summary.summaries[x]
-    # print("TEMPLATE REDUCTION IS OFF !!!!!")
-    print("Reduced number of templates to", len(seg_summary.summaries))
+    print("SKIPPING SUM TEMPLATES CHECK BECAUSE ITS BROKEN")
+    # print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+    # templates = []
+    # n_template_spikes = []
+    # for n in seg_summary.summaries:
+    #     templates.append(n['pursuit_template'])
+    #     n_template_spikes.append(n['spike_indices'].shape[0])
+    #
+    # templates = np.float32(np.vstack(templates))
+    # n_template_spikes = np.array(n_template_spikes, dtype=np.float32)
+    # templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    # for chan in range(0, sort_info['n_channels']):
+    #     expand_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    #     chan_templates = templates[:, chan*sort_info['n_samples_per_chan']:(chan+1)*sort_info['n_samples_per_chan']]
+    #     # chan_templates = chan_templates[~templates_to_delete, :]
+    #     # Each work item has all the thresholds
+    #     chan_threshold = seg_w_items[0]['thresholds'][chan]
+    #     chans_over_cutoff = np.amax(np.abs(chan_templates), axis=1) > .25 * chan_threshold
+    #     chans_over_thresh = np.amax(np.abs(chan_templates), axis=1) > chan_threshold
+    #     chan_templates_to_delete = sort_cython.remove_overlap_templates(chan_templates[chans_over_cutoff, :],
+    #                             sort_info['n_samples_per_chan'], n_template_spikes)
+    #     expand_delete[chans_over_cutoff] = chan_templates_to_delete
+    #     # Indexing gets confusing here so just loop
+    #     for nt in range(templates_to_delete.shape[0]):
+    #         if templates_to_delete[nt]:
+    #             # Already deleting this so doesn't matter
+    #             continue
+    #         if expand_delete[nt]:
+    #             templates_to_delete[nt] = True
+    #
+    # # Remove these redundant templates from summary before sharpening
+    # for x in reversed(range(0, len(seg_summary.summaries))):
+    #     if templates_to_delete[x]:
+    #         del seg_summary.summaries[x]
+    # # print("TEMPLATE REDUCTION IS OFF !!!!!")
+    # print("Reduced number of templates to", len(seg_summary.summaries))
     # plt.plot(templates[~templates_to_delete, :].T)
     # plt.show()
 

@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 
 def remove_overlap_templates(templates, n_samples_per_chan, n_chans,
                             n_pre_inds, n_post_inds, n_template_spikes):
+    """ Use this for testing. There is a corresponding cython verison that should
+        be faster. """
 
     def get_shifted_template(template, shift):
         """ """
@@ -84,7 +86,7 @@ def remove_overlap_templates(templates, n_samples_per_chan, n_chans,
 
                         s2_ind += 1
                     s1_ind += 1
-        print("MIN RESIDUAL", min_residual_SS)
+        # print("MIN RESIDUAL", min_residual_SS)
         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:
             templates_to_delete[test_unit] = True
             # print("Deleting this template")
@@ -176,12 +178,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     chan_win, clip_width = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
     templates = np.float32(np.vstack(templates))
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
-    print("START PYTHON VERSION")
-    templates_to_delete = remove_overlap_templates(templates, sort_info['n_samples_per_chan'],
-                                sort_info['n_channels'],
-                                np.abs(chan_win[0]), np.abs(chan_win[1]),
-                                n_template_spikes)
-    print("START C CYTHON VERSION")
     templates_to_delete = sort_cython.remove_overlap_templates(templates, int(sort_info['n_samples_per_chan']),
                                 int(sort_info['n_channels']),
                                 np.int64(np.abs(chan_win[0])), np.int64(np.abs(chan_win[1])),

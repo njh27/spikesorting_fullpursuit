@@ -406,7 +406,7 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
 
                         s2_ind += 1
                     s1_ind += 1
-        print("MIN RESIDUAL", min_residual_SS)
+        # print("MIN RESIDUAL", min_residual_SS)
         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:
             templates_to_delete[test_unit] = True
 

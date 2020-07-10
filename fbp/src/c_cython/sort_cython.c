@@ -2358,7 +2358,6 @@ int __pyx_module_is_main_sort_cython = 0;
 /* Implementation of 'sort_cython' */
 static PyObject *__pyx_builtin_ValueError;
 static PyObject *__pyx_builtin_range;
-static PyObject *__pyx_builtin_print;
 static PyObject *__pyx_builtin_RuntimeError;
 static PyObject *__pyx_builtin_ImportError;
 static PyObject *__pyx_builtin_MemoryError;
@@ -2454,7 +2453,6 @@ static const char __pyx_k_flags[] = "flags";
 static const char __pyx_k_int64[] = "int64";
 static const char __pyx_k_label[] = "label";
 static const char __pyx_k_numpy[] = "numpy";
-static const char __pyx_k_print[] = "print";
 static const char __pyx_k_range[] = "range";
 static const char __pyx_k_shape[] = "shape";
 static const char __pyx_k_shift[] = "shift";
@@ -2562,7 +2560,6 @@ static const char __pyx_k_n_post_inds[] = "n_post_inds";
 static const char __pyx_k_resid_error[] = "resid_error";
 static const char __pyx_k_residual_SS[] = "residual_SS";
 static const char __pyx_k_sort_cython[] = "sort_cython";
-static const char __pyx_k_MIN_RESIDUAL[] = "MIN RESIDUAL";
 static const char __pyx_k_RuntimeError[] = "RuntimeError";
 static const char __pyx_k_centroid_ptr[] = "centroid_ptr";
 static const char __pyx_k_density_view[] = "density_view";
@@ -2679,7 +2676,6 @@ static PyObject *__pyx_kp_s_Invalid_mode_expected_c_or_fortr;
 static PyObject *__pyx_kp_s_Invalid_shape_in_axis_d_d;
 static PyObject *__pyx_n_s_MAX;
 static PyObject *__pyx_n_s_MIN;
-static PyObject *__pyx_kp_u_MIN_RESIDUAL;
 static PyObject *__pyx_n_s_MemoryError;
 static PyObject *__pyx_kp_s_MemoryView_of_r_at_0x_x;
 static PyObject *__pyx_kp_s_MemoryView_of_r_object;
@@ -2852,7 +2848,6 @@ static PyObject *__pyx_n_s_pcs_as_index;
 static PyObject *__pyx_n_s_pi;
 static PyObject *__pyx_n_s_pickle;
 static PyObject *__pyx_n_s_previously_compared_pairs;
-static PyObject *__pyx_n_s_print;
 static PyObject *__pyx_n_s_pyx_PickleError;
 static PyObject *__pyx_n_s_pyx_checksum;
 static PyObject *__pyx_n_s_pyx_getbuffer;
@@ -8531,7 +8526,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  * 
  *                         s2_ind += 1             # <<<<<<<<<<<<<<
  *                     s1_ind += 1
- *         print("MIN RESIDUAL", min_residual_SS)
+ *         # print("MIN RESIDUAL", min_residual_SS)
  */
             __pyx_v_s2_ind = (__pyx_v_s2_ind + 1);
           }
@@ -8540,7 +8535,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  * 
  *                         s2_ind += 1
  *                     s1_ind += 1             # <<<<<<<<<<<<<<
- *         print("MIN RESIDUAL", min_residual_SS)
+ *         # print("MIN RESIDUAL", min_residual_SS)
  *         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:
  */
           __pyx_v_s1_ind = (__pyx_v_s1_ind + 1);
@@ -8550,49 +8545,29 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __pyx_L10_continue:;
     }
 
-    /* "sort_cython.pyx":409
- *                         s2_ind += 1
- *                     s1_ind += 1
- *         print("MIN RESIDUAL", min_residual_SS)             # <<<<<<<<<<<<<<
- *         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:
- *             templates_to_delete[test_unit] = True
- */
-    __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 409, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_INCREF(__pyx_kp_u_MIN_RESIDUAL);
-    __Pyx_GIVEREF(__pyx_kp_u_MIN_RESIDUAL);
-    PyTuple_SET_ITEM(__pyx_t_1, 0, __pyx_kp_u_MIN_RESIDUAL);
-    __Pyx_INCREF(__pyx_v_min_residual_SS);
-    __Pyx_GIVEREF(__pyx_v_min_residual_SS);
-    PyTuple_SET_ITEM(__pyx_t_1, 1, __pyx_v_min_residual_SS);
-    __pyx_t_5 = __Pyx_PyObject_Call(__pyx_builtin_print, __pyx_t_1, NULL); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 409, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_5);
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-
     /* "sort_cython.pyx":410
  *                     s1_ind += 1
- *         print("MIN RESIDUAL", min_residual_SS)
+ *         # print("MIN RESIDUAL", min_residual_SS)
  *         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:             # <<<<<<<<<<<<<<
  *             templates_to_delete[test_unit] = True
  * 
  */
-    __pyx_t_5 = __Pyx_GetItemInt(__pyx_v_templates_SS, __pyx_v_test_unit, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 0, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 410, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_GetItemInt(__pyx_v_templates_SS, __pyx_v_test_unit, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 410, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __pyx_t_5 = __Pyx_PyNumber_Divide(__pyx_v_min_residual_SS, __pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 410, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
-    __pyx_t_1 = __Pyx_PyNumber_Divide(__pyx_v_min_residual_SS, __pyx_t_5); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 410, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __pyx_t_1 = __Pyx_PyInt_SubtractCObj(__pyx_int_1, __pyx_t_5, 1, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 410, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __pyx_t_5 = __Pyx_PyInt_SubtractCObj(__pyx_int_1, __pyx_t_1, 1, 0, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 410, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_5);
+    __pyx_t_5 = PyObject_RichCompare(__pyx_t_1, __pyx_float_0_85, Py_GT); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 410, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_t_1 = PyObject_RichCompare(__pyx_t_5, __pyx_float_0_85, Py_GT); __Pyx_XGOTREF(__pyx_t_1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 410, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_6 < 0)) __PYX_ERR(0, 410, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_1); if (unlikely(__pyx_t_6 < 0)) __PYX_ERR(0, 410, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (__pyx_t_6) {
 
       /* "sort_cython.pyx":411
- *         print("MIN RESIDUAL", min_residual_SS)
+ *         # print("MIN RESIDUAL", min_residual_SS)
  *         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:
  *             templates_to_delete[test_unit] = True             # <<<<<<<<<<<<<<
  * 
@@ -8602,7 +8577,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
 
       /* "sort_cython.pyx":410
  *                     s1_ind += 1
- *         print("MIN RESIDUAL", min_residual_SS)
+ *         # print("MIN RESIDUAL", min_residual_SS)
  *         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:             # <<<<<<<<<<<<<<
  *             templates_to_delete[test_unit] = True
  * 
@@ -28809,7 +28784,6 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_s_Invalid_shape_in_axis_d_d, __pyx_k_Invalid_shape_in_axis_d_d, sizeof(__pyx_k_Invalid_shape_in_axis_d_d), 0, 0, 1, 0},
   {&__pyx_n_s_MAX, __pyx_k_MAX, sizeof(__pyx_k_MAX), 0, 0, 1, 1},
   {&__pyx_n_s_MIN, __pyx_k_MIN, sizeof(__pyx_k_MIN), 0, 0, 1, 1},
-  {&__pyx_kp_u_MIN_RESIDUAL, __pyx_k_MIN_RESIDUAL, sizeof(__pyx_k_MIN_RESIDUAL), 0, 1, 0, 0},
   {&__pyx_n_s_MemoryError, __pyx_k_MemoryError, sizeof(__pyx_k_MemoryError), 0, 0, 1, 1},
   {&__pyx_kp_s_MemoryView_of_r_at_0x_x, __pyx_k_MemoryView_of_r_at_0x_x, sizeof(__pyx_k_MemoryView_of_r_at_0x_x), 0, 0, 1, 0},
   {&__pyx_kp_s_MemoryView_of_r_object, __pyx_k_MemoryView_of_r_object, sizeof(__pyx_k_MemoryView_of_r_object), 0, 0, 1, 0},
@@ -28982,7 +28956,6 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_pi, __pyx_k_pi, sizeof(__pyx_k_pi), 0, 0, 1, 1},
   {&__pyx_n_s_pickle, __pyx_k_pickle, sizeof(__pyx_k_pickle), 0, 0, 1, 1},
   {&__pyx_n_s_previously_compared_pairs, __pyx_k_previously_compared_pairs, sizeof(__pyx_k_previously_compared_pairs), 0, 0, 1, 1},
-  {&__pyx_n_s_print, __pyx_k_print, sizeof(__pyx_k_print), 0, 0, 1, 1},
   {&__pyx_n_s_pyx_PickleError, __pyx_k_pyx_PickleError, sizeof(__pyx_k_pyx_PickleError), 0, 0, 1, 1},
   {&__pyx_n_s_pyx_checksum, __pyx_k_pyx_checksum, sizeof(__pyx_k_pyx_checksum), 0, 0, 1, 1},
   {&__pyx_n_s_pyx_getbuffer, __pyx_k_pyx_getbuffer, sizeof(__pyx_k_pyx_getbuffer), 0, 0, 1, 1},
@@ -29080,7 +29053,6 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(0, 29, __pyx_L1_error)
   __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 111, __pyx_L1_error)
-  __pyx_builtin_print = __Pyx_GetBuiltinName(__pyx_n_s_print); if (!__pyx_builtin_print) __PYX_ERR(0, 409, __pyx_L1_error)
   __pyx_builtin_RuntimeError = __Pyx_GetBuiltinName(__pyx_n_s_RuntimeError); if (!__pyx_builtin_RuntimeError) __PYX_ERR(0, 580, __pyx_L1_error)
   __pyx_builtin_ImportError = __Pyx_GetBuiltinName(__pyx_n_s_ImportError); if (!__pyx_builtin_ImportError) __PYX_ERR(1, 1038, __pyx_L1_error)
   __pyx_builtin_MemoryError = __Pyx_GetBuiltinName(__pyx_n_s_MemoryError); if (!__pyx_builtin_MemoryError) __PYX_ERR(2, 148, __pyx_L1_error)

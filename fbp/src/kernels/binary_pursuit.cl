@@ -525,28 +525,17 @@ __kernel void overlap_recheck_indices(
     for (k = 0; k < n_shift_points; k++)
     {
         absolute_fixed_index = (unsigned int) shift_start + k;
-        /* Get likelihood for the current best spike label at the input fixed index relative to best index */
-        // float actual_template_likelihood_at_index = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
-        //     absolute_fixed_index, templates, num_templates, template_length, best_spike_label_private,
-        //     template_sum_squared, gamma);
-
         float actual_template_likelihood_at_index = full_likelihood_function[fixed_likelihood_function_offset + k];
-
-        // if (actual_template_likelihood_at_index <= 0.0)
-        // {
-        //     continue;
-        // }
+        if (actual_template_likelihood_at_index <= 0.0)
+        {
+            continue;
+        }
 
         /* Compute the likelihood for adding the template given the position of the fixed best unit */
         for (i = 0; i < n_shift_points; i++)
         {
             absolute_shift_index = (unsigned int) shift_start + i;
-            // float actual_current_maximum_likelihood = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
-            //    absolute_shift_index, templates, num_templates, template_length, template_number,
-            //    template_sum_squared, gamma);
-
             float actual_current_maximum_likelihood = full_likelihood_function[shift_likelihood_function_offset + i];
-
             // if (actual_current_maximum_likelihood <= 0.0)
             // {
             //    continue;
@@ -604,7 +593,11 @@ __kernel void overlap_recheck_indices(
             /* to get the sum of squares for the full shifted sum template. */
             /* These are input as negative values so keep them that way */
             full_template_sum_squared = template_sum_squared[best_spike_label_private] + template_sum_squared[template_number] - shifted_template_sse;
-
+            if (full_template_sum_squared > 0)
+            {
+                /* This shouldn't really be possible, but just in case */
+                continue;
+            }
             /* Use full template sum squares to compute gamma term for shifted */
             /* template and subtract it from the combined template likelihood */
             current_maximum_likelihood = current_maximum_likelihood - sqrt(-1*full_template_sum_squared) * gamma_noise;
@@ -613,7 +606,7 @@ __kernel void overlap_recheck_indices(
             if (current_maximum_likelihood > best_spike_likelihood_private)
             {
                 /* Reset the likelihood and best index and label to maximum */
-                if ((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
+                if (1)//((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
                 {
                     /* The main label has better likelihood than best shifted match */
                     best_spike_likelihood_private = current_maximum_likelihood;

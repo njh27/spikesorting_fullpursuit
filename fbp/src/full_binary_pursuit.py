@@ -12,39 +12,6 @@ import matplotlib.pyplot as plt
 
 
 
-
-def remove_overlapping_spikes(event_indices, clips, neuron_labels, templates,
-                              template_labels, tol_inds):
-    """
-    """
-    keep_bool = np.ones(event_indices.size, dtype=np.bool)
-    temp_sse = np.zeros(2)
-    curr_index = 0
-    next_index = 1
-    while next_index < event_indices.size:
-        if event_indices[next_index] - event_indices[curr_index] <= tol_inds:
-            curr_temp_ind = next((idx[0] for idx, val in
-                            np.ndenumerate(template_labels) if val == neuron_labels[curr_index]), None)
-            temp_sse[0] = np.sum((clips[curr_index, :] - templates[curr_temp_ind]) ** 2)
-            next_temp_ind = next((idx[0] for idx, val in
-                            np.ndenumerate(template_labels) if val == neuron_labels[next_index]), None)
-            temp_sse[1] = np.sum((clips[next_index, :] - templates[next_temp_ind]) ** 2)
-            if temp_sse[0] <= temp_sse[1]:
-                # current spike is better or equal
-                keep_bool[next_index] = False
-                next_index += 1
-            else:
-                # next spike is better
-                keep_bool[curr_index] = False
-                curr_index = next_index
-                next_index += 1
-        else:
-            curr_index = next_index
-            next_index += 1
-
-    return keep_bool
-
-
 def full_binary_pursuit(work_items, data_dict, seg_number,
                         sort_info, v_dtype, overlap_ratio_threshold=2,
                         absolute_refractory_period=12e-4,

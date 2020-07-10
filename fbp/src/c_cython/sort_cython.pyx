@@ -331,8 +331,8 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
 @cython.wraparound(False)
 @cython.cdivision(True)    # turn division by zero checking off
 def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
-                             int64_t template_samples_per_chan,
-                             np.ndarray[float, ndim=1] template_thresholds):
+                             int64_t max_shift_indices,
+                             np.ndarray[float, ndim=1] n_template_spikes):
 
     cdef np.ndarray[np.npy_bool, ndim=1, cast=True] templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
     if templates.shape[0] < 3:
@@ -342,7 +342,6 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
     cdef float *temp_ptr = &templates[0, 0]
     cdef Py_ssize_t temp_x = templates.shape[0]
     cdef Py_ssize_t temp_y = templates.shape[1]
-    cdef int64_t max_shift_indices = template_samples_per_chan // 2
 
     cdef Py_ssize_t p_ov, n1, n2, n1_offset, n2_offset, t_ind, v_ind, p_ov_offset
     cdef int64_t shift1, shift2
@@ -373,13 +372,15 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
         for p_ov in templates_to_check:
             p_ov_offset = p_ov * temp_y
             for n1 in range(0, temp_x - 1):
-                if (n1 == p_ov) or (templates_to_delete[n1]) or (template_SS[n1] > template_SS[p_ov]):
-                    # p_ov can't be a sum of n1 if n1 is bigger
+                if (n_template_spikes[n1] < 10*n_template_spikes[p_ov]) or (n1 == p_ov) or (templates_to_delete[n1]) or (template_SS[n1] > template_SS[p_ov]):
+                    # p_ov can't be a sum of n1 if n1 is bigger or n1 doesn't
+                    # have much higher firing rate
                     continue
                 n1_offset = n1 * temp_y
                 for n2 in range(n1+1, temp_x):
-                    if (n2 == p_ov) or (templates_to_delete[n2]) or (template_SS[n2] > template_SS[p_ov]):
-                        # p_ov can't be a sum of n2 if n2 is bigger
+                    if (n_template_spikes[n2] < 10*n_template_spikes[p_ov]) or (n2 == p_ov) or (templates_to_delete[n2]) or (template_SS[n2] > template_SS[p_ov]):
+                        # p_ov can't be a sum of n2 if n2 is bigger or n2 doesn't
+                        # have much higher firing rate
                         continue
                     n2_offset = n2 * temp_y
                     # NOTE: This is a 'lazy' shift because it does not shift within
@@ -418,9 +419,9 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
                                 closest_SS_pair = [n1, n2]
                                 closest_SS_p_ov = p_ov
 
+        # print("Closest ratio is", 1 - (closest_SS / template_SS[closest_SS_p_ov]))
         if closest_SS_pair is None:
             break
-        # if closest_SS < template_thresholds[closest_SS_p_ov]:
         if 1 - (closest_SS / template_SS[closest_SS_p_ov]) > .85:
             templates_to_delete[closest_SS_p_ov] = True
             templates_to_check.remove(closest_SS_p_ov)

@@ -749,7 +749,7 @@ class SegSummary(object):
                 # Recompute template and store output
                 neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
                 neuron['snr'] = self.get_snr(neuron)
-                if neuron['snr'] < 1.9:
+                if neuron['snr'] < 1.5:
                     # SNR this low indicates true garbage that will only slow
                     # binary pursuit so skip it outright
                     # Remember that SNR can only go down from here as binary

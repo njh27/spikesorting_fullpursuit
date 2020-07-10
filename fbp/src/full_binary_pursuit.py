@@ -72,30 +72,53 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                         absolute_refractory_period=absolute_refractory_period,
                         verbose=False)
 
+    # print("Entered with", len(seg_summary.summaries), "templates in segment", seg_number)
+    # for n in seg_summary.summaries:
+    #     plt.plot(n['pursuit_template'])
+    #     plt.show()
+
+    # print("SKIPPING SUM TEMPLATES CHECK BECAUSE IT GETS TOO CRAZY")
+    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+    templates = []
+    n_template_spikes = []
+    for n in seg_summary.summaries:
+        templates.append(n['pursuit_template'])
+        n_template_spikes.append(n['spike_indices'].shape[0])
+
+    templates = np.float32(np.vstack(templates))
+    n_template_spikes = np.array(n_template_spikes, dtype=np.float32)
+    templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    for chan in range(0, sort_info['n_channels']):
+        expand_delete = np.zeros(templates.shape[0], dtype=np.bool)
+        chan_templates = templates[:, chan*sort_info['n_samples_per_chan']:(chan+1)*sort_info['n_samples_per_chan']]
+        # chan_templates = chan_templates[~templates_to_delete, :]
+        # Each work item has all the thresholds
+        chan_threshold = seg_w_items[0]['thresholds'][chan]
+        chans_over_thresh = np.amax(np.abs(chan_templates), axis=1) > .25 * chan_threshold
+        chan_templates_to_delete = sort_cython.remove_overlap_templates(chan_templates[chans_over_thresh, :],
+                                sort_info['n_samples_per_chan'], n_template_spikes)
+        expand_delete[chans_over_thresh] = chan_templates_to_delete
+        # Indexing gets confusing here so just loop
+        for nt in range(templates_to_delete.shape[0]):
+            if templates_to_delete[nt]:
+                # Already deleting this so doesn't matter
+                continue
+            if expand_delete[nt]:
+                templates_to_delete[nt] = True
+
+    # Remove these redundant templates from summary before sharpening
+    for x in reversed(range(0, len(seg_summary.summaries))):
+        if templates_to_delete[x]:
+            del seg_summary.summaries[x]
+    # print("TEMPLATE REDUCTION IS OFF !!!!!")
+    print("Reduced number of templates to", len(seg_summary.summaries))
+    # plt.plot(templates[~templates_to_delete, :].T)
+    # plt.show()
+
     # print("SHARPEN IS OFF!!!!")
     seg_summary.sharpen_across_chans()
     # seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
     neurons = seg_summary.summaries
-
-    print("SKIPPING SUM TEMPLATES CHECK BECAUSE IT GETS TOO CRAZY")
-    # print("Checking", len(seg_summary.summaries), "neurons for potential sums")
-    # templates = []
-    # template_thresholds = []
-    # for n in seg_summary.summaries:
-    #     templates.append(n['pursuit_template'])
-    #     template_thresholds.append(n['template_noise_threshold'])
-    #
-    # templates = np.float32(np.vstack(templates))
-    # template_thresholds = np.array(template_thresholds, dtype=np.float32)
-    # templates_to_delete = sort_cython.remove_overlap_templates(templates,
-    #                         sort_info['n_samples_per_chan'], template_thresholds)
-    #
-    # # Remove these redundant templates from summary before sharpening
-    # for x in reversed(range(0, len(seg_summary.summaries))):
-    #     if templates_to_delete[x]:
-    #         del seg_summary.summaries[x]
-    # # print("TEMPLATE REDUCTION IS OFF !!!!!")
-    # print("Reduced number of templates to", len(seg_summary.summaries))
 
     # Return the original neighbors to the work items that were reset
     orig_neigh_ind = 0

@@ -613,13 +613,13 @@ __kernel void overlap_recheck_indices(
                     overlap_best_spike_labels[id] = best_spike_label_private;
                     overlap_best_spike_indices[id] = absolute_fixed_index;
                 }
-                // else
-                // {
-                //     /* The best shifted match unit has better likelihood than the main label */
-                //     best_spike_likelihood_private = current_maximum_likelihood;
-                //     overlap_best_spike_labels[id] = template_number;
-                //     overlap_best_spike_indices[id] = absolute_shift_index;
-                // }
+                else
+                {
+                    /* The best shifted match unit has better likelihood than the main label */
+                    best_spike_likelihood_private = current_maximum_likelihood;
+                    overlap_best_spike_labels[id] = template_number;
+                    overlap_best_spike_indices[id] = absolute_shift_index;
+                }
             }
         }
     }

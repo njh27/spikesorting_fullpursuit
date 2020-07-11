@@ -796,6 +796,7 @@ class SegSummary(object):
                 else:
                     # Neuron is total trash so don't even append to summaries
                     continue
+                neuron['gamma_bias'] = 0.5 * np.sqrt(np.sum(neuron['clips'] ** 2))
 
                 neuron['deleted_as_redundant'] = False
 
@@ -2810,19 +2811,20 @@ class WorkItemSummary(object):
         #     # Duplicates across channels can be very different so use large tol
         #     combined_neuron['duplicate_tol_inds'] = self.half_clip_inds
 
+        combined_neuron['duplicate_tol_inds'] = 5
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping
         # the waveform most similar to its channel's template
-        # keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
-        # combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-        # combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
-        # combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
-        # for chan in combined_neuron['channel']:
-        #     combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
-        # channel_selector = channel_selector[keep_bool]
-        # threshold_by_unit = threshold_by_unit[keep_bool] # NOTE: not currently output...
-        # segment_by_unit = segment_by_unit[keep_bool]
-        # snr_by_unit = snr_by_unit[keep_bool]
+        keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
+        combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
+        combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+        combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
+        for chan in combined_neuron['channel']:
+            combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
+        channel_selector = channel_selector[keep_bool]
+        threshold_by_unit = threshold_by_unit[keep_bool] # NOTE: not currently output...
+        segment_by_unit = segment_by_unit[keep_bool]
+        snr_by_unit = snr_by_unit[keep_bool]
 
         # Recompute things of interest like SNR and templates by channel as the
         # average over all data from that channel and store for output

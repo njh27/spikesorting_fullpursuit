@@ -162,10 +162,10 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                         absolute_refractory_period=absolute_refractory_period,
                         verbose=False)
 
-    # print("Entered with", len(seg_summary.summaries), "templates in segment", seg_number)
-    # for n in seg_summary.summaries:
-    #     plt.plot(n['pursuit_template'])
-    #     plt.show()
+    print("Entered with", len(seg_summary.summaries), "templates in segment", seg_number)
+    for n in seg_summary.summaries:
+        plt.plot(n['pursuit_template'])
+        plt.show()
 
     # print("SKIPPING SUM TEMPLATES CHECK BECAUSE ITS BROKEN")
     print("Checking", len(seg_summary.summaries), "neurons for potential sums")
@@ -187,10 +187,10 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     for x in reversed(range(0, len(seg_summary.summaries))):
         if templates_to_delete[x]:
             del seg_summary.summaries[x]
-    # # print("TEMPLATE REDUCTION IS OFF !!!!!")
-    # print("Reduced number of templates to", len(seg_summary.summaries))
-    # plt.plot(templates[~templates_to_delete, :].T)
-    # plt.show()
+    # print("TEMPLATE REDUCTION IS OFF !!!!!")
+    print("Reduced number of templates to", len(seg_summary.summaries))
+    plt.plot(templates[~templates_to_delete, :].T)
+    plt.show()
 
     # print("SHARPEN IS OFF!!!!")
     seg_summary.sharpen_across_chans()
@@ -236,8 +236,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
 
     templates = np.vstack(templates)
     print("Starting full binary pursuit search with", templates.shape[0], "templates in segment", seg_number)
-    # plt.plot(templates.T)
-    # plt.show()
+    plt.plot(templates.T)
+    plt.show()
 
     # thresh_sigma = 1.645, 1.96, 2.576
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(

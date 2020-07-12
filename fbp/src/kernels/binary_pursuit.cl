@@ -565,9 +565,9 @@ __kernel void overlap_recheck_indices(
                         /* Data available for both templates */
                         shift_prod = templates[template_offset + j] * templates[(fixed_template_offset + j) - delta_index];
                         shifted_template_ss_adjustment += shift_prod;
-                        /* (A + B)^2 identity needs 2 * this product term */
-                        shifted_template_ss_by_channel += 2.0 * shift_prod;
                     }
+                    /* (A + B)^2 identity needs 2 * this product term */
+                    shifted_template_ss_by_channel += 2 * shifted_template_ss_adjustment;
                     /* Now that we have full template sum square for this channel */
                     /* multiply by this channel's bias and add to bias term */
                     if (shifted_template_ss_by_channel > 0)
@@ -599,9 +599,9 @@ __kernel void overlap_recheck_indices(
                     {
                         shift_prod = templates[(template_offset + j) - delta_index] * templates[fixed_template_offset + j];
                         shifted_template_ss_adjustment += shift_prod;
-                        /* (A + B)^2 identity needs 2 * this product term */
-                        shifted_template_ss_by_channel += 2.0 * shift_prod;
                     }
+                    /* (A + B)^2 identity needs 2 * this product term */
+                    shifted_template_ss_by_channel += 2 * shifted_template_ss_adjustment;
                     /* Now that we have full template sum square for this channel */
                     /* multiply by this channel's bias and add to bias term */
                     if (shifted_template_ss_by_channel > 0)

@@ -579,8 +579,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                             queue.finish()
                             next_wait_event = [overlap_event]
                         stop_t = time.time()
-                        print("Finished overlap checks in", stop_t - start_t, "seconds for template number", template_index)
-                        time.sleep(.1)
+                        # print("Finished overlap checks in", stop_t - start_t, "seconds for template number", template_index)
+                        # time.sleep(.1)
 
                     check_overlap_reassignments_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     queue.finish()

@@ -500,7 +500,7 @@ __kernel void overlap_recheck_indices(
 
     __private float shifted_template_ss_adjustment, shift_prod, shifted_template_ss_by_channel, shifted_template_bias;
     __private unsigned int absolute_fixed_index, absolute_shift_index, delta_index;
-    float actual_template_likelihood_at_index, actual_current_maximum_likelihood, current_maximum_likelihood;
+    __private float actual_template_likelihood_at_index, actual_current_maximum_likelihood, current_maximum_likelihood;
 
     __private const signed int first_shift = template_pre_inds[best_spike_label_private*num_templates + template_number];
     __private const signed int last_shift = template_post_inds[best_spike_label_private*num_templates + template_number];
@@ -519,14 +519,14 @@ __kernel void overlap_recheck_indices(
         return;
     }
 
-    const unsigned int fixed_likelihood_function_offset = best_spike_label_private * voltage_length + (unsigned int) shift_start;
-    const unsigned int shift_likelihood_function_offset = template_number * voltage_length + (unsigned int) shift_start;
-    const unsigned int shifted_fixed_ss_by_channel_offset = best_spike_label_private * num_neighbor_channels;
-    const unsigned int shifted_shift_ss_by_channel_offset = template_number * num_neighbor_channels;
-    const unsigned int template_offset = template_number * template_length * num_neighbor_channels;
-    const unsigned int fixed_template_offset = best_spike_label_private * template_length * num_neighbor_channels;
+    __private const unsigned int fixed_likelihood_function_offset = best_spike_label_private * voltage_length + (unsigned int) shift_start;
+    __private const unsigned int shift_likelihood_function_offset = template_number * voltage_length + (unsigned int) shift_start;
+    __private const unsigned int shifted_fixed_ss_by_channel_offset = best_spike_label_private * num_neighbor_channels;
+    __private const unsigned int shifted_shift_ss_by_channel_offset = template_number * num_neighbor_channels;
+    __private const unsigned int template_offset = template_number * template_length * num_neighbor_channels;
+    __private const unsigned int fixed_template_offset = best_spike_label_private * template_length * num_neighbor_channels;
 
-    unsigned int i, j, k, current_channel;
+    __private unsigned int i, j, k, current_channel;
     for (k = 0; k < n_shift_points; k++)
     {
         absolute_fixed_index = (unsigned int) shift_start + k;

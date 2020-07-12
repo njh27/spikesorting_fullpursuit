@@ -468,9 +468,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             # compute_template_maximum_likelihood_kernel.set_arg(20, peak_sign_buffer)
 
             # Set input arguments for overlap recheck kernel
-            # Includes a local buffer for easier index
-            # Construct a local buffer (float * local_work_size * number channels)
-            local_template_ss_buffer = cl.LocalMemory(4 * pursuit_local_work_size * n_chans)
             overlap_recheck_indices_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
             overlap_recheck_indices_kernel.set_arg(1, chunk_voltage_length) # Length of chunk voltage
             overlap_recheck_indices_kernel.set_arg(2, n_chans) # number of neighboring channels
@@ -492,7 +489,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_recheck_indices_kernel.set_arg(18, gamma_noise_buffer) # Noise variance terms for each channel
             overlap_recheck_indices_kernel.set_arg(19, template_sum_squared_by_channel_buffer) # .5 template sum squared by channel
             overlap_recheck_indices_kernel.set_arg(20, full_likelihood_function_buffer)
-            overlap_recheck_indices_kernel.set_arg(21, local_template_ss_buffer)
 
             check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
             check_overlap_reassignments_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template

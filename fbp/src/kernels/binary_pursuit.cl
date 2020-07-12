@@ -567,12 +567,12 @@ __kernel void overlap_recheck_indices(
                         shifted_template_ss_adjustment += shift_prod;
                     }
                     /* (A + B)^2 identity needs 2 * this product term */
-                    shifted_template_ss_by_channel += 2 * shifted_template_ss_adjustment;
+                    shifted_template_ss_by_channel += (float) 2 * shifted_template_ss_adjustment;
                     /* Now that we have full template sum square for this channel */
                     /* multiply by this channel's bias and add to bias term */
                     if (shifted_template_ss_by_channel > 0)
                     {
-                        shifted_template_bias += sqrt(shifted_template_ss_by_channel) * gamma_noise[current_channel];
+                        shifted_template_bias += (float) sqrt(shifted_template_ss_by_channel) * gamma_noise[current_channel];
                     }
                 }
             }
@@ -601,12 +601,12 @@ __kernel void overlap_recheck_indices(
                         shifted_template_ss_adjustment += shift_prod;
                     }
                     /* (A + B)^2 identity needs 2 * this product term */
-                    shifted_template_ss_by_channel += 2 * shifted_template_ss_adjustment;
+                    shifted_template_ss_by_channel += (float) 2 * shifted_template_ss_adjustment;
                     /* Now that we have full template sum square for this channel */
                     /* multiply by this channel's bias and add to bias term */
                     if (shifted_template_ss_by_channel > 0)
                     {
-                        shifted_template_bias += sqrt(shifted_template_ss_by_channel) * gamma_noise[current_channel];
+                        shifted_template_bias += (float) sqrt(shifted_template_ss_by_channel) * gamma_noise[current_channel];
                     }
                 }
             }

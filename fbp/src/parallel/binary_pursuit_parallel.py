@@ -371,7 +371,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         template_sum_squared_by_channel_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared_by_channel)
         gamma_noise_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gamma_noise)
 
-        n_max_shift_inds = (template_samples_per_chan // 2) - 2
+        n_max_shift_inds = (template_samples_per_chan // 2) - 1
         template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
         template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
         template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
@@ -569,7 +569,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     overlap_recheck_indices_kernel.set_arg(10, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     for template_index in range(0, templates.shape[0]):
                         overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
-                        print("Starting overlaps checks for template number", template_index)
                         start_t = time.time()
                         for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
                             overlap_event = cl.enqueue_nd_range_kernel(queue,
@@ -580,8 +579,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                             queue.finish()
                             next_wait_event = [overlap_event]
                         stop_t = time.time()
-                        print("Finished overlap checks in", stop_t - start_t, "seconds")
-                        # time.sleep(.5)
+                        print("Finished overlap checks in", stop_t - start_t, "seconds for template number", template_index)
+                        time.sleep(.1)
 
                     check_overlap_reassignments_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     queue.finish()

@@ -529,6 +529,7 @@ __kernel void overlap_recheck_indices(
         float actual_template_likelihood_at_index = full_likelihood_function[fixed_likelihood_function_offset + k];
         if (actual_template_likelihood_at_index <= 0.0)
         {
+            /* Require that the spike that brought us here stays here */
             continue;
         }
 
@@ -537,10 +538,6 @@ __kernel void overlap_recheck_indices(
         {
             absolute_shift_index = (unsigned int) shift_start + i;
             float actual_current_maximum_likelihood = full_likelihood_function[shift_likelihood_function_offset + i];
-            // if (actual_current_maximum_likelihood <= 0.0)
-            // {
-            //    continue;
-            // }
 
             /* Compute the template sum squared for the combined templates at current shift */
             if (absolute_shift_index < absolute_fixed_index)
@@ -556,7 +553,7 @@ __kernel void overlap_recheck_indices(
                 for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
                 {
                     /* Compute shifted template sum square for this channel */
-                    /* Values are input as 0.5 * sum sqaure */
+                    /* Starting with the sum square of each tempalte separately */
                     shifted_template_ss_by_channel = template_sum_squared_by_channel[best_spike_label_private * num_neighbor_channels + current_channel];
                     shifted_template_ss_by_channel = shifted_template_ss_by_channel + template_sum_squared_by_channel[template_number * num_neighbor_channels + current_channel];
 
@@ -567,7 +564,8 @@ __kernel void overlap_recheck_indices(
                         /* Data available for both templates */
                         shift_prod = templates[template_offset + j] * templates[fixed_template_offset + j - delta_index];
                         shifted_template_ss_adjustment = shifted_template_ss_adjustment + shift_prod;
-                        shifted_template_ss_by_channel = shifted_template_ss_by_channel + shift_prod;
+                        /* (A + B)^2 identity needs 2 * this product term */
+                        shifted_template_ss_by_channel = shifted_template_ss_by_channel + 2.0 * shift_prod;
                     }
                     /* Now that we have full template sum square for this channel */
                     /* multiply by this channel's bias and add to bias term */
@@ -587,7 +585,7 @@ __kernel void overlap_recheck_indices(
                 for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
                 {
                     /* Compute shifted template sum square for this channel */
-                    /* Values are input as 0.5 * sum sqaure */
+                    /* Starting with the sum square of each tempalte separately */
                     shifted_template_ss_by_channel = template_sum_squared_by_channel[best_spike_label_private * num_neighbor_channels + current_channel];
                     shifted_template_ss_by_channel = shifted_template_ss_by_channel + template_sum_squared_by_channel[template_number * num_neighbor_channels + current_channel];
 
@@ -597,7 +595,8 @@ __kernel void overlap_recheck_indices(
                     {
                         shift_prod = templates[template_offset + j - delta_index] * templates[fixed_template_offset + j];
                         shifted_template_ss_adjustment = shifted_template_ss_adjustment + shift_prod;
-                        shifted_template_ss_by_channel = shifted_template_ss_by_channel + shift_prod;
+                        /* (A + B)^2 identity needs 2 * this product term */
+                        shifted_template_ss_by_channel = shifted_template_ss_by_channel + 2.0 * shift_prod;
                     }
                     /* Now that we have full template sum square for this channel */
                     /* multiply by this channel's bias and add to bias term */

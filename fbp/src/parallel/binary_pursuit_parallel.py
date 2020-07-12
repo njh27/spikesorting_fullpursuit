@@ -324,7 +324,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
                 fft_kernels.append(get_zero_phase_kernel(templates[n, t_win[0]:t_win[1]], clip_init_samples))
 
-                template_sum_squared_by_channel[n*n_chans + chan] = 0.5 * np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
+                template_sum_squared_by_channel[n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
 
         # Compute the template bias terms over voltage data
         spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
@@ -345,6 +345,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         neighbor_bias = np.zeros(n_total_sample_points, dtype=np.float32)
         gamma_noise = np.zeros(n_chans, dtype=np.float32)
         spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
+        new_bias = np.zeros(templates.shape[0], dtype=np.float32)
         # Compute bias separately for each neuron, summed over channels
         for chan in range(0, n_chans):
             neighbor_bias[:] = 0.0

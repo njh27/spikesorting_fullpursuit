@@ -479,15 +479,17 @@ __kernel void overlap_recheck_indices(
     __global signed int * restrict template_post_inds,
     __global float * restrict gamma_noise,
     __global float * restrict template_sum_squared_by_channel,
-    __global float * restrict full_likelihood_function)
+    __global float * restrict full_likelihood_function,
+    __local float * restrict local_template_ss)
 {
     const size_t global_id = get_global_id(0);
+    const size_t local_id = get_local_id(0);
+    const size_t local_size = get_local_size(0);
     if (num_overlap_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_overlap_window_indices)
     {
         return; /* Extra worker with nothing to do */
     }
     const size_t id = (num_overlap_window_indices > 0 && overlap_window_indices != NULL) ? overlap_window_indices[global_id] : global_id;
-
     if (num_neighbor_channels == 0)
     {
         return; /* Invalid number of channels (must be >= 1) */
@@ -526,7 +528,14 @@ __kernel void overlap_recheck_indices(
     __private const unsigned int template_offset = template_number * template_length * num_neighbor_channels;
     __private const unsigned int fixed_template_offset = best_spike_label_private * template_length * num_neighbor_channels;
 
+    __private unsigned int adjust_fix_ind, adjust_shift_ind;
+
     __private unsigned int i, j, k, current_channel;
+    for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
+    {
+        local_template_ss[local_size * current_channel + local_id] = template_sum_squared_by_channel[shifted_fixed_ss_by_channel_offset + current_channel] + template_sum_squared_by_channel[shifted_shift_ss_by_channel_offset + current_channel];
+    }
+
     for (k = 0; k < n_shift_points; k++)
     {
         absolute_fixed_index = (unsigned int) shift_start + k;
@@ -558,12 +567,14 @@ __kernel void overlap_recheck_indices(
                 {
                     /* Compute shifted template sum square for this channel */
                     /* Starting with the sum square of each tempalte separately */
-                    shifted_template_ss_by_channel = template_sum_squared_by_channel[shifted_fixed_ss_by_channel_offset + current_channel] + template_sum_squared_by_channel[shifted_shift_ss_by_channel_offset + current_channel];
+                    shifted_template_ss_by_channel = local_template_ss[local_size * current_channel + local_id];
 
+                    adjust_fix_ind = (fixed_template_offset + current_channel * template_length);
+                    adjust_shift_ind = template_offset + current_channel * template_length;
                     for (j = delta_index; j < template_length; j++)
                     {
                         /* Data available for both templates */
-                        shift_prod = templates[template_offset + j + (current_channel * template_length)] * templates[fixed_template_offset + j - delta_index + (current_channel * template_length)];
+                        shift_prod = templates[adjust_shift_ind + j] * templates[(adjust_fix_ind + j) - delta_index];
                         shifted_template_ss_adjustment = shifted_template_ss_adjustment + shift_prod;
                         /* (A + B)^2 identity needs 2 * this product term */
                         shifted_template_ss_by_channel = shifted_template_ss_by_channel + 2.0 * shift_prod;
@@ -590,11 +601,13 @@ __kernel void overlap_recheck_indices(
                 {
                     /* Compute shifted template sum square for this channel */
                     /* Starting with the sum square of each tempalte separately */
-                    shifted_template_ss_by_channel = template_sum_squared_by_channel[shifted_fixed_ss_by_channel_offset + current_channel] + template_sum_squared_by_channel[shifted_shift_ss_by_channel_offset + current_channel];
+                    shifted_template_ss_by_channel = local_template_ss[local_size * current_channel + local_id];
 
+                    adjust_fix_ind = fixed_template_offset + current_channel * template_length;
+                    adjust_shift_ind = template_offset + current_channel * template_length;
                     for (j = delta_index; j < template_length; j++)
                     {
-                        shift_prod = templates[template_offset + j - delta_index + (current_channel * template_length)] * templates[fixed_template_offset + j + (current_channel * template_length)];
+                        shift_prod = templates[(adjust_shift_ind + j) - delta_index] * templates[adjust_fix_ind + j];
                         shifted_template_ss_adjustment = shifted_template_ss_adjustment + shift_prod;
                         /* (A + B)^2 identity needs 2 * this product term */
                         shifted_template_ss_by_channel = shifted_template_ss_by_channel + 2.0 * shift_prod;

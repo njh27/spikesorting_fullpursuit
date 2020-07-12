@@ -467,7 +467,10 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             # compute_template_maximum_likelihood_kernel.set_arg(19, peak_chan_buffer)
             # compute_template_maximum_likelihood_kernel.set_arg(20, peak_sign_buffer)
 
-            # Set input arguments for template maximum likelihood kernel
+            # Set input arguments for overlap recheck kernel
+            # Includes a local buffer for easier index
+            # Construct a local buffer (float * local_work_size * number channels)
+            local_template_ss_buffer = cl.LocalMemory(4 * pursuit_local_work_size * n_chans)
             overlap_recheck_indices_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
             overlap_recheck_indices_kernel.set_arg(1, chunk_voltage_length) # Length of chunk voltage
             overlap_recheck_indices_kernel.set_arg(2, n_chans) # number of neighboring channels
@@ -489,6 +492,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_recheck_indices_kernel.set_arg(18, gamma_noise_buffer) # Noise variance terms for each channel
             overlap_recheck_indices_kernel.set_arg(19, template_sum_squared_by_channel_buffer) # .5 template sum squared by channel
             overlap_recheck_indices_kernel.set_arg(20, full_likelihood_function_buffer)
+            overlap_recheck_indices_kernel.set_arg(21, local_template_ss_buffer)
 
             check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
             check_overlap_reassignments_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
@@ -569,6 +573,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     overlap_recheck_indices_kernel.set_arg(10, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     for template_index in range(0, templates.shape[0]):
                         overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
+                        print("Starting overlaps checks for template number", template_index)
+                        start_t = time.time()
                         for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
                             overlap_event = cl.enqueue_nd_range_kernel(queue,
                                                   overlap_recheck_indices_kernel,
@@ -577,6 +583,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                                                   wait_for=next_wait_event)
                             queue.finish()
                             next_wait_event = [overlap_event]
+                        stop_t = time.time()
+                        print("Finished overlap checks in", stop_t - start_t, "seconds")
+                        # time.sleep(.5)
 
                     check_overlap_reassignments_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     queue.finish()

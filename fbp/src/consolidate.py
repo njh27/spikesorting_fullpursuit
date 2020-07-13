@@ -1350,7 +1350,7 @@ class WorkItemSummary(object):
     """
     def __init__(self, sort_data, work_items, sort_info,
                  absolute_refractory_period=12e-4,
-                 max_mua_ratio=0.2, min_snr=1.5, min_overlapping_spikes=.5,
+                 max_mua_ratio=0.2, min_snr=1.5, min_overlapping_spikes=.75,
                  stitch_overlap_only=True, skip_organization=False,
                  n_segments=None, verbose=False):
         if not skip_organization:
@@ -2801,17 +2801,9 @@ class WorkItemSummary(object):
             combined_neuron["template"][chan] = np.mean(
                 combined_neuron['clips'][chan_select, :], axis=0).astype(combined_neuron["clips"].dtype)
 
-        # if len(combined_neuron['channel']) == 1:
-        #     # All data on same channel so use minimal duplicate tolerance
-        #     for c in combined_neuron['channel']:
-        #         c_main_win = combined_neuron['main_windows'][c]
-        #     combined_neuron['duplicate_tol_inds'] = 2 * calc_spike_half_width(
-        #         combined_neuron['clips'][:, c_main_win[0]:c_main_win[1]]) + 1
-        # else:
-        #     # Duplicates across channels can be very different so use large tol
-        #     combined_neuron['duplicate_tol_inds'] = self.half_clip_inds
+        # Duplicates across channels can be very different so use large tol
+        combined_neuron['duplicate_tol_inds'] = self.half_clip_inds
 
-        combined_neuron['duplicate_tol_inds'] = 5
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping
         # the waveform most similar to its channel's template

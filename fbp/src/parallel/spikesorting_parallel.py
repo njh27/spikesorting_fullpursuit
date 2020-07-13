@@ -707,7 +707,7 @@ def spike_sort_parallel(Probe, **kwargs):
         n_complete = len(data_dict['completed_items']) # Do once to avoid race
         if n_complete > completed_items_index:
             for ci in range(completed_items_index, n_complete):
-                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID']+1, "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['seg_number'])
+                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID'], "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['seg_number'])
                 print("Exited with status: ", data_dict['exits_dict'][data_dict['completed_items'][ci]])
                 completed_items_index += 1
                 if not settings['test_flag']:
@@ -718,7 +718,7 @@ def spike_sort_parallel(Probe, **kwargs):
                     del processes[done_index]
 
         if not settings['test_flag']:
-            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
             time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
             proc = mp.Process(target=spike_sort_item_parallel,
                               args=(data_dict, use_cpus, w_item, settings))

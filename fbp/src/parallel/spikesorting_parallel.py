@@ -41,6 +41,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['save_1_cpu'] = True
     settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
     settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
+    settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
     settings['cleanup_neurons'] = False # Remove garbage at the end
 
     for k in kwargs.keys():
@@ -316,11 +317,12 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
         crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
 
-        keep_clips = preprocessing.keep_max_on_main(clips, curr_chan_inds)
-        clips = clips[keep_clips, :]
-        crossings = crossings[keep_clips]
-        curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
-        if settings['verbose']: print("After keep max on main removed", np.count_nonzero(~keep_clips), "clips", flush=True)
+        if settings['sort_peak_clips_only']:
+            keep_clips = preprocessing.keep_max_on_main(clips, curr_chan_inds)
+            clips = clips[keep_clips, :]
+            crossings = crossings[keep_clips]
+            curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
+            if settings['verbose']: print("After keep max on main removed", np.count_nonzero(~keep_clips), "clips", flush=True)
         if crossings.size == 0:
             exit_type = "No crossings over threshold."
             # Raise error to force exit and wrap_up()

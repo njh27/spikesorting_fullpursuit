@@ -757,6 +757,9 @@ def spike_sort_parallel(Probe, **kwargs):
         p.close()
         del p
 
+    # Set threads/processes back to normal now that we are done
+    mkl.set_num_threads(8)
+
     sort_data = []
     sort_info = settings
     curr_chan_win, _ = segment_parallel.time_window_to_samples(
@@ -786,7 +789,7 @@ def spike_sort_parallel(Probe, **kwargs):
 if __name__ == '__main__':
     """ Setup the multiprocessing """
     proc = psutil.Process()  # get self pid
-    proc.cpu_affinity(cpus=list(range(psutil.cpu_count())))
+    # proc.cpu_affinity(cpus=list(range(psutil.cpu_count())))
     mkl.set_num_threads(8)
     mp.freeze_support()
     mp.set_start_method('spawn', force=True)

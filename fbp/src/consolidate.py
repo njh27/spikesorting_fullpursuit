@@ -2919,7 +2919,7 @@ class WorkItemSummary(object):
             n['deleted_as_redundant'] = False
 
         # Remove redundant items across channels
-        self.remove_redundant_neurons_by_seg(overlap_ratio_threshold)
+        # self.remove_redundant_neurons_by_seg(overlap_ratio_threshold)
         # NOTE: This MUST run AFTER remove redundant by seg or else you can
         # end up linking a redundant mixture to a good unit with broken link!
         self.make_overlapping_links()

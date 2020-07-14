@@ -294,15 +294,18 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         # Set local work size for both kernels to the max for device/kernel 'preferred size?'
         # This can be far faster and leave computer display performance better intact
         # than using the MAX_WORK_GROUP_SIZE.
-        # This was definitely true on the NVIDEA windows 10 configuration
+        # This was definitely true on the NVIDIA windows 10 configuration
         resid_local_work_size = compute_residual_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
         pursuit_local_work_size = binary_pursuit_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
+        overlap_local_work_size = binary_pursuit_kernel.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
         # Over enqueuing can clog up the GPU and cause a GPU timeout, resulting
         # in either a system crash or the OS terminating our operation
         max_enqueue_resid = np.uint32(resid_local_work_size * (device.max_compute_units))
         max_enqueue_pursuit = np.uint32(pursuit_local_work_size * (device.max_compute_units))
+        max_enqueue_overlap = np.uint32(overlap_local_work_size * (device.max_compute_units))
         max_enqueue_resid = max(resid_local_work_size, resid_local_work_size * (max_enqueue_resid // resid_local_work_size))
         max_enqueue_pursuit = max(pursuit_local_work_size, pursuit_local_work_size * (max_enqueue_pursuit // pursuit_local_work_size))
+        max_enqueue_overlap = max(overlap_local_work_size, overlap_local_work_size * (max_enqueue_overlap // overlap_local_work_size))
 
         # Set up our final outputs
         num_additional_spikes = np.zeros(1, dtype=np.uint32)
@@ -531,6 +534,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             chunk_total_additional_spike_labels = []
             n_loops = 0
             print("pursuit total size is", total_work_size_pursuit, "local size is", pursuit_local_work_size, "with max enqueue", max_enqueue_pursuit, "chose n to enqueue", min(total_work_size_pursuit, max_enqueue_pursuit))
+            print("overlaps local size is", overlap_local_work_size, "with max enqueue", max_enqueue_overlap)
             print("Looking in", num_template_widths, "windows")
             while True:
                 n_loops += 1
@@ -563,31 +567,26 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     next_wait_event = [cl.enqueue_copy(queue, overlap_window_indices_buffer, overlap_window_indices, wait_for=next_wait_event)]
                     queue.finish() # Needs to finish copy before checking indices
                     # Reset number of indices to check for overlap recheck kernel
-                    total_work_size_overlap = pursuit_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / pursuit_local_work_size))
+                    total_work_size_overlap = overlap_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / overlap_local_work_size))
 
-                    n_to_enqueue_overlap = min(total_work_size_overlap, max_enqueue_pursuit)
+                    n_to_enqueue_overlap = min(total_work_size_overlap, max_enqueue_overlap)
                     overlap_recheck_indices_kernel.set_arg(10, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     for template_index in range(0, templates.shape[0]):
                         overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
-                        start_t = time.time()
-                        for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
+                        for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_overlap, dtype=np.uint32):
                             overlap_event = cl.enqueue_nd_range_kernel(queue,
                                                   overlap_recheck_indices_kernel,
-                                                  (n_to_enqueue_overlap, ), (pursuit_local_work_size, ),
+                                                  (n_to_enqueue_overlap, ), (overlap_local_work_size, ),
                                                   global_work_offset=(enqueue_step, ),
                                                   wait_for=next_wait_event)
                             queue.finish()
                             next_wait_event = [overlap_event]
-                        stop_t = time.time()
-                        # print("Finished overlap checks in", stop_t - start_t, "seconds for template number", template_index)
-                        # time.sleep(.1)
 
                     check_overlap_reassignments_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
-                    queue.finish()
-                    for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_pursuit, dtype=np.uint32):
+                    for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_overlap, dtype=np.uint32):
                         overlap_event = cl.enqueue_nd_range_kernel(queue,
                                               check_overlap_reassignments_kernel,
-                                              (n_to_enqueue_overlap, ), (pursuit_local_work_size, ),
+                                              (n_to_enqueue_overlap, ), (overlap_local_work_size, ),
                                               global_work_offset=(enqueue_step, ),
                                               wait_for=next_wait_event)
                         queue.finish()

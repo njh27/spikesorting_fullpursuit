@@ -356,7 +356,7 @@ class TestDataset(object):
                               'add_peak_valley': False, 'do_ZCA_transform': True,
                               'do_branch_PCA': True,
                               'max_gpu_memory': None,
-                              'use_rand_init': True, 'cleanup_neurons': False,
+                              'use_rand_init': True,
                               'verbose': True}
         for key in kwargs:
             spike_sort_kwargs[key] = kwargs[key]
@@ -375,7 +375,6 @@ class TestDataset(object):
                            'add_peak_valley': False, 'do_branch_PCA': True,
                            'max_gpu_memory': None,
                            'save_1_cpu': True, 'use_rand_init': True,
-                           'cleanup_neurons': False,
                            'verbose': True,
                            'test_flag': True, 'log_dir': None,
                            'do_ZCA_transform': True}
@@ -398,7 +397,6 @@ class TestDataset(object):
                               'do_branch_PCA': True,
                               'max_gpu_memory': None,
                               'use_rand_init': True,
-                              'cleanup_neurons': False,
                               'verbose': True}
         for key in kwargs:
             single_sort_kwargs[key] = kwargs[key]
@@ -410,7 +408,6 @@ class TestDataset(object):
                            'add_peak_valley': False, 'do_branch_PCA': True,
                            'max_gpu_memory': None,
                            'save_1_cpu': True, 'use_rand_init': True,
-                           'cleanup_neurons': False,
                            'verbose': True,
                            'test_flag': True, 'log_dir': None,
                            'do_ZCA_transform': True}

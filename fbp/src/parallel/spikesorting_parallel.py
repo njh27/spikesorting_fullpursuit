@@ -29,20 +29,19 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['clip_width'] = [-6e-4, 10e-4]# Width of clip in seconds
     settings['do_branch_PCA'] = True # Use branch pca method to split clusters
     settings['do_branch_PCA_by_chan'] = False
-    settings['filter_band'] = (300, 6000)
+    settings['filter_band'] = (300, 8000)
     settings['do_ZCA_transform'] = True
     settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
     settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
-    settings['check_components'] = None # Number of PCs to check. None means all
+    settings['check_components'] = 100 # Number of PCs to check. None means all
     settings['max_components'] = 10 # Max number to use, of those checked
-    settings['min_firing_rate'] = 0. # Neurons with fewer threshold crossings than this are removed
+    settings['min_firing_rate'] = 0.1 # Neurons with fewer threshold crossings than this are removed
     settings['p_value_cut_thresh'] = 0.05
-    settings['max_gpu_memory'] = None # Use as much memory as possible
+    settings['max_gpu_memory'] = None # None means use as much memory as possible
     settings['save_1_cpu'] = True
-    settings['segment_duration'] = None # Seconds (nothing/Inf uses the entire recording)
-    settings['segment_overlap'] = None # Seconds of overlap between adjacent segments
+    settings['segment_duration'] = 300 # Seconds (None/Inf uses the entire recording)
+    settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
-    settings['cleanup_neurons'] = False # Remove garbage at the end
 
     for k in kwargs.keys():
         if k not in settings:
@@ -694,6 +693,7 @@ def spike_sort_parallel(Probe, **kwargs):
     processes = []
     proc_item_index = []
     completed_items_index = 0
+    process_errors_list = []
     print("Starting sorting pool")
     # Put the work items through the sorter
     for wi_ind, w_item in enumerate(work_items):
@@ -716,6 +716,9 @@ def spike_sort_parallel(Probe, **kwargs):
                     processes[done_index].join()
                     processes[done_index].close()
                     del processes[done_index]
+                    # Store error type if any
+                    if data_dict['exits_dict'][data_dict['completed_items'][ci]] != "Success":
+                        process_errors_list.append([work_items[data_dict['completed_items'][ci]]['ID'], data_dict['exits_dict'][data_dict['completed_items'][ci]]])
 
         if not settings['test_flag']:
             print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
@@ -742,7 +745,7 @@ def spike_sort_parallel(Probe, **kwargs):
                 # This item was already finished above so just clearing out
                 # completed_items_queue
                 continue
-            print("Completed item", finished_item+1, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['seg_number'])
+            print("Completed item", finished_item, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['seg_number'])
             print("Exited with status: ", data_dict['exits_dict'][finished_item])
             completed_items_index += 1
 
@@ -750,6 +753,10 @@ def spike_sort_parallel(Probe, **kwargs):
             processes[done_index].join()
             processes[done_index].close()
             del processes[done_index]
+            # Store error type if any
+            if data_dict['exits_dict'][finished_item] != "Success":
+                process_errors_list.append([finished_item, data_dict['exits_dict'][finished_item]])
+
     # Make sure all the processes finish up and close even though they should
     # have finished above
     while len(processes) > 0:
@@ -780,9 +787,12 @@ def spike_sort_parallel(Probe, **kwargs):
                     max_gpu_memory=settings['max_gpu_memory'])
         sort_data.extend(seg_data)
 
-    # # Delete directory containing clips
-    # if os.path.exists(settings['tmp_clips_dir']):
-    #     rmtree(settings['tmp_clips_dir'])
+    # Re-print any errors so more visible at the end of sorting
+    for pe in process_errors_list:
+        print("Item number", pe[0], "had the following error:")
+        print("            ", pe[1])
+
+    # Delete directory containing clips
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info
 

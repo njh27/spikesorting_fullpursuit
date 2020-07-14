@@ -776,26 +776,27 @@ class SegSummary(object):
 
                 # Preserve full template for binary pursuit
                 neuron['pursuit_template'] = np.copy(neuron['template'])
-                # Set template channels with peak less than half threshold to 0
-                # This will be used for align shifting and merge testing
-                # NOTE: This new neighborhood only applies for use internally
-                new_neighbors = []
-                new_clips = []
-                for chan in range(0, neuron['neighbors'].shape[0]):
-                    chan_index = [chan * self.sort_info['n_samples_per_chan'],
-                                  (chan + 1) * self.sort_info['n_samples_per_chan']]
-                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.25 * self.work_items[n_wi]['thresholds'][chan]:
-                        neuron['template'][chan_index[0]:chan_index[1]] = 0
-                        neuron['clips'][:, chan_index[0]:chan_index[1]] = 0
-                    else:
-                        new_neighbors.append(chan)
-                        new_clips.append(neuron['clips'][:, chan_index[0]:chan_index[1]])
-                if len(new_neighbors) > 0:
-                    neuron['neighbors'] = np.array(new_neighbors, dtype=np.int64)
-                    neuron['clips'] = np.hstack(new_clips)
-                else:
-                    # Neuron is total trash so don't even append to summaries
-                    continue
+                # # Set template channels with peak less than half threshold to 0
+                # # This will be used for align shifting and merge testing
+                # # NOTE: This new neighborhood only applies for use internally
+                # new_neighbors = []
+                # new_clips = []
+                # for chan in range(0, neuron['neighbors'].shape[0]):
+                #     chan_index = [chan * self.sort_info['n_samples_per_chan'],
+                #                   (chan + 1) * self.sort_info['n_samples_per_chan']]
+                #     if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.25 * self.work_items[n_wi]['thresholds'][chan]:
+                #         neuron['template'][chan_index[0]:chan_index[1]] = 0
+                #         neuron['clips'][:, chan_index[0]:chan_index[1]] = 0
+                #     else:
+                #         new_neighbors.append(chan)
+                #         new_clips.append(neuron['clips'][:, chan_index[0]:chan_index[1]])
+                # if len(new_neighbors) > 0:
+                #     neuron['neighbors'] = np.array(new_neighbors, dtype=np.int64)
+                #     neuron['clips'] = np.hstack(new_clips)
+                # else:
+                #     # Neuron is total trash so don't even append to summaries
+                #     continue
+
                 neuron['gamma_bias'] = 0.5 * np.sqrt(np.sum(neuron['clips'] ** 2))
 
                 neuron['deleted_as_redundant'] = False
@@ -2219,19 +2220,6 @@ class WorkItemSummary(object):
                         neuron['clips'] = neuron['clips'][keep_bool, :]
                     else:
                         pass
-                        # neuron['duplicate_tol_inds'] = 1
-
-                    # Remove any identical index duplicates (either from error or
-                    # from combining overlapping segments), preferentially keeping
-                    # the waveform best aligned to the template
-                    neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
-                    # keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
-                    #                 neuron['clips'], neuron["template"],
-                    #                 tol_inds=neuron['duplicate_tol_inds'])
-                    # neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                    # neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][keep_bool]
-                    # neuron['clips'] = neuron['clips'][keep_bool, :]
-                    print("SKIPPED DUPLICATE REMOVAL")
 
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
@@ -2801,8 +2789,16 @@ class WorkItemSummary(object):
             combined_neuron["template"][chan] = np.mean(
                 combined_neuron['clips'][chan_select, :], axis=0).astype(combined_neuron["clips"].dtype)
 
-        # Duplicates across channels can be very different so use large tol
-        combined_neuron['duplicate_tol_inds'] = self.half_clip_inds
+        # Find the main channel with the largest spike width and use that as
+        # the duplicate tolerance for this unit. Even with ZCA and across
+        # channels binary pursuit event indices should be more accurate than this
+        combined_neuron['duplicate_tol_inds'] = 0
+        for c in combined_neuron['channel']:
+            c_main_win = combined_neuron['main_windows'][c]
+            curr_spike_width = calc_spike_half_width(
+                combined_neuron['clips'][:, c_main_win[0]:c_main_win[1]]) + 1
+            if curr_spike_width > combined_neuron['duplicate_tol_inds']:
+                combined_neuron['duplicate_tol_inds'] = curr_spike_width
 
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping

@@ -562,7 +562,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 overlap_window_indices = np.uint32(np.nonzero(overlap_recheck_window)[0])
                 if overlap_window_indices.shape[0] > 0:
                     # Still more flagged spikes to check
-                    print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")
+                    # print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")
                     # Copy the overlap window indices to the overlap indices buffer
                     next_wait_event = [cl.enqueue_copy(queue, overlap_window_indices_buffer, overlap_window_indices, wait_for=next_wait_event)]
                     queue.finish() # Needs to finish copy before checking indices
@@ -677,10 +677,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 num_additional_spikes[0] = 0
                 queue.finish()
 
-                # print("!!! BREAKING AFTER ONE LOOP")
-                # if n_loops == 2:
-                #     break
-
             additional_spike_indices_buffer.release()
             additional_spike_labels_buffer.release()
             spike_biases_buffer.release()
@@ -695,7 +691,10 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_best_spike_labels_buffer.release()
             template_pre_inds_buffer.release()
             template_post_inds_buffer.release()
-
+            full_likelihood_function_buffer.release()
+            template_sum_squared_by_channel_buffer.release()
+            gamma_noise_buffer.release()
+            queue.finish()
 
             # Read out the adjusted spikes here before releasing
             # the residual voltage. Only do this if there are spikes to get clips of
@@ -762,8 +761,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
         template_buffer.release()
         template_sum_squared_buffer.release()
-        template_sum_squared_by_channel_buffer.release()
-        gamma_noise_buffer.release()
 
     if len(secret_spike_indices) > 0:
         event_indices = np.int64(np.hstack(secret_spike_indices))

@@ -29,7 +29,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['clip_width'] = [-6e-4, 10e-4]# Width of clip in seconds
     settings['do_branch_PCA'] = True # Use branch pca method to split clusters
     settings['do_branch_PCA_by_chan'] = False
-    settings['filter_band'] = (300, 8000)
+    settings['filter_band'] = (300, 8000) # This is information for the sorter to use. Sorting DOES NOT FILTER THE DATA!
     settings['do_ZCA_transform'] = True
     settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
     settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting

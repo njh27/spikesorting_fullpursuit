@@ -39,7 +39,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['p_value_cut_thresh'] = 0.05
     settings['max_gpu_memory'] = None # None means use as much memory as possible
     settings['save_1_cpu'] = True
-    settings['segment_duration'] = 300 # Seconds (None/Inf uses the entire recording)
+    settings['segment_duration'] = 300 # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
     settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
 

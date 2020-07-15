@@ -776,26 +776,26 @@ class SegSummary(object):
 
                 # Preserve full template for binary pursuit
                 neuron['pursuit_template'] = np.copy(neuron['template'])
-                # # Set template channels with peak less than half threshold to 0
-                # # This will be used for align shifting and merge testing
-                # # NOTE: This new neighborhood only applies for use internally
-                # new_neighbors = []
-                # new_clips = []
-                # for chan in range(0, neuron['neighbors'].shape[0]):
-                #     chan_index = [chan * self.sort_info['n_samples_per_chan'],
-                #                   (chan + 1) * self.sort_info['n_samples_per_chan']]
-                #     if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.25 * self.work_items[n_wi]['thresholds'][chan]:
-                #         neuron['template'][chan_index[0]:chan_index[1]] = 0
-                #         neuron['clips'][:, chan_index[0]:chan_index[1]] = 0
-                #     else:
-                #         new_neighbors.append(chan)
-                #         new_clips.append(neuron['clips'][:, chan_index[0]:chan_index[1]])
-                # if len(new_neighbors) > 0:
-                #     neuron['neighbors'] = np.array(new_neighbors, dtype=np.int64)
-                #     neuron['clips'] = np.hstack(new_clips)
-                # else:
-                #     # Neuron is total trash so don't even append to summaries
-                #     continue
+                # Set template channels with peak less than half threshold to 0
+                # This will be used for align shifting and merge testing
+                # NOTE: This new neighborhood only applies for use internally
+                new_neighbors = []
+                new_clips = []
+                for chan in range(0, neuron['neighbors'].shape[0]):
+                    chan_index = [chan * self.sort_info['n_samples_per_chan'],
+                                  (chan + 1) * self.sort_info['n_samples_per_chan']]
+                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.25 * self.work_items[n_wi]['thresholds'][chan]:
+                        neuron['template'][chan_index[0]:chan_index[1]] = 0
+                        neuron['clips'][:, chan_index[0]:chan_index[1]] = 0
+                    else:
+                        new_neighbors.append(chan)
+                        new_clips.append(neuron['clips'][:, chan_index[0]:chan_index[1]])
+                if len(new_neighbors) > 0:
+                    neuron['neighbors'] = np.array(new_neighbors, dtype=np.int64)
+                    neuron['clips'] = np.hstack(new_clips)
+                else:
+                    # Neuron is total trash so don't even append to summaries
+                    continue
 
                 neuron['gamma_bias'] = 0.5 * np.sqrt(np.sum(neuron['clips'] ** 2))
 

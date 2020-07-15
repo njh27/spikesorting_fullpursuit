@@ -784,7 +784,7 @@ class SegSummary(object):
                 for chan in range(0, neuron['neighbors'].shape[0]):
                     chan_index = [chan * self.sort_info['n_samples_per_chan'],
                                   (chan + 1) * self.sort_info['n_samples_per_chan']]
-                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.25 * self.work_items[n_wi]['thresholds'][chan]:
+                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.5 * self.work_items[n_wi]['thresholds'][chan]:
                         neuron['template'][chan_index[0]:chan_index[1]] = 0
                         neuron['clips'][:, chan_index[0]:chan_index[1]] = 0
                     else:
@@ -797,7 +797,7 @@ class SegSummary(object):
                     # Neuron is total trash so don't even append to summaries
                     continue
 
-                neuron['gamma_bias'] = 0.5 * np.sqrt(np.sum(neuron['clips'] ** 2))
+                # neuron['gamma_bias'] = 0.5 * np.sqrt(np.sum(neuron['clips'] ** 2))
 
                 neuron['deleted_as_redundant'] = False
 
@@ -905,7 +905,7 @@ class SegSummary(object):
                                     chan_clips_2[:, -1*best_shift:]
                 sample_select_2[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
         # Only keep samples with data from both units
-        sample_select = np.logical_and(sample_select_1, sample_select_2)
+        sample_select = np.logical_or(sample_select_1, sample_select_2)
         # Compare best distance to size of the template SSE to see if its reasonable
         min_template_SSE = min(np.sum(self.summaries[best_pair[0]]['pursuit_template'] ** 2),
                                 np.sum(self.summaries[best_pair[1]]['pursuit_template'] ** 2))

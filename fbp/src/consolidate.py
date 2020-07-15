@@ -779,20 +779,15 @@ class SegSummary(object):
                 # Set template channels with peak less than half threshold to 0
                 # This will be used for align shifting and merge testing
                 # NOTE: This new neighborhood only applies for use internally
-                new_neighbors = []
+                high_snr_neighbors = []
                 new_clips = []
                 for chan in range(0, neuron['neighbors'].shape[0]):
                     chan_index = [chan * self.sort_info['n_samples_per_chan'],
                                   (chan + 1) * self.sort_info['n_samples_per_chan']]
-                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.5 * self.work_items[n_wi]['thresholds'][chan]:
-                        neuron['template'][chan_index[0]:chan_index[1]] = 0
-                        neuron['clips'][:, chan_index[0]:chan_index[1]] = 0
-                    else:
-                        new_neighbors.append(chan)
-                        new_clips.append(neuron['clips'][:, chan_index[0]:chan_index[1]])
-                if len(new_neighbors) > 0:
-                    neuron['neighbors'] = np.array(new_neighbors, dtype=np.int64)
-                    neuron['clips'] = np.hstack(new_clips)
+                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) > 0.5 * self.work_items[n_wi]['thresholds'][chan]:
+                        high_snr_neighbors.append(chan)
+                if len(high_snr_neighbors) > 0:
+                    neuron['high_snr_neighbors'] = np.array(high_snr_neighbors, dtype=np.int64)
                 else:
                     # Neuron is total trash so don't even append to summaries
                     continue
@@ -862,50 +857,31 @@ class SegSummary(object):
         shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(best_shift)
         clips_1 = np.zeros((n1['clips'].shape[0], shift_samples_per_chan * self.sort_info['n_channels']), dtype=self.v_dtype)
         clips_2 = np.zeros((n2['clips'].shape[0], shift_samples_per_chan * self.sort_info['n_channels']), dtype=self.v_dtype)
-        sample_select_1 = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
-        sample_select_2 = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
-        # if best_shift == 0:
-        #     # No truncating/alignment. Just expand and return
-        #     c_index = [n1['neighbors'][0] * shift_samples_per_chan,
-        #                (n1['neighbors'][-1] + 1) * shift_samples_per_chan]
-        #     clips_1[:, c_index[0]:c_index[1]] = n1['clips']
-        #     sample_select_1[c_index[0]:c_index[1]] = True
-        #     c_index = [n2['neighbors'][0] * shift_samples_per_chan,
-        #                (n2['neighbors'][-1] + 1) * shift_samples_per_chan]
-        #     clips_2[:, c_index[0]:c_index[1]] = n2['clips']
-        #     sample_select_2[c_index[0]:c_index[1]] = True
-        #     # Only keep samples with data from at least one units
-        #     sample_select = np.logical_or(sample_select_1, sample_select_2)
-        #     clips_1 = clips_1[:, sample_select]
-        #     clips_2 = clips_2[:, sample_select]
-        #     return best_pair, best_shift, clips_1, clips_2
+        sample_select = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
 
         # Get clips for each channel, shift them, and assign for output, which
         # will be clips that have each channel individually aligned and
         # truncated
         for chan in range(0, self.sort_info['n_channels']):
-            if chan in n1['neighbors']:
-                neigh_chan_ind = np.argwhere(n1['neighbors'] == chan)[0][0]
-                chan_clips_1 = n1['clips'][:, neigh_chan_ind*self.sort_info['n_samples_per_chan']:(neigh_chan_ind+1)*self.sort_info['n_samples_per_chan']]
+            # Only keep channels with high SNR data from at least one unit
+            if chan in n1['high_snr_neighbors'] or chan in n2['high_snr_neighbors']:
+                chan_clips_1 = n1['clips'][:, chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan']]
                 if best_shift >= 0:
                     clips_1[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_1[:, best_shift:]
                 elif best_shift < 0:
                     clips_1[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_1[:, :best_shift]
-                sample_select_1[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
-            if chan in n2['neighbors']:
-                neigh_chan_ind = np.argwhere(n2['neighbors'] == chan)[0][0]
-                chan_clips_2 = n2['clips'][:, neigh_chan_ind*self.sort_info['n_samples_per_chan']:(neigh_chan_ind+1)*self.sort_info['n_samples_per_chan']]
+
+                chan_clips_2 = n2['clips'][:, chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan']]
                 if best_shift > 0:
                     clips_2[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_2[:, :-1*best_shift]
                 elif best_shift <= 0:
                     clips_2[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_2[:, -1*best_shift:]
-                sample_select_2[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
-        # Only keep samples with data from both units
-        sample_select = np.logical_or(sample_select_1, sample_select_2)
+                sample_select[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
+
         # Compare best distance to size of the template SSE to see if its reasonable
         min_template_SSE = min(np.sum(self.summaries[best_pair[0]]['pursuit_template'] ** 2),
                                 np.sum(self.summaries[best_pair[1]]['pursuit_template'] ** 2))

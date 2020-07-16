@@ -544,6 +544,11 @@ __kernel void overlap_recheck_indices(
             //     /* Require that the spike that brought us here stays here */
             //     continue;
             // }
+            // if ((actual_template_likelihood_at_index <= 0.0) && (actual_current_maximum_likelihood <= 0.0))
+            // {
+            //     /* Require that the spike that brought us here stays here */
+            //     continue;
+            // }
 
             /* Compute the template sum squared for the combined templates at current shift */
             if (absolute_shift_index < absolute_fixed_index)

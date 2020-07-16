@@ -2997,6 +2997,7 @@ static PyObject *__pyx_tp_new_array(PyTypeObject *t, PyObject *a, PyObject *k); 
 static PyObject *__pyx_tp_new_Enum(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_memoryview(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new__memoryviewslice(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
+static PyObject *__pyx_float_0_5;
 static PyObject *__pyx_float_0_85;
 static PyObject *__pyx_int_0;
 static PyObject *__pyx_int_1;
@@ -8106,7 +8107,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *         best_inds = None
  * 
  *         for n1 in range(0, templates.shape[0]):             # <<<<<<<<<<<<<<
- *             if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > templates_SS[test_unit]):
+ *             if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > 0.5*templates_SS[test_unit]):
  *                 continue
  */
     __pyx_t_14 = (__pyx_v_templates->dimensions[0]);
@@ -8117,7 +8118,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       /* "sort_cython.pyx":381
  * 
  *         for n1 in range(0, templates.shape[0]):
- *             if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
+ *             if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > 0.5*templates_SS[test_unit]):             # <<<<<<<<<<<<<<
  *                 continue
  *             template_1 = templates[n1, :]
  */
@@ -8139,18 +8140,21 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __Pyx_GOTREF(__pyx_t_2);
       __pyx_t_4 = __Pyx_GetItemInt(__pyx_v_templates_SS, __pyx_v_test_unit, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 381, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
-      __pyx_t_5 = PyObject_RichCompare(__pyx_t_2, __pyx_t_4, Py_GT); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 381, __pyx_L1_error)
-      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+      __pyx_t_5 = PyNumber_Multiply(__pyx_float_0_5, __pyx_t_4); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 381, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_5);
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-      __pyx_t_19 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_19 < 0)) __PYX_ERR(0, 381, __pyx_L1_error)
+      __pyx_t_4 = PyObject_RichCompare(__pyx_t_2, __pyx_t_5, Py_GT); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 381, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+      __pyx_t_19 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely(__pyx_t_19 < 0)) __PYX_ERR(0, 381, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       __pyx_t_6 = __pyx_t_19;
       __pyx_L13_bool_binop_done:;
       if (__pyx_t_6) {
 
         /* "sort_cython.pyx":382
  *         for n1 in range(0, templates.shape[0]):
- *             if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > templates_SS[test_unit]):
+ *             if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > 0.5*templates_SS[test_unit]):
  *                 continue             # <<<<<<<<<<<<<<
  *             template_1 = templates[n1, :]
  * 
@@ -8160,40 +8164,40 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
         /* "sort_cython.pyx":381
  * 
  *         for n1 in range(0, templates.shape[0]):
- *             if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
+ *             if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > 0.5*templates_SS[test_unit]):             # <<<<<<<<<<<<<<
  *                 continue
  *             template_1 = templates[n1, :]
  */
       }
 
       /* "sort_cython.pyx":383
- *             if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > templates_SS[test_unit]):
+ *             if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > 0.5*templates_SS[test_unit]):
  *                 continue
  *             template_1 = templates[n1, :]             # <<<<<<<<<<<<<<
  * 
  *             for n2 in range(n1+1, templates.shape[0]):
  */
-      __pyx_t_5 = PyInt_FromSsize_t(__pyx_v_n1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 383, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_4 = PyTuple_New(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 383, __pyx_L1_error)
+      __pyx_t_4 = PyInt_FromSsize_t(__pyx_v_n1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 383, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
-      __Pyx_GIVEREF(__pyx_t_5);
-      PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_5);
+      __pyx_t_5 = PyTuple_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 383, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_5);
+      __Pyx_GIVEREF(__pyx_t_4);
+      PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4);
       __Pyx_INCREF(__pyx_slice__4);
       __Pyx_GIVEREF(__pyx_slice__4);
-      PyTuple_SET_ITEM(__pyx_t_4, 1, __pyx_slice__4);
-      __pyx_t_5 = 0;
-      __pyx_t_5 = __Pyx_PyObject_GetItem(((PyObject *)__pyx_v_templates), __pyx_t_4); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 383, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_5);
-      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-      __Pyx_XDECREF_SET(__pyx_v_template_1, __pyx_t_5);
-      __pyx_t_5 = 0;
+      PyTuple_SET_ITEM(__pyx_t_5, 1, __pyx_slice__4);
+      __pyx_t_4 = 0;
+      __pyx_t_4 = __Pyx_PyObject_GetItem(((PyObject *)__pyx_v_templates), __pyx_t_5); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 383, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+      __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+      __Pyx_XDECREF_SET(__pyx_v_template_1, __pyx_t_4);
+      __pyx_t_4 = 0;
 
       /* "sort_cython.pyx":385
  *             template_1 = templates[n1, :]
  * 
  *             for n2 in range(n1+1, templates.shape[0]):             # <<<<<<<<<<<<<<
- *                 if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > templates_SS[test_unit]):
+ *                 if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > 0.5*templates_SS[test_unit]):
  *                     continue
  */
       __pyx_t_20 = (__pyx_v_templates->dimensions[0]);
@@ -8204,7 +8208,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
         /* "sort_cython.pyx":386
  * 
  *             for n2 in range(n1+1, templates.shape[0]):
- *                 if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
+ *                 if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > 0.5*templates_SS[test_unit]):             # <<<<<<<<<<<<<<
  *                     continue
  *                 template_2 = templates[n2, :]
  */
@@ -8222,22 +8226,25 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
           __pyx_t_6 = __pyx_t_19;
           goto __pyx_L19_bool_binop_done;
         }
-        __pyx_t_5 = __Pyx_GetItemInt(__pyx_v_templates_SS, __pyx_v_n2, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 0, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 386, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_5);
-        __pyx_t_4 = __Pyx_GetItemInt(__pyx_v_templates_SS, __pyx_v_test_unit, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 386, __pyx_L1_error)
+        __pyx_t_4 = __Pyx_GetItemInt(__pyx_v_templates_SS, __pyx_v_n2, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 386, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_4);
-        __pyx_t_2 = PyObject_RichCompare(__pyx_t_5, __pyx_t_4, Py_GT); __Pyx_XGOTREF(__pyx_t_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 386, __pyx_L1_error)
+        __pyx_t_5 = __Pyx_GetItemInt(__pyx_v_templates_SS, __pyx_v_test_unit, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 0, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 386, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_5);
+        __pyx_t_2 = PyNumber_Multiply(__pyx_float_0_5, __pyx_t_5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 386, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+        __pyx_t_5 = PyObject_RichCompare(__pyx_t_4, __pyx_t_2, Py_GT); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 386, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-        __pyx_t_19 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely(__pyx_t_19 < 0)) __PYX_ERR(0, 386, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+        __pyx_t_19 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_19 < 0)) __PYX_ERR(0, 386, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
         __pyx_t_6 = __pyx_t_19;
         __pyx_L19_bool_binop_done:;
         if (__pyx_t_6) {
 
           /* "sort_cython.pyx":387
  *             for n2 in range(n1+1, templates.shape[0]):
- *                 if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > templates_SS[test_unit]):
+ *                 if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > 0.5*templates_SS[test_unit]):
  *                     continue             # <<<<<<<<<<<<<<
  *                 template_2 = templates[n2, :]
  * 
@@ -8247,34 +8254,34 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
           /* "sort_cython.pyx":386
  * 
  *             for n2 in range(n1+1, templates.shape[0]):
- *                 if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
+ *                 if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > 0.5*templates_SS[test_unit]):             # <<<<<<<<<<<<<<
  *                     continue
  *                 template_2 = templates[n2, :]
  */
         }
 
         /* "sort_cython.pyx":388
- *                 if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > templates_SS[test_unit]):
+ *                 if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > 0.5*templates_SS[test_unit]):
  *                     continue
  *                 template_2 = templates[n2, :]             # <<<<<<<<<<<<<<
  * 
  *                 s1_ind = 0
  */
-        __pyx_t_2 = PyInt_FromSsize_t(__pyx_v_n2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 388, __pyx_L1_error)
+        __pyx_t_5 = PyInt_FromSsize_t(__pyx_v_n2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 388, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_5);
+        __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 388, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
-        __pyx_t_4 = PyTuple_New(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 388, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_4);
-        __Pyx_GIVEREF(__pyx_t_2);
-        PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_2);
+        __Pyx_GIVEREF(__pyx_t_5);
+        PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_5);
         __Pyx_INCREF(__pyx_slice__4);
         __Pyx_GIVEREF(__pyx_slice__4);
-        PyTuple_SET_ITEM(__pyx_t_4, 1, __pyx_slice__4);
-        __pyx_t_2 = 0;
-        __pyx_t_2 = __Pyx_PyObject_GetItem(((PyObject *)__pyx_v_templates), __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 388, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_2);
-        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-        __Pyx_XDECREF_SET(__pyx_v_template_2, __pyx_t_2);
-        __pyx_t_2 = 0;
+        PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_slice__4);
+        __pyx_t_5 = 0;
+        __pyx_t_5 = __Pyx_PyObject_GetItem(((PyObject *)__pyx_v_templates), __pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 388, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_5);
+        __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+        __Pyx_XDECREF_SET(__pyx_v_template_2, __pyx_t_5);
+        __pyx_t_5 = 0;
 
         /* "sort_cython.pyx":390
  *                 template_2 = templates[n2, :]
@@ -8304,21 +8311,21 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *                     s2_ind = 0
  *                     for shift2 in range(-n_pre_inds, n_post_inds+1):
  */
-          __pyx_t_2 = PyInt_FromSsize_t(__pyx_v_s1_ind); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 392, __pyx_L1_error)
+          __pyx_t_5 = PyInt_FromSsize_t(__pyx_v_s1_ind); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 392, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_5);
+          __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 392, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_2);
-          __pyx_t_4 = PyTuple_New(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 392, __pyx_L1_error)
-          __Pyx_GOTREF(__pyx_t_4);
-          __Pyx_GIVEREF(__pyx_t_2);
-          PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_2);
+          __Pyx_GIVEREF(__pyx_t_5);
+          PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_5);
           __Pyx_INCREF(__pyx_slice__4);
           __Pyx_GIVEREF(__pyx_slice__4);
-          PyTuple_SET_ITEM(__pyx_t_4, 1, __pyx_slice__4);
-          __pyx_t_2 = 0;
-          __pyx_t_2 = __Pyx_PyObject_GetItem(PyList_GET_ITEM(__pyx_v_all_template_shifts, __pyx_v_n1), __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 392, __pyx_L1_error)
-          __Pyx_GOTREF(__pyx_t_2);
-          __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-          __Pyx_XDECREF_SET(__pyx_v_shifted_t1, __pyx_t_2);
-          __pyx_t_2 = 0;
+          PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_slice__4);
+          __pyx_t_5 = 0;
+          __pyx_t_5 = __Pyx_PyObject_GetItem(PyList_GET_ITEM(__pyx_v_all_template_shifts, __pyx_v_n1), __pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 392, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_5);
+          __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+          __Pyx_XDECREF_SET(__pyx_v_shifted_t1, __pyx_t_5);
+          __pyx_t_5 = 0;
 
           /* "sort_cython.pyx":393
  *                 for shift1 in range(-n_pre_inds, n_post_inds+1):
@@ -8348,10 +8355,10 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *                         shifted_t2 = all_template_shifts[n2][s2_ind, :]
  *                         sum_n1_n2_template += shifted_t2
  */
-            __pyx_t_2 = __Pyx_PyObject_GetSlice(__pyx_v_shifted_t1, 0, 0, NULL, NULL, &__pyx_slice__4, 0, 0, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 396, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_2);
-            if (__Pyx_PyObject_SetSlice(__pyx_v_sum_n1_n2_template, __pyx_t_2, 0, 0, NULL, NULL, &__pyx_slice__4, 0, 0, 0) < 0) __PYX_ERR(0, 396, __pyx_L1_error)
-            __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+            __pyx_t_5 = __Pyx_PyObject_GetSlice(__pyx_v_shifted_t1, 0, 0, NULL, NULL, &__pyx_slice__4, 0, 0, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 396, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_5);
+            if (__Pyx_PyObject_SetSlice(__pyx_v_sum_n1_n2_template, __pyx_t_5, 0, 0, NULL, NULL, &__pyx_slice__4, 0, 0, 0) < 0) __PYX_ERR(0, 396, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
             /* "sort_cython.pyx":397
  *                         # Copy data from t1 shift into sum
@@ -8360,21 +8367,21 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *                         sum_n1_n2_template += shifted_t2
  * 
  */
-            __pyx_t_2 = PyInt_FromSsize_t(__pyx_v_s2_ind); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 397, __pyx_L1_error)
+            __pyx_t_5 = PyInt_FromSsize_t(__pyx_v_s2_ind); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 397, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_5);
+            __pyx_t_2 = PyTuple_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 397, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_2);
-            __pyx_t_4 = PyTuple_New(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 397, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_4);
-            __Pyx_GIVEREF(__pyx_t_2);
-            PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_2);
+            __Pyx_GIVEREF(__pyx_t_5);
+            PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_5);
             __Pyx_INCREF(__pyx_slice__4);
             __Pyx_GIVEREF(__pyx_slice__4);
-            PyTuple_SET_ITEM(__pyx_t_4, 1, __pyx_slice__4);
-            __pyx_t_2 = 0;
-            __pyx_t_2 = __Pyx_PyObject_GetItem(PyList_GET_ITEM(__pyx_v_all_template_shifts, __pyx_v_n2), __pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 397, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_2);
-            __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-            __Pyx_XDECREF_SET(__pyx_v_shifted_t2, __pyx_t_2);
-            __pyx_t_2 = 0;
+            PyTuple_SET_ITEM(__pyx_t_2, 1, __pyx_slice__4);
+            __pyx_t_5 = 0;
+            __pyx_t_5 = __Pyx_PyObject_GetItem(PyList_GET_ITEM(__pyx_v_all_template_shifts, __pyx_v_n2), __pyx_t_2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 397, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_5);
+            __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+            __Pyx_XDECREF_SET(__pyx_v_shifted_t2, __pyx_t_5);
+            __pyx_t_5 = 0;
 
             /* "sort_cython.pyx":398
  *                         sum_n1_n2_template[:] = shifted_t1[:]
@@ -8383,10 +8390,10 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  * 
  *                         residual_SS = np.sum((test_template - sum_n1_n2_template) ** 2)
  */
-            __pyx_t_2 = PyNumber_InPlaceAdd(__pyx_v_sum_n1_n2_template, __pyx_v_shifted_t2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 398, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_2);
-            __Pyx_DECREF_SET(__pyx_v_sum_n1_n2_template, __pyx_t_2);
-            __pyx_t_2 = 0;
+            __pyx_t_5 = PyNumber_InPlaceAdd(__pyx_v_sum_n1_n2_template, __pyx_v_shifted_t2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 398, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_5);
+            __Pyx_DECREF_SET(__pyx_v_sum_n1_n2_template, __pyx_t_5);
+            __pyx_t_5 = 0;
 
             /* "sort_cython.pyx":400
  *                         sum_n1_n2_template += shifted_t2
@@ -8395,34 +8402,34 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *                         if residual_SS < min_residual_SS:
  *                             min_residual_SS = residual_SS
  */
-            __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_n_s_np); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 400, __pyx_L1_error)
+            __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 400, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_2);
+            __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_sum); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 400, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_4);
-            __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_sum); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 400, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_5);
-            __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-            __pyx_t_4 = PyNumber_Subtract(__pyx_v_test_template, __pyx_v_sum_n1_n2_template); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 400, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_4);
-            __pyx_t_1 = PyNumber_Power(__pyx_t_4, __pyx_int_2, Py_None); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 400, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+            __pyx_t_2 = PyNumber_Subtract(__pyx_v_test_template, __pyx_v_sum_n1_n2_template); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 400, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_2);
+            __pyx_t_1 = PyNumber_Power(__pyx_t_2, __pyx_int_2, Py_None); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 400, __pyx_L1_error)
             __Pyx_GOTREF(__pyx_t_1);
-            __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-            __pyx_t_4 = NULL;
-            if (CYTHON_UNPACK_METHODS && unlikely(PyMethod_Check(__pyx_t_5))) {
-              __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_5);
-              if (likely(__pyx_t_4)) {
-                PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_5);
-                __Pyx_INCREF(__pyx_t_4);
+            __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+            __pyx_t_2 = NULL;
+            if (CYTHON_UNPACK_METHODS && unlikely(PyMethod_Check(__pyx_t_4))) {
+              __pyx_t_2 = PyMethod_GET_SELF(__pyx_t_4);
+              if (likely(__pyx_t_2)) {
+                PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_4);
+                __Pyx_INCREF(__pyx_t_2);
                 __Pyx_INCREF(function);
-                __Pyx_DECREF_SET(__pyx_t_5, function);
+                __Pyx_DECREF_SET(__pyx_t_4, function);
               }
             }
-            __pyx_t_2 = (__pyx_t_4) ? __Pyx_PyObject_Call2Args(__pyx_t_5, __pyx_t_4, __pyx_t_1) : __Pyx_PyObject_CallOneArg(__pyx_t_5, __pyx_t_1);
-            __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
+            __pyx_t_5 = (__pyx_t_2) ? __Pyx_PyObject_Call2Args(__pyx_t_4, __pyx_t_2, __pyx_t_1) : __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_1);
+            __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
             __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-            if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 400, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_2);
-            __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-            __Pyx_XDECREF_SET(__pyx_v_residual_SS, __pyx_t_2);
-            __pyx_t_2 = 0;
+            if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 400, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_5);
+            __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+            __Pyx_XDECREF_SET(__pyx_v_residual_SS, __pyx_t_5);
+            __pyx_t_5 = 0;
 
             /* "sort_cython.pyx":401
  * 
@@ -8431,9 +8438,9 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *                             min_residual_SS = residual_SS
  *                             best_pair = [n1, n2]
  */
-            __pyx_t_2 = PyObject_RichCompare(__pyx_v_residual_SS, __pyx_v_min_residual_SS, Py_LT); __Pyx_XGOTREF(__pyx_t_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 401, __pyx_L1_error)
-            __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely(__pyx_t_6 < 0)) __PYX_ERR(0, 401, __pyx_L1_error)
-            __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+            __pyx_t_5 = PyObject_RichCompare(__pyx_v_residual_SS, __pyx_v_min_residual_SS, Py_LT); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 401, __pyx_L1_error)
+            __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_6 < 0)) __PYX_ERR(0, 401, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
             if (__pyx_t_6) {
 
               /* "sort_cython.pyx":402
@@ -8453,18 +8460,18 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *                             best_shifts = [shift1, shift2]
  *                             best_inds = [s1_ind, s2_ind]
  */
-              __pyx_t_2 = PyInt_FromSsize_t(__pyx_v_n1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 403, __pyx_L1_error)
-              __Pyx_GOTREF(__pyx_t_2);
-              __pyx_t_5 = PyInt_FromSsize_t(__pyx_v_n2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 403, __pyx_L1_error)
+              __pyx_t_5 = PyInt_FromSsize_t(__pyx_v_n1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 403, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_5);
+              __pyx_t_4 = PyInt_FromSsize_t(__pyx_v_n2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 403, __pyx_L1_error)
+              __Pyx_GOTREF(__pyx_t_4);
               __pyx_t_1 = PyList_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 403, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_1);
-              __Pyx_GIVEREF(__pyx_t_2);
-              PyList_SET_ITEM(__pyx_t_1, 0, __pyx_t_2);
               __Pyx_GIVEREF(__pyx_t_5);
-              PyList_SET_ITEM(__pyx_t_1, 1, __pyx_t_5);
-              __pyx_t_2 = 0;
+              PyList_SET_ITEM(__pyx_t_1, 0, __pyx_t_5);
+              __Pyx_GIVEREF(__pyx_t_4);
+              PyList_SET_ITEM(__pyx_t_1, 1, __pyx_t_4);
               __pyx_t_5 = 0;
+              __pyx_t_4 = 0;
               __Pyx_DECREF_SET(__pyx_v_best_pair, ((PyObject*)__pyx_t_1));
               __pyx_t_1 = 0;
 
@@ -8477,18 +8484,18 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
               __pyx_t_1 = __Pyx_PyInt_From_int64_t(__pyx_v_shift1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 404, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_1);
-              __pyx_t_5 = __Pyx_PyInt_From_int64_t(__pyx_v_shift2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 404, __pyx_L1_error)
+              __pyx_t_4 = __Pyx_PyInt_From_int64_t(__pyx_v_shift2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 404, __pyx_L1_error)
+              __Pyx_GOTREF(__pyx_t_4);
+              __pyx_t_5 = PyList_New(2); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 404, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_5);
-              __pyx_t_2 = PyList_New(2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 404, __pyx_L1_error)
-              __Pyx_GOTREF(__pyx_t_2);
               __Pyx_GIVEREF(__pyx_t_1);
-              PyList_SET_ITEM(__pyx_t_2, 0, __pyx_t_1);
-              __Pyx_GIVEREF(__pyx_t_5);
-              PyList_SET_ITEM(__pyx_t_2, 1, __pyx_t_5);
+              PyList_SET_ITEM(__pyx_t_5, 0, __pyx_t_1);
+              __Pyx_GIVEREF(__pyx_t_4);
+              PyList_SET_ITEM(__pyx_t_5, 1, __pyx_t_4);
               __pyx_t_1 = 0;
+              __pyx_t_4 = 0;
+              __Pyx_DECREF_SET(__pyx_v_best_shifts, ((PyObject*)__pyx_t_5));
               __pyx_t_5 = 0;
-              __Pyx_DECREF_SET(__pyx_v_best_shifts, ((PyObject*)__pyx_t_2));
-              __pyx_t_2 = 0;
 
               /* "sort_cython.pyx":405
  *                             best_pair = [n1, n2]
@@ -8497,18 +8504,18 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  * 
  *                         s2_ind += 1
  */
-              __pyx_t_2 = PyInt_FromSsize_t(__pyx_v_s1_ind); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 405, __pyx_L1_error)
-              __Pyx_GOTREF(__pyx_t_2);
-              __pyx_t_5 = PyInt_FromSsize_t(__pyx_v_s2_ind); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 405, __pyx_L1_error)
+              __pyx_t_5 = PyInt_FromSsize_t(__pyx_v_s1_ind); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 405, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_5);
+              __pyx_t_4 = PyInt_FromSsize_t(__pyx_v_s2_ind); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 405, __pyx_L1_error)
+              __Pyx_GOTREF(__pyx_t_4);
               __pyx_t_1 = PyList_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 405, __pyx_L1_error)
               __Pyx_GOTREF(__pyx_t_1);
-              __Pyx_GIVEREF(__pyx_t_2);
-              PyList_SET_ITEM(__pyx_t_1, 0, __pyx_t_2);
               __Pyx_GIVEREF(__pyx_t_5);
-              PyList_SET_ITEM(__pyx_t_1, 1, __pyx_t_5);
-              __pyx_t_2 = 0;
+              PyList_SET_ITEM(__pyx_t_1, 0, __pyx_t_5);
+              __Pyx_GIVEREF(__pyx_t_4);
+              PyList_SET_ITEM(__pyx_t_1, 1, __pyx_t_4);
               __pyx_t_5 = 0;
+              __pyx_t_4 = 0;
               __Pyx_DECREF_SET(__pyx_v_best_inds, ((PyObject*)__pyx_t_1));
               __pyx_t_1 = 0;
 
@@ -8554,16 +8561,16 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
     __pyx_t_1 = __Pyx_GetItemInt(__pyx_v_templates_SS, __pyx_v_test_unit, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 410, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_5 = __Pyx_PyNumber_Divide(__pyx_v_min_residual_SS, __pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 410, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_5);
+    __pyx_t_4 = __Pyx_PyNumber_Divide(__pyx_v_min_residual_SS, __pyx_t_1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 410, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_4);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_t_1 = __Pyx_PyInt_SubtractCObj(__pyx_int_1, __pyx_t_5, 1, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 410, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyInt_SubtractCObj(__pyx_int_1, __pyx_t_4, 1, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 410, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-    __pyx_t_5 = PyObject_RichCompare(__pyx_t_1, __pyx_float_0_85, Py_GT); __Pyx_XGOTREF(__pyx_t_5); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 410, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    __pyx_t_4 = PyObject_RichCompare(__pyx_t_1, __pyx_float_0_85, Py_GT); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 410, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_5); if (unlikely(__pyx_t_6 < 0)) __PYX_ERR(0, 410, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
+    __pyx_t_6 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely(__pyx_t_6 < 0)) __PYX_ERR(0, 410, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     if (__pyx_t_6) {
 
       /* "sort_cython.pyx":411
@@ -29596,6 +29603,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
 
 static CYTHON_SMALL_CODE int __Pyx_InitGlobals(void) {
   if (__Pyx_InitStrings(__pyx_string_tab) < 0) __PYX_ERR(0, 1, __pyx_L1_error);
+  __pyx_float_0_5 = PyFloat_FromDouble(0.5); if (unlikely(!__pyx_float_0_5)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_float_0_85 = PyFloat_FromDouble(0.85); if (unlikely(!__pyx_float_0_85)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_int_0 = PyInt_FromLong(0); if (unlikely(!__pyx_int_0)) __PYX_ERR(0, 1, __pyx_L1_error)
   __pyx_int_1 = PyInt_FromLong(1); if (unlikely(!__pyx_int_1)) __PYX_ERR(0, 1, __pyx_L1_error)

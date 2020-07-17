@@ -366,7 +366,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             for n in range(0, templates.shape[0]):
                 spike_biases[n] += np.float32(np.sqrt(template_sum_squared_by_channel[n*n_chans + chan]) * gamma_noise[chan])
 
-        print("BIAS SUM SQUARED DIFFERENCE", -1*template_sum_squared - spike_biases)
         noise_templates = (-1*template_sum_squared - spike_biases) <= 0
         # Do first since need previous number of templates
         templates = templates[~noise_templates, :]

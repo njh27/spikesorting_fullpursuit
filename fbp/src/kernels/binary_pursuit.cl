@@ -497,6 +497,7 @@ __kernel void overlap_recheck_indices(
     __private float best_spike_likelihood_private = best_spike_likelihoods[id];
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
+    __private unsigned int starting_spike_index_private = best_spike_indices[id];
 
     __private float shifted_template_ss_adjustment, chan_ss_adjustment, shift_prod, shifted_template_ss_by_channel, shifted_template_bias;
     __private unsigned int absolute_fixed_index, absolute_shift_index, delta_index;
@@ -504,6 +505,7 @@ __kernel void overlap_recheck_indices(
 
     __private const signed int first_shift = template_pre_inds[best_spike_label_private*num_templates + template_number];
     __private const signed int last_shift = template_post_inds[best_spike_label_private*num_templates + template_number];
+    __private signed int signed_delta;
     if (last_shift - first_shift == 0)
     {
         return; /* Everything should be correct for these templates */
@@ -527,6 +529,10 @@ __kernel void overlap_recheck_indices(
     for (k = 0; k < n_shift_points; k++)
     {
         absolute_fixed_index = (unsigned int) shift_start + k;
+        if (absolute_fixed_index == starting_spike_index_private)
+        {
+            continue;
+        }
         float actual_template_likelihood_at_index = full_likelihood_function[fixed_likelihood_function_offset + k];
         if (actual_template_likelihood_at_index <= 0.0)
         {
@@ -537,6 +543,11 @@ __kernel void overlap_recheck_indices(
         /* Compute the likelihood for adding the template given the position of the fixed best unit */
         for (i = 0; i < n_shift_points; i++)
         {
+            signed_delta = (signed int) i - (signed int) k;
+            if ((signed_delta > last_shift) || (signed_delta < first_shift))
+            {
+                continue;
+            }
             absolute_shift_index = (unsigned int) shift_start + i;
             float actual_current_maximum_likelihood = full_likelihood_function[shift_likelihood_function_offset + i];
             // if (actual_current_maximum_likelihood <= 0.0)

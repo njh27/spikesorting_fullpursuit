@@ -637,7 +637,7 @@ __kernel void overlap_recheck_indices(
             if (current_maximum_likelihood > best_spike_likelihood_private)
             {
                 /* Reset the likelihood and best index and label to maximum */
-                if (1)//((actual_template_likelihood_at_index) >= (actual_current_maximum_likelihood))
+                if ((actual_template_likelihood_at_index) >= (actual_current_maximum_likelihood))
                 {
                     /* The main label has better likelihood than best shifted match */
                     best_spike_likelihood_private = current_maximum_likelihood;

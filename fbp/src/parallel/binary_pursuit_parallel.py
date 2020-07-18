@@ -366,25 +366,25 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             for n in range(0, templates.shape[0]):
                 spike_biases[n] += np.float32(np.sqrt(template_sum_squared_by_channel[n*n_chans + chan]) * gamma_noise[chan])
 
-        noise_templates = (-1*template_sum_squared - spike_biases) <= 0
-        # Do first since need previous number of templates
-        templates = templates[~noise_templates, :]
-        print("Removing", np.count_nonzero(noise_templates), "templates for not being greater than noise term.")
-        if templates.size == 0:
-            # No good templates remain so return no spikes
-            print("All templates removed for being too close to noise")
-            return np.zeros(0), np.zeros(0), np.zeros(0, dtype=np.bool), np.zeros((0, n_chans * template_samples_per_chan))
-        # Templates must be a 2D float32
-        if templates.ndim == 1:
-            templates = np.reshape(templates, (1, -1))
-        templates_vector = templates.reshape(templates.size).astype(np.float32)
-        template_sum_squared = template_sum_squared[~noise_templates]
-        new_template_sum_squared_by_channel = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
-        for n in range(0, templates.shape[0]):
-            for chan in range(0, n_chans):
-                t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
-                new_template_sum_squared_by_channel[n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
-        template_sum_squared_by_channel = new_template_sum_squared_by_channel
+        # noise_templates = (-1*template_sum_squared - spike_biases) <= 0
+        # # Do first since need previous number of templates
+        # templates = templates[~noise_templates, :]
+        # print("Removing", np.count_nonzero(noise_templates), "templates for not being greater than noise term.")
+        # if templates.size == 0:
+        #     # No good templates remain so return no spikes
+        #     print("All templates removed for being too close to noise")
+        #     return np.zeros(0), np.zeros(0), np.zeros(0, dtype=np.bool), np.zeros((0, n_chans * template_samples_per_chan))
+        # # Templates must be a 2D float32
+        # if templates.ndim == 1:
+        #     templates = np.reshape(templates, (1, -1))
+        # templates_vector = templates.reshape(templates.size).astype(np.float32)
+        # template_sum_squared = template_sum_squared[~noise_templates]
+        # new_template_sum_squared_by_channel = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
+        # for n in range(0, templates.shape[0]):
+        #     for chan in range(0, n_chans):
+        #         t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
+        #         new_template_sum_squared_by_channel[n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
+        # template_sum_squared_by_channel = new_template_sum_squared_by_channel
 
 
         # Delete stuff no longer needed for this chunk

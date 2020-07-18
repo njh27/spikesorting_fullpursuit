@@ -528,11 +528,11 @@ __kernel void overlap_recheck_indices(
     {
         absolute_fixed_index = (unsigned int) shift_start + k;
         float actual_template_likelihood_at_index = full_likelihood_function[fixed_likelihood_function_offset + k];
-        // if (actual_template_likelihood_at_index <= 0.0)
-        // {
-        //     /* Require that the spike that brought us here stays here */
-        //     continue;
-        // }
+        if (actual_template_likelihood_at_index <= 0.0)
+        {
+            /* Require that the spike that brought us here stays here */
+            continue;
+        }
 
         /* Compute the likelihood for adding the template given the position of the fixed best unit */
         for (i = 0; i < n_shift_points; i++)
@@ -546,7 +546,7 @@ __kernel void overlap_recheck_indices(
             // }
             // if ((actual_template_likelihood_at_index <= 0.0) && (actual_current_maximum_likelihood <= 0.0))
             // {
-            //     /* Require that the spike that brought us here stays here */
+            //     /* Require that the spike that subtracting one of these spikes improves likelihood */
             //     continue;
             // }
 

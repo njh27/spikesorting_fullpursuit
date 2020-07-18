@@ -77,7 +77,8 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
     # Scale each of the rows of Z
     # This ensures that the output of the matrix multiplication (Z * channel voltages)
     # remains in the same range (doesn't clip ints)
-    zca_matrix = zca_matrix / np.diag(zca_matrix)[:, None]
+    # zca_matrix = zca_matrix / np.diag(zca_matrix)[:, None]
+    print("TURNED OFF UNDO ZCA SCALING LINE 81 PREPROCESSING")
 
     return zca_matrix
 

@@ -445,6 +445,7 @@ __kernel void compute_template_maximum_likelihood(
     return;
 }
 
+
 /* Kernel chooses the current best_spike_label for its window ID and fixes its
 placement at the index best_spike_indices[best_spike_label] + fixed_shift_index.
 It then proceeds to compute the likelihood for the combination of this best unit
@@ -497,15 +498,13 @@ __kernel void overlap_recheck_indices(
     __private float best_spike_likelihood_private = best_spike_likelihoods[id];
     __private unsigned int best_spike_label_private = best_spike_labels[id];
     __private unsigned int best_spike_index_private = best_spike_indices[id];
-    __private unsigned int starting_spike_index_private = best_spike_indices[id];
 
-    __private float shifted_template_ss_adjustment, chan_ss_adjustment, shift_prod, shifted_template_ss_by_channel, shifted_template_bias;
-    __private unsigned int absolute_fixed_index, absolute_shift_index, delta_index;
+    __private float summed_chan_ss;
+    __private unsigned int absolute_fixed_index, absolute_shift_index;
     float current_maximum_likelihood;
 
     __private const signed int first_shift = template_pre_inds[best_spike_label_private*num_templates + template_number];
     __private const signed int last_shift = template_post_inds[best_spike_label_private*num_templates + template_number];
-    __private signed int signed_delta;
     if (last_shift - first_shift == 0)
     {
         return; /* Everything should be correct for these templates */
@@ -523,126 +522,78 @@ __kernel void overlap_recheck_indices(
 
     const unsigned int fixed_likelihood_function_offset = best_spike_label_private * voltage_length + (unsigned int) shift_start;
     const unsigned int shift_likelihood_function_offset = template_number * voltage_length + (unsigned int) shift_start;
-    unsigned int template_offset, fixed_template_offset;
+    __private unsigned int shift_template_offset, fixed_template_offset, voltage_offset;
+    __private signed int curr_fixed_align, curr_shift_align, signed_delta;
+    __private float curr_fixed_value, curr_shift_value, curr_summed_value;
+    __private unsigned int i, j, k, current_channel, fixed_first_j, shift_first_j;
 
-    unsigned int i, j, k, current_channel;
     for (k = 0; k < n_shift_points; k++)
     {
         absolute_fixed_index = (unsigned int) shift_start + k;
-        if (absolute_fixed_index == starting_spike_index_private)
+        curr_fixed_align = (signed int) best_spike_index_private - (signed int) absolute_fixed_index;
+        fixed_first_j = 0;
+        if (curr_fixed_align < 0)
         {
-            continue;
+            fixed_first_j = -1 * curr_fixed_align;
         }
         float actual_template_likelihood_at_index = full_likelihood_function[fixed_likelihood_function_offset + k];
-        if (actual_template_likelihood_at_index <= 0.0)
-        {
-            /* Require that the spike that brought us here stays here */
-            continue;
-        }
+        // if (actual_template_likelihood_at_index <= 0.0)
+        // {
+        //     /* Require that the spike that brought us here stays here */
+        //     continue;
+        // }
 
-        /* Compute the likelihood for adding the template given the position of the fixed best unit */
         for (i = 0; i < n_shift_points; i++)
         {
+            absolute_shift_index = (unsigned int) shift_start + i;
             signed_delta = (signed int) i - (signed int) k;
             if ((signed_delta > last_shift) || (signed_delta < first_shift))
             {
                 continue;
             }
-            absolute_shift_index = (unsigned int) shift_start + i;
+            curr_shift_align = (signed int) best_spike_index_private - (signed int) absolute_shift_index;
+            shift_first_j = 0;
+            if (curr_shift_align < 0)
+            {
+                shift_first_j = -1 * curr_shift_align;
+            }
             float actual_current_maximum_likelihood = full_likelihood_function[shift_likelihood_function_offset + i];
-            // if (actual_current_maximum_likelihood <= 0.0)
-            // {
-            //     /* Require that the spike that brought us here stays here */
-            //     continue;
-            // }
-            // if ((actual_template_likelihood_at_index <= 0.0) && (actual_current_maximum_likelihood <= 0.0))
-            // {
-            //     /* Require that the spike that subtracting one of these spikes improves likelihood */
-            //     continue;
-            // }
 
-            /* Compute the template sum squared for the combined templates at current shift */
-            if (absolute_shift_index < absolute_fixed_index)
+            current_maximum_likelihood = 0.0;
+            for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
             {
-                delta_index = absolute_fixed_index - absolute_shift_index;
-                if (delta_index >= template_length)
-                {
-                    /* Templates have no points of overlap */
-                    continue;
-                }
-                shifted_template_ss_adjustment = 0.0;
-                shifted_template_bias = 0.0;
-                for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
-                {
-                    /* Compute shifted template sum square for this channel */
-                    /* Starting with the sum square of each tempalte separately */
-                    shifted_template_ss_by_channel = template_sum_squared_by_channel[best_spike_label_private * num_neighbor_channels + current_channel];
-                    shifted_template_ss_by_channel += template_sum_squared_by_channel[template_number * num_neighbor_channels + current_channel];
-                    chan_ss_adjustment = 0.0;
+                fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
+                shift_template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
+                voltage_offset = best_spike_index_private + (voltage_length * current_channel);
 
-                    template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
-                    fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-                    for (j = delta_index; j < template_length; j++)
+                summed_chan_ss = 0.0;
+                for (j = 0; j < template_length; j++)
+                {
+                    /* Doing all this to avoid branch divergence of if else statements */
+                    curr_fixed_value = 0.0;
+                    if ((j >= fixed_first_j) && (curr_fixed_align + j < template_length))
                     {
-                        /* Data available for both templates */
-                        shift_prod = templates[template_offset + j] * templates[(fixed_template_offset + j) - delta_index];
-                        shifted_template_ss_adjustment += shift_prod;
-                        chan_ss_adjustment += shift_prod;
+                        curr_fixed_value = templates[fixed_template_offset + curr_fixed_align + j];
                     }
-                    /* (A + B)^2 identity needs 2 * this product term */
-                    shifted_template_ss_by_channel += (float) 2.0 * chan_ss_adjustment;
-                    /* Now that we have full template sum square for this channel */
-                    /* multiply by this channel's bias and add to bias term */
-                    if (shifted_template_ss_by_channel > 0)
+                    curr_shift_value = 0.0;
+                    if ((j >= shift_first_j) && (curr_shift_align + j < template_length))
                     {
-                        shifted_template_bias += (float) sqrt(shifted_template_ss_by_channel) * gamma_noise[current_channel];
+                        curr_shift_value = templates[shift_template_offset + curr_shift_align + j];
                     }
+                    /* Value of summed template on this channel at index j */
+                    curr_summed_value = curr_fixed_value + curr_shift_value;
+                    summed_chan_ss += curr_summed_value * curr_summed_value;
+                    current_maximum_likelihood += curr_summed_value * (float) voltage[voltage_offset + j];
+                }
+
+                /* Now that we have full template sum square for this channel */
+                /* multiply by this channel's bias and add to bias term */
+                if (summed_chan_ss > 0)
+                {
+                    current_maximum_likelihood -= (float) sqrt(summed_chan_ss) * gamma_noise[current_channel];
+                    current_maximum_likelihood -= 0.5 * summed_chan_ss;
                 }
             }
-            else
-            {
-                delta_index = absolute_shift_index - absolute_fixed_index;
-                if (delta_index >= template_length)
-                {
-                    /* Templates have no points of overlap */
-                    continue;
-                }
-                shifted_template_ss_adjustment = 0.0;
-                shifted_template_bias = 0.0;
-                for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
-                {
-                    /* Compute shifted template sum square for this channel */
-                    /* Starting with the sum square of each tempalte separately */
-                    shifted_template_ss_by_channel = template_sum_squared_by_channel[best_spike_label_private * num_neighbor_channels + current_channel];
-                    shifted_template_ss_by_channel += template_sum_squared_by_channel[template_number * num_neighbor_channels + current_channel];
-                    chan_ss_adjustment = 0.0;
-
-                    template_offset = (template_number * template_length * num_neighbor_channels) + (current_channel * template_length);
-                    fixed_template_offset = (best_spike_label_private * template_length * num_neighbor_channels) + (current_channel * template_length);
-                    for (j = delta_index; j < template_length; j++)
-                    {
-                        shift_prod = templates[(template_offset + j) - delta_index] * templates[fixed_template_offset + j];
-                        shifted_template_ss_adjustment += shift_prod;
-                        chan_ss_adjustment += shift_prod;
-                    }
-                    /* (A + B)^2 identity needs 2 * this product term */
-                    shifted_template_ss_by_channel += (float) 2.0 * chan_ss_adjustment;
-                    /* Now that we have full template sum square for this channel */
-                    /* multiply by this channel's bias and add to bias term */
-                    if (shifted_template_ss_by_channel > 0)
-                    {
-                        shifted_template_bias += (float) sqrt(shifted_template_ss_by_channel) * gamma_noise[current_channel];
-                    }
-                }
-            }
-            /* Use distributivity property of convolution to add likelihoods for fixed unit and test unit */
-            current_maximum_likelihood = actual_current_maximum_likelihood + actual_template_likelihood_at_index - shifted_template_ss_adjustment;
-            /* To compute likelihood for shifted sum template, first remove gamma terms */
-            /* leaving behind the sum of convolutions with voltage for each individual template */
-            current_maximum_likelihood += gamma[best_spike_label_private] + gamma[template_number];
-            /* Subtract the gamma term for shifted template from likelihood */
-            /* to get the full bias adjusted shifted template likelihood */
-            current_maximum_likelihood -= shifted_template_bias;
 
             /* Current shifted likelihood beats previous best */
             if (current_maximum_likelihood > best_spike_likelihood_private)
@@ -670,6 +621,7 @@ __kernel void overlap_recheck_indices(
     best_spike_likelihoods[id] = best_spike_likelihood_private;
     return;
 }
+
 
 /* If the new shifted index is outside
 the current window for this worker, it will check whether a spike was added

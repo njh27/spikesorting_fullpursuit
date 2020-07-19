@@ -537,11 +537,11 @@ __kernel void overlap_recheck_indices(
             fixed_first_j = -1 * curr_fixed_align;
         }
         float actual_template_likelihood_at_index = full_likelihood_function[fixed_likelihood_function_offset + k];
-        // if (actual_template_likelihood_at_index <= 0.0)
-        // {
-        //     /* Require that the spike that brought us here stays here */
-        //     continue;
-        // }
+        if (actual_template_likelihood_at_index <= 0.0)
+        {
+            /* Require that the spike that brought us here stays here */
+            continue;
+        }
 
         for (i = 0; i < n_shift_points; i++)
         {

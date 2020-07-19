@@ -739,7 +739,7 @@ class SegSummary(object):
                 # Remove any identical index duplicates (either from error or
                 # from combining overlapping segments), preferentially keeping
                 # the waveform best aligned to the template
-                neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
+                # neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
                 # keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
                 #                 neuron['clips'], neuron["template"],
                 #                 tol_inds=neuron['duplicate_tol_inds'])
@@ -747,7 +747,7 @@ class SegSummary(object):
                 # neuron['clips'] = neuron['clips'][keep_bool, :]
 
                 # Recompute template and store output
-                neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
+                neuron["template"] = np.median(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
                 neuron['snr'] = self.get_snr(neuron)
                 if neuron['snr'] < 1.5:
                     # SNR this low indicates true garbage that will only slow

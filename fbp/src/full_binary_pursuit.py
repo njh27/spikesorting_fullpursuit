@@ -188,7 +188,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         if templates_to_delete[x]:
             del seg_summary.summaries[x]
     # print("TEMPLATE REDUCTION IS OFF !!!!!")
-    print("Reduced number of templates to", len(seg_summary.summaries))
+    print("Removing sums reduced number of templates to", len(seg_summary.summaries))
     # plt.plot(templates[~templates_to_delete, :].T)
     # plt.show()
 
@@ -199,9 +199,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
 
     # Return the original neighbors to the work items that were reset
     orig_neigh_ind = 0
-    for wi_ind, w_item in enumerate(work_items):
-        if w_item['seg_number'] != seg_number:
-            continue
+    for w_item in seg_w_items:
         if w_item['ID'] in data_dict['results_dict'].keys():
             w_item['neighbors'] = original_neighbors[orig_neigh_ind]
             orig_neigh_ind += 1
@@ -209,11 +207,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     if len(neurons) == 0:
         # All data this segment found nothing (or raised an exception)
         seg_data = []
-        for chan in range(0, voltage.shape[0]):
+        for chan in range(0, sort_info['n_channels']):
             curr_item = None
-            for w_item in work_items:
-                if w_item['seg_number'] != seg_number:
-                    continue
+            for w_item in seg_w_items:
                 if w_item['channel'] == chan:
                     curr_item = w_item
                     break
@@ -235,6 +231,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     del seg_summary
 
     templates = np.vstack(templates)
+    print("Sharpening reduced number of templates to", templates.shape[0])
     print("Starting full binary pursuit search with", templates.shape[0], "templates in segment", seg_number)
     # plt.plot(templates.T)
     # plt.show()
@@ -249,20 +246,30 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     chans_to_template_labels = {}
     for chan in range(0, sort_info['n_channels']):
         chans_to_template_labels[chan] = []
+
     for unit in np.unique(neuron_labels):
-        # Find this unit's channel as the channel with max value of template
+        # Find this unit's channel as the channel with max SNR of template
         curr_template = np.mean(clips[neuron_labels == unit, :], axis=0)
-        curr_chan = np.argmax(np.abs(curr_template)) // sort_info['n_samples_per_chan']
-        chans_to_template_labels[curr_chan].append(unit)
+        unit_best_snr = 0.
+        unit_best_chan = None
+        for chan in range(0, sort_info['n_channels']):
+            background_noise_std = seg_w_items[0]['thresholds'][chan] / sort_info['sigma']
+            chan_win = [sort_info['n_samples_per_chan'] * chan,
+                          sort_info['n_samples_per_chan'] * (chan + 1)]
+            chan_template = curr_template[chan_win[0]:chan_win[1]]
+            temp_range = np.amax(chan_template) - np.amin(chan_template)
+            chan_snr = temp_range / (3 * background_noise_std)
+            if chan_snr > unit_best_snr:
+                unit_best_snr = chan_snr
+                unit_best_chan = chan
+        chans_to_template_labels[unit_best_chan].append(unit)
 
     # Need to convert binary pursuit output to standard sorting output. This
     # requires data from every channel, even if it is just empty
     seg_data = []
     for chan in range(0, sort_info['n_channels']):
         curr_item = None
-        for w_item in work_items:
-            if w_item['seg_number'] != seg_number:
-                continue
+        for w_item in seg_w_items:
             if w_item['channel'] == chan:
                 curr_item = w_item
                 # if chan == 0:

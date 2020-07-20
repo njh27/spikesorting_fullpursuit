@@ -685,7 +685,10 @@ class SegSummary(object):
         self.v_dtype = v_dtype
         self.absolute_refractory_period = absolute_refractory_period
         self.verbose = verbose
+        # NOTE: half_clip_inds is the larger piece of clip width so
+        # 2*half_clip_inds is not necessarily the full clip inds
         self.half_clip_inds = int(round(np.amax(np.abs(self.sort_info['clip_width'])) * self.sort_info['sampling_rate']))
+        self.full_clip_inds = int(round((self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]) * self.sort_info['sampling_rate']))
         self.n_items = len(work_items)
         self.make_summaries()
 
@@ -731,40 +734,54 @@ class SegSummary(object):
                 neuron["spike_indices"] = neuron["spike_indices"][spike_order]
                 neuron['clips'] = neuron['clips'][spike_order, :]
 
-                # Set duplicate tolerance as half spike width since within
-                # channel summary shouldn't be off by this
-                neuron['duplicate_tol_inds'] = calc_spike_half_width(
-                    neuron['clips'][:, neuron['main_win'][0]:neuron['main_win'][1]]) + 1
+                # Set duplicate tolerance as full clip width since we are only
+                # looking to get a good template here
+                neuron['duplicate_tol_inds'] = self.full_clip_inds
 
                 # Remove any identical index duplicates (either from error or
                 # from combining overlapping segments), preferentially keeping
                 # the waveform best aligned to the template
-                # neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
-                # keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
-                #                 neuron['clips'], neuron["template"],
-                #                 tol_inds=neuron['duplicate_tol_inds'])
-                # neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                # neuron['clips'] = neuron['clips'][keep_bool, :]
+                neuron["template"] = np.median(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
+                keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
+                                neuron['clips'], neuron["template"],
+                                tol_inds=neuron['duplicate_tol_inds'])
+                neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                neuron['clips'] = neuron['clips'][keep_bool, :]
 
                 # Recompute template and store output
                 neuron["template"] = np.median(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
-                neuron['snr'] = self.get_snr(neuron)
+                # Get SNR for each channel separately
+                neuron['snr_by_chan'] = np.zeros(self.sort_info['n_channels'])
+                for chan in range(0, self.sort_info['n_channels']):
+                    # Reset window and threshold that will be used by get_snr
+                    neuron['main_win'] = [self.sort_info['n_samples_per_chan'] * chan,
+                                          self.sort_info['n_samples_per_chan'] * (chan + 1)]
+                    neuron['threshold'] = self.work_items[n_wi]['thresholds'][chan]
+                    neuron['snr_by_chan'][chan] = self.get_snr(neuron)
+                    if chan == neuron['channel']:
+                        neuron['snr'] = neuron['snr_by_chan'][chan]
+
+                # Reset these to actual values. We still keep channel based on
+                # the work item that found this neuron.
+                neuron['main_win'] = [self.sort_info['n_samples_per_chan'] * neuron["channel"],
+                                      self.sort_info['n_samples_per_chan'] * (neuron["channel"] + 1)]
+                neuron['threshold'] = self.work_items[n_wi]['thresholds'][neuron['channel']]
                 if neuron['snr'] < 1.5:
                     # SNR this low indicates true garbage that will only slow
                     # binary pursuit so skip it outright
                     # Remember that SNR can only go down from here as binary
                     # pursuit can add spikes that didn't cross threshold
                     continue
-                neuron['fraction_mua'] = calc_fraction_mua_to_peak(
-                                            neuron["spike_indices"],
-                                            self.sort_info['sampling_rate'],
-                                            neuron['duplicate_tol_inds'],
-                                            self.absolute_refractory_period)
-                neuron['quality_score'] = neuron['snr'] * (1-neuron['fraction_mua']) \
-                                                * (neuron['spike_indices'].shape[0])
+                # neuron['fraction_mua'] = calc_fraction_mua_to_peak(
+                #                             neuron["spike_indices"],
+                #                             self.sort_info['sampling_rate'],
+                #                             neuron['duplicate_tol_inds'],
+                #                             self.absolute_refractory_period)
+                # neuron['quality_score'] = neuron['snr'] * (1-neuron['fraction_mua']) \
+                #                                 * (neuron['spike_indices'].shape[0])
 
                 # Get noise standard deviation estimate for template
-                neuron['template_noise_threshold'] = 0.
+                # neuron['template_noise_threshold'] = 0.
                 # background_noise_std = neuron['threshold'] / self.sort_info['sigma']
                 # neuron['template_noise_threshold'] = 2 * np.sqrt(np.sum(neuron['template']**2)) * 1.96 * background_noise_std
                 # # neuron['template_noise_threshold'] = np.mean(np.mean((neuron['clips'] - neuron["template"]) ** 2, axis=1))
@@ -776,24 +793,21 @@ class SegSummary(object):
 
                 # Preserve full template for binary pursuit
                 neuron['pursuit_template'] = np.copy(neuron['template'])
-                # Set template channels with peak less than half threshold to 0
+                # Set new neighborhood of all channels with SNR over SNR threshold.
                 # This will be used for align shifting and merge testing
                 # NOTE: This new neighborhood only applies for use internally
                 high_snr_neighbors = []
-                new_clips = []
-                for chan in range(0, neuron['neighbors'].shape[0]):
+                for chan in range(0, self.sort_info['n_channels']):
                     chan_index = [chan * self.sort_info['n_samples_per_chan'],
                                   (chan + 1) * self.sort_info['n_samples_per_chan']]
-                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) > 0.5 * self.work_items[n_wi]['thresholds'][chan]:
+                    if neuron['snr_by_chan'][chan] > 0.75:
                         high_snr_neighbors.append(chan)
+
                 if len(high_snr_neighbors) > 0:
                     neuron['high_snr_neighbors'] = np.array(high_snr_neighbors, dtype=np.int64)
                 else:
                     # Neuron is total trash so don't even append to summaries
                     continue
-
-                # neuron['gamma_bias'] = 0.5 * np.sqrt(np.sum(neuron['clips'] ** 2))
-
                 neuron['deleted_as_redundant'] = False
 
                 self.summaries.append(neuron)

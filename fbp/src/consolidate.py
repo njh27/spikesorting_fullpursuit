@@ -725,6 +725,16 @@ class SegSummary(object):
                 neuron["spike_indices"] = self.sort_data[n_wi][0][select_label]
                 neuron['clips'] = self.sort_data[n_wi][2][select_label, :]
 
+                # Remove all outlier clips to get best template estimate
+                median_template = np.median(neuron['clips'], axis=0)
+                clip_SSE = np.sum((neuron['clips'] - median_template) ** 2, axis=1)
+                median_clip_SSE = np.median(clip_SSE)
+                MAD_SSE = np.median(np.abs(clip_SSE - median_clip_SSE))
+                keep_clips = np.logical_and(clip_SSE < median_clip_SSE + 2 * MAD_SSE,
+                                            clip_SSE > median_clip_SSE - 2 * MAD_SSE)
+                neuron['clips'] = neuron['clips'][keep_clips, :]
+                neuron['spike_indices'] = neuron['spike_indices'][keep_clips]
+
                 # NOTE: This still needs to be done even though segments
                 # were ordered because of overlap!
                 # Ensure spike times are ordered. Must use 'stable' sort for
@@ -800,7 +810,7 @@ class SegSummary(object):
                 for chan in range(0, self.sort_info['n_channels']):
                     chan_index = [chan * self.sort_info['n_samples_per_chan'],
                                   (chan + 1) * self.sort_info['n_samples_per_chan']]
-                    if neuron['snr_by_chan'][chan] > 0.75:
+                    if neuron['snr_by_chan'][chan] > .75:
                         high_snr_neighbors.append(chan)
 
                 if len(high_snr_neighbors) > 0:
@@ -861,7 +871,7 @@ class SegSummary(object):
             best_shift = 0
             clips_1 = None
             clips_2 = None
-            return best_pair, best_shift, clips_1, clips_2
+            return best_pair, best_shift, clips_1, clips_2, None, None
 
         # Reset n1 and n2 to match the best then calculate clips
         n1 = self.summaries[best_pair[0]]
@@ -876,6 +886,7 @@ class SegSummary(object):
         # Get clips for each channel, shift them, and assign for output, which
         # will be clips that have each channel individually aligned and
         # truncated
+        chans_used_for_clips = []
         for chan in range(0, self.sort_info['n_channels']):
             # Only keep channels with high SNR data from at least one unit
             if chan in n1['high_snr_neighbors'] or chan in n2['high_snr_neighbors']:
@@ -895,6 +906,8 @@ class SegSummary(object):
                     clips_2[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_2[:, -1*best_shift:]
                 sample_select[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
+                chans_used_for_clips.append(chan)
+        chans_used_for_clips = np.int64(np.hstack(chans_used_for_clips))
 
         # Compare best distance to size of the template SSE to see if its reasonable
         min_template_SSE = min(np.sum(self.summaries[best_pair[0]]['pursuit_template'] ** 2),
@@ -903,12 +916,12 @@ class SegSummary(object):
         if np.any(sample_select) and (best_distance < 0.5 * min_template_SSE):
             clips_1 = clips_1[:, sample_select]
             clips_2 = clips_2[:, sample_select]
-            return best_pair, best_shift, clips_1, clips_2
+            return best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan
         else:
             # This is probably not a good match afterall, so try again
             previously_compared_pairs.append(best_pair)
-            best_pair, best_shift, clips_1, clips_2 = self.find_nearest_shifted_pair(remaining_inds, previously_compared_pairs)
-            return best_pair, best_shift, clips_1, clips_2
+            best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan = self.find_nearest_shifted_pair(remaining_inds, previously_compared_pairs)
+            return best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan
 
     def re_sort_two_units(self, clips_1, clips_2, use_weights=True, curr_chan_inds=None):
         if self.sort_info['add_peak_valley'] and curr_chan_inds is None:
@@ -923,7 +936,12 @@ class SegSummary(object):
         #             curr_chan_inds, self.sort_info['check_components'],
         #             self.sort_info['max_components'],
         #             add_peak_valley=self.sort_info['add_peak_valley'],
-        #             use_weights=True)
+        #             use_weights=use_weights)
+        # scores = preprocessing.compute_template_pca_by_channel(clips, orig_neuron_labels,
+        #             curr_chan_inds, self.sort_info['check_components'],
+        #             self.sort_info['max_components'],
+        #             add_peak_valley=True,
+        #             use_weights=use_weights)
         # scores = preprocessing.compute_pca(clips,
         #             self.sort_info['check_components'],
         #             self.sort_info['max_components'],
@@ -931,8 +949,8 @@ class SegSummary(object):
         #             curr_chan_inds=curr_chan_inds)
 
         # Projection onto templates, weighted by number of spikes
-        t1 = np.mean(clips_1, axis=0)
-        t2 = np.mean(clips_2, axis=0)
+        t1 = np.median(clips_1, axis=0)
+        t2 = np.median(clips_2, axis=0)
         if use_weights:
             t1 *= (clips_1.shape[0] / clips.shape[0])
             t2 *= (clips_2.shape[0] / clips.shape[0])
@@ -940,11 +958,11 @@ class SegSummary(object):
 
         scores = np.float64(scores)
 
-        median_cluster_size = min(100, int(np.around(clips.shape[0] / 1000)))
-        n_random = max(100, np.around(clips.shape[0] / 100)) if self.sort_info['use_rand_init'] else 0
-        neuron_labels = initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
-        neuron_labels = merge_clusters(scores, neuron_labels,
-                            split_only=False, merge_only=True,
+        # median_cluster_size = min(100, int(np.around(clips.shape[0] / 1000)))
+        # n_random = max(100, np.around(clips.shape[0] / 100)) if self.sort_info['use_rand_init'] else 0
+        # neuron_labels = initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
+        neuron_labels = merge_clusters(scores, orig_neuron_labels,
+                            split_only=False, merge_only=False,
                             p_value_cut_thresh=self.sort_info['p_value_cut_thresh'])
 
         curr_labels, n_per_label = np.unique(neuron_labels, return_counts=True)
@@ -1038,7 +1056,7 @@ class SegSummary(object):
         previously_compared_pairs = []
         templates_to_merge = []
         while len(remaining_inds) > 1:
-            best_pair, best_shift, clips_1, clips_2, = \
+            best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan = \
                             self.find_nearest_shifted_pair(remaining_inds,
                                                     previously_compared_pairs)
             if len(best_pair) == 0:
@@ -1052,15 +1070,26 @@ class SegSummary(object):
                 #         clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                 #         method='channel_template_pca', merge_only=True,
                 #         curr_chan_inds=None, use_weights=True)
-                is_merged = self.re_sort_two_units(clips_1, clips_2, curr_chan_inds=None)
+                # best_clip_chan_ind = None
+                # best_chan_snr = 0.
+                # for clip_chan_ind in range(0, chans_used_for_clips.shape[0]):
+                #     check_chan = chans_used_for_clips[clip_chan_ind]
+                #     curr_best_snr = max(self.summaries[best_pair[0]]['snr_by_chan'][check_chan],
+                #                         self.summaries[best_pair[1]]['snr_by_chan'][check_chan])
+                #     if curr_best_snr > best_chan_snr:
+                #         best_chan_snr = curr_best_snr
+                #         best_clip_chan_ind = clip_chan_ind
+                # curr_chan_inds = np.arange(best_clip_chan_ind*shift_samples_per_chan, (best_clip_chan_ind+1)*shift_samples_per_chan)
+
+                is_merged = self.re_sort_two_units(clips_1, clips_2, use_weights=False)
                 # print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
                 # print("THESE ARE THE TEMPLATES")
                 # plt.plot(self.summaries[best_pair[0]]['template'])
                 # plt.plot(self.summaries[best_pair[1]]['template'])
                 # plt.show()
                 # print("THESE ARE THE CLIPS AVERAGES")
-                # plt.plot(np.mean(clips_1, axis=0))
-                # plt.plot(np.mean(clips_2, axis=0))
+                # plt.plot(np.median(clips_1, axis=0))
+                # plt.plot(np.median(clips_2, axis=0))
                 # plt.show()
             if is_merged:
                 # Delete the unit with the fewest spikes

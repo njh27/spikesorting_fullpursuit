@@ -452,7 +452,7 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds,
         return None
     templates = np.empty((unique_labels.size, clips.shape[1]))
     for ind, l in enumerate(unique_labels):
-        templates[ind, :] = np.mean(clips[labels == l, :], axis=0)
+        templates[ind, :] = np.median(clips[labels == l, :], axis=0)
         if use_weights:
             templates[ind, :] *= np.sqrt(u_counts[ind] / labels.size)
 
@@ -474,6 +474,7 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds,
     if score_mat is None:
         # Usually means all clips were the same or there was <= 1, so PCs can't
         # be computed. Just return everything as the same score
+        print("FAILED TO FIND PCS !!!")
         return np.zeros((clips.shape[0], 1))
     scores = clips[:, curr_chan_inds] @ score_mat
     if add_peak_valley:

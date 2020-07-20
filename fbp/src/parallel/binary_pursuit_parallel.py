@@ -377,6 +377,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         # Templates must be a 2D float32
         if templates.ndim == 1:
             templates = np.reshape(templates, (1, -1))
+        print("There are", templates.shape[0], "templates remaining for binary pursuit.")
         templates_vector = templates.reshape(templates.size).astype(np.float32)
         template_sum_squared = template_sum_squared[~noise_templates]
         new_template_sum_squared_by_channel = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)

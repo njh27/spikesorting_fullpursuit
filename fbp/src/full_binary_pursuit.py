@@ -100,6 +100,55 @@ def remove_overlap_templates(templates, n_samples_per_chan, n_chans,
     return templates_to_delete
 
 
+def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info):
+    """"""
+    # Start by building the set of all clips for all units in segment
+    all_events = []
+    for w_item in seg_w_items:
+        if w_item['ID'] in data_dict['results_dict'].keys():
+            if len(data_dict['results_dict'][w_item['ID']][0]) == 0:
+                # This work item found nothing (or raised an exception)
+                continue
+            all_events.append(data_dict['results_dict'][w_item['ID']][0])
+    if len(all_events) == 0:
+        # No events found so just return input clip width
+        return sort_info['clip_width']
+    all_events = np.hstack(all_events)
+    all_clips, _ = get_multichannel_clips(clips_dict, voltage,
+                                    all_events, clip_width=sort_info['clip_width'])
+    median_clip = np.median(all_clips, axis=0)
+    first_indices = np.arange(0, sort_info['n_samples_per_chan']*(sort_info['n_channels']-1)+1, sort_info['n_samples_per_chan'], dtype=np.int64)
+    last_indices = np.arange(sort_info['n_samples_per_chan']-1, sort_info['n_samples_per_chan']*sort_info['n_channels']+1, sort_info['n_samples_per_chan'], dtype=np.int64)
+    median_abs_clip_value = np.median(np.median(np.abs(all_clips), axis=0))
+    clip_end_tolerance = np.abs(0.1 * median_abs_clip_value)
+
+    bp_clip_width = [v for v in sort_info['clip_width']]
+    min_start = 2*bp_clip_width[0]
+    step_size = bp_clip_width[0]/10
+    while np.any(np.abs(median_clip[first_indices]) > clip_end_tolerance):
+        bp_clip_width[0] += step_size
+        if bp_clip_width[0] < min_start:
+            print("Clip width start never converged. Using 2 times input start width.")
+            bp_clip_width[0] = min_start
+            break
+        all_clips, _ = get_multichannel_clips(clips_dict, voltage,
+                                        all_events, clip_width=bp_clip_width)
+        median_clip = np.median(all_clips, axis=0)
+
+    max_stop = 2*bp_clip_width[1]
+    step_size = bp_clip_width[1]/10
+    while np.any(np.abs(median_clip[last_indices]) > clip_end_tolerance):
+        bp_clip_width[1] += step_size
+        if bp_clip_width[1] > max_stop:
+            print("Clip width stop never converged. Using 2 times input stop width.")
+            bp_clip_width[1] = max_stop
+            break
+        all_clips, _ = get_multichannel_clips(clips_dict, voltage,
+                                        all_events, clip_width=bp_clip_width)
+        median_clip = np.median(all_clips, axis=0)
+
+    return bp_clip_width
+
 
 
 def full_binary_pursuit(work_items, data_dict, seg_number,
@@ -116,15 +165,13 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                   'n_samples': sort_info['n_samples'],
                   'v_dtype': v_dtype}
 
+    # Determine the set of work items for this segment
+    seg_w_items = [w for w in work_items if w['seg_number'] == seg_number]
+
     # Need to build this in format used for consolidate functions
     seg_data = []
-    seg_w_items = []
     original_neighbors = []
-    for wi_ind, w_item in enumerate(work_items):
-        if w_item['seg_number'] != seg_number:
-            continue
-        # Always do this to match with seg_data
-        seg_w_items.append(w_item)
+    for w_item in seg_w_items:
         if w_item['ID'] in data_dict['results_dict'].keys():
             # Reset neighbors to all channels for full binary pursuit
             original_neighbors.append(w_item['neighbors'])
@@ -134,14 +181,10 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                 # This work item found nothing (or raised an exception)
                 seg_data.append([[], [], [], [], w_item['ID']])
                 continue
-            # with open(sort_info['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle', 'rb') as fp:
-            #     clips = pickle.load(fp)
-
             clips, _ = get_multichannel_clips(clips_dict, voltage,
                                     data_dict['results_dict'][w_item['ID']][0],
                                     clip_width=sort_info['clip_width'])
 
-            # os.remove(sort_info['tmp_clips_dir'] + '/temp_clips' + str(w_item['ID']) + '.pickle')
             # Insert list of crossings, labels, clips, binary pursuit spikes
             seg_data.append([data_dict['results_dict'][w_item['ID']][0],
                               data_dict['results_dict'][w_item['ID']][1],
@@ -219,13 +262,22 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
 
+    bp_clip_width = get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info)
+    sort_info['clip_width'] = bp_clip_width
+    bp_chan_win, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
+    sort_info['n_samples_per_chan'] = bp_chan_win[1] - bp_chan_win[0]
+
     templates = []
     next_label = 0
     for n in neurons:
         if not n['deleted_as_redundant']:
-            templates.append(n['pursuit_template'])
+            clips, _ = get_multichannel_clips(clips_dict, voltage,
+                                    n['spike_indices'],
+                                    clip_width=bp_clip_width)
+            templates.append(np.median(clips, axis=0))
             next_label += 1
             # plt.plot(n['pursuit_template'])
+            # plt.plot(templates[-1])
             # plt.show()
 
     del seg_summary

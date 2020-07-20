@@ -1121,7 +1121,7 @@ class SegSummary(object):
             # Also update number of spikes so that future merges can have the
             # correct weighting. These are no long in correspondence with the clips
             # and not sorted so it is assumed they will not be used again
-            self.summaries[merge_item[0]]['spike_indices'] = np.hstack((self.summaries[merge_item[0]]['spike_indices'], self.summaries[merge_item[1]]['spike_indices']))
+            self.summaries[merge_item[0]]['spike_indices'] = np.hstack((self.summaries[merge_item[0]]['spike_indices'], self.summaries[merge_item[1]]['spike_indices'] + merge_item[2]))
 
         # Delete merged units
         inds_to_delete.sort()

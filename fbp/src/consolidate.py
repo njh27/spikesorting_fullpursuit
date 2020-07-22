@@ -725,15 +725,15 @@ class SegSummary(object):
                 neuron["spike_indices"] = self.sort_data[n_wi][0][select_label]
                 neuron['clips'] = self.sort_data[n_wi][2][select_label, :]
 
-                # Remove all outlier clips to get best template estimate
-                median_template = np.median(neuron['clips'], axis=0)
-                clip_SSE = np.sum((neuron['clips'] - median_template) ** 2, axis=1)
-                median_clip_SSE = np.median(clip_SSE)
-                MAD_SSE = np.median(np.abs(clip_SSE - median_clip_SSE))
-                keep_clips = np.logical_and(clip_SSE < median_clip_SSE + 2 * MAD_SSE,
-                                            clip_SSE > median_clip_SSE - 2 * MAD_SSE)
-                neuron['clips'] = neuron['clips'][keep_clips, :]
-                neuron['spike_indices'] = neuron['spike_indices'][keep_clips]
+                # # Remove all outlier clips to get best template estimate
+                # median_template = np.median(neuron['clips'], axis=0)
+                # clip_SSE = np.sum((neuron['clips'] - median_template) ** 2, axis=1)
+                # median_clip_SSE = np.median(clip_SSE)
+                # MAD_SSE = np.median(np.abs(clip_SSE - median_clip_SSE))
+                # keep_clips = np.logical_and(clip_SSE < median_clip_SSE + 2 * MAD_SSE,
+                #                             clip_SSE > median_clip_SSE - 2 * MAD_SSE)
+                # neuron['clips'] = neuron['clips'][keep_clips, :]
+                # neuron['spike_indices'] = neuron['spike_indices'][keep_clips]
 
                 # NOTE: This still needs to be done even though segments
                 # were ordered because of overlap!

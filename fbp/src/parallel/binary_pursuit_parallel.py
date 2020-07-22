@@ -119,11 +119,11 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
                 template_post_inds[s*templates.shape[0] + f] = 0
             else:
                 template_pre_inds[f*templates.shape[0] + s] = np.argmax(failed_assignments) - max_shift
-                # NOTE: Subtracting 1 will give inclusive indices. Not subtracting 1 gives the slice range used here.
+                # NOTE: Subtracting 1 will give inclusive indices. Not subtracting 1 gives the slice range.
                 template_post_inds[f*templates.shape[0] + s] = failed_assignments.shape[0] - np.argmax(failed_assignments[-1::-1]) - max_shift
 
                 # For the same pair in opposite order, these indices are REVERSED
-                template_pre_inds[s*templates.shape[0] + f] = -1 * template_post_inds[f*templates.shape[0] + s] + 1 # Add to undo slice
+                template_pre_inds[s*templates.shape[0] + f] = -1 * template_post_inds[f*templates.shape[0] + s] + 1 # Add 1 to undo slice
                 template_post_inds[s*templates.shape[0] + f] = -1 * template_pre_inds[f*templates.shape[0] + s] + 1
 
     return template_pre_inds, template_post_inds
@@ -400,7 +400,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
         template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
         template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
-        print("Maximum shift to check", np.amax(template_post_inds))
+        template_inds_range = np.array([np.amin(template_pre_inds), np.amax(template_post_inds)], dtype=np.int32)
+        print("Maximum shift to check", template_inds_range)
 
         template_pre_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_pre_inds)
         template_post_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_post_inds)
@@ -464,6 +465,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_window_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.arange(0, num_template_widths, 1, dtype=np.uint32))
             overlap_best_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
             overlap_best_spike_labels_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
+            overlap_sema_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
 
             # This is separate storage for transferring data from next check, NOT A HOST (maybe could be)
             next_check_window = np.zeros(num_template_widths, dtype=np.uint8)
@@ -514,6 +516,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_recheck_indices_kernel.set_arg(18, gamma_noise_buffer) # Noise variance terms for each channel
             overlap_recheck_indices_kernel.set_arg(19, template_sum_squared_by_channel_buffer) # .5 template sum squared by channel
             overlap_recheck_indices_kernel.set_arg(20, full_likelihood_function_buffer)
+            overlap_recheck_indices_kernel.set_arg(21, np.int32(template_inds_range[0]))
+            overlap_recheck_indices_kernel.set_arg(22, np.int32(template_inds_range[1]))
+            overlap_recheck_indices_kernel.set_arg(23, overlap_sema_buffer)
 
             check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
             check_overlap_reassignments_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
@@ -589,20 +594,23 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     next_wait_event = [cl.enqueue_copy(queue, overlap_window_indices_buffer, overlap_window_indices, wait_for=next_wait_event)]
                     queue.finish() # Needs to finish copy before checking indices
                     # Reset number of indices to check for overlap recheck kernel
-                    total_work_size_overlap = overlap_local_work_size * int(np.ceil(overlap_window_indices.shape[0] / overlap_local_work_size))
+                    total_overlap_checks = np.int64(overlap_window_indices.shape[0] * (template_inds_range[1] - template_inds_range[0]) * (template_inds_range[1] - template_inds_range[0]) * templates.shape[0])
+                    total_work_size_overlap = overlap_local_work_size * np.int64(np.ceil(total_overlap_checks / overlap_local_work_size))
 
                     n_to_enqueue_overlap = min(total_work_size_overlap, max_enqueue_overlap)
                     overlap_recheck_indices_kernel.set_arg(10, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
-                    for template_index in range(0, templates.shape[0]):
-                        overlap_recheck_indices_kernel.set_arg(6, np.uint32(template_index)) # Template number
-                        for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_overlap, dtype=np.uint32):
-                            overlap_event = cl.enqueue_nd_range_kernel(queue,
-                                                  overlap_recheck_indices_kernel,
-                                                  (n_to_enqueue_overlap, ), (overlap_local_work_size, ),
-                                                  global_work_offset=(enqueue_step, ),
-                                                  wait_for=next_wait_event)
-                            queue.finish()
-                            next_wait_event = [overlap_event]
+
+                    print("Total overlap work size is", total_work_size_overlap)
+                    if total_work_size_overlap > 2**64 - 1:
+                        raise ValueError("Total overlap work size is too big")
+                    for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_overlap, dtype=np.uint32):
+                        overlap_event = cl.enqueue_nd_range_kernel(queue,
+                                              overlap_recheck_indices_kernel,
+                                              (n_to_enqueue_overlap, ), (overlap_local_work_size, ),
+                                              global_work_offset=(enqueue_step, ),
+                                              wait_for=next_wait_event)
+                    queue.finish()
+                    next_wait_event = [overlap_event]
 
                     check_overlap_reassignments_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_overlap, dtype=np.uint32):

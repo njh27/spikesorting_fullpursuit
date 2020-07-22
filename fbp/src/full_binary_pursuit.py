@@ -114,12 +114,14 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
         # No events found so just return input clip width
         return sort_info['clip_width']
     all_events = np.hstack(all_events)
-    all_clips, _ = get_multichannel_clips(clips_dict, voltage,
+    all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
                                     all_events, clip_width=sort_info['clip_width'])
+    all_events = all_events[valid_event_indices]
     median_clip = np.median(all_clips, axis=0)
     first_indices = np.arange(0, sort_info['n_samples_per_chan']*(sort_info['n_channels']-1)+1, sort_info['n_samples_per_chan'], dtype=np.int64)
     last_indices = np.arange(sort_info['n_samples_per_chan']-1, sort_info['n_samples_per_chan']*sort_info['n_channels']+1, sort_info['n_samples_per_chan'], dtype=np.int64)
-    median_abs_clip_value = np.median(np.median(np.abs(all_clips), axis=0))
+    median_abs_clip_value = np.median(np.median(np.abs(all_clips), axis=1))
+    print("clip median abs value", median_abs_clip_value)
     clip_end_tolerance = np.abs(0.1 * median_abs_clip_value)
 
     bp_clip_width = [v for v in sort_info['clip_width']]
@@ -131,9 +133,10 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
             print("Clip width start never converged. Using 2 times input start width.")
             bp_clip_width[0] = min_start
             break
-        all_clips, _ = get_multichannel_clips(clips_dict, voltage,
+        all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
                                         all_events, clip_width=bp_clip_width)
         median_clip = np.median(all_clips, axis=0)
+        all_events = all_events[valid_event_indices]
 
     max_stop = 2*bp_clip_width[1]
     step_size = bp_clip_width[1]/10
@@ -143,9 +146,10 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
             print("Clip width stop never converged. Using 2 times input stop width.")
             bp_clip_width[1] = max_stop
             break
-        all_clips, _ = get_multichannel_clips(clips_dict, voltage,
+        all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
                                         all_events, clip_width=bp_clip_width)
         median_clip = np.median(all_clips, axis=0)
+        all_events = all_events[valid_event_indices]
 
     return bp_clip_width
 

@@ -444,25 +444,29 @@ __kernel void overlap_recheck_indices(
         skip_curr_id = 1; /* Invalid number of channels (must be >= 1) */
     }
 
-    __private const size_t num_shifts = (size_t) (max_shift - min_shift);
     const size_t global_id = get_global_id(0);
-
-    /* Need basic info about crazy indexing for each worker */
-    __private const size_t items_per_index = num_shifts * num_shifts * (size_t) num_templates;
-    /* Round ceiling gives number of work groups needed per recheck index */
-    __private const size_t n_local_ID = (size_t) (((items_per_index - 1) / local_size)+1);
-    /* Number of leftover workers for each index, used as offset */
-    __private const size_t n_local_ID_leftover = (size_t) (local_size * n_local_ID) % items_per_index;
-
-    if ((global_id % (n_local_ID * local_size)) >= items_per_index)
+    __private size_t num_shifts, id_index, items_per_index, n_local_ID, n_local_ID_leftover;
+    if (skip_curr_id == 0)
     {
-        skip_curr_id = 1; /* Extra worker with nothing to do */
-    }
+        /* Can't do this stuff without num_shifts > 0 */
+        num_shifts = (size_t) (max_shift - min_shift);
+        /* Need basic info about crazy indexing for each worker */
+        items_per_index = num_shifts * num_shifts * (size_t) num_templates;
+        /* Round ceiling gives number of work groups needed per recheck index */
+        n_local_ID = (size_t) (((items_per_index - 1) / local_size)+1);
+        /* Number of leftover workers for each index, used as offset */
+        n_local_ID_leftover = (size_t) (local_size * n_local_ID) % items_per_index;
 
-    const size_t id_index = (size_t) (global_id / (n_local_ID * local_size));
-    if (id_index >= num_overlap_window_indices)
-    {
-        skip_curr_id = 1; /* Extra worker with nothing to do (shouldn't happen if input is correct)*/
+        if ((global_id % (n_local_ID * local_size)) >= items_per_index)
+        {
+            skip_curr_id = 1; /* Extra worker with nothing to do */
+        }
+
+        id_index = (size_t) (global_id / (n_local_ID * local_size));
+        if (id_index >= num_overlap_window_indices)
+        {
+            skip_curr_id = 1; /* Extra worker with nothing to do (shouldn't happen if input is correct)*/
+        }
     }
 
     /* Need this set up top in case we skip */
@@ -566,12 +570,12 @@ __kernel void overlap_recheck_indices(
                 /* Value of summed template on this channel at index j */
                 curr_summed_value = curr_fixed_value + curr_shift_value;
                 summed_chan_ss += curr_summed_value * curr_summed_value;
-                current_maximum_likelihood += curr_summed_value * (float) voltage[voltage_offset + j];
+                current_maximum_likelihood += curr_summed_value * voltage[voltage_offset + j];
             }
 
             /* Now that we have full template sum square for this channel */
             /* multiply by this channel's bias and add to bias term */
-            if (summed_chan_ss > 0)
+            if (summed_chan_ss > 0.0)
             {
                 current_maximum_likelihood -= (float) sqrt(summed_chan_ss) * gamma_noise[current_channel];
                 current_maximum_likelihood -= 0.5 * summed_chan_ss;
@@ -639,7 +643,6 @@ __kernel void overlap_recheck_indices(
         //     }
         // }
     }
-
     return;
 }
 

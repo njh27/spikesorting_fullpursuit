@@ -584,9 +584,11 @@ __kernel void overlap_recheck_indices(
     /* Leave it to last worker to figure out the best likelihood from group */
     __private unsigned int i;
     __private unsigned int best_worker_id = local_id;
-    if (local_id == (local_size - 1))
+    __private size_t best_global_id;
+
+    if (local_id == 0)
     {
-        for (i=0; i < local_size-1; i++)
+        for (i=0; i < local_size; i++)
         {
             if (local_scratch[i] > current_maximum_likelihood)
             {
@@ -595,10 +597,49 @@ __kernel void overlap_recheck_indices(
             }
         }
         __private const size_t group_id = get_group_id(0);
-        __private const size_t best_global_id = (size_t) best_worker_id + local_size * group_id;
+        best_global_id = (size_t) best_worker_id + local_size * group_id;
         overlap_group_best_likelihood[group_id] = current_maximum_likelihood;
         overlap_group_best_work_id[group_id] = best_global_id;
+
+        // const size_t new_id_index = (size_t) (best_global_id / (n_local_ID * local_size));
+        // if (new_id_index >= num_overlap_window_indices)
+        // {
+        //     return; /* Extra worker with nothing to do (shouldn't happen if input is correct)*/
+        // }
+        //
+        // /* Figure out the template and shifts for this worker based on crazy indexing */
+        // const size_t new_offset_global_id = best_global_id - new_id_index * n_local_ID_leftover;
+        // __private const unsigned int new_template_number = (unsigned int) (new_offset_global_id % (size_t) num_templates);
+        // __private const signed int new_fixed_shift = (signed int) ((new_offset_global_id / (size_t) num_templates) % num_shifts) + min_shift;
+        // __private const signed int new_template_shift = (signed int) ((new_offset_global_id / (num_shifts * (size_t) num_templates)) % num_shifts) + min_shift;
+        //
+        // __private const unsigned int absolute_fixed_index = best_spike_index_private + new_fixed_shift;
+        // __private const unsigned int absolute_shift_index = best_spike_index_private + new_template_shift;
+        //
+        // float actual_template_likelihood_at_index = full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index];
+        // float actual_current_maximum_likelihood = full_likelihood_function[new_template_number * voltage_length + absolute_shift_index];
+        //
+        // const size_t new_id = overlap_window_indices[new_id_index];
+        // if (current_maximum_likelihood > best_spike_likelihoods[new_id])
+        // {
+        //     /* Reset the likelihood and best index and label to maximum */
+        //     if ((actual_template_likelihood_at_index) >= (actual_current_maximum_likelihood))
+        //     {
+        //         /* The main label has better likelihood than best shifted match */
+        //         best_spike_likelihoods[new_id] = current_maximum_likelihood;
+        //         overlap_best_spike_labels[new_id] = best_spike_label_private;
+        //         overlap_best_spike_indices[new_id] = absolute_fixed_index;
+        //     }
+        //     else
+        //     {
+        //         /* The best shifted match unit has better likelihood than the main label */
+        //         best_spike_likelihoods[new_id] = current_maximum_likelihood;
+        //         overlap_best_spike_labels[new_id] = new_template_number;
+        //         overlap_best_spike_indices[new_id] = absolute_shift_index;
+        //     }
+        // }
     }
+
     return;
 }
 
@@ -645,7 +686,7 @@ __kernel void parse_overlap_recheck_indices(
     {
         return; /* Extra worker with nothing to do */
     }
-    const size_t id = (num_overlap_window_indices > 0 && overlap_window_indices != NULL) ? overlap_window_indices[global_id] : global_id;
+    const size_t id = overlap_window_indices[global_id];
 
     /* Need basic info about crazy indexing for each worker */
     const size_t local_size = get_local_size(0); /* MUST BE THE SAME AS OVERLAP_RECHECK_INDICES KERNEL */
@@ -672,27 +713,18 @@ __kernel void parse_overlap_recheck_indices(
             best_global_id = overlap_group_best_work_id[search_index];
         }
     }
-    overlap_best_spike_labels[id] = best_spike_label_private;
-    overlap_best_spike_indices[id] = best_spike_index_private;
     if ((best_group_likelihood <= best_spike_likelihood_private) || (best_group_likelihood <= 0.0))
     {
         return; /* Shifts didn't improve so just return the previous values */
     }
-
     /* Shifts improved likelihood, so we need to use best global ID and crazy indices to find answer */
     if ((best_global_id % (n_local_ID * local_size)) >= items_per_index)
     {
         return; /* Extra worker with nothing to do (should not be possible)*/
     }
 
-    const size_t id_index = (size_t) (best_global_id / (n_local_ID * local_size));
-    if (id_index >= num_overlap_window_indices)
-    {
-        return; /* Extra worker with nothing to do (shouldn't happen if input is correct)*/
-    }
-
     /* Figure out the template and shifts for this worker based on crazy indexing */
-    const size_t offset_global_id = best_global_id - id_index * n_local_ID_leftover;
+    const size_t offset_global_id = best_global_id - global_id * n_local_ID_leftover;
     __private const unsigned int template_number = (unsigned int) (offset_global_id % (size_t) num_templates);
     __private const signed int fixed_shift = (signed int) ((offset_global_id / (size_t) num_templates) % num_shifts) + min_shift;
     __private const signed int template_shift = (signed int) ((offset_global_id / (num_shifts * (size_t) num_templates)) % num_shifts) + min_shift;

@@ -302,11 +302,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     chans_to_template_labels = {}
     for chan in range(0, sort_info['n_channels']):
         chans_to_template_labels[chan] = []
-
+    print("UNIQUE NEURON LABELS FROM PURSUIT", np.unique(neuron_labels))
     for unit in np.unique(neuron_labels):
         # Find this unit's channel as the channel with max SNR of template
         curr_template = np.mean(clips[neuron_labels == unit, :], axis=0)
-        unit_best_snr = 0.
+        unit_best_snr = -1.0
         unit_best_chan = None
         for chan in range(0, sort_info['n_channels']):
             background_noise_std = seg_w_items[0]['thresholds'][chan] / sort_info['sigma']

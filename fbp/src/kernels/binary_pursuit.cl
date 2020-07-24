@@ -434,27 +434,21 @@ __kernel void overlap_recheck_indices(
     __global const voltage_type * restrict templates,
     const unsigned int num_templates,
     const unsigned int template_length,
-    const unsigned int template_number_unused,
     __global const float * restrict template_sum_squared,
     __global const float * restrict gamma,
     __global const unsigned int * restrict overlap_window_indices,
     const unsigned int num_overlap_window_indices,
     __global unsigned int * restrict best_spike_indices,
     __global unsigned int * restrict best_spike_labels,
-    __global float * restrict best_spike_likelihoods,
-    __global unsigned int * restrict overlap_best_spike_indices,
-    __global unsigned int * restrict overlap_best_spike_labels,
-    __global signed int * restrict template_pre_inds,
-    __global signed int * restrict template_post_inds,
     __global const float * restrict gamma_noise,
     __global const float * restrict template_sum_squared_by_channel,
     __global float * restrict full_likelihood_function,
     const signed int min_shift,
     const signed int max_shift,
-    __global float * restrict overlap_group_best_likelihood,
-    __global unsigned int * restrict overlap_group_best_work_id,
     __local float * restrict local_likelihoods,
-    __local unsigned int * restrict local_ids)
+    __local unsigned int * restrict local_ids,
+    __global float * restrict overlap_group_best_likelihood,
+    __global unsigned int * restrict overlap_group_best_work_id)
 {
     const size_t local_id = get_local_id(0);
     const size_t local_size = get_local_size(0);
@@ -499,7 +493,6 @@ __kernel void overlap_recheck_indices(
     __private float current_maximum_likelihood = 0.0;
     __private unsigned int template_number;
     __private signed int fixed_shift, template_shift;
-    __private float best_spike_likelihood_private;
     __private unsigned int best_spike_label_private, best_spike_index_private;
     __private const size_t offset_global_id = global_id - id_index * n_local_ID_leftover;
 
@@ -513,7 +506,6 @@ __kernel void overlap_recheck_indices(
         template_shift = (signed int) ((offset_global_id / (num_shifts * (size_t) num_templates)) % num_shifts) + min_shift;
 
         /* Cache the data from the global buffers so that we only have to write to them once */
-        best_spike_likelihood_private = best_spike_likelihoods[id];
         best_spike_label_private = best_spike_labels[id];
         best_spike_index_private = best_spike_indices[id];
 
@@ -640,15 +632,8 @@ __kernel void overlap_recheck_indices(
 
 
 __kernel void parse_overlap_recheck_indices(
-    __global voltage_type * restrict voltage,
     const unsigned int voltage_length,
-    const unsigned int num_neighbor_channels,
-    __global const voltage_type * restrict templates,
     const unsigned int num_templates,
-    const unsigned int template_length,
-    const unsigned int template_number_unused,
-    __global const float * restrict template_sum_squared,
-    __global const float * restrict gamma,
     __global const unsigned int * restrict overlap_window_indices,
     const unsigned int num_overlap_window_indices,
     __global unsigned int * restrict best_spike_indices,
@@ -656,10 +641,6 @@ __kernel void parse_overlap_recheck_indices(
     __global float * restrict best_spike_likelihoods,
     __global unsigned int * restrict overlap_best_spike_indices,
     __global unsigned int * restrict overlap_best_spike_labels,
-    __global signed int * restrict template_pre_inds,
-    __global signed int * restrict template_post_inds,
-    __global const float * restrict gamma_noise,
-    __global const float * restrict template_sum_squared_by_channel,
     __global float * restrict full_likelihood_function,
     const signed int min_shift,
     const signed int max_shift,
@@ -669,10 +650,6 @@ __kernel void parse_overlap_recheck_indices(
     if (max_shift - min_shift <= 0)
     {
         return; /* Invalid shifts, or no shift checking necessary */
-    }
-    if (num_neighbor_channels == 0)
-    {
-        return; /* Invalid number of channels (must be >= 1) */
     }
 
     __private const size_t num_shifts = (size_t) (max_shift - min_shift);
@@ -689,7 +666,6 @@ __kernel void parse_overlap_recheck_indices(
     /* Round ceiling gives number of work groups needed per recheck index */
     __private const size_t n_local_ID = (size_t) (((items_per_index - 1) / local_size)+1);
     /* Number of leftover workers for each index, used as offset */
-    __private const size_t n_local_ID_leftover = (size_t) (local_size * n_local_ID) % items_per_index;
 
     __private float best_spike_likelihood_private = best_spike_likelihoods[id];
     __private unsigned int best_spike_label_private = best_spike_labels[id];

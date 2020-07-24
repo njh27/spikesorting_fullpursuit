@@ -629,8 +629,8 @@ __kernel void overlap_recheck_indices(
         /* worker because it is not needed to compute the shifts and templates. */
         /* The hope is this reduces a possible size_t to the uint32 of the buffer */
         __private unsigned int best_template_shifts_id = local_ids[0] + (unsigned int) local_size * curr_index_group;
-        overlap_group_best_likelihood[group_id] = local_likelihoods[0];
-        overlap_group_best_work_id[group_id] = best_template_shifts_id;
+        overlap_group_best_likelihood[0] = local_likelihoods[0];
+        overlap_group_best_work_id[0] = best_template_shifts_id;
     }
     return;
 }

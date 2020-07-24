@@ -313,7 +313,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         num_additional_spikes = np.zeros(1, dtype=np.uint32)
 
         # Set-up any buffers/lists that are not dependent on chunks
-        fft_kernels = []
         secret_spike_indices = []
         secret_spike_labels = []
         secret_spike_bool = []
@@ -327,8 +326,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         for n in range(0, templates.shape[0]):
             for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
-                fft_kernels.append(get_zero_phase_kernel(templates[n, t_win[0]:t_win[1]], clip_init_samples))
-
                 template_sum_squared_by_channel[n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
 
         # Compute the template bias terms over voltage data
@@ -400,11 +397,13 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         template_sum_squared_by_channel_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared_by_channel)
         gamma_noise_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gamma_noise)
 
-        n_max_shift_inds = (template_samples_per_chan) - 1
-        template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
-        template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
-        template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
-        template_inds_range = np.array([np.amin(template_pre_inds), np.amax(template_post_inds)], dtype=np.int32)
+        n_max_shift_inds = (template_samples_per_chan//2) - 1
+        # template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
+        # template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
+        # template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
+        template_pre_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
+        template_post_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
+        template_inds_range = np.array([-n_max_shift_inds, n_max_shift_inds+1], dtype=np.int32)
         print("Maximum shift to check", template_inds_range)
 
         template_pre_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_pre_inds)

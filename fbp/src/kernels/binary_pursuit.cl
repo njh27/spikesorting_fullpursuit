@@ -517,17 +517,17 @@ __kernel void overlap_recheck_indices(
         best_spike_label_private = best_spike_labels[id];
         best_spike_index_private = best_spike_indices[id];
 
-        __private const signed int pair_first_shift = template_pre_inds[best_spike_label_private*num_templates + template_number];
-        __private const signed int pair_last_shift = template_post_inds[best_spike_label_private*num_templates + template_number];
-        if (pair_last_shift - pair_first_shift == 0)
-        {
-            skip_curr_id = 1; /* Everything should be correct for these templates */
-        }
-        if ((template_shift - fixed_shift < pair_first_shift) || (template_shift - fixed_shift > pair_last_shift))
-        {
-            /* This shift is beyond what needs checked for these two templates */
-            skip_curr_id = 1;
-        }
+        // __private const signed int pair_first_shift = template_pre_inds[best_spike_label_private*num_templates + template_number];
+        // __private const signed int pair_last_shift = template_post_inds[best_spike_label_private*num_templates + template_number];
+        // if (pair_last_shift - pair_first_shift == 0)
+        // {
+        //     skip_curr_id = 1; /* Everything should be correct for these templates */
+        // }
+        // if ((template_shift - fixed_shift < pair_first_shift) || (template_shift - fixed_shift > pair_last_shift))
+        // {
+        //     /* This shift is beyond what needs checked for these two templates */
+        //     skip_curr_id = 1;
+        // }
 
         /* Check our current shifts are in bounds for both shifts */
         if ((template_shift + (signed int) best_spike_index_private < 0) || (template_shift + (signed int) best_spike_index_private >= (signed int) (voltage_length - template_length)))

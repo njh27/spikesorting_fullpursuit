@@ -307,7 +307,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         max_enqueue_resid = max(resid_local_work_size, resid_local_work_size * (max_enqueue_resid // resid_local_work_size))
         max_enqueue_pursuit = max(pursuit_local_work_size, pursuit_local_work_size * (max_enqueue_pursuit // pursuit_local_work_size))
         max_enqueue_overlap = max(overlap_local_work_size, overlap_local_work_size * (max_enqueue_overlap // overlap_local_work_size))
+        # These are later used to compute very large numbers so convert to int64
         overlap_local_work_size = np.int64(overlap_local_work_size)
+        max_enqueue_overlap = np.int64(max_enqueue_overlap)
 
         # Set up our final outputs
         num_additional_spikes = np.zeros(1, dtype=np.uint32)
@@ -605,7 +607,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
                 for template_index in range(0, templates.shape[0]):
                     compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(template_index)) # Template number
-                    for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
+                    for enqueue_step in np.arange(0, total_work_size_pursuit, n_to_enqueue, dtype=np.uint32):
                         temp_ml_event = cl.enqueue_nd_range_kernel(queue,
                                               compute_template_maximum_likelihood_kernel,
                                               (n_to_enqueue, ), (pursuit_local_work_size, ),
@@ -627,22 +629,27 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     next_wait_event = [cl.enqueue_copy(queue, overlap_window_indices_buffer, overlap_window_indices, wait_for=next_wait_event)]
                     queue.finish() # Needs to finish copy before checking indices
 
+                    # NOTE: Everything about the overlaps kernel numbers must be int64
+                    # or risk overflow
                     # Reset number of indices to check for overlap recheck kernel
                     items_per_index = np.int64((template_inds_range[1] - template_inds_range[0]) * (template_inds_range[1] - template_inds_range[0]) * templates.shape[0])
                     # Round ceiling gives number of work groups needed per recheck index
-                    n_local_ID = int(((items_per_index - 1) / overlap_local_work_size)+1)
+                    n_local_ID = np.int64(((items_per_index - 1) / overlap_local_work_size)+1)
                     # Number of leftover workers for each index
                     n_local_ID_leftover = np.int64((overlap_local_work_size * n_local_ID) % items_per_index)
                     # Total work is then indices, times number per index, plus the leftovers from work groups
                     total_work_size_overlap = np.int64(overlap_window_indices.shape[0] * items_per_index + overlap_window_indices.shape[0] * n_local_ID_leftover)
+                    # Round to nearest work group size
+                    total_work_size_overlap = overlap_local_work_size * np.int64(np.ceil(total_work_size_overlap / overlap_local_work_size))
 
-                    n_to_enqueue_overlap = min(total_work_size_overlap, max_enqueue_overlap)
+                    # enqueue_by_spikes = n_local_ID * overlap_local_work_size * max_enqueue_overlap
+                    # n_to_enqueue_overlap = np.amin([total_work_size_overlap, enqueue_by_spikes])
+
+                    n_to_enqueue_overlap = total_work_size_overlap #min(total_work_size_overlap, max_enqueue_overlap)
+
                     overlap_recheck_indices_kernel.set_arg(10, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     parse_overlap_recheck_indices_kernel.set_arg(10, np.uint32(overlap_window_indices.shape[0]))
                     num_work_groups = total_work_size_overlap // overlap_local_work_size
-
-                    print("n local ID", n_local_ID, "n to enqueue", n_to_enqueue_overlap)
-                    print("old num groups", num_work_groups, "new divided", n_to_enqueue_overlap/n_local_ID, "new multiple both", n_to_enqueue_overlap*n_local_ID)
 
                     if n_loops == 1:
                         overlap_group_best_likelihood_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_work_groups, dtype=np.float32))
@@ -667,36 +674,33 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                         curr_overlaps_buffer_size = num_work_groups
                         print("Made buffers for a total of", num_work_groups, "work groups")
 
-                    print("Total overlap work size is", total_work_size_overlap)
-                    if total_work_size_overlap > 2**64 - 1:
-                        raise ValueError("Total overlap work size is too big")
-                    for enqueue_step in np.arange(0, total_work_size_overlap, max_enqueue_overlap, dtype=np.uint32):
+                    for enqueue_step in np.arange(np.int64(0), total_work_size_overlap, n_to_enqueue_overlap, dtype=np.int64):
                         overlap_event = cl.enqueue_nd_range_kernel(queue,
                                               overlap_recheck_indices_kernel,
                                               (n_to_enqueue_overlap, ), (overlap_local_work_size, ),
                                               global_work_offset=(enqueue_step, ),
                                               wait_for=next_wait_event)
-                        queue.finish()
-                        next_wait_event = [overlap_event]
+                    queue.finish()
+                    next_wait_event = [overlap_event]
 
                     total_work_size_parse_overlap = overlap_local_work_size * np.int64(np.ceil(overlap_window_indices.shape[0] / overlap_local_work_size))
-                    n_to_enqueue_parse_overlap = min(total_work_size_parse_overlap, max_enqueue_overlap)
+                    n_to_enqueue_parse_overlap = total_work_size_parse_overlap #min(total_work_size_parse_overlap, max_enqueue_overlap)
 
-                    for enqueue_step in np.arange(0, total_work_size_parse_overlap, max_enqueue_overlap, dtype=np.uint32):
+                    for enqueue_step in np.arange(0, total_work_size_parse_overlap, n_to_enqueue_parse_overlap, dtype=np.uint32):
                         overlap_event = cl.enqueue_nd_range_kernel(queue,
                                               parse_overlap_recheck_indices_kernel,
                                               (n_to_enqueue_parse_overlap, ), (overlap_local_work_size, ),
                                               global_work_offset=(enqueue_step, ),
                                               wait_for=next_wait_event)
-                        queue.finish()
-                        next_wait_event = [overlap_event]
+                    queue.finish()
+                    next_wait_event = [overlap_event]
 
                     # Done with these. Recreated on next iteration
                     # overlap_group_best_likelihood_buffer.release()
                     # overlap_group_best_work_id_buffer.release()
 
                     check_overlap_reassignments_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
-                    for enqueue_step in np.arange(0, total_work_size_parse_overlap, max_enqueue_overlap, dtype=np.uint32):
+                    for enqueue_step in np.arange(0, total_work_size_parse_overlap, n_to_enqueue_parse_overlap, dtype=np.uint32):
                         overlap_event = cl.enqueue_nd_range_kernel(queue,
                                               check_overlap_reassignments_kernel,
                                               (n_to_enqueue_parse_overlap, ), (overlap_local_work_size, ),
@@ -707,8 +711,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
 
 
+
                 n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
-                for enqueue_step in np.arange(0, total_work_size_pursuit, max_enqueue_pursuit, dtype=np.uint32):
+                for enqueue_step in np.arange(0, total_work_size_pursuit, n_to_enqueue, dtype=np.uint32):
                     pursuit_event = cl.enqueue_nd_range_kernel(queue,
                                           binary_pursuit_kernel,
                                           (n_to_enqueue, ), (pursuit_local_work_size, ),
@@ -778,7 +783,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                                             (num_additional_spikes[0]) / resid_local_work_size))
 
                 n_to_enqueue = min(total_work_size_resid, max_enqueue_resid)
-                for enqueue_step in np.arange(0, total_work_size_resid, max_enqueue_resid, dtype=np.uint32):
+                for enqueue_step in np.arange(0, total_work_size_resid, n_to_enqueue, dtype=np.uint32):
                     residual_event = cl.enqueue_nd_range_kernel(queue,
                                            compute_residual_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),
@@ -848,7 +853,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 clip_events = []
                 n_to_enqueue = min(total_work_size_clips, max_enqueue_resid)
                 print("Getting adjusted clips", flush=True)
-                for enqueue_step in np.arange(0, total_work_size_clips, max_enqueue_resid, dtype=np.uint32):
+                for enqueue_step in np.arange(0, total_work_size_clips, n_to_enqueue, dtype=np.uint32):
                     clip_event = cl.enqueue_nd_range_kernel(queue,
                                            get_adjusted_clips_kernel,
                                            (n_to_enqueue, ), (resid_local_work_size, ),

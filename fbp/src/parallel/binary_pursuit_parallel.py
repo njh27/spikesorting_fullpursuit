@@ -633,7 +633,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
                     overlap_recheck_indices_kernel.set_arg(9, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     parse_overlap_recheck_indices_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0]))
-                    num_work_groups = total_work_size_overlap // overlap_local_work_size
+                    num_work_groups = overlap_window_indices.shape[0] * n_local_ID 
 
                     if n_loops == 1:
                         overlap_group_best_likelihood_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_work_groups, dtype=np.float32))

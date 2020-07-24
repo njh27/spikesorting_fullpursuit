@@ -625,10 +625,11 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     # Round to nearest work group size
                     total_work_size_overlap = overlap_local_work_size * np.int64(np.ceil(total_work_size_overlap / overlap_local_work_size))
 
-                    # enqueue_by_spikes = n_local_ID * overlap_local_work_size * max_enqueue_overlap
-                    # n_to_enqueue_overlap = np.amin([total_work_size_overlap, enqueue_by_spikes])
-
-                    n_to_enqueue_overlap = total_work_size_overlap #min(total_work_size_overlap, max_enqueue_overlap)
+                    # Enqueues max_enqueue_overlap total spikes to be sorted.
+                    # This yields a multiple such that at the end of each enqueue
+                    # group, we could fully parse the spike results
+                    enqueue_by_spikes = n_local_ID * overlap_local_work_size * max_enqueue_overlap
+                    n_to_enqueue_overlap = np.amin([total_work_size_overlap, enqueue_by_spikes])
 
                     overlap_recheck_indices_kernel.set_arg(9, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     parse_overlap_recheck_indices_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0]))
@@ -663,8 +664,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                                               (n_to_enqueue_overlap, ), (overlap_local_work_size, ),
                                               global_work_offset=(enqueue_step, ),
                                               wait_for=next_wait_event)
-                    queue.finish()
-                    next_wait_event = [overlap_event]
+                        queue.finish()
+                        next_wait_event = [overlap_event]
 
                     total_work_size_parse_overlap = overlap_local_work_size * np.int64(np.ceil(overlap_window_indices.shape[0] / overlap_local_work_size))
                     n_to_enqueue_parse_overlap = total_work_size_parse_overlap #min(total_work_size_parse_overlap, max_enqueue_overlap)
@@ -675,8 +676,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                                               (n_to_enqueue_parse_overlap, ), (overlap_local_work_size, ),
                                               global_work_offset=(enqueue_step, ),
                                               wait_for=next_wait_event)
-                    queue.finish()
-                    next_wait_event = [overlap_event]
+                        queue.finish()
+                        next_wait_event = [overlap_event]
 
                     # Done with these. Recreated on next iteration
                     # overlap_group_best_likelihood_buffer.release()
@@ -689,8 +690,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                                               (n_to_enqueue_parse_overlap, ), (overlap_local_work_size, ),
                                               global_work_offset=(enqueue_step, ),
                                               wait_for=next_wait_event)
-                    queue.finish()
-                    next_wait_event = [overlap_event]
+                        queue.finish()
+                        next_wait_event = [overlap_event]
 
 
 

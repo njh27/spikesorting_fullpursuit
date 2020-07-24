@@ -478,10 +478,12 @@ __kernel void overlap_recheck_indices(
     /* Number of leftover workers for each index, used as offset */
     __private size_t n_local_ID_leftover = (size_t) (local_size * n_local_ID) % items_per_index;
 
-    // if ((global_id % (n_local_ID * local_size)) >= items_per_index)
-    // {
-    //     skip_curr_id = 1; /* Extra worker with nothing to do */
-    // }
+    /* Get the overall group ID for this group */
+    __private const unsigned int group_id = (unsigned int) (global_id / local_size);
+    if (group_id > num_overlap_window_indices * n_local_ID)
+    {
+        return; /* This entire group is an extra group with nothing to do */
+    }
 
     __private size_t id_index = (size_t) (global_id / (n_local_ID * local_size));
     if (id_index >= num_overlap_window_indices)
@@ -615,8 +617,6 @@ __kernel void overlap_recheck_indices(
     /* Leave it to first worker to write best results to global buffer */
     if (local_id == 0)
     {
-        /* Get the overall group ID for this group */
-        __private const unsigned int group_id = (unsigned int) (global_id / local_size);
         /* Get the group number relative to current id_index being checked */
         __private const unsigned int curr_index_group = group_id % n_local_ID;
         /* This gives the index of the best work such that we can later */

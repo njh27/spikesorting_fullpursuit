@@ -628,7 +628,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     # This yields a multiple such that at the end of each enqueue
                     # group, we could fully parse the spike results
                     # Multiplier of 2 is arbitrary
-                    enqueue_by_spikes = 2 * n_local_ID * overlap_local_work_size * max_enqueue_overlap
+                    # enqueue_by_spikes = 2 * n_local_ID * overlap_local_work_size * max_enqueue_overlap
+                    enqueue_by_spikes = np.int64(overlap_local_work_size * np.ceil((2**32 - overlap_local_work_size) / overlap_local_work_size))
                     n_to_enqueue_overlap = np.amin([total_work_size_overlap, enqueue_by_spikes])
 
                     overlap_recheck_indices_kernel.set_arg(9, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check

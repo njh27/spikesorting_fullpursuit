@@ -117,6 +117,8 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
     all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
                                     all_events, clip_width=sort_info['clip_width'])
     all_events = all_events[valid_event_indices]
+    if all_events.shape[0] == 0:
+        return sort_info['clip_width']
     median_clip = np.median(all_clips, axis=0)
     first_indices = np.arange(0, sort_info['n_samples_per_chan']*(sort_info['n_channels']-1)+1, sort_info['n_samples_per_chan'], dtype=np.int64)
     last_indices = np.arange(sort_info['n_samples_per_chan']-1, sort_info['n_samples_per_chan']*sort_info['n_channels']+1, sort_info['n_samples_per_chan'], dtype=np.int64)
@@ -135,8 +137,10 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
             break
         all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
                                         all_events, clip_width=bp_clip_width)
-        median_clip = np.median(all_clips, axis=0)
         all_events = all_events[valid_event_indices]
+        if all_events.shape[0] == 0:
+            return sort_info['clip_width']
+        median_clip = np.median(all_clips, axis=0)
 
     max_stop = 2*bp_clip_width[1]
     step_size = bp_clip_width[1]/10
@@ -148,8 +152,10 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
             break
         all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
                                         all_events, clip_width=bp_clip_width)
-        median_clip = np.median(all_clips, axis=0)
         all_events = all_events[valid_event_indices]
+        if all_events.shape[0] == 0:
+            return sort_info['clip_width']
+        median_clip = np.median(all_clips, axis=0)
 
     return bp_clip_width
 

@@ -283,6 +283,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
         # Get all of our kernels
         compute_residual_kernel = prg.compute_residual
+        compute_full_likelihood_kernel = prg.compute_full_likelihood
         compute_template_maximum_likelihood_kernel = prg.compute_template_maximum_likelihood
         overlap_recheck_indices_kernel = prg.overlap_recheck_indices
         parse_overlap_recheck_indices_kernel = prg.parse_overlap_recheck_indices
@@ -456,6 +457,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             # (Includes both template ML and binary pursuit kernels)
             num_template_widths = int(np.ceil(chunk_voltage_length / template_samples_per_chan))
             total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(num_template_widths / pursuit_local_work_size))
+            total_work_size_likelihood = pursuit_local_work_size * int(np.ceil((num_template_widths * templates.shape[0]) / pursuit_local_work_size))
 
             # Construct our buffers
             spike_biases_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=spike_biases)
@@ -477,27 +479,32 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_recheck_window = np.zeros(num_template_widths, dtype=np.uint8)
 
             # Set input arguments for template maximum likelihood kernel
-            compute_template_maximum_likelihood_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
-            compute_template_maximum_likelihood_kernel.set_arg(1, chunk_voltage_length) # Length of chunk voltage
-            compute_template_maximum_likelihood_kernel.set_arg(2, n_chans) # number of neighboring channels
-            compute_template_maximum_likelihood_kernel.set_arg(3, template_buffer) # Our template buffer, created previously
-            compute_template_maximum_likelihood_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of unique neurons, M
-            compute_template_maximum_likelihood_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
-            compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(0)) # Template number
-            compute_template_maximum_likelihood_kernel.set_arg(7, template_sum_squared_buffer) # Sum of squared templated
-            compute_template_maximum_likelihood_kernel.set_arg(8, spike_biases_buffer) # Bias
-            compute_template_maximum_likelihood_kernel.set_arg(9, window_indices_buffer) # Actual window indices to check
-            compute_template_maximum_likelihood_kernel.set_arg(10, np.uint32(num_template_widths)) # Number of actual window indices to check
-            compute_template_maximum_likelihood_kernel.set_arg(11, best_spike_indices_buffer) # Storage for peak likelihood index
-            compute_template_maximum_likelihood_kernel.set_arg(12, best_spike_labels_buffer) # Storage for peak likelihood label
-            compute_template_maximum_likelihood_kernel.set_arg(13, best_spike_likelihoods_buffer) # Storage for peak likelihood value
-            compute_template_maximum_likelihood_kernel.set_arg(14, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
-            compute_template_maximum_likelihood_kernel.set_arg(15, overlap_recheck_window_buffer)
-            compute_template_maximum_likelihood_kernel.set_arg(16, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
-            compute_template_maximum_likelihood_kernel.set_arg(17, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
-            compute_template_maximum_likelihood_kernel.set_arg(18, full_likelihood_function_buffer)
-            # compute_template_maximum_likelihood_kernel.set_arg(19, peak_chan_buffer)
-            # compute_template_maximum_likelihood_kernel.set_arg(20, peak_sign_buffer)
+            compute_full_likelihood_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
+            compute_full_likelihood_kernel.set_arg(1, chunk_voltage_length) # Length of chunk voltage
+            compute_full_likelihood_kernel.set_arg(2, n_chans) # number of neighboring channels
+            compute_full_likelihood_kernel.set_arg(3, template_buffer) # Our template buffer, created previously
+            compute_full_likelihood_kernel.set_arg(4, np.uint32(templates.shape[0])) # Number of unique neurons, M
+            compute_full_likelihood_kernel.set_arg(5, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
+            compute_full_likelihood_kernel.set_arg(6, template_sum_squared_buffer) # Sum of squared templated
+            compute_full_likelihood_kernel.set_arg(7, spike_biases_buffer) # Bias
+            compute_full_likelihood_kernel.set_arg(8, window_indices_buffer) # Actual window indices to check
+            compute_full_likelihood_kernel.set_arg(9, np.uint32(num_template_widths)) # Number of actual window indices to check
+            compute_full_likelihood_kernel.set_arg(10, full_likelihood_function_buffer)
+
+            # Set input arguments for template maximum likelihood kernel
+            compute_template_maximum_likelihood_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
+            compute_template_maximum_likelihood_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
+            compute_template_maximum_likelihood_kernel.set_arg(2, np.uint32(0)) # Template number
+            compute_template_maximum_likelihood_kernel.set_arg(3, window_indices_buffer) # Actual window indices to check
+            compute_template_maximum_likelihood_kernel.set_arg(4, np.uint32(num_template_widths)) # Number of actual window indices to check
+            compute_template_maximum_likelihood_kernel.set_arg(5, best_spike_indices_buffer) # Storage for peak likelihood index
+            compute_template_maximum_likelihood_kernel.set_arg(6, best_spike_labels_buffer) # Storage for peak likelihood label
+            compute_template_maximum_likelihood_kernel.set_arg(7, best_spike_likelihoods_buffer) # Storage for peak likelihood value
+            compute_template_maximum_likelihood_kernel.set_arg(8, next_check_window_buffer) # Binary vector indicating whether a window at its index needs checked on next iteration of binary_pursuit kernel
+            compute_template_maximum_likelihood_kernel.set_arg(9, overlap_recheck_window_buffer)
+            compute_template_maximum_likelihood_kernel.set_arg(10, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
+            compute_template_maximum_likelihood_kernel.set_arg(11, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
+            compute_template_maximum_likelihood_kernel.set_arg(12, full_likelihood_function_buffer)
 
             # Set input arguments for overlap recheck kernel
             overlap_recheck_indices_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously
@@ -585,9 +592,22 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     print("Starting loop", n_loops, "for this chunk")
                     print("Next round has", new_window_indices.shape[0], "windows to check")
 
-                n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
+
+
+                n_to_enqueue = min(total_work_size_likelihood, max_enqueue_pursuit)
+                for enqueue_step in np.arange(0, total_work_size_likelihood, n_to_enqueue, dtype=np.uint32):
+                    temp_ml_event = cl.enqueue_nd_range_kernel(queue,
+                                          compute_full_likelihood_kernel,
+                                          (n_to_enqueue, ), (pursuit_local_work_size, ),
+                                          global_work_offset=(enqueue_step, ),
+                                          wait_for=next_wait_event)
+                    queue.finish()
+                    next_wait_event = [temp_ml_event]
+
+                # n_to_enqueue = min(total_work_size_pursuit, max_enqueue_pursuit)
+                n_to_enqueue = total_work_size_pursuit
                 for template_index in range(0, templates.shape[0]):
-                    compute_template_maximum_likelihood_kernel.set_arg(6, np.uint32(template_index)) # Template number
+                    compute_template_maximum_likelihood_kernel.set_arg(2, np.uint32(template_index)) # Template number
                     for enqueue_step in np.arange(0, total_work_size_pursuit, n_to_enqueue, dtype=np.uint32):
                         temp_ml_event = cl.enqueue_nd_range_kernel(queue,
                                               compute_template_maximum_likelihood_kernel,
@@ -727,10 +747,12 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 # Copy the new window indices to the window indices buffer
                 next_wait_event = [cl.enqueue_copy(queue, window_indices_buffer, new_window_indices, wait_for=next_wait_event)]
                 # Reset number of indices to check for both kernels
-                compute_template_maximum_likelihood_kernel.set_arg(10, np.uint32(new_window_indices.shape[0])) # Number of actual window indices to check
+                compute_full_likelihood_kernel.set_arg(9, np.uint32(new_window_indices.shape[0])) # Number of actual window indices to check
+                compute_template_maximum_likelihood_kernel.set_arg(4, np.uint32(new_window_indices.shape[0])) # Number of actual window indices to check
                 binary_pursuit_kernel.set_arg(9, np.uint32(new_window_indices.shape[0])) # Number of actual window indices to check
                 # Reset number of kernels to run for next pass
                 total_work_size_pursuit = pursuit_local_work_size * int(np.ceil(new_window_indices.shape[0] / pursuit_local_work_size))
+                total_work_size_likelihood = pursuit_local_work_size * int(np.ceil((new_window_indices.shape[0] * templates.shape[0]) / pursuit_local_work_size))
                 # Reset next_check_window for next pass and copy to GPU
                 next_check_window[:] = 0
                 next_wait_event = [cl.enqueue_copy(queue, next_check_window_buffer, next_check_window, wait_for=next_wait_event)]

@@ -273,9 +273,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         return seg_data
 
     if sort_info['compute_binary_pursuit_clip_width']:
+        print("samples before", sort_info['n_samples_per_chan'], 'width', sort_info['clip_width'])
         sort_info['clip_width'] = get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info)
         bp_chan_win, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
         sort_info['n_samples_per_chan'] = bp_chan_win[1] - bp_chan_win[0]
+        print("samples AFTER", sort_info['n_samples_per_chan'], 'width', sort_info['clip_width'])
 
     templates = []
     next_label = 0
@@ -333,9 +335,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         for w_item in seg_w_items:
             if w_item['channel'] == chan:
                 curr_item = w_item
-                # if chan == 0:
-                #     print("REASSIGNING CHAN NEIGHBOR IND TO CHANNEL! (line 179 full_binary_pursuit)")
-                # w_item['chan_neighbor_ind'] = chan
                 break
         if curr_item is None:
             # This should never be possible, but just to be sure
@@ -360,7 +359,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                     unit_clips[:, neigh*sort_info['n_samples_per_chan']:(neigh+1)*sort_info['n_samples_per_chan']] = \
                             clips[select, chan_ind*sort_info['n_samples_per_chan']:(chan_ind+1)*sort_info['n_samples_per_chan']]
                 chan_clips.append(unit_clips)
-                # chan_clips.append(clips[select, :])
 
             # Adjust crossings for seg start time
             chan_events = np.hstack(chan_events)

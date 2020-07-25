@@ -278,7 +278,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         if not n['deleted_as_redundant']:
             clips, _ = get_multichannel_clips(clips_dict, voltage,
                                     n['spike_indices'],
-                                    clip_width=bp_clip_width)
+                                    clip_width=sort_info['clip_width'])
             templates.append(np.median(clips, axis=0))
             next_label += 1
             # plt.plot(n['pursuit_template'])

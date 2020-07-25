@@ -270,6 +270,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         # for the single largest data buffer, the voltage
         # Note: there is also a max allocation size,
         # device.get_info(cl.device_info.MAX_MEM_ALLOC_SIZE)
+        print("GPU has", device.get_info(cl.device_info.ADDRESS_BITS), "address bits")
         max_addressable_seconds = (((1 << device.get_info(cl.device_info.ADDRESS_BITS)) - 1)
                                     / (np.dtype(np.float32).itemsize * sampling_rate
                                      * n_chans))

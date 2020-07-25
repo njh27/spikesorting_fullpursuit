@@ -49,6 +49,8 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
     for i in range(0, voltage_data.shape[0]):
         # Compute i variance for diagonal elements of sigma
         valid_samples = voltage_data[i, :][~volt_thresh_bool[i, :]]
+        if valid_samples.size == 0:
+            raise ValueError("No data points under threshold to compute ZCA. Check threshold sigma and clip width.")
         if n_samples > valid_samples.size:
             out_samples = valid_samples
         else:

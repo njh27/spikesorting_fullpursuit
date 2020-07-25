@@ -9,7 +9,6 @@ import multiprocessing as mp
 import psutil
 import time
 from traceback import print_tb
-import warnings
 from fbp.src.parallel import segment_parallel
 from fbp.src import sort
 from fbp.src.parallel import binary_pursuit_parallel

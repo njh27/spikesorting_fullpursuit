@@ -266,10 +266,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
 
-    bp_clip_width = get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info)
-    sort_info['clip_width'] = bp_clip_width
-    bp_chan_win, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
-    sort_info['n_samples_per_chan'] = bp_chan_win[1] - bp_chan_win[0]
+    if sort_info['compute_binary_pursuit_clip_width']:
+        bp_clip_width = get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info)
+        sort_info['clip_width'] = bp_clip_width
+        bp_chan_win, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
+        sort_info['n_samples_per_chan'] = bp_chan_win[1] - bp_chan_win[0]
 
     templates = []
     next_label = 0

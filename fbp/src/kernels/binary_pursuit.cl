@@ -443,8 +443,7 @@ __kernel void overlap_recheck_indices(
     __global const float * restrict gamma_noise,
     __global const float * restrict template_sum_squared_by_channel,
     __global float * restrict full_likelihood_function,
-    const signed int min_shift,
-    const signed int max_shift,
+    const unsigned int n_max_shift_inds,
     __local float * restrict local_likelihoods,
     __local unsigned int * restrict local_ids,
     __global float * restrict overlap_group_best_likelihood,
@@ -459,10 +458,6 @@ __kernel void overlap_recheck_indices(
     /* Need to track valid workers. Can't return because everything must hit barrier */
     unsigned char skip_curr_id = 0;
 
-    if (max_shift - min_shift <= 0)
-    {
-        return; /* Invalid shifts, or no shift checking necessary */
-    }
     if (num_neighbor_channels == 0)
     {
         return; /* Invalid number of channels (must be >= 1) */
@@ -470,7 +465,7 @@ __kernel void overlap_recheck_indices(
 
     const size_t global_id = get_global_id(0);
     /* Can't do this stuff without num_shifts > 0 */
-    __private size_t num_shifts = (size_t) (max_shift - min_shift);
+    __private size_t num_shifts = (size_t) (2 * n_max_shift_inds + 1);
     /* Need basic info about crazy indexing for each worker */
     __private size_t items_per_index = num_shifts * num_shifts * (size_t) num_templates;
     /* Round ceiling gives number of work groups needed per recheck index */
@@ -494,47 +489,49 @@ __kernel void overlap_recheck_indices(
     /* Need this set up top in case we skip */
     __private float current_maximum_likelihood = 0.0;
     __private unsigned int template_number;
-    __private signed int fixed_shift, template_shift;
+    __private unsigned int fixed_shift_ref_ind, template_shift_ref_ind;
     __private unsigned int best_spike_label_private, best_spike_index_private;
     __private const size_t offset_global_id = global_id - id_index * n_local_ID_leftover;
 
     /* Avoid invalid indexing */
     if (skip_curr_id == 0)
     {
-        const size_t id = overlap_window_indices[id_index];
-        /* Figure out the template and shifts for this worker based on crazy indexing */
-        template_number = (unsigned int) (offset_global_id % (size_t) num_templates);
-        fixed_shift = (signed int) ((offset_global_id / (size_t) num_templates) % num_shifts) + min_shift;
-        template_shift = (signed int) ((offset_global_id / (num_shifts * (size_t) num_templates)) % num_shifts) + min_shift;
-
         /* Cache the data from the global buffers so that we only have to write to them once */
+        const size_t id = overlap_window_indices[id_index];
         best_spike_label_private = best_spike_labels[id];
         best_spike_index_private = best_spike_indices[id];
-
-        // __private const signed int pair_first_shift = template_pre_inds[best_spike_label_private*num_templates + template_number];
-        // __private const signed int pair_last_shift = template_post_inds[best_spike_label_private*num_templates + template_number];
-        // if (pair_last_shift - pair_first_shift == 0)
-        // {
-        //     skip_curr_id = 1; /* Everything should be correct for these templates */
-        // }
-        // if ((template_shift - fixed_shift < pair_first_shift) || (template_shift - fixed_shift > pair_last_shift))
-        // {
-        //     /* This shift is beyond what needs checked for these two templates */
-        //     skip_curr_id = 1;
-        // }
-
-        /* Check our current shifts are in bounds for both shifts */
-        if ((template_shift + (signed int) best_spike_index_private < 0) || (template_shift + (signed int) best_spike_index_private >= (signed int) (voltage_length - template_length)))
-        {
-            skip_curr_id = 1;
-        }
-        if ((fixed_shift + (signed int) best_spike_index_private < 0) || (fixed_shift + (signed int) best_spike_index_private >= (signed int) (voltage_length - template_length)))
-        {
-            skip_curr_id = 1;
-        }
         if (best_spike_index_private >= (voltage_length - template_length))
         {
             skip_curr_id = 1;
+        }
+
+        /* Figure out the template and shifts for this worker based on crazy indexing */
+        template_number = (unsigned int) (offset_global_id % (size_t) num_templates);
+        fixed_shift_ref_ind = (unsigned int) ((offset_global_id / (size_t) num_templates) % num_shifts);
+        template_shift_ref_ind = (unsigned int) ((offset_global_id / (num_shifts * (size_t) num_templates)) % num_shifts);
+        /* Check our current shifts are in bounds for both shifts */
+        if ((fixed_shift_ref_ind + best_spike_index_private < n_max_shift_inds) || (fixed_shift_ref_ind + best_spike_index_private >= (voltage_length - template_length + n_max_shift_inds)))
+        {
+            skip_curr_id = 1;
+        }
+        if ((template_shift_ref_ind + best_spike_index_private < n_max_shift_inds) || (template_shift_ref_ind + best_spike_index_private >= (voltage_length - template_length + n_max_shift_inds)))
+        {
+            skip_curr_id = 1;
+        }
+        /* Check if shifts are so extreme templates are no longer overlapping */
+        if (fixed_shift_ref_ind > template_shift_ref_ind)
+        {
+            if (fixed_shift_ref_ind - template_shift_ref_ind > template_length)
+            {
+                skip_curr_id = 1;
+            }
+        }
+        if (template_shift_ref_ind > fixed_shift_ref_ind)
+        {
+            if (template_shift_ref_ind - fixed_shift_ref_ind > template_length)
+            {
+                skip_curr_id = 1;
+            }
         }
     }
 
@@ -543,10 +540,8 @@ __kernel void overlap_recheck_indices(
     __private unsigned int absolute_shift_index = 0;
     if (skip_curr_id == 0)
     {
-        absolute_fixed_index = best_spike_index_private + fixed_shift;
-        absolute_shift_index = best_spike_index_private + template_shift;
-        // __private const unsigned int fixed_likelihood_function_offset = best_spike_label_private * voltage_length + absolute_fixed_index;
-        // __private const unsigned int shift_likelihood_function_offset = template_number * voltage_length + absolute_shift_index;
+        absolute_fixed_index = best_spike_index_private + fixed_shift_ref_ind - n_max_shift_inds;
+        absolute_shift_index = best_spike_index_private + template_shift_ref_ind - n_max_shift_inds;
 
         if (full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index] <= 0)
         {
@@ -642,17 +637,12 @@ __kernel void parse_overlap_recheck_indices(
     __global unsigned int * restrict overlap_best_spike_indices,
     __global unsigned int * restrict overlap_best_spike_labels,
     __global float * restrict full_likelihood_function,
-    const signed int min_shift,
-    const signed int max_shift,
+    const unsigned int n_max_shift_inds,
     __global float * restrict overlap_group_best_likelihood,
     __global unsigned int * restrict overlap_group_best_work_id)
 {
-    if (max_shift - min_shift <= 0)
-    {
-        return; /* Invalid shifts, or no shift checking necessary */
-    }
 
-    __private const size_t num_shifts = (size_t) (max_shift - min_shift);
+    __private const size_t num_shifts = (size_t) (2 * n_max_shift_inds + 1);
     const size_t global_id = get_global_id(0);
     if (num_overlap_window_indices > 0 && overlap_window_indices != NULL && global_id >= num_overlap_window_indices)
     {
@@ -696,11 +686,13 @@ __kernel void parse_overlap_recheck_indices(
 
     /* Figure out the template and shifts for this worker based on crazy indexing */
     __private const unsigned int template_number = (unsigned int) (best_template_shifts_id % (size_t) num_templates);
-    __private const signed int fixed_shift = (signed int) ((best_template_shifts_id / (size_t) num_templates) % num_shifts) + min_shift;
-    __private const signed int template_shift = (signed int) ((best_template_shifts_id / (num_shifts * (size_t) num_templates)) % num_shifts) + min_shift;
+    __private const signed int fixed_shift_ref_ind = (unsigned int) ((best_template_shifts_id / (size_t) num_templates) % num_shifts);
+    __private const signed int template_shift_ref_ind = (unsigned int) ((best_template_shifts_id / (num_shifts * (size_t) num_templates)) % num_shifts);
 
-    __private const unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift;
-    __private const unsigned int absolute_shift_index = best_spike_index_private + template_shift;
+    /* These should all be in bounds or overlap_recheck_indices wouldn't have */
+    /* likelihood > 0 */
+    __private const unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_ref_ind - n_max_shift_inds;
+    __private const unsigned int absolute_shift_index = best_spike_index_private + template_shift_ref_ind - n_max_shift_inds;
 
     float actual_template_likelihood_at_index = full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index];
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];

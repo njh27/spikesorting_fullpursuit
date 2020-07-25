@@ -399,17 +399,17 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         template_sum_squared_by_channel_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared_by_channel)
         gamma_noise_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gamma_noise)
 
-        n_max_shift_inds = (template_samples_per_chan//2) - 1
+        n_max_shift_inds = np.uint32((template_samples_per_chan//2) - 1)
         # template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
         # template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
         # template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
-        template_pre_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
-        template_post_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
-        template_inds_range = np.array([-n_max_shift_inds, n_max_shift_inds+1], dtype=np.int32)
-        print("Maximum shift to check", template_inds_range)
+        # template_pre_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
+        # template_post_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
+        # template_inds_range = np.array([-n_max_shift_inds, n_max_shift_inds+1], dtype=np.int32)
+        print("Maximum shift to check", n_max_shift_inds)
 
-        template_pre_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_pre_inds)
-        template_post_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_post_inds)
+        # template_pre_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_pre_inds)
+        # template_post_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_post_inds)
 
         # Determine our chunk onset indices, making sure that each new start
         # index overlaps the previous chunk by 3 template widths so that no
@@ -514,14 +514,13 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_recheck_indices_kernel.set_arg(12, gamma_noise_buffer) # Noise variance terms for each channel
             overlap_recheck_indices_kernel.set_arg(13, template_sum_squared_by_channel_buffer) # .5 template sum squared by channel
             overlap_recheck_indices_kernel.set_arg(14, full_likelihood_function_buffer)
-            overlap_recheck_indices_kernel.set_arg(15, np.int32(template_inds_range[0]))
-            overlap_recheck_indices_kernel.set_arg(16, np.int32(template_inds_range[1]))
+            overlap_recheck_indices_kernel.set_arg(15, n_max_shift_inds)
             # Construct a local buffer (float32 * local_work_size)
             overlap_local_likelihood_buffer = cl.LocalMemory(4 * overlap_local_work_size)
-            overlap_recheck_indices_kernel.set_arg(17, overlap_local_likelihood_buffer)
+            overlap_recheck_indices_kernel.set_arg(16, overlap_local_likelihood_buffer)
             # Construct a local buffer (uint32 * local_work_size)
             overlap_local_ids__buffer = cl.LocalMemory(4 * overlap_local_work_size)
-            overlap_recheck_indices_kernel.set_arg(18, overlap_local_ids__buffer)
+            overlap_recheck_indices_kernel.set_arg(17, overlap_local_ids__buffer)
 
             # Set input arguments for parse overlap recheck kernel
             parse_overlap_recheck_indices_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
@@ -534,9 +533,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             parse_overlap_recheck_indices_kernel.set_arg(7, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
             parse_overlap_recheck_indices_kernel.set_arg(8, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
             parse_overlap_recheck_indices_kernel.set_arg(9, full_likelihood_function_buffer)
-            parse_overlap_recheck_indices_kernel.set_arg(10, np.int32(template_inds_range[0]))
-            parse_overlap_recheck_indices_kernel.set_arg(11, np.int32(template_inds_range[1]))
-
+            parse_overlap_recheck_indices_kernel.set_arg(10, n_max_shift_inds)
 
             check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
             check_overlap_reassignments_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
@@ -615,7 +612,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     # NOTE: Everything about the overlaps kernel numbers must be int64
                     # or risk overflow
                     # Reset number of indices to check for overlap recheck kernel
-                    items_per_index = np.int64((template_inds_range[1] - template_inds_range[0]) * (template_inds_range[1] - template_inds_range[0]) * templates.shape[0])
+                    items_per_index = np.int64((2 * n_max_shift_inds + 1) * (2 * n_max_shift_inds + 1) * templates.shape[0])
                     # Round ceiling gives number of work groups needed per recheck index
                     n_local_ID = np.int64(((items_per_index - 1) / overlap_local_work_size)+1)
                     # Number of leftover workers for each index
@@ -624,6 +621,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     total_work_size_overlap = np.int64(overlap_window_indices.shape[0] * items_per_index + overlap_window_indices.shape[0] * n_local_ID_leftover)
                     # Round to nearest work group size
                     total_work_size_overlap = overlap_local_work_size * np.int64(np.ceil(total_work_size_overlap / overlap_local_work_size))
+                    print("Checking", total_work_size_overlap, "overlap spike shifts")
 
                     # Enqueues max_enqueue_overlap total spikes to be sorted.
                     # This yields a multiple such that at the end of each enqueue
@@ -633,15 +631,15 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
                     overlap_recheck_indices_kernel.set_arg(9, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
                     parse_overlap_recheck_indices_kernel.set_arg(3, np.uint32(overlap_window_indices.shape[0]))
-                    num_work_groups = overlap_window_indices.shape[0] * n_local_ID 
+                    num_work_groups = overlap_window_indices.shape[0] * n_local_ID
 
                     if n_loops == 1:
                         overlap_group_best_likelihood_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_work_groups, dtype=np.float32))
-                        overlap_recheck_indices_kernel.set_arg(19, overlap_group_best_likelihood_buffer)
-                        parse_overlap_recheck_indices_kernel.set_arg(12, overlap_group_best_likelihood_buffer)
+                        overlap_recheck_indices_kernel.set_arg(18, overlap_group_best_likelihood_buffer)
+                        parse_overlap_recheck_indices_kernel.set_arg(11, overlap_group_best_likelihood_buffer)
                         overlap_group_best_work_id_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_work_groups, dtype=np.uint32))
-                        overlap_recheck_indices_kernel.set_arg(20, overlap_group_best_work_id_buffer)
-                        parse_overlap_recheck_indices_kernel.set_arg(13, overlap_group_best_work_id_buffer)
+                        overlap_recheck_indices_kernel.set_arg(19, overlap_group_best_work_id_buffer)
+                        parse_overlap_recheck_indices_kernel.set_arg(12, overlap_group_best_work_id_buffer)
                         curr_overlaps_buffer_size = num_work_groups
                         print("Made buffers for a total of", num_work_groups, "work groups")
 
@@ -650,11 +648,11 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                         overlap_group_best_likelihood_buffer.release()
                         overlap_group_best_work_id_buffer.release()
                         overlap_group_best_likelihood_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_work_groups, dtype=np.float32))
-                        overlap_recheck_indices_kernel.set_arg(19, overlap_group_best_likelihood_buffer)
-                        parse_overlap_recheck_indices_kernel.set_arg(12, overlap_group_best_likelihood_buffer)
+                        overlap_recheck_indices_kernel.set_arg(18, overlap_group_best_likelihood_buffer)
+                        parse_overlap_recheck_indices_kernel.set_arg(11, overlap_group_best_likelihood_buffer)
                         overlap_group_best_work_id_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_work_groups, dtype=np.uint32))
-                        overlap_recheck_indices_kernel.set_arg(20, overlap_group_best_work_id_buffer)
-                        parse_overlap_recheck_indices_kernel.set_arg(13, overlap_group_best_work_id_buffer)
+                        overlap_recheck_indices_kernel.set_arg(19, overlap_group_best_work_id_buffer)
+                        parse_overlap_recheck_indices_kernel.set_arg(12, overlap_group_best_work_id_buffer)
                         curr_overlaps_buffer_size = num_work_groups
                         print("Made buffers for a total of", num_work_groups, "work groups")
 
@@ -793,8 +791,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_window_indices_buffer.release()
             overlap_best_spike_indices_buffer.release()
             overlap_best_spike_labels_buffer.release()
-            template_pre_inds_buffer.release()
-            template_post_inds_buffer.release()
+            # template_pre_inds_buffer.release()
+            # template_post_inds_buffer.release()
             full_likelihood_function_buffer.release()
             template_sum_squared_by_channel_buffer.release()
             gamma_noise_buffer.release()

@@ -626,7 +626,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     # Enqueues max_enqueue_overlap total spikes to be sorted.
                     # This yields a multiple such that at the end of each enqueue
                     # group, we could fully parse the spike results
-                    enqueue_by_spikes = n_local_ID * overlap_local_work_size * max_enqueue_overlap
+                    # Multiplier of 2 is arbitrary
+                    enqueue_by_spikes = 2 * n_local_ID * overlap_local_work_size * max_enqueue_overlap
                     n_to_enqueue_overlap = np.amin([total_work_size_overlap, enqueue_by_spikes])
 
                     overlap_recheck_indices_kernel.set_arg(9, np.uint32(overlap_window_indices.shape[0])) # Number of actual window indices to check
@@ -657,6 +658,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                         print("Made buffers for a total of", num_work_groups, "work groups")
 
                     for enqueue_step in np.arange(np.int64(0), total_work_size_overlap, n_to_enqueue_overlap, dtype=np.int64):
+                        # Avoid enqueueing potentially billions of workers to do nothing
+                        if enqueue_step + n_to_enqueue_overlap > total_work_size_overlap:
+                            n_to_enqueue_overlap = overlap_local_work_size * np.int64(np.ceil((total_work_size_overlap - enqueue_step) / overlap_local_work_size))
                         overlap_event = cl.enqueue_nd_range_kernel(queue,
                                               overlap_recheck_indices_kernel,
                                               (n_to_enqueue_overlap, ), (overlap_local_work_size, ),

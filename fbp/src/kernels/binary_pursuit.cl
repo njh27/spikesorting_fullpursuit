@@ -178,8 +178,9 @@ static void prefix_local_sum(__local unsigned int * restrict x) /**< Length must
 
 /**
  * Peforms a reduction on the local float array x
- * The maximum value of x is stored in x[0].
-  * The size of x should be equal to the local item size
+ * The maximum value of x is stored in x[0]. The corresponding element of x_id
+ * is stored in x_id[0]
+ * The size of x and x_id should be equal to the local item size
 */
 static void max_local_reduction(__local float *x, __local unsigned int *x_id)
 {
@@ -630,7 +631,8 @@ __kernel void overlap_recheck_indices(
     }
     local_likelihoods[local_id] = current_maximum_likelihood;
 
-    barrier(CLK_LOCAL_MEM_FENCE); /* Wait for all workers to get here */
+    /* Wait for all workers to get here */
+    barrier(CLK_LOCAL_MEM_FENCE);
     /* Reduction to find max likelihood and id of best worker in this group */
     max_local_reduction(local_likelihoods, local_ids);
     /* Leave it to first worker to write best results to global buffer */

@@ -113,52 +113,43 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
     if len(all_events) == 0:
         # No events found so just return input clip width
         return sort_info['clip_width']
-    all_events = np.hstack(all_events)
+
+    # Find the average clip for our max output clip width, double the original
+    bp_clip_width = [2*v for v in sort_info['clip_width']]
     all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
-                                    all_events, clip_width=sort_info['clip_width'])
-    all_events = all_events[valid_event_indices]
-    if all_events.shape[0] == 0:
+                                    np.hstack(all_events), clip_width=bp_clip_width)
+    if np.count_nonzero(valid_event_indices) == 0:
         return sort_info['clip_width']
     median_clip = np.median(all_clips, axis=0)
-    first_indices = np.arange(0, sort_info['n_samples_per_chan']*(sort_info['n_channels']-1)+1, sort_info['n_samples_per_chan'], dtype=np.int64)
-    last_indices = np.arange(sort_info['n_samples_per_chan']-1, sort_info['n_samples_per_chan']*sort_info['n_channels']+1, sort_info['n_samples_per_chan'], dtype=np.int64)
+    bp_samples_per_chan = all_clips.shape[1] // sort_info['n_channels']
+    first_indices = np.arange(0, bp_samples_per_chan*(sort_info['n_channels']-1)+1, bp_samples_per_chan, dtype=np.int64)
+    last_indices = np.arange(bp_samples_per_chan-1, bp_samples_per_chan*sort_info['n_channels']+1, bp_samples_per_chan, dtype=np.int64)
+
     median_abs_clip_value = np.median(np.median(np.abs(all_clips), axis=1))
     print("clip median abs value", median_abs_clip_value)
-    clip_end_tolerance = np.abs(0.1 * median_abs_clip_value)
+    clip_end_tolerance = np.abs(0.05 * median_abs_clip_value)
 
-    bp_clip_width = [v for v in sort_info['clip_width']]
-    min_start = 2*bp_clip_width[0]
-    step_size = bp_clip_width[0]/10
-    while np.any(np.abs(median_clip[first_indices]) > clip_end_tolerance):
-        bp_clip_width[0] += step_size
-        if bp_clip_width[0] < min_start:
-            print("Clip width start never converged. Using 2 times input start width.")
-            bp_clip_width[0] = min_start
-            break
-        all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
-                                        all_events, clip_width=bp_clip_width)
-        all_events = all_events[valid_event_indices]
-        if all_events.shape[0] == 0:
-            return sort_info['clip_width']
-        median_clip = np.median(all_clips, axis=0)
+    bp_chan_win_samples, _ = time_window_to_samples(bp_clip_width, sort_info['sampling_rate'])
+    chan_win_samples, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
 
-    max_stop = 2*bp_clip_width[1]
-    step_size = bp_clip_width[1]/10
-    while np.any(np.abs(median_clip[last_indices]) > clip_end_tolerance):
-        bp_clip_width[1] += step_size
-        if bp_clip_width[1] > max_stop:
-            print("Clip width stop never converged. Using 2 times input stop width.")
-            bp_clip_width[1] = max_stop
+    # chan_win_samples[0] is negative, we want positve here
+    min_pre_samples = -1 * chan_win_samples[0] - 1 * chan_win_samples[0] // 2 # Don't shrink past half original
+    step_size = max(1, -1 * chan_win_samples[0] // 10)
+    while np.any(np.abs(median_clip[first_indices]) < clip_end_tolerance):
+        first_indices += step_size
+        if first_indices[0] >= min_pre_samples:
             break
-        all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
-                                        all_events, clip_width=bp_clip_width)
-        all_events = all_events[valid_event_indices]
-        if all_events.shape[0] == 0:
-            return sort_info['clip_width']
-        median_clip = np.median(all_clips, axis=0)
+    bp_clip_width[0] = -1 * (-1 * bp_chan_win_samples[0] - first_indices[0]) / sort_info['sampling_rate']
+
+    min_post_samples = chan_win_samples[1] + chan_win_samples[1] // 2 # Don't shrink past half original
+    step_size = max(1, chan_win_samples[1] // 10)
+    while np.any(np.abs(median_clip[last_indices]) < clip_end_tolerance):
+        last_indices -= step_size
+        if bp_samples_per_chan - last_indices[0] >= min_post_samples:
+            break
+    bp_clip_width[1] = (bp_chan_win_samples[1] - (bp_samples_per_chan - last_indices[0])) / sort_info['sampling_rate']
 
     return bp_clip_width
-
 
 
 def full_binary_pursuit(work_items, data_dict, seg_number,

@@ -1,6 +1,7 @@
 import numpy as np
 import pickle
 import os
+from copy import copy
 from fbp.src.consolidate import SegSummary
 from fbp.src.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples
 from fbp.src.parallel import binary_pursuit_parallel
@@ -116,6 +117,11 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
 
     # Find the average clip for our max output clip width, double the original
     bp_clip_width = [2*v for v in sort_info['clip_width']]
+
+
+    print("SKIPPING COMPUTE BINARY CLIP WIDTH")
+    return bp_clip_width
+
     all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
                                     np.hstack(all_events), clip_width=bp_clip_width)
     if np.count_nonzero(valid_event_indices) == 0:
@@ -165,6 +171,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     clips_dict = {'sampling_rate': sort_info['sampling_rate'],
                   'n_samples': sort_info['n_samples'],
                   'v_dtype': v_dtype}
+    original_clip_width = [s for s in sort_info['clip_width']]
+    original_n_samples_per_chan = copy(sort_info['n_samples_per_chan'])
 
     # Determine the set of work items for this segment
     seg_w_items = [w for w in work_items if w['seg_number'] == seg_number]
@@ -365,5 +373,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             seg_data.append([[], [], [], [], curr_item['ID']])
     # Make everything compatible with regular consolidate.WorkItemSummary
     sort_info['binary_pursuit_only'] = True
+    # Set these back so they don't grow in future iterations
+    sort_info['clip_width'] = original_clip_width
+    sort_info['n_samples_per_chan'] = original_n_samples_per_chan
 
     return seg_data

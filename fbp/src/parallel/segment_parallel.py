@@ -313,34 +313,6 @@ def wavelet_align_events(probe_dict, chan_voltage, event_indices,clip_width, ban
     return event_indices
 
 
-def align_adjusted_clips_with_template(probe_dict, neighbor_voltage, channel, neighbors, clips, event_indices, neuron_labels, clip_width):
-    """
-        """
-
-    # Get indices for this channel within clip width and double wide clipwidth
-    clip_width, chan_neighbor_ind, curr_chan_win, samples_per_chan, curr_chan_inds = get_windows_and_indices(clip_width, probe_dict['sampling_rate'], channel, neighbors)
-    cc_clip_width, cc_chan_neighbor_ind, cc_curr_chan_win, cc_samples_per_chan, cc_curr_chan_inds = get_windows_and_indices(2*np.array(clip_width), probe_dict['sampling_rate'], channel, neighbors)
-    cc_curr_chan_center_index = cc_curr_chan_inds[0] + np.abs(cc_curr_chan_win[0])
-
-    # Get double wide adjusted clips but do templates and alignment only on current channel
-    adjusted_clips, event_indices, neuron_labels, valid_event_indices = get_adjusted_clips(probe_dict, neighbor_voltage, channel, neighbors, clips, event_indices, neuron_labels, clip_width, cc_clip_width)
-    templates, labels = calculate_templates(adjusted_clips[:, cc_curr_chan_center_index+curr_chan_win[0]:cc_curr_chan_center_index+curr_chan_win[1]], neuron_labels)
-    aligned_adjusted_clips = np.empty((adjusted_clips.shape[0], samples_per_chan * len(neighbors)), dtype=probe_dict['v_dtype'])
-
-    # Align all clips with their own template
-    for c in range(0, adjusted_clips.shape[0]):
-        cross_corr = np.correlate(adjusted_clips[c, cc_curr_chan_inds], templates[np.nonzero(labels == neuron_labels[c])[0][0]], mode='valid')
-        shift = np.argmax(cross_corr) - int(np.abs(curr_chan_win[0]))
-        event_indices[c] += shift
-        for n in range(0, len(neighbors)):
-            n_chan_win = [n*samples_per_chan, (n+1)*samples_per_chan]
-            cc_n_chan_win = [n*cc_samples_per_chan + np.abs(cc_curr_chan_win[0]) + curr_chan_win[0] + shift,
-                             n*cc_samples_per_chan + np.abs(cc_curr_chan_win[0]) + curr_chan_win[1] + shift]
-            aligned_adjusted_clips[c, n_chan_win[0]:n_chan_win[1]] = adjusted_clips[c, cc_n_chan_win[0]:cc_n_chan_win[1]]
-
-    return aligned_adjusted_clips, event_indices, neuron_labels, valid_event_indices
-
-
 def get_zero_phase_kernel(x, x_center):
     """ Zero pads the 1D kernel x, so that it is aligned with the current element
         of x located at x_center.  This ensures that convolution with the kernel
@@ -373,7 +345,9 @@ index. The width of the segment is passed to the function in units of seconds.
 This is done over all channels on probes, so threshold crossings input in
 event_indices must be a list where each element contains a numpy array of
 threshold crossing indices for the corresponding channel in the Probe object.
-event_indices that yield a clip width beyond data boundaries are ignored. """
+event_indices that yield a clip width beyond data boundaries are ignored.
+event_indices MUST BE ORDERED or else edge cases will not correctly be
+accounted for and an error may result. """
 def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width):
 
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
@@ -412,7 +386,8 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width)
     This is like get_clips except it concatenates the clips for each channel
     input in the list 'channels' in the order that they appear.  Event indices
     is a single one dimensional array of indices over which clips from all input
-    channels will be aligned.  """
+    channels will be aligned. event_indices MUST BE ORDERED or else edge cases
+    will not correctly be accounted for and an error may result. """
 def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width):
 
     if event_indices.ndim > 1:
@@ -454,44 +429,3 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
             start = stop
 
     return spike_clips, valid_event_indices
-
-
-def get_adjusted_clips(probe_dict, neighbor_voltage, channel, neighbors, clips, event_indices, neuron_labels, input_clip_width, output_clip_width):
-    """
-    """
-    output_clip_width, _, output_chan_win, output_samples_per_chan, _ = get_windows_and_indices(output_clip_width, probe_dict['sampling_rate'], channel, neighbors)
-    input_clip_width, _, input_chan_win, input_samples_per_chan, _ = get_windows_and_indices(input_clip_width, probe_dict['sampling_rate'], channel, neighbors)
-    valid_event_indices = np.logical_and(event_indices > np.abs(output_chan_win[0]), event_indices < probe_dict['n_samples'] - output_chan_win[1])
-    event_indices, neuron_labels = keep_valid_inds([event_indices, neuron_labels], valid_event_indices)
-    clips = clips[valid_event_indices, :]
-    templates, labels = calculate_templates(clips, neuron_labels)
-    neighbors = np.array(neighbors, dtype=np.int64)
-    if neighbor_voltage.ndim == 1:
-        # neighbor voltage must be indexable along the rows
-        neighbor_voltage = neighbor_voltage.reshape(1, -1)
-    if neighbors.size != neighbor_voltage.shape[0]:
-        raise ValueError("Neighbors and neighbor_voltage MUST MATCH.")
-
-    # Get adjusted clips at all spike times
-    adjusted_clips = np.empty((event_indices.size, output_samples_per_chan * neighbors.size), dtype=probe_dict['v_dtype'])
-    spike_times = np.zeros(probe_dict['n_samples'], dtype=np.byte)
-    for neigh_ind in range(0, len(neighbors)):
-        # First get residual voltage for the current channel by subtracting INPUT clips
-        input_slice = slice(neigh_ind*input_samples_per_chan, input_samples_per_chan*(neigh_ind+1), 1)
-        output_slice = slice(neigh_ind*output_samples_per_chan, output_samples_per_chan*(neigh_ind+1), 1)
-        residual_voltage = np.copy(neighbor_voltage[neigh_ind, :])
-        for label_ind, temp in enumerate(templates):
-            spike_times[:] = 0  # Reset to zero each iteration
-            spike_times[event_indices[neuron_labels == labels[label_ind]]] = 1
-            temp_kernel = get_zero_phase_kernel(temp[input_slice], np.abs(input_chan_win[0]))
-            residual_voltage -= signal.fftconvolve(spike_times, temp_kernel, mode='same')
-
-        # Now add each INPUT spike one at a time to residual voltage to get adjusted_clips
-        for label_ind, temp in enumerate(templates):
-            current_spike_indices = np.where(neuron_labels == labels[label_ind])[0]
-            for spk_event in current_spike_indices:
-                residual_voltage[event_indices[spk_event]+input_chan_win[0]:event_indices[spk_event]+input_chan_win[1]] += temp[input_slice]
-                adjusted_clips[spk_event, output_slice] = residual_voltage[event_indices[spk_event]+output_chan_win[0]:event_indices[spk_event]+output_chan_win[1]]
-                residual_voltage[event_indices[spk_event]+input_chan_win[0]:event_indices[spk_event]+input_chan_win[1]] -= temp[input_slice]
-
-    return adjusted_clips, event_indices, neuron_labels, valid_event_indices

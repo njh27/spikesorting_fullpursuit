@@ -123,10 +123,12 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
         original_clip_stops = np.arange(sort_info['n_samples_per_chan'], (sort_info['n_samples_per_chan']+1)*sort_info['n_channels'], clip_n, dtype=np.int64)
         return sort_info['clip_width'], original_clip_starts, original_clip_stops
 
+    all_events = np.hstack(all_events)
+    all_events.sort() # Must be sorted for get multichannel clips to work
     # Find the average clip for our max output clip width, double the original
     bp_clip_width = [sort_info['max_binary_pursuit_clip_width_factor']*v for v in sort_info['clip_width']]
     all_clips, valid_event_indices = get_multichannel_clips(clips_dict, voltage,
-                                    np.hstack(all_events), clip_width=bp_clip_width)
+                                        all_events, clip_width=bp_clip_width)
     if np.count_nonzero(valid_event_indices) == 0:
         original_clip_starts = np.arange(0, sort_info['n_samples_per_chan']*(sort_info['n_channels']), sort_info['n_samples_per_chan'], dtype=np.int64)
         original_clip_stops = np.arange(sort_info['n_samples_per_chan'], (sort_info['n_samples_per_chan']+1)*sort_info['n_channels'], clip_n, dtype=np.int64)
@@ -184,15 +186,16 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     seg_volts_buffer = data_dict['segment_voltages'][seg_number][0]
     seg_volts_shape = data_dict['segment_voltages'][seg_number][1]
     voltage = np.frombuffer(seg_volts_buffer, dtype=v_dtype).reshape(seg_volts_shape)
-    # Make a dictionary with all info needed for get_multichannel_clips
-    clips_dict = {'sampling_rate': sort_info['sampling_rate'],
-                  'n_samples': sort_info['n_samples'],
-                  'v_dtype': v_dtype}
     original_clip_width = [s for s in sort_info['clip_width']]
     original_n_samples_per_chan = copy(sort_info['n_samples_per_chan'])
 
     # Determine the set of work items for this segment
     seg_w_items = [w for w in work_items if w['seg_number'] == seg_number]
+
+    # Make a dictionary with all info needed for get_multichannel_clips
+    clips_dict = {'sampling_rate': sort_info['sampling_rate'],
+                  'n_samples': seg_w_items[0]['n_samples'],
+                  'v_dtype': v_dtype}
 
     # Need to build this in format used for consolidate functions
     seg_data = []

@@ -568,7 +568,10 @@ __kernel void overlap_recheck_indices(
         absolute_fixed_index = best_spike_index_private + fixed_shift_ref_ind - n_max_shift_inds;
         absolute_shift_index = best_spike_index_private + template_shift_ref_ind - n_max_shift_inds;
 
-        if (full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index] <= 0)
+        /* Do not do this if subtracting either unit at its current index does */
+        /* not improve the likelihood */
+        if ((full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index] <= 0) &&
+              (full_likelihood_function[template_number * voltage_length + absolute_shift_index] <= 0))
         {
             skip_curr_id = 1;
         }

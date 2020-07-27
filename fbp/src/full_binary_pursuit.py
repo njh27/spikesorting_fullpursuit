@@ -141,7 +141,7 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
     # Randomly choose 10 seconds worth of time points
     noise_sample_inds = np.random.choice(voltage.shape[1], 10*sort_info['sampling_rate'])
     median_noise = np.median(np.median(np.abs(voltage[:, noise_sample_inds]), axis=1))
-    clip_end_tolerance = 0.5 * median_noise
+    clip_end_tolerance = 0.05 * median_noise
     print("clip tolerance is", clip_end_tolerance)
 
     bp_chan_win_samples, _ = time_window_to_samples(bp_clip_width, sort_info['sampling_rate'])

@@ -2000,8 +2000,6 @@ class WorkItemSummary(object):
             print("Skipped stitching")
             return
 
-        self.sharpen_segments()
-
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
             print("Start stitching channel", chan)

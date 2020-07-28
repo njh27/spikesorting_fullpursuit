@@ -133,7 +133,7 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
         original_clip_starts = np.arange(0, sort_info['n_samples_per_chan']*(sort_info['n_channels']), sort_info['n_samples_per_chan'], dtype=np.int64)
         original_clip_stops = np.arange(sort_info['n_samples_per_chan'], (sort_info['n_samples_per_chan']+1)*sort_info['n_channels'], clip_n, dtype=np.int64)
         return sort_info['clip_width'], original_clip_starts, original_clip_stops
-    median_clip = np.median(all_clips, axis=0)
+    mean_clip = np.mean(all_clips, axis=0)
     bp_samples_per_chan = all_clips.shape[1] // sort_info['n_channels']
     first_indices = np.arange(0, bp_samples_per_chan*(sort_info['n_channels']-1)+1, bp_samples_per_chan, dtype=np.int64)
     last_indices = np.arange(bp_samples_per_chan-1, bp_samples_per_chan*sort_info['n_channels']+1, bp_samples_per_chan, dtype=np.int64)
@@ -150,7 +150,7 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
     # Find the most we can increase the first indices to
     # chan_win_samples[0] is negative, we want positve here
     max_pre_samples = -1*bp_chan_win_samples[0] + chan_win_samples[0] # Don't shrink past original
-    while np.all(np.abs(median_clip[first_indices]) < clip_end_tolerance):
+    while np.all(np.abs(mean_clip[first_indices]) < clip_end_tolerance):
         if first_indices[0] >= max_pre_samples:
             break
         first_indices += 1
@@ -160,7 +160,7 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
 
     # Most we can decrease the last indices to
     min_post_samples = (bp_samples_per_chan - bp_chan_win_samples[1]) + chan_win_samples[1] -1 # Don't shrink past original
-    while np.all(np.abs(median_clip[last_indices]) < clip_end_tolerance):
+    while np.all(np.abs(mean_clip[last_indices]) < clip_end_tolerance):
         if last_indices[0] <= min_post_samples:
             break
         last_indices -= 1

@@ -810,7 +810,7 @@ class SegSummary(object):
                 for chan in range(0, self.sort_info['n_channels']):
                     chan_index = [chan * self.sort_info['n_samples_per_chan'],
                                   (chan + 1) * self.sort_info['n_samples_per_chan']]
-                    if neuron['snr_by_chan'][chan] > .75:
+                    if neuron['snr_by_chan'][chan] > .5:
                         high_snr_neighbors.append(chan)
 
                 if len(high_snr_neighbors) > 0:

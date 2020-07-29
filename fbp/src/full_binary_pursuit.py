@@ -107,7 +107,7 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
     if sort_info['max_binary_pursuit_clip_width_factor'] <= 1.0:
         # Do not use expanded clip widths, just return
         original_clip_starts = np.arange(0, sort_info['n_samples_per_chan']*(sort_info['n_channels']), sort_info['n_samples_per_chan'], dtype=np.int64)
-        original_clip_stops = np.arange(sort_info['n_samples_per_chan'], (sort_info['n_samples_per_chan']+1)*sort_info['n_channels'], clip_n, dtype=np.int64)
+        original_clip_stops = np.arange(sort_info['n_samples_per_chan'], (sort_info['n_samples_per_chan']+1)*sort_info['n_channels'], sort_info['n_samples_per_chan'], dtype=np.int64)
         return sort_info['clip_width'], original_clip_starts, original_clip_stops
     # Start by building the set of all clips for all units in segment
     all_events = []
@@ -120,7 +120,7 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
     if len(all_events) == 0:
         # No events found so just return input clip width
         original_clip_starts = np.arange(0, sort_info['n_samples_per_chan']*(sort_info['n_channels']), sort_info['n_samples_per_chan'], dtype=np.int64)
-        original_clip_stops = np.arange(sort_info['n_samples_per_chan'], (sort_info['n_samples_per_chan']+1)*sort_info['n_channels'], clip_n, dtype=np.int64)
+        original_clip_stops = np.arange(sort_info['n_samples_per_chan'], (sort_info['n_samples_per_chan']+1)*sort_info['n_channels'], sort_info['n_samples_per_chan'], dtype=np.int64)
         return sort_info['clip_width'], original_clip_starts, original_clip_stops
 
     all_events = np.hstack(all_events)
@@ -131,7 +131,7 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
                                         all_events, clip_width=bp_clip_width)
     if np.count_nonzero(valid_event_indices) == 0:
         original_clip_starts = np.arange(0, sort_info['n_samples_per_chan']*(sort_info['n_channels']), sort_info['n_samples_per_chan'], dtype=np.int64)
-        original_clip_stops = np.arange(sort_info['n_samples_per_chan'], (sort_info['n_samples_per_chan']+1)*sort_info['n_channels'], clip_n, dtype=np.int64)
+        original_clip_stops = np.arange(sort_info['n_samples_per_chan'], (sort_info['n_samples_per_chan']+1)*sort_info['n_channels'], sort_info['n_samples_per_chan'], dtype=np.int64)
         return sort_info['clip_width'], original_clip_starts, original_clip_stops
     mean_clip = np.mean(all_clips, axis=0)
     bp_samples_per_chan = all_clips.shape[1] // sort_info['n_channels']

@@ -460,7 +460,6 @@ __kernel void overlap_recheck_indices(
     const unsigned int num_templates,
     const unsigned int template_length,
     __global const float * restrict template_sum_squared,
-    __global const float * restrict gamma,
     __global const unsigned int * restrict overlap_window_indices,
     const unsigned int num_overlap_window_indices,
     __global unsigned int * restrict best_spike_indices,
@@ -658,6 +657,7 @@ __kernel void overlap_recheck_indices(
 __kernel void parse_overlap_recheck_indices(
     const unsigned int voltage_length,
     const unsigned int num_templates,
+    __global const float * restrict gamma,
     __global const unsigned int * restrict overlap_window_indices,
     const unsigned int num_overlap_window_indices,
     __global unsigned int * restrict best_spike_indices,
@@ -727,7 +727,7 @@ __kernel void parse_overlap_recheck_indices(
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];
 
     /* Reset the likelihood and best index and label to maximum */
-    if ((actual_template_likelihood_at_index) >= (actual_current_maximum_likelihood))
+    if ((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
     {
         /* The main label has better likelihood than best shifted match */
         best_spike_likelihoods[id] = best_group_likelihood;

@@ -314,7 +314,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             clips, _ = get_multichannel_clips(clips_dict, voltage,
                                     n['spike_indices'],
                                     clip_width=sort_info['clip_width'])
-            templates.append(np.mean(clips, axis=0))
+            templates.append(np.median(clips, axis=0))
             next_label += 1
             # plt.plot(n['pursuit_template'])
             # plt.plot(templates[-1])
@@ -341,7 +341,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         chans_to_template_labels[chan] = []
     for unit in np.unique(neuron_labels):
         # Find this unit's channel as the channel with max SNR of template
-        curr_template = np.mean(clips[neuron_labels == unit, :], axis=0)
+        curr_template = np.median(clips[neuron_labels == unit, :], axis=0)
         unit_best_snr = -1.0
         unit_best_chan = None
         for chan in range(0, sort_info['n_channels']):

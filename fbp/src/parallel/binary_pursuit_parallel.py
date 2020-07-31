@@ -663,6 +663,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     total_work_size_overlap = overlap_local_work_size * np.int64(np.ceil(total_work_size_overlap / overlap_local_work_size))
                     print("Checking", total_work_size_overlap, "overlap spike shifts")
 
+                    if total_work_size_overlap > 2 ** 32 - 1:
+                        print("Current work size will OVERFLOW 32 bit graphics card. Decrease segment/chunk size if it fails.")
+
                     # Enqueues max_enqueue_overlap total spikes to be sorted.
                     # This yields a multiple such that at the end of each enqueue
                     # group, we could fully parse the spike results

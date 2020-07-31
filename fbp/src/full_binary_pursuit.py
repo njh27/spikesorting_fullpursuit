@@ -328,11 +328,10 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # plt.plot(templates.T)
     # plt.show()
 
-    # thresh_sigma = 1.645, 1.96, 2.576
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, sort_info['sampling_rate'],
                     v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
-                    thresh_sigma=1.645, kernels_path=None,
+                    thresh_sigma=sort_info['sigma_noise_penalty'], kernels_path=None,
                     max_gpu_memory=max_gpu_memory)
 
     chans_to_template_labels = {}

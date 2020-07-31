@@ -460,6 +460,7 @@ __kernel void overlap_recheck_indices(
     const unsigned int num_templates,
     const unsigned int template_length,
     __global const float * restrict template_sum_squared,
+    __global const float * restrict gamma,
     __global const unsigned int * restrict overlap_window_indices,
     const unsigned int num_overlap_window_indices,
     __global unsigned int * restrict best_spike_indices,
@@ -574,8 +575,10 @@ __kernel void overlap_recheck_indices(
 
         /* Do not do this if subtracting either unit at its current index does */
         /* not improve the likelihood */
-        if ((full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index] <= 0) &&
-              (full_likelihood_function[template_number * voltage_length + absolute_shift_index] <= 0))
+        if ((full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index] + gamma[best_spike_label_private] <= 0) &&
+              (full_likelihood_function[template_number * voltage_length + absolute_shift_index] + gamma[template_number] <= 0))
+        // if ((full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index] <= 0) &&
+        //       (full_likelihood_function[template_number * voltage_length + absolute_shift_index] <= 0))
         {
             skip_curr_id = 1;
         }
@@ -732,8 +735,8 @@ __kernel void parse_overlap_recheck_indices(
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];
 
     /* Reset the likelihood and best index and label to maximum */
-    // if ((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
-    if ((actual_template_likelihood_at_index) >= (actual_current_maximum_likelihood))
+    if ((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
+    // if ((actual_template_likelihood_at_index) >= (actual_current_maximum_likelihood))
     {
         /* The main label has better likelihood than best shifted match */
         best_spike_likelihoods[id] = best_group_likelihood;

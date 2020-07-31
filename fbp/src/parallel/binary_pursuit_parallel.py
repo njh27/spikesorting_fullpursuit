@@ -131,7 +131,7 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
 
 def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                    clip_width, template_samples_per_chan, thresh_sigma=1.645,
-                   kernels_path=None, max_gpu_memory=None):
+                   n_max_shift_inds=None, kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
 
@@ -406,7 +406,11 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         template_sum_squared_by_channel_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared_by_channel)
         gamma_noise_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gamma_noise)
 
-        n_max_shift_inds = np.uint32((template_samples_per_chan//2) - 1)
+        if n_max_shift_inds is None or n_max_shift_inds < 0:
+            # Default to half clip width
+            n_max_shift_inds = template_samples_per_chan // 2
+        # Must be uint32
+        n_max_shift_inds = np.uint32(n_max_shift_inds)
         # template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
         # template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
         # template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1

@@ -559,6 +559,11 @@ __kernel void overlap_recheck_indices(
         }
     }
 
+    if (best_spike_label_private == template_number)
+    {
+        skip_curr_id = 1;
+    }
+
     /* Compiler demands these outside of skip check */
     __private unsigned int absolute_fixed_index = 0;
     __private unsigned int absolute_shift_index = 0;
@@ -727,7 +732,8 @@ __kernel void parse_overlap_recheck_indices(
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];
 
     /* Reset the likelihood and best index and label to maximum */
-    if ((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
+    // if ((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
+    if ((actual_template_likelihood_at_index) >= (actual_current_maximum_likelihood))
     {
         /* The main label has better likelihood than best shifted match */
         best_spike_likelihoods[id] = best_group_likelihood;

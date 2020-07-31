@@ -751,7 +751,7 @@ class SegSummary(object):
                 # Remove any identical index duplicates (either from error or
                 # from combining overlapping segments), preferentially keeping
                 # the waveform best aligned to the template
-                neuron["template"] = np.median(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
+                neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
                 keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
                                 neuron['clips'], neuron["template"],
                                 tol_inds=neuron['duplicate_tol_inds'])
@@ -759,7 +759,7 @@ class SegSummary(object):
                 neuron['clips'] = neuron['clips'][keep_bool, :]
 
                 # Recompute template and store output
-                neuron["template"] = np.median(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
+                neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
                 # Get SNR for each channel separately
                 neuron['snr_by_chan'] = np.zeros(self.sort_info['n_channels'])
                 for chan in range(0, self.sort_info['n_channels']):
@@ -949,8 +949,8 @@ class SegSummary(object):
         #             curr_chan_inds=curr_chan_inds)
 
         # Projection onto templates, weighted by number of spikes
-        t1 = np.median(clips_1, axis=0)
-        t2 = np.median(clips_2, axis=0)
+        t1 = np.mean(clips_1, axis=0)
+        t2 = np.mean(clips_2, axis=0)
         if use_weights:
             t1 *= (clips_1.shape[0] / clips.shape[0])
             t2 *= (clips_2.shape[0] / clips.shape[0])
@@ -1088,8 +1088,8 @@ class SegSummary(object):
                 # plt.plot(self.summaries[best_pair[1]]['template'])
                 # plt.show()
                 # print("THESE ARE THE CLIPS AVERAGES")
-                # plt.plot(np.median(clips_1, axis=0))
-                # plt.plot(np.median(clips_2, axis=0))
+                # plt.plot(np.mean(clips_1, axis=0))
+                # plt.plot(np.mean(clips_2, axis=0))
                 # plt.show()
             if is_merged:
                 # Delete the unit with the fewest spikes

@@ -560,10 +560,17 @@ __kernel void overlap_recheck_indices(
         }
     }
 
-    if (best_spike_label_private == template_number)
-    {
-        skip_curr_id = 1;
-    }
+    // if (best_spike_label_private == template_number)
+    // {
+    //     skip_curr_id = 1;
+    // }
+
+    // __private const float raw_best_spike_likelihood_private = full_likelihood_function[best_spike_label_private * voltage_length + best_spike_index_private] + gamma[best_spike_label_private];
+    // if ((raw_best_spike_likelihood_private > -1.0*template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private])
+    //     && (raw_best_spike_likelihood_private < -1.0*template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]))
+    // {
+    //     skip_curr_id = 1;
+    // }
 
     /* Compiler demands these outside of skip check */
     __private unsigned int absolute_fixed_index = 0;
@@ -578,17 +585,13 @@ __kernel void overlap_recheck_indices(
 
         /* Do not do this if subtracting either unit at its current index does */
         /* not improve the likelihood */
-        if ((best_spike_likelihood + gamma[best_spike_label_private] <= 0) &&
+        if ((best_spike_likelihood + gamma[best_spike_label_private] <= 0) ||
               (template_spike_likelihood + gamma[template_number] <= 0))
         // if ((full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index] <= 0) &&
         //       (full_likelihood_function[template_number * voltage_length + absolute_shift_index] <= 0))
         {
             skip_curr_id = 1;
         }
-
-        // if ((best_spike_likelihood + gamma[best_spike_label_private] > template_sum_squared(best_spike_label_private) + gamma[best_spike_label_private]))
-
-
     }
     if (skip_curr_id == 0)
     {

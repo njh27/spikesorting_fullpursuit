@@ -115,8 +115,8 @@ class SProbe16by2(AbstractProbe):
 
         stereotrode_number = (channel) // 2
         total_stereotrodes = (32) // 2
-        start_stereotrode = max(0, stereotrode_number - 1)
-        end_stereotrode = min(total_stereotrodes, stereotrode_number + 2)
+        start_stereotrode = max(0, stereotrode_number - 2)
+        end_stereotrode = min(total_stereotrodes, stereotrode_number + 3)
         neighbors = np.arange(start_stereotrode * 2, end_stereotrode * 2, 1)
 
         return np.int64(neighbors)

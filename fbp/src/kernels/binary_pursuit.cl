@@ -585,9 +585,9 @@ __kernel void overlap_recheck_indices(
 
         /* Do not do this if subtracting either unit at its current index does */
         /* not improve the likelihood */
-        if ((best_spike_likelihood + gamma[best_spike_label_private] <= 0) ||
+        if ((best_spike_likelihood + gamma[best_spike_label_private] <= 0) &&
               (template_spike_likelihood + gamma[template_number] <= 0))
-        // if ((full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index] <= 0) &&
+        // if ((full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index] <= 0) ||
         //       (full_likelihood_function[template_number * voltage_length + absolute_shift_index] <= 0))
         {
             skip_curr_id = 1;

@@ -314,9 +314,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             clips, _ = get_multichannel_clips(clips_dict, voltage,
                                     n['spike_indices'],
                                     clip_width=sort_info['clip_width'])
-            for chan in range(0, sort_info['n_channels']):
-                if chan not in n['neighbors']:
-                    clips[:, chan*sort_info['n_samples_per_chan']:(chan+1)*sort_info['n_samples_per_chan']] = 0.0
+            # for chan in range(0, sort_info['n_channels']):
+            #     if chan not in n['neighbors']:
+            #         clips[:, chan*sort_info['n_samples_per_chan']:(chan+1)*sort_info['n_samples_per_chan']] = 0.0
             templates.append(np.median(clips, axis=0))
             next_label += 1
             # plt.plot(n['pursuit_template'])

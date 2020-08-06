@@ -183,14 +183,14 @@ def combine_two_neurons(neuron1, neuron2):
     # Remove any identical index duplicates (either from error or
     # from combining overlapping segments), preferentially keeping
     # the waveform most similar to its channel's template
-    # keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
-    # combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-    # combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
-    # combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
-    # for chan in combined_neuron['channel']:
-    #     combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
-    # channel_selector = channel_selector[keep_bool]
-    # snr_by_unit = snr_by_unit[keep_bool]
+    keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
+    combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
+    combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+    combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
+    for chan in combined_neuron['channel']:
+        combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
+    channel_selector = channel_selector[keep_bool]
+    snr_by_unit = snr_by_unit[keep_bool]
 
     # Recompute things of interest like SNR and templates by channel as the
     # average over all data from that channel and store for output

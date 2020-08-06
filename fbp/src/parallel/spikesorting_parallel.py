@@ -72,9 +72,8 @@ def single_thresholds_and_samples(voltage, sigma):
     samples_over_thresh = []
     for chan in range(0, num_channels):
         abs_voltage = np.abs(voltage[chan, :])
-        thresholds[chan] = np.nanmedian(abs_voltage) / 0.6745
+        thresholds[chan] = sigma * np.nanmedian(abs_voltage) / 0.6745
         samples_over_thresh.append(np.count_nonzero(abs_voltage > thresholds[chan]))
-    thresholds *= sigma
 
     return thresholds, samples_over_thresh
 
@@ -351,9 +350,14 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             if settings['verbose']: print("After first sort", curr_num_clusters.size, "different clusters", flush=True)
 
             if settings['sort_peak_clips_only']:
+                crossings, neuron_labels, _ = segment_parallel.align_events_with_template(
+                                item_dict, voltage[chan, :], neuron_labels, crossings,
+                                clip_width=settings['clip_width'])
+
                 crossings, neuron_labels, _ = segment_parallel.align_templates(
                                 item_dict, voltage[chan, :], neuron_labels, crossings,
                                 clip_width=settings['clip_width'])
+                                
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                                 item_dict, voltage[neighbors, :],
                                                 crossings, clip_width=settings['clip_width'])
@@ -368,15 +372,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 neuron_labels = sort.merge_clusters(scores, neuron_labels,
                                     split_only = False,
                                     p_value_cut_thresh=settings['p_value_cut_thresh'])
-
-                crossings, neuron_labels, _ = segment_parallel.align_events_with_template(
-                                item_dict, voltage[chan, :], neuron_labels, crossings,
-                                clip_width=settings['clip_width'])
-                clips, valid_event_indices = segment_parallel.get_multichannel_clips(
-                                                item_dict, voltage[neighbors, :],
-                                                crossings, clip_width=settings['clip_width'])
-                crossings, neuron_labels = segment_parallel.keep_valid_inds(
-                        [crossings, neuron_labels], valid_event_indices)
 
                 curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
                 if settings['verbose']: print("After re-sort", curr_num_clusters.size, "different clusters", flush=True)
@@ -797,13 +792,3 @@ def spike_sort_parallel(Probe, **kwargs):
     # Delete directory containing clips
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info
-
-
-if __name__ == '__main__':
-    """ Setup the multiprocessing """
-    proc = psutil.Process()  # get self pid
-    # proc.cpu_affinity(cpus=list(range(psutil.cpu_count())))
-    mkl.set_num_threads(8)
-    mp.freeze_support()
-    mp.set_start_method('spawn', force=True)
-    __spec__ = "ModuleSpec(name='builtins', loader=<class '_frozen_importlib.BuiltinImporter'>)"

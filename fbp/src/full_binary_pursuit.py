@@ -294,7 +294,10 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     sort_info['clip_width'], original_clip_starts, original_clip_stops = \
                 get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info)
     # Store newly assigned binary pursuit clip width for final output
-    sort_info['binary_pursuit_clip_width'] = [cw for cw in sort_info['clip_width']]
+    if 'binary_pursuit_clip_width' not in sort_info:
+        sort_info['binary_pursuit_clip_width'] = [0, 0]
+    sort_info['binary_pursuit_clip_width'][0] = min(sort_info['clip_width'][0], sort_info['binary_pursuit_clip_width'][0])
+    sort_info['binary_pursuit_clip_width'][1] = max(sort_info['clip_width'][1], sort_info['binary_pursuit_clip_width'][1])
     bp_chan_win, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
     sort_info['n_samples_per_chan'] = bp_chan_win[1] - bp_chan_win[0]
     # This should be same as input samples per chan but could probably

@@ -42,7 +42,8 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
     # thresh_sigma = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
-    settings['sigma_noise_penalty'] = 1.96 # Number of noise standard deviations to penalize binary pursuit by. Higher numbers reduce false positives, increase false negatives
+    settings['sigma_noise_penalty'] = 1.645 # Number of noise standard deviations to penalize binary pursuit by. Higher numbers reduce false positives, increase false negatives
+    settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
 
     for k in kwargs.keys():
@@ -357,7 +358,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 crossings, neuron_labels, _ = segment_parallel.align_templates(
                                 item_dict, voltage[chan, :], neuron_labels, crossings,
                                 clip_width=settings['clip_width'])
-                                
+
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                                 item_dict, voltage[neighbors, :],
                                                 crossings, clip_width=settings['clip_width'])

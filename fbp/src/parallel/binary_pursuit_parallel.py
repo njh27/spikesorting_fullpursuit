@@ -131,7 +131,8 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
 
 def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                    clip_width, template_samples_per_chan, thresh_sigma=1.645,
-                   n_max_shift_inds=None, kernels_path=None, max_gpu_memory=None):
+                   n_max_shift_inds=None, get_adjusted_clips=False,
+                   kernels_path=None, max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
 
@@ -861,40 +862,49 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     all_chunk_crossings = np.hstack((np.hstack(chunk_total_additional_spike_indices), chunk_crossings))
                     all_chunk_labels = np.hstack((np.hstack(chunk_total_additional_spike_labels), chunk_labels))
 
-                print("Found", chunk_total_additional_spikes, "secret spikes this chunk. Getting adjusted clips for", all_chunk_crossings.shape[0], "total spikes this chunk", flush=True)
+                print("Found", chunk_total_additional_spikes, "secret spikes this chunk.", flush=True)
 
-                all_adjusted_clips = np.zeros((chunk_total_additional_spikes + chunk_crossings.shape[0]) * templates.shape[1], dtype=np.float32)
-                all_chunk_crossings_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=all_chunk_crossings)
-                all_chunk_labels_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=all_chunk_labels)
-                all_adjusted_clips_buffer = cl.Buffer(ctx, mf.WRITE_ONLY | mf.COPY_HOST_PTR, hostbuf=all_adjusted_clips)
+                if get_adjusted_clips:
+                    print("Getting adjusted clips for", all_chunk_crossings.shape[0], "total spikes this chunk", flush=True)
 
-                get_adjusted_clips_kernel.set_arg(0, voltage_buffer)
-                get_adjusted_clips_kernel.set_arg(1, chunk_voltage_length)
-                get_adjusted_clips_kernel.set_arg(2, n_chans)
-                get_adjusted_clips_kernel.set_arg(3, template_buffer)
-                get_adjusted_clips_kernel.set_arg(4, np.uint32(templates.shape[0]))
-                get_adjusted_clips_kernel.set_arg(5, np.uint32(template_samples_per_chan))
-                get_adjusted_clips_kernel.set_arg(6, all_chunk_crossings_buffer)
-                get_adjusted_clips_kernel.set_arg(7, all_chunk_labels_buffer)
-                get_adjusted_clips_kernel.set_arg(8, np.uint32(all_chunk_crossings.shape[0]))
-                get_adjusted_clips_kernel.set_arg(9, all_adjusted_clips_buffer)
+                    all_adjusted_clips = np.zeros((chunk_total_additional_spikes + chunk_crossings.shape[0]) * templates.shape[1], dtype=np.float32)
+                    all_chunk_crossings_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=all_chunk_crossings)
+                    all_chunk_labels_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=all_chunk_labels)
+                    all_adjusted_clips_buffer = cl.Buffer(ctx, mf.WRITE_ONLY | mf.COPY_HOST_PTR, hostbuf=all_adjusted_clips)
 
-                # Run the kernel using same sizes as for resid kernel
-                total_work_size_adjusted = adjusted_local_work_size * np.int64(np.ceil(
-                                            (all_chunk_crossings.shape[0]) / adjusted_local_work_size))
-                clip_events = []
-                n_to_enqueue = np.amin([total_work_size_adjusted, max_enqueue_adjusted])
-                print("Getting adjusted clips", flush=True)
-                for enqueue_step in np.arange(np.int64(0), total_work_size_adjusted, n_to_enqueue, dtype=np.int64):
-                    clip_event = cl.enqueue_nd_range_kernel(queue,
-                                           get_adjusted_clips_kernel,
-                                           (n_to_enqueue, ), (adjusted_local_work_size, ),
-                                           global_work_offset=(enqueue_step, ),
-                                           wait_for=next_wait_event)
+                    get_adjusted_clips_kernel.set_arg(0, voltage_buffer)
+                    get_adjusted_clips_kernel.set_arg(1, chunk_voltage_length)
+                    get_adjusted_clips_kernel.set_arg(2, n_chans)
+                    get_adjusted_clips_kernel.set_arg(3, template_buffer)
+                    get_adjusted_clips_kernel.set_arg(4, np.uint32(templates.shape[0]))
+                    get_adjusted_clips_kernel.set_arg(5, np.uint32(template_samples_per_chan))
+                    get_adjusted_clips_kernel.set_arg(6, all_chunk_crossings_buffer)
+                    get_adjusted_clips_kernel.set_arg(7, all_chunk_labels_buffer)
+                    get_adjusted_clips_kernel.set_arg(8, np.uint32(all_chunk_crossings.shape[0]))
+                    get_adjusted_clips_kernel.set_arg(9, all_adjusted_clips_buffer)
+
+                    # Run the kernel using same sizes as for resid kernel
+                    total_work_size_adjusted = adjusted_local_work_size * np.int64(np.ceil(
+                                                (all_chunk_crossings.shape[0]) / adjusted_local_work_size))
+                    clip_events = []
+                    n_to_enqueue = np.amin([total_work_size_adjusted, max_enqueue_adjusted])
+                    print("Getting adjusted clips", flush=True)
+                    for enqueue_step in np.arange(np.int64(0), total_work_size_adjusted, n_to_enqueue, dtype=np.int64):
+                        clip_event = cl.enqueue_nd_range_kernel(queue,
+                                               get_adjusted_clips_kernel,
+                                               (n_to_enqueue, ), (adjusted_local_work_size, ),
+                                               global_work_offset=(enqueue_step, ),
+                                               wait_for=next_wait_event)
+                        queue.finish()
+                        next_wait_event = [clip_event]
+                    cl.enqueue_copy(queue, all_adjusted_clips, all_adjusted_clips_buffer, wait_for=clip_events)
                     queue.finish()
-                    next_wait_event = [clip_event]
-                cl.enqueue_copy(queue, all_adjusted_clips, all_adjusted_clips_buffer, wait_for=clip_events)
-                all_adjusted_clips = np.reshape(all_adjusted_clips, (all_chunk_crossings.shape[0], templates.shape[1]))
+                    all_chunk_crossings_buffer.release()
+                    all_chunk_labels_buffer.release()
+                    all_adjusted_clips_buffer.release()
+                    all_adjusted_clips = np.reshape(all_adjusted_clips, (all_chunk_crossings.shape[0], templates.shape[1]))
+                else:
+                    all_adjusted_clips = []
 
                 # Save all chunk data and free spike dependent memory
                 secret_spike_indices.append(all_chunk_crossings + start_index)
@@ -903,9 +913,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 all_chunk_bool = np.zeros(all_chunk_crossings.shape[0], dtype=np.bool)
                 all_chunk_bool[0:chunk_total_additional_spikes] = True
                 secret_spike_bool.append(all_chunk_bool)
-                all_chunk_crossings_buffer.release()
-                all_chunk_labels_buffer.release()
-                all_adjusted_clips_buffer.release()
 
             # Release buffers before going on to next chunk
             voltage_buffer.release()

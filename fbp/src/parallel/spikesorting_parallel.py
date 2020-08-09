@@ -41,7 +41,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['segment_duration'] = 300 # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
     settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
-    # thresh_sigma = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
+    # sigma_noise_penalty = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
     settings['sigma_noise_penalty'] = 1.645 # Number of noise standard deviations to penalize binary pursuit by. Higher numbers reduce false positives, increase false negatives
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.

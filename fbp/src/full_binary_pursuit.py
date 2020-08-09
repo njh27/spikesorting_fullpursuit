@@ -347,7 +347,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 crossings, clip_width=sort_info['clip_width'])
 
-    print("clips shape", clips.shape)
     chans_to_template_labels = {}
     for chan in range(0, sort_info['n_channels']):
         chans_to_template_labels[chan] = []

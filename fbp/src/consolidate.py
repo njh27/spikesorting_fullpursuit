@@ -245,11 +245,17 @@ def zero_symmetric_ccg(spikes_1, spikes_2, samples_window=40, d_samples=40, retu
     d_samples = int(d_samples)
     samples_axis = np.arange(-1 * samples_window, samples_window+d_samples, d_samples).astype(np.int64)
     counts = np.zeros(samples_axis.size, dtype=np.int64)
+    samples_axis = (np.floor((samples_axis + d_samples/2) / d_samples)).astype(np.int64)
+    if spikes_1.size == 0  or spikes_2.size == 0:
+        # CCG is zeros if one unit has no spikes
+        if return_trains:
+            return np.zeros(samples_axis.shape[0], dtype=np.int64), samples_axis, None, None
+        else:
+            return np.zeros(samples_axis.shape[0], dtype=np.int64), samples_axis
 
     # Convert the spike indices to units of d_samples
     spikes_1 = (np.floor((spikes_1 + d_samples/2) / d_samples)).astype(np.int64)
     spikes_2 = (np.floor((spikes_2 + d_samples/2) / d_samples)).astype(np.int64)
-    samples_axis = (np.floor((samples_axis + d_samples/2) / d_samples)).astype(np.int64)
 
     # Convert to spike trains
     train_len = int(max(spikes_1[-1], spikes_2[-1])) + 1 # This is samples, so need to add 1

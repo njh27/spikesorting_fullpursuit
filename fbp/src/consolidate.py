@@ -501,7 +501,7 @@ def calc_overlap_ratio(n1_spikes, n2_spikes, max_samples):
     return overlap_ratio
 
 
-def calc_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
+def calc_expected_overlap(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
     """ Returns the expected number of overlapping spikes between neuron 1 and
     neuron 2 within a time window 'overlap_time' assuming independent spiking.
     As usual, spike_indices within each neuron must be sorted. """
@@ -510,7 +510,7 @@ def calc_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampli
     num_ms = int(np.ceil((last_index - first_index) / (sampling_rate / 1000)))
     if num_ms <= 0:
         # Neurons never fire at the same time, so expected overlap is 0
-        return 0.
+        return 0., 0., 0.
 
     # Find spike indices from each neuron that fall within the same time window
     # Should be impossible to return None because of num_ms check above
@@ -525,6 +525,19 @@ def calc_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampli
     n1_count = n1_stop - n1_start
     n2_count = n2_stop - n2_start
     expected_overlap = (overlap_time * 1000 * n1_count * n2_count) / num_ms
+
+    return expected_overlap, n1_count, n2_count
+
+
+def calc_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
+    """ Returns the expected number of overlapping spikes between neuron 1 and
+    neuron 2 within a time window 'overlap_time' assuming independent spiking.
+    Ratio is computed by normalizing to the maximum  number of overlapping spikes
+    that could have occurred.
+    As usual, spike_indices within each neuron must be sorted. """
+    expected_overlap, n1_count, n2_count = calc_expected_overlap(spike_inds_1, spike_inds_2, overlap_time, sampling_rate)
+    if n1_count == 0 and n2_count == 0:
+        return 0.
     expected_overlap_ratio = expected_overlap / min(n1_count, n2_count)
 
     return expected_overlap_ratio
@@ -2942,7 +2955,7 @@ class WorkItemSummary(object):
             n['deleted_as_redundant'] = False
 
         # Remove redundant items across channels
-        # self.remove_redundant_neurons_by_seg(overlap_ratio_threshold)
+        self.remove_redundant_neurons_by_seg(overlap_ratio_threshold)
         # NOTE: This MUST run AFTER remove redundant by seg or else you can
         # end up linking a redundant mixture to a good unit with broken link!
         self.make_overlapping_links()

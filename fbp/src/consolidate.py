@@ -2750,12 +2750,13 @@ class WorkItemSummary(object):
             # First adjust all spike indices to where they would have been if
             # aligned to the specified peak or valley for units on the same channel
             # NOTE: I can't think of a good way to do this reliably across channels
-            if chan_align_peak[unit['channel']][0] / chan_align_peak[unit['channel']][1] > 0.5:
-                # Most templates on this channel have greater peak so align peak
-                shift = np.argmax(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
-            else:
-                shift = np.argmin(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
-            shift = np.argmax(np.abs(unit['template'][unit['main_win'][0]:unit['main_win'][1]])) - waveform_clip_center
+            # if chan_align_peak[unit['channel']][0] / chan_align_peak[unit['channel']][1] > 0.5:
+            #     # Most templates on this channel have greater peak so align peak
+            #     shift = np.argmax(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
+            # else:
+            #     shift = np.argmin(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
+            # shift = np.argmax(np.abs(unit['template'][unit['main_win'][0]:unit['main_win'][1]])) - waveform_clip_center
+            shift = 0
 
             indices_by_unit.append(unit['spike_indices'] + shift)
             clips_by_unit.append(unit['clips'])

@@ -949,13 +949,6 @@ class SegSummary(object):
         orig_neuron_labels = np.ones(clips.shape[0], dtype=np.int64)
         orig_neuron_labels[clips_1.shape[0]:] = 2
 
-<<<<<<< HEAD
-        scores = preprocessing.compute_template_pca(clips, orig_neuron_labels,
-                    curr_chan_inds, self.sort_info['check_components'],
-                    self.sort_info['max_components'],
-                    add_peak_valley=self.sort_info['add_peak_valley'],
-                    use_weights=True)
-=======
         # scores = preprocessing.compute_template_pca(clips, orig_neuron_labels,
         #             curr_chan_inds, self.sort_info['check_components'],
         #             self.sort_info['max_components'],
@@ -966,7 +959,6 @@ class SegSummary(object):
         #             self.sort_info['max_components'],
         #             add_peak_valley=True,
         #             use_weights=use_weights)
->>>>>>> local_overlaps
         # scores = preprocessing.compute_pca(clips,
         #             self.sort_info['check_components'],
         #             self.sort_info['max_components'],
@@ -974,21 +966,12 @@ class SegSummary(object):
         #             curr_chan_inds=curr_chan_inds)
 
         # Projection onto templates, weighted by number of spikes
-<<<<<<< HEAD
-        # t1 = np.mean(clips_1, axis=0)
-        # t2 = np.mean(clips_2, axis=0)
-        # if use_weights:
-        #     t1 *= (clips_1.shape[0] / clips.shape[0])
-        #     t2 *= (clips_2.shape[0] / clips.shape[0])
-        # scores = clips @ np.vstack((t1, t2)).T
-=======
         t1 = np.median(clips_1, axis=0)
         t2 = np.median(clips_2, axis=0)
         if use_weights:
             t1 *= (clips_1.shape[0] / clips.shape[0])
             t2 *= (clips_2.shape[0] / clips.shape[0])
         scores = clips @ np.vstack((t1, t2)).T
->>>>>>> local_overlaps
 
         scores = np.float64(scores)
 

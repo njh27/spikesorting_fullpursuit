@@ -331,111 +331,86 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
 @cython.wraparound(False)
 @cython.cdivision(True)    # turn division by zero checking off
 def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
-                             int64_t template_samples_per_chan,
-                             np.ndarray[float, ndim=1] template_thresholds):
+        Py_ssize_t n_samples_per_chan, Py_ssize_t n_chans, int64_t n_pre_inds,
+        int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
 
-    cdef np.ndarray[np.npy_bool, ndim=1, cast=True] templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    cdef Py_ssize_t chan, shift
+    def get_shifted_template(template, shift):
+        """ """
+        shifted_template = np.zeros_like(template)
+        for chan in range(0, n_chans):
+            chan_temp = template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan]
+            if shift > 0:
+                shifted_template[chan*n_samples_per_chan+shift:(chan+1)*n_samples_per_chan] = \
+                                chan_temp[:-shift]
+            else:
+                shifted_template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan+shift] = \
+                                chan_temp[-shift:]
+        return shifted_template
+
+
+    templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
     if templates.shape[0] < 3:
-        # Need at least 3 templates to have 1 be an overlap of 2
+        # Need at least 3 templates for one to be sum of two others
         return templates_to_delete
+    templates_SS = np.sum(templates ** 2, axis=1)
+    sum_n1_n2_template = np.zeros(templates.shape[1])
 
-    cdef float *temp_ptr = &templates[0, 0]
-    cdef Py_ssize_t temp_x = templates.shape[0]
-    cdef Py_ssize_t temp_y = templates.shape[1]
-    cdef int64_t max_shift_indices = template_samples_per_chan // 2
+    # Compute the possible template shifts up front so not iteratively repeating
+    # the same computation over and over again
+    all_template_shifts = []
+    cdef Py_ssize_t t, as_ind
+    for t in range(0, templates.shape[0]):
+        all_shifts = np.zeros((n_post_inds+1 + n_pre_inds, templates.shape[1]))
+        as_ind = 0
+        for s in range(-n_pre_inds, n_post_inds+1):
+            all_shifts[as_ind, :] = get_shifted_template(templates[t, :], s)
+            as_ind += 1
+        all_template_shifts.append(all_shifts)
 
-    cdef Py_ssize_t p_ov, n1, n2, n1_offset, n2_offset, t_ind, v_ind, p_ov_offset
-    cdef int64_t shift1, shift2
+    cdef Py_ssize_t test_unit, n1, n2, s1_ind, s2_ind
+    for test_unit in range(0, templates.shape[0]):
+        test_template = templates[test_unit, :]
 
-    cdef np.ndarray[float, ndim=1, mode="c"] template_SS = np.zeros(temp_x, dtype=np.float32)
-    for t_ind in range(0, temp_x):
-        for v_ind in range(0, temp_y):
-            template_SS[t_ind] += (temp_ptr[t_ind * temp_y + v_ind] * temp_ptr[t_ind * temp_y + v_ind])
-    for t_ind in range(0, temp_x):
-        if template_SS[t_ind] == 0:
-            templates_to_delete[t_ind] = True
-    templates_to_check = []
-    cdef Py_ssize_t x
-    for x in range(0, temp_x):
-        templates_to_check.append(x)
+        min_residual_SS = np.inf
+        best_pair = None
+        best_shifts = None
+        best_inds = None
 
-    cdef np.ndarray[float, ndim=1, mode="c"] sum_template = np.zeros(temp_y, dtype=np.float32)
-    cdef float *sum_template_ptr = &sum_template[0]
-    cdef float curr_SS
-    cdef float closest_SS
-    cdef Py_ssize_t closest_SS_p_ov
-    # Each unit takes a turn as a putative overlap
-    while len(templates_to_check) > 0:
-        # p_ov = templates_to_check.pop()
-        # Then try to reconstruct it with all remaining units
-        closest_SS = np.float32(np.inf)
-        closest_SS_pair = None
-        for p_ov in templates_to_check:
-            p_ov_offset = p_ov * temp_y
-            for n1 in range(0, temp_x - 1):
-                if (n1 == p_ov) or (templates_to_delete[n1]) or (template_SS[n1] > template_SS[p_ov]):
-                    # p_ov can't be a sum of n1 if n1 is bigger
+        for n1 in range(0, templates.shape[0]):
+            if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > 0.5*templates_SS[test_unit]):
+                continue
+            template_1 = templates[n1, :]
+
+            for n2 in range(n1+1, templates.shape[0]):
+                if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > 0.5*templates_SS[test_unit]):
                     continue
-                n1_offset = n1 * temp_y
-                for n2 in range(n1+1, temp_x):
-                    if (n2 == p_ov) or (templates_to_delete[n2]) or (template_SS[n2] > template_SS[p_ov]):
-                        # p_ov can't be a sum of n2 if n2 is bigger
-                        continue
-                    n2_offset = n2 * temp_y
-                    # NOTE: This is a 'lazy' shift because it does not shift within
-                    # each channel window separately
-                    for shift1 in range(-max_shift_indices, max_shift_indices+1):
-                        for shift2 in range(-max_shift_indices, max_shift_indices+1):
-                            for t_ind in range(0, temp_y):
-                                sum_template_ptr[t_ind] = 0.0
+                template_2 = templates[n2, :]
 
-                            if shift1 == 0:
-                                for t_ind in range(0, temp_y):
-                                    sum_template_ptr[t_ind] += temp_ptr[n1_offset + t_ind]
-                            elif shift1 > 0:
-                                for t_ind in range(0, temp_y - <Py_ssize_t>shift1):
-                                    sum_template_ptr[t_ind] += temp_ptr[n1_offset + t_ind + <Py_ssize_t>shift1]
-                            else:
-                                for t_ind in range(<Py_ssize_t>-1*shift1, temp_y):
-                                    sum_template_ptr[t_ind] += temp_ptr[n1_offset + t_ind - <Py_ssize_t>-1*shift1]
+                s1_ind = 0
+                for shift1 in range(-n_pre_inds, n_post_inds+1):
+                    shifted_t1 = all_template_shifts[n1][s1_ind, :]
+                    s2_ind = 0
+                    for shift2 in range(-n_pre_inds, n_post_inds+1):
+                        # Copy data from t1 shift into sum
+                        sum_n1_n2_template[:] = shifted_t1[:]
+                        shifted_t2 = all_template_shifts[n2][s2_ind, :]
+                        sum_n1_n2_template += shifted_t2
 
-                            if shift2 == 0:
-                                for t_ind in range(0, temp_y):
-                                    sum_template_ptr[t_ind] += temp_ptr[n2_offset + t_ind]
-                            elif shift2 > 0:
-                                for t_ind in range(0, temp_y - <Py_ssize_t>shift2):
-                                    sum_template_ptr[t_ind] += temp_ptr[n2_offset + t_ind + <Py_ssize_t>shift2]
-                            else:
-                                for t_ind in range(<Py_ssize_t>-1*shift2, temp_y):
-                                    sum_template_ptr[t_ind] += temp_ptr[n2_offset + t_ind - <Py_ssize_t>-1*shift2]
+                        residual_SS = np.sum((test_template - sum_n1_n2_template) ** 2)
+                        if residual_SS < min_residual_SS:
+                            min_residual_SS = residual_SS
+                            best_pair = [n1, n2]
+                            best_shifts = [shift1, shift2]
+                            best_inds = [s1_ind, s2_ind]
 
-                            curr_SS = 0.0
-                            for t_ind in range(0, temp_y):
-                                curr_SS += (sum_template_ptr[t_ind] - temp_ptr[p_ov_offset + t_ind]) * (sum_template_ptr[t_ind] - temp_ptr[p_ov_offset + t_ind])
-                            # curr_SS = curr_SS / template_SS[p_ov]
-
-                            if curr_SS < closest_SS:
-                                closest_SS = curr_SS
-                                closest_SS_pair = [n1, n2]
-                                closest_SS_p_ov = p_ov
-                                # print("closest SS is", closest_SS)
-
-        print("THE RAW SS WAS", closest_SS)
-        print("Threshold is", template_thresholds[closest_SS_p_ov])
-        print("SS accounted for ratio", 1 - (closest_SS / template_SS[closest_SS_p_ov]))
-        print("SS ADJUSTED ratio", 1 - (closest_SS+template_thresholds[closest_SS_p_ov]) / template_SS[closest_SS_p_ov])
-        if closest_SS_pair is None:
-            print("No shifts even tested")
-            break
-        # if closest_SS < template_thresholds[closest_SS_p_ov]:
-        if 1 - (closest_SS / template_SS[closest_SS_p_ov]) > .85:
-            templates_to_delete[closest_SS_p_ov] = True
-            templates_to_check.remove(closest_SS_p_ov)
-        else:
-            break
+                        s2_ind += 1
+                    s1_ind += 1
+        # print("MIN RESIDUAL", min_residual_SS)
+        if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:
+            templates_to_delete[test_unit] = True
 
     return templates_to_delete
-
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -697,7 +672,6 @@ cdef double bound_grad_desc_fixed_point_abs(int64_t N, double[::1] I, double[::1
       next_t = (t - lower)/2 + lower
 
     f_t = fixed_point_abs(next_t, N, I, a2)
-    # print("NEXT T", next_t)
     # Get absolute value of change in f_t and t
     f_step = f_t - f_min
     if f_step < 0.0:

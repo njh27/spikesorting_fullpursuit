@@ -183,14 +183,14 @@ def combine_two_neurons(neuron1, neuron2):
     # Remove any identical index duplicates (either from error or
     # from combining overlapping segments), preferentially keeping
     # the waveform most similar to its channel's template
-    # keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
-    # combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-    # combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
-    # combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
-    # for chan in combined_neuron['channel']:
-    #     combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
-    # channel_selector = channel_selector[keep_bool]
-    # snr_by_unit = snr_by_unit[keep_bool]
+    keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
+    combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
+    combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+    combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
+    for chan in combined_neuron['channel']:
+        combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
+    channel_selector = channel_selector[keep_bool]
+    snr_by_unit = snr_by_unit[keep_bool]
 
     # Recompute things of interest like SNR and templates by channel as the
     # average over all data from that channel and store for output
@@ -245,11 +245,17 @@ def zero_symmetric_ccg(spikes_1, spikes_2, samples_window=40, d_samples=40, retu
     d_samples = int(d_samples)
     samples_axis = np.arange(-1 * samples_window, samples_window+d_samples, d_samples).astype(np.int64)
     counts = np.zeros(samples_axis.size, dtype=np.int64)
+    samples_axis = (np.floor((samples_axis + d_samples/2) / d_samples)).astype(np.int64)
+    if spikes_1.size == 0  or spikes_2.size == 0:
+        # CCG is zeros if one unit has no spikes
+        if return_trains:
+            return np.zeros(samples_axis.shape[0], dtype=np.int64), samples_axis, None, None
+        else:
+            return np.zeros(samples_axis.shape[0], dtype=np.int64), samples_axis
 
     # Convert the spike indices to units of d_samples
     spikes_1 = (np.floor((spikes_1 + d_samples/2) / d_samples)).astype(np.int64)
     spikes_2 = (np.floor((spikes_2 + d_samples/2) / d_samples)).astype(np.int64)
-    samples_axis = (np.floor((samples_axis + d_samples/2) / d_samples)).astype(np.int64)
 
     # Convert to spike trains
     train_len = int(max(spikes_1[-1], spikes_2[-1])) + 1 # This is samples, so need to add 1
@@ -495,7 +501,7 @@ def calc_overlap_ratio(n1_spikes, n2_spikes, max_samples):
     return overlap_ratio
 
 
-def calc_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
+def calc_expected_overlap(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
     """ Returns the expected number of overlapping spikes between neuron 1 and
     neuron 2 within a time window 'overlap_time' assuming independent spiking.
     As usual, spike_indices within each neuron must be sorted. """
@@ -504,7 +510,7 @@ def calc_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampli
     num_ms = int(np.ceil((last_index - first_index) / (sampling_rate / 1000)))
     if num_ms <= 0:
         # Neurons never fire at the same time, so expected overlap is 0
-        return 0.
+        return 0., 0., 0.
 
     # Find spike indices from each neuron that fall within the same time window
     # Should be impossible to return None because of num_ms check above
@@ -519,6 +525,19 @@ def calc_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampli
     n1_count = n1_stop - n1_start
     n2_count = n2_stop - n2_start
     expected_overlap = (overlap_time * 1000 * n1_count * n2_count) / num_ms
+
+    return expected_overlap, n1_count, n2_count
+
+
+def calc_expected_overlap_ratio(spike_inds_1, spike_inds_2, overlap_time, sampling_rate):
+    """ Returns the expected number of overlapping spikes between neuron 1 and
+    neuron 2 within a time window 'overlap_time' assuming independent spiking.
+    Ratio is computed by normalizing to the maximum  number of overlapping spikes
+    that could have occurred.
+    As usual, spike_indices within each neuron must be sorted. """
+    expected_overlap, n1_count, n2_count = calc_expected_overlap(spike_inds_1, spike_inds_2, overlap_time, sampling_rate)
+    if n1_count == 0 and n2_count == 0:
+        return 0.
     expected_overlap_ratio = expected_overlap / min(n1_count, n2_count)
 
     return expected_overlap_ratio
@@ -685,7 +704,10 @@ class SegSummary(object):
         self.v_dtype = v_dtype
         self.absolute_refractory_period = absolute_refractory_period
         self.verbose = verbose
+        # NOTE: half_clip_inds is the larger piece of clip width so
+        # 2*half_clip_inds is not necessarily the full clip inds
         self.half_clip_inds = int(round(np.amax(np.abs(self.sort_info['clip_width'])) * self.sort_info['sampling_rate']))
+        self.full_clip_inds = int(round((self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]) * self.sort_info['sampling_rate']))
         self.n_items = len(work_items)
         self.make_summaries()
 
@@ -722,6 +744,16 @@ class SegSummary(object):
                 neuron["spike_indices"] = self.sort_data[n_wi][0][select_label]
                 neuron['clips'] = self.sort_data[n_wi][2][select_label, :]
 
+                # # Remove all outlier clips to get best template estimate
+                # median_template = np.median(neuron['clips'], axis=0)
+                # clip_SSE = np.sum((neuron['clips'] - median_template) ** 2, axis=1)
+                # median_clip_SSE = np.median(clip_SSE)
+                # MAD_SSE = np.median(np.abs(clip_SSE - median_clip_SSE))
+                # keep_clips = np.logical_and(clip_SSE < median_clip_SSE + 2 * MAD_SSE,
+                #                             clip_SSE > median_clip_SSE - 2 * MAD_SSE)
+                # neuron['clips'] = neuron['clips'][keep_clips, :]
+                # neuron['spike_indices'] = neuron['spike_indices'][keep_clips]
+
                 # NOTE: This still needs to be done even though segments
                 # were ordered because of overlap!
                 # Ensure spike times are ordered. Must use 'stable' sort for
@@ -731,69 +763,78 @@ class SegSummary(object):
                 neuron["spike_indices"] = neuron["spike_indices"][spike_order]
                 neuron['clips'] = neuron['clips'][spike_order, :]
 
-                # Set duplicate tolerance as half spike width since within
-                # channel summary shouldn't be off by this
-                neuron['duplicate_tol_inds'] = calc_spike_half_width(
-                    neuron['clips'][:, neuron['main_win'][0]:neuron['main_win'][1]]) + 1
+                # Set duplicate tolerance as full clip width since we are only
+                # looking to get a good template here
+                neuron['duplicate_tol_inds'] = self.full_clip_inds
 
                 # Remove any identical index duplicates (either from error or
                 # from combining overlapping segments), preferentially keeping
                 # the waveform best aligned to the template
-                neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
-                # keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
-                #                 neuron['clips'], neuron["template"],
-                #                 tol_inds=neuron['duplicate_tol_inds'])
-                # neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                # neuron['clips'] = neuron['clips'][keep_bool, :]
+                neuron["template"] = np.median(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
+                keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
+                                neuron['clips'], neuron["template"],
+                                tol_inds=neuron['duplicate_tol_inds'])
+                neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
+                neuron['clips'] = neuron['clips'][keep_bool, :]
 
                 # Recompute template and store output
-                neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
-                neuron['snr'] = self.get_snr(neuron)
+                neuron["template"] = np.median(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
+                # Get SNR for each channel separately
+                neuron['snr_by_chan'] = np.zeros(self.sort_info['n_channels'])
+                for chan in range(0, self.sort_info['n_channels']):
+                    # Reset window and threshold that will be used by get_snr
+                    neuron['main_win'] = [self.sort_info['n_samples_per_chan'] * chan,
+                                          self.sort_info['n_samples_per_chan'] * (chan + 1)]
+                    neuron['threshold'] = self.work_items[n_wi]['thresholds'][chan]
+                    neuron['snr_by_chan'][chan] = self.get_snr(neuron)
+                    if chan == neuron['channel']:
+                        neuron['snr'] = neuron['snr_by_chan'][chan]
+
+                # Reset these to actual values. We still keep channel based on
+                # the work item that found this neuron.
+                neuron['main_win'] = [self.sort_info['n_samples_per_chan'] * neuron["channel"],
+                                      self.sort_info['n_samples_per_chan'] * (neuron["channel"] + 1)]
+                neuron['threshold'] = self.work_items[n_wi]['thresholds'][neuron['channel']]
                 if neuron['snr'] < 1.5:
                     # SNR this low indicates true garbage that will only slow
                     # binary pursuit so skip it outright
+                    # Remember that SNR can only go down from here as binary
+                    # pursuit can add spikes that didn't cross threshold
                     continue
-                neuron['fraction_mua'] = calc_fraction_mua_to_peak(
-                                            neuron["spike_indices"],
-                                            self.sort_info['sampling_rate'],
-                                            neuron['duplicate_tol_inds'],
-                                            self.absolute_refractory_period)
-                neuron['quality_score'] = neuron['snr'] * (1-neuron['fraction_mua']) \
-                                                * (neuron['spike_indices'].shape[0])
+                # neuron['fraction_mua'] = calc_fraction_mua_to_peak(
+                #                             neuron["spike_indices"],
+                #                             self.sort_info['sampling_rate'],
+                #                             neuron['duplicate_tol_inds'],
+                #                             self.absolute_refractory_period)
+                # neuron['quality_score'] = neuron['snr'] * (1-neuron['fraction_mua']) \
+                #                                 * (neuron['spike_indices'].shape[0])
 
                 # Get noise standard deviation estimate for template
-                background_noise_std = neuron['threshold'] / self.sort_info['sigma']
-                neuron['template_noise_threshold'] = 2 * np.sqrt(np.sum(neuron['template']**2)) * 1.96 * background_noise_std
-                # neuron['template_noise_threshold'] = np.mean(np.mean((neuron['clips'] - neuron["template"]) ** 2, axis=1))
-                neuron_SS = np.sum(neuron['template']**2)
-                print("Noise threshold is", neuron['template_noise_threshold'], "SUM square is", neuron_SS)
-                if neuron_SS < neuron['template_noise_threshold']:
-                    continue
+                # neuron['template_noise_threshold'] = 0.
+                # background_noise_std = neuron['threshold'] / self.sort_info['sigma']
+                # neuron['template_noise_threshold'] = 2 * np.sqrt(np.sum(neuron['template']**2)) * 1.96 * background_noise_std
+                # # neuron['template_noise_threshold'] = np.mean(np.mean((neuron['clips'] - neuron["template"]) ** 2, axis=1))
+                # neuron_SS = np.sum(neuron['template']**2)
+                # print("Noise threshold is", neuron['template_noise_threshold'], "SUM square is", neuron_SS)
+                # if neuron_SS < neuron['template_noise_threshold']:
+                #     continue
 
 
                 # Preserve full template for binary pursuit
                 neuron['pursuit_template'] = np.copy(neuron['template'])
-                # Set template channels with peak less than half threshold to 0
+                # Set new neighborhood of all channels with SNR over SNR threshold.
                 # This will be used for align shifting and merge testing
                 # NOTE: This new neighborhood only applies for use internally
-                new_neighbors = []
-                new_clips = []
-                for chan in range(0, neuron['neighbors'].shape[0]):
-                    chan_index = [chan * self.sort_info['n_samples_per_chan'],
-                                  (chan + 1) * self.sort_info['n_samples_per_chan']]
-                    if np.amax(np.abs(neuron['template'][chan_index[0]:chan_index[1]])) < 0.25 * self.work_items[n_wi]['thresholds'][chan]:
-                        neuron['template'][chan_index[0]:chan_index[1]] = 0
-                        neuron['clips'][:, chan_index[0]:chan_index[1]] = 0
-                    else:
-                        new_neighbors.append(chan)
-                        new_clips.append(neuron['clips'][:, chan_index[0]:chan_index[1]])
-                if len(new_neighbors) > 0:
-                    neuron['neighbors'] = np.array(new_neighbors, dtype=np.int64)
-                    neuron['clips'] = np.hstack(new_clips)
+                high_snr_neighbors = []
+                for chan in range(0, self.sort_info['n_channels']):
+                    if neuron['snr_by_chan'][chan] > .5:
+                        high_snr_neighbors.append(chan)
+
+                if len(high_snr_neighbors) > 0:
+                    neuron['high_snr_neighbors'] = np.array(high_snr_neighbors, dtype=np.int64)
                 else:
                     # Neuron is total trash so don't even append to summaries
                     continue
-
                 neuron['deleted_as_redundant'] = False
 
                 self.summaries.append(neuron)
@@ -847,7 +888,7 @@ class SegSummary(object):
             best_shift = 0
             clips_1 = None
             clips_2 = None
-            return best_pair, best_shift, clips_1, clips_2
+            return best_pair, best_shift, clips_1, clips_2, None, None
 
         # Reset n1 and n2 to match the best then calculate clips
         n1 = self.summaries[best_pair[0]]
@@ -857,50 +898,34 @@ class SegSummary(object):
         shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(best_shift)
         clips_1 = np.zeros((n1['clips'].shape[0], shift_samples_per_chan * self.sort_info['n_channels']), dtype=self.v_dtype)
         clips_2 = np.zeros((n2['clips'].shape[0], shift_samples_per_chan * self.sort_info['n_channels']), dtype=self.v_dtype)
-        sample_select_1 = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
-        sample_select_2 = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
-        # if best_shift == 0:
-        #     # No truncating/alignment. Just expand and return
-        #     c_index = [n1['neighbors'][0] * shift_samples_per_chan,
-        #                (n1['neighbors'][-1] + 1) * shift_samples_per_chan]
-        #     clips_1[:, c_index[0]:c_index[1]] = n1['clips']
-        #     sample_select_1[c_index[0]:c_index[1]] = True
-        #     c_index = [n2['neighbors'][0] * shift_samples_per_chan,
-        #                (n2['neighbors'][-1] + 1) * shift_samples_per_chan]
-        #     clips_2[:, c_index[0]:c_index[1]] = n2['clips']
-        #     sample_select_2[c_index[0]:c_index[1]] = True
-        #     # Only keep samples with data from at least one units
-        #     sample_select = np.logical_or(sample_select_1, sample_select_2)
-        #     clips_1 = clips_1[:, sample_select]
-        #     clips_2 = clips_2[:, sample_select]
-        #     return best_pair, best_shift, clips_1, clips_2
+        sample_select = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
 
         # Get clips for each channel, shift them, and assign for output, which
         # will be clips that have each channel individually aligned and
         # truncated
+        chans_used_for_clips = []
         for chan in range(0, self.sort_info['n_channels']):
-            if chan in n1['neighbors']:
-                neigh_chan_ind = np.argwhere(n1['neighbors'] == chan)[0][0]
-                chan_clips_1 = n1['clips'][:, neigh_chan_ind*self.sort_info['n_samples_per_chan']:(neigh_chan_ind+1)*self.sort_info['n_samples_per_chan']]
+            # Only keep channels with high SNR data from at least one unit
+            if chan in n1['high_snr_neighbors'] or chan in n2['high_snr_neighbors']:
+                chan_clips_1 = n1['clips'][:, chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan']]
                 if best_shift >= 0:
                     clips_1[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_1[:, best_shift:]
                 elif best_shift < 0:
                     clips_1[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_1[:, :best_shift]
-                sample_select_1[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
-            if chan in n2['neighbors']:
-                neigh_chan_ind = np.argwhere(n2['neighbors'] == chan)[0][0]
-                chan_clips_2 = n2['clips'][:, neigh_chan_ind*self.sort_info['n_samples_per_chan']:(neigh_chan_ind+1)*self.sort_info['n_samples_per_chan']]
+
+                chan_clips_2 = n2['clips'][:, chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan']]
                 if best_shift > 0:
                     clips_2[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_2[:, :-1*best_shift]
                 elif best_shift <= 0:
                     clips_2[:, chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = \
                                     chan_clips_2[:, -1*best_shift:]
-                sample_select_2[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
-        # Only keep samples with data from both units
-        sample_select = np.logical_and(sample_select_1, sample_select_2)
+                sample_select[chan*shift_samples_per_chan:(chan+1)*shift_samples_per_chan] = True
+                chans_used_for_clips.append(chan)
+        chans_used_for_clips = np.int64(np.hstack(chans_used_for_clips))
+
         # Compare best distance to size of the template SSE to see if its reasonable
         min_template_SSE = min(np.sum(self.summaries[best_pair[0]]['pursuit_template'] ** 2),
                                 np.sum(self.summaries[best_pair[1]]['pursuit_template'] ** 2))
@@ -908,12 +933,12 @@ class SegSummary(object):
         if np.any(sample_select) and (best_distance < 0.5 * min_template_SSE):
             clips_1 = clips_1[:, sample_select]
             clips_2 = clips_2[:, sample_select]
-            return best_pair, best_shift, clips_1, clips_2
+            return best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan
         else:
             # This is probably not a good match afterall, so try again
             previously_compared_pairs.append(best_pair)
-            best_pair, best_shift, clips_1, clips_2 = self.find_nearest_shifted_pair(remaining_inds, previously_compared_pairs)
-            return best_pair, best_shift, clips_1, clips_2
+            best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan = self.find_nearest_shifted_pair(remaining_inds, previously_compared_pairs)
+            return best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan
 
     def re_sort_two_units(self, clips_1, clips_2, use_weights=True, curr_chan_inds=None):
         if self.sort_info['add_peak_valley'] and curr_chan_inds is None:
@@ -924,11 +949,24 @@ class SegSummary(object):
         orig_neuron_labels = np.ones(clips.shape[0], dtype=np.int64)
         orig_neuron_labels[clips_1.shape[0]:] = 2
 
+<<<<<<< HEAD
         scores = preprocessing.compute_template_pca(clips, orig_neuron_labels,
                     curr_chan_inds, self.sort_info['check_components'],
                     self.sort_info['max_components'],
                     add_peak_valley=self.sort_info['add_peak_valley'],
                     use_weights=True)
+=======
+        # scores = preprocessing.compute_template_pca(clips, orig_neuron_labels,
+        #             curr_chan_inds, self.sort_info['check_components'],
+        #             self.sort_info['max_components'],
+        #             add_peak_valley=self.sort_info['add_peak_valley'],
+        #             use_weights=use_weights)
+        # scores = preprocessing.compute_template_pca_by_channel(clips, orig_neuron_labels,
+        #             curr_chan_inds, self.sort_info['check_components'],
+        #             self.sort_info['max_components'],
+        #             add_peak_valley=True,
+        #             use_weights=use_weights)
+>>>>>>> local_overlaps
         # scores = preprocessing.compute_pca(clips,
         #             self.sort_info['check_components'],
         #             self.sort_info['max_components'],
@@ -936,20 +974,29 @@ class SegSummary(object):
         #             curr_chan_inds=curr_chan_inds)
 
         # Projection onto templates, weighted by number of spikes
+<<<<<<< HEAD
         # t1 = np.mean(clips_1, axis=0)
         # t2 = np.mean(clips_2, axis=0)
         # if use_weights:
         #     t1 *= (clips_1.shape[0] / clips.shape[0])
         #     t2 *= (clips_2.shape[0] / clips.shape[0])
         # scores = clips @ np.vstack((t1, t2)).T
+=======
+        t1 = np.median(clips_1, axis=0)
+        t2 = np.median(clips_2, axis=0)
+        if use_weights:
+            t1 *= (clips_1.shape[0] / clips.shape[0])
+            t2 *= (clips_2.shape[0] / clips.shape[0])
+        scores = clips @ np.vstack((t1, t2)).T
+>>>>>>> local_overlaps
 
         scores = np.float64(scores)
 
-        median_cluster_size = min(100, int(np.around(clips.shape[0] / 1000)))
-        n_random = max(100, np.around(clips.shape[0] / 100)) if self.sort_info['use_rand_init'] else 0
-        neuron_labels = initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
-        neuron_labels = merge_clusters(scores, neuron_labels,
-                            split_only=False, merge_only=True,
+        # median_cluster_size = min(100, int(np.around(clips.shape[0] / 1000)))
+        # n_random = max(100, np.around(clips.shape[0] / 100)) if self.sort_info['use_rand_init'] else 0
+        # neuron_labels = initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
+        neuron_labels = merge_clusters(scores, orig_neuron_labels,
+                            split_only=False, merge_only=False,
                             p_value_cut_thresh=self.sort_info['p_value_cut_thresh'])
 
         curr_labels, n_per_label = np.unique(neuron_labels, return_counts=True)
@@ -987,8 +1034,8 @@ class SegSummary(object):
                         use_weights=use_weights)
         elif method.lower() == 'projection':
             # Projection onto templates, weighted by number of spikes
-            t1 = np.mean(clips_1, axis=0)
-            t2 = np.mean(clips_2, axis=0)
+            t1 = np.median(clips_1, axis=0)
+            t2 = np.median(clips_2, axis=0)
             if use_weights:
                 t1 *= (clips_1.shape[0] / clips.shape[0])
                 t2 *= (clips_2.shape[0] / clips.shape[0])
@@ -1022,24 +1069,17 @@ class SegSummary(object):
             for chan in range(0, self.sort_info['n_channels']):
                 chan_temp_2 = n2['pursuit_template'][chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan']]
                 if shift > 0:
-                    shift_template_2[chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan'] - shift] = \
+                    shift_template_2[chan*self.sort_info['n_samples_per_chan'] + shift:(chan+1)*self.sort_info['n_samples_per_chan']] = \
                                     chan_temp_2[:-1*shift]
                 else:
-                    shift_template_2[chan*self.sort_info['n_samples_per_chan'] - shift:(chan+1)*self.sort_info['n_samples_per_chan']] = \
-                                    chan_temp_2[:, -1*shift:]
+                    shift_template_2[chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan'] + shift] = \
+                                    chan_temp_2[-1*shift:]
         else:
             shift_template_2 = n2['pursuit_template']
 
         n1_weight = n1['spike_indices'].shape[0] / (n1['spike_indices'].shape[0] + n2['spike_indices'].shape[0])
         merged_template = n1_weight * n1['pursuit_template'] + (1 - n1_weight) * shift_template_2
 
-        print("MADE THIS TEMPLATE")
-        plt.plot(merged_template)
-        plt.show()
-        print("FROM THESE TEMPLATES")
-        plt.plot(n1['pursuit_template'])
-        plt.plot(n2['pursuit_template'])
-        plt.show()
         return merged_template
 
     def sharpen_across_chans(self):
@@ -1050,7 +1090,7 @@ class SegSummary(object):
         previously_compared_pairs = []
         templates_to_merge = []
         while len(remaining_inds) > 1:
-            best_pair, best_shift, clips_1, clips_2, = \
+            best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan = \
                             self.find_nearest_shifted_pair(remaining_inds,
                                                     previously_compared_pairs)
             if len(best_pair) == 0:
@@ -1064,15 +1104,26 @@ class SegSummary(object):
                 #         clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
                 #         method='channel_template_pca', merge_only=True,
                 #         curr_chan_inds=None, use_weights=True)
-                is_merged = self.re_sort_two_units(clips_1, clips_2, curr_chan_inds=None)
+                # best_clip_chan_ind = None
+                # best_chan_snr = 0.
+                # for clip_chan_ind in range(0, chans_used_for_clips.shape[0]):
+                #     check_chan = chans_used_for_clips[clip_chan_ind]
+                #     curr_best_snr = max(self.summaries[best_pair[0]]['snr_by_chan'][check_chan],
+                #                         self.summaries[best_pair[1]]['snr_by_chan'][check_chan])
+                #     if curr_best_snr > best_chan_snr:
+                #         best_chan_snr = curr_best_snr
+                #         best_clip_chan_ind = clip_chan_ind
+                # curr_chan_inds = np.arange(best_clip_chan_ind*shift_samples_per_chan, (best_clip_chan_ind+1)*shift_samples_per_chan)
+
+                is_merged = self.re_sort_two_units(clips_1, clips_2, use_weights=False)
                 # print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
                 # print("THESE ARE THE TEMPLATES")
                 # plt.plot(self.summaries[best_pair[0]]['template'])
                 # plt.plot(self.summaries[best_pair[1]]['template'])
                 # plt.show()
                 # print("THESE ARE THE CLIPS AVERAGES")
-                # plt.plot(np.mean(clips_1, axis=0))
-                # plt.plot(np.mean(clips_2, axis=0))
+                # plt.plot(np.median(clips_1, axis=0))
+                # plt.plot(np.median(clips_2, axis=0))
                 # plt.show()
             if is_merged:
                 # Delete the unit with the fewest spikes
@@ -1083,7 +1134,9 @@ class SegSummary(object):
                 else:
                     inds_to_delete.append(best_pair[0])
                     remaining_inds.remove(best_pair[0])
-                    templates_to_merge.append([best_pair[1], best_pair[0], best_shift])
+                    # Invert shift because merge_templates assumes shift relative
+                    # to first unit (best_pair[0])
+                    templates_to_merge.append([best_pair[1], best_pair[0], -1*best_shift])
             else:
                 # These mutually closest failed so do not repeat either
                 remaining_inds.remove(best_pair[0])
@@ -1102,7 +1155,9 @@ class SegSummary(object):
             # Also update number of spikes so that future merges can have the
             # correct weighting. These are no long in correspondence with the clips
             # and not sorted so it is assumed they will not be used again
-            self.summaries[merge_item[0]]['spike_indices'] = np.hstack((self.summaries[merge_item[0]]['spike_indices'], self.summaries[merge_item[1]]['spike_indices']))
+            self.summaries[merge_item[0]]['spike_indices'] = np.hstack((self.summaries[merge_item[0]]['spike_indices'], self.summaries[merge_item[1]]['spike_indices'] + merge_item[2]))
+            # Need these to stay sorted for future clip finding
+            self.summaries[merge_item[0]]['spike_indices'].sort()
 
         # Delete merged units
         inds_to_delete.sort()
@@ -1351,7 +1406,7 @@ class WorkItemSummary(object):
     """
     def __init__(self, sort_data, work_items, sort_info,
                  absolute_refractory_period=12e-4,
-                 max_mua_ratio=0.2, min_snr=1.5, min_overlapping_spikes=.5,
+                 max_mua_ratio=0.2, min_snr=1.5, min_overlapping_spikes=.75,
                  stitch_overlap_only=True, skip_organization=False,
                  n_segments=None, verbose=False):
         if not skip_organization:
@@ -1979,8 +2034,6 @@ class WorkItemSummary(object):
             print("Skipped stitching")
             return
 
-        self.sharpen_segments()
-
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
             print("Start stitching channel", chan)
@@ -2220,19 +2273,6 @@ class WorkItemSummary(object):
                         neuron['clips'] = neuron['clips'][keep_bool, :]
                     else:
                         pass
-                        # neuron['duplicate_tol_inds'] = 1
-
-                    # Remove any identical index duplicates (either from error or
-                    # from combining overlapping segments), preferentially keeping
-                    # the waveform best aligned to the template
-                    neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
-                    # keep_bool = remove_spike_event_duplicates(neuron["spike_indices"],
-                    #                 neuron['clips'], neuron["template"],
-                    #                 tol_inds=neuron['duplicate_tol_inds'])
-                    # neuron["spike_indices"] = neuron["spike_indices"][keep_bool]
-                    # neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][keep_bool]
-                    # neuron['clips'] = neuron['clips'][keep_bool, :]
-                    print("SKIPPED DUPLICATE REMOVAL")
 
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
@@ -2727,12 +2767,13 @@ class WorkItemSummary(object):
             # First adjust all spike indices to where they would have been if
             # aligned to the specified peak or valley for units on the same channel
             # NOTE: I can't think of a good way to do this reliably across channels
-            if chan_align_peak[unit['channel']][0] / chan_align_peak[unit['channel']][1] > 0.5:
-                # Most templates on this channel have greater peak so align peak
-                shift = np.argmax(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
-            else:
-                shift = np.argmin(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
-            shift = np.argmax(np.abs(unit['template'][unit['main_win'][0]:unit['main_win'][1]])) - waveform_clip_center
+            # if chan_align_peak[unit['channel']][0] / chan_align_peak[unit['channel']][1] > 0.5:
+            #     # Most templates on this channel have greater peak so align peak
+            #     shift = np.argmax(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
+            # else:
+            #     shift = np.argmin(unit['template'][unit['main_win'][0]:unit['main_win'][1]]) - waveform_clip_center
+            # shift = np.argmax(np.abs(unit['template'][unit['main_win'][0]:unit['main_win'][1]])) - waveform_clip_center
+            shift = 0
 
             indices_by_unit.append(unit['spike_indices'] + shift)
             clips_by_unit.append(unit['clips'])
@@ -2802,29 +2843,30 @@ class WorkItemSummary(object):
             combined_neuron["template"][chan] = np.mean(
                 combined_neuron['clips'][chan_select, :], axis=0).astype(combined_neuron["clips"].dtype)
 
-        # if len(combined_neuron['channel']) == 1:
-        #     # All data on same channel so use minimal duplicate tolerance
-        #     for c in combined_neuron['channel']:
-        #         c_main_win = combined_neuron['main_windows'][c]
-        #     combined_neuron['duplicate_tol_inds'] = 2 * calc_spike_half_width(
-        #         combined_neuron['clips'][:, c_main_win[0]:c_main_win[1]]) + 1
-        # else:
-        #     # Duplicates across channels can be very different so use large tol
-        #     combined_neuron['duplicate_tol_inds'] = self.half_clip_inds
+        # Find the main channel with the largest spike width and use that as
+        # the duplicate tolerance for this unit. Even with ZCA and across
+        # channels binary pursuit event indices should be more accurate than this
+        combined_neuron['duplicate_tol_inds'] = 0
+        for c in combined_neuron['channel']:
+            c_main_win = combined_neuron['main_windows'][c]
+            curr_spike_width = calc_spike_half_width(
+                combined_neuron['clips'][:, c_main_win[0]:c_main_win[1]]) + 1
+            if curr_spike_width > combined_neuron['duplicate_tol_inds']:
+                combined_neuron['duplicate_tol_inds'] = curr_spike_width
 
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping
         # the waveform most similar to its channel's template
-        # keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
-        # combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
-        # combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
-        # combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
-        # for chan in combined_neuron['channel']:
-        #     combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
-        # channel_selector = channel_selector[keep_bool]
-        # threshold_by_unit = threshold_by_unit[keep_bool] # NOTE: not currently output...
-        # segment_by_unit = segment_by_unit[keep_bool]
-        # snr_by_unit = snr_by_unit[keep_bool]
+        keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
+        combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
+        combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
+        combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
+        for chan in combined_neuron['channel']:
+            combined_neuron['channel_selector'][chan] = combined_neuron['channel_selector'][chan][keep_bool]
+        channel_selector = channel_selector[keep_bool]
+        threshold_by_unit = threshold_by_unit[keep_bool] # NOTE: not currently output...
+        segment_by_unit = segment_by_unit[keep_bool]
+        snr_by_unit = snr_by_unit[keep_bool]
 
         # Recompute things of interest like SNR and templates by channel as the
         # average over all data from that channel and store for output

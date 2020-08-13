@@ -49,6 +49,8 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
     for i in range(0, voltage_data.shape[0]):
         # Compute i variance for diagonal elements of sigma
         valid_samples = voltage_data[i, :][~volt_thresh_bool[i, :]]
+        if valid_samples.size == 0:
+            raise ValueError("No data points under threshold to compute ZCA. Check threshold sigma and clip width.")
         if n_samples > valid_samples.size:
             out_samples = valid_samples
         else:
@@ -78,6 +80,7 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
     # This ensures that the output of the matrix multiplication (Z * channel voltages)
     # remains in the same range (doesn't clip ints)
     zca_matrix = zca_matrix / np.diag(zca_matrix)[:, None]
+    # print("TURNED OFF UNDO ZCA SCALING LINE 81 PREPROCESSING")
 
     return zca_matrix
 
@@ -256,6 +259,7 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
     if add_peak_valley and curr_chan_inds is None:
         raise ValueError("Must supply indices for the main channel if using peak valley")
     pcs_by_chan = []
+    eigs_by_chan = []
     # Do current channel first
     # use_components, _ = optimal_reconstruction_pca_order(clips[:, curr_chan_inds], check_components, max_components, min_components=0)
     # NOTE: Slicing SWITCHES C and F ordering so check!
@@ -270,7 +274,7 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
     else:
         use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(clips[:, curr_chan_inds], check_components, max_components)
     # print("Automatic component detection (get by channel) chose", use_components, "PCA components.", flush=True)
-    scores = pca_scores(clips[:, curr_chan_inds], use_components, pcs_as_index=True)
+    scores, eigs = pca_scores(clips[:, curr_chan_inds], use_components, pcs_as_index=True, return_E=True)
     if scores is None:
         # Usually means all clips were the same or there was <= 1, so PCs can't
         # be computed. Just return everything as the same score
@@ -281,6 +285,7 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
         peak_valley *= np.amax(np.amax(np.abs(scores))) # Normalized to same range as PC scores
         scores = np.hstack((scores, peak_valley))
     pcs_by_chan.append(scores)
+    eigs_by_chan.append(eigs)
     n_curr_max = use_components.size
 
     samples_per_chan = curr_chan_inds.size
@@ -300,11 +305,21 @@ def compute_pca_by_channel(clips, curr_chan_inds, check_components,
         # if use_components.size > n_curr_max:
         #     use_components = use_components[0:n_curr_max]
         # print("Automatic component detection (get by channel) chose", use_components, "PCA components.", flush=True)
-        scores = pca_scores(clips[:, ch_inds], use_components, pcs_as_index=True)
+        scores, eigs = pca_scores(clips[:, ch_inds], use_components, pcs_as_index=True, return_E=True)
         pcs_by_chan.append(scores)
+        eigs_by_chan.append(eigs)
     clips = clips.astype(clip_dtype)
 
-    return np.hstack(pcs_by_chan)
+    # Keep only the max components by eigenvalue
+    pcs_by_chan = np.hstack(pcs_by_chan)
+    if pcs_by_chan.shape[1] > max_components:
+        eigs_by_chan = np.hstack(eigs_by_chan)
+        comp_order = np.argsort(eigs_by_chan)
+        pcs_by_chan = pcs_by_chan[:, comp_order]
+        pcs_by_chan = pcs_by_chan[:, 0:max_components]
+        pcs_by_chan = np.ascontiguousarray(pcs_by_chan)
+
+    return pcs_by_chan
 
 
 def minimal_redundancy_template_order(spikes, templates, max_templates=None, first_template_ind=None):
@@ -451,7 +466,7 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds,
         return None
     templates = np.empty((unique_labels.size, clips.shape[1]))
     for ind, l in enumerate(unique_labels):
-        templates[ind, :] = np.mean(clips[labels == l, :], axis=0)
+        templates[ind, :] = np.median(clips[labels == l, :], axis=0)
         if use_weights:
             templates[ind, :] *= np.sqrt(u_counts[ind] / labels.size)
 
@@ -473,6 +488,7 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds,
     if score_mat is None:
         # Usually means all clips were the same or there was <= 1, so PCs can't
         # be computed. Just return everything as the same score
+        print("FAILED TO FIND PCS !!!")
         return np.zeros((clips.shape[0], 1))
     scores = clips[:, curr_chan_inds] @ score_mat
     if add_peak_valley:

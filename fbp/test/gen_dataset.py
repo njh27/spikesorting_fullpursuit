@@ -228,7 +228,7 @@ class TestDataset(object):
             #     spiketrain[:] = False
             #     spiketrain[self.actual_IDs[neuron]] = True
 
-            if neuron == 1:
+            if False: #neuron == 1:
                 print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
                 n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 5
                 select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)

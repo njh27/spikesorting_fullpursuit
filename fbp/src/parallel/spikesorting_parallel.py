@@ -51,6 +51,42 @@ def spike_sorting_settings_parallel(**kwargs):
             raise TypeError("Unknown parameter key {0}.".format(k))
         settings[k] = kwargs[k]
 
+    # Check validity of settings
+    if settings['clip_width'][0] > 0.0:
+        print("First element of clip width: ", settings['clip_width'][0], " is positive. Using negative value of: ", -1*settings['clip_width'][0])
+        settings['clip_width'][0] *= -1
+    if settings['filter_band'][0] < 0 or settings['filter_band'][1] < 0:
+        raise ValueError("Input setting 'filter_band' must be a positve numbers")
+
+    # Check validity of most other settings
+    for key in settings.keys():
+        if key in ['do_branch_PCA', 'do_branch_PCA_by_chan', 'do_ZCA_transform',
+                    'use_rand_init', 'add_peak_valley', 'save_1_cpu',
+                    'sort_peak_clips_only', 'get_adjusted_clips']:
+
+            if type(settings[key]) != bool:
+                if settings[key] != 'False' and settings[key] != 0:
+                    settings[key] = True
+                else:
+                    settings[key] = False
+                print("Input setting '{0}' was converted to boolean value: ".format(key), settings[key])
+
+        if key in ['segment_duration', 'segment_overlap']:
+            # Note actual relative values for overlap are checked in main function
+            if settings[key] <= 0:
+                raise ValueError("Input setting '{0}' must be a postive number".format(key))
+
+        if key in ['check_components', 'max_components']:
+
+            if settings[key] <= 0  or type(settings[key]) != int:
+                raise ValueError("Input setting '{0}' must be a postive integer".format(key))
+
+        if key in ['min_firing_rate', 'sigma_noise_penalty',
+                    'max_binary_pursuit_clip_width_factor']:
+
+            if settings[key] <= 0:
+                print("Input setting '{0}' was invalid and converted to zero".format(key))
+
     return settings
 
 
@@ -533,6 +569,9 @@ def spike_sort_parallel(Probe, **kwargs):
     """
     # Get our settings
     settings = spike_sorting_settings_parallel(**kwargs)
+    # Check that fitler is appropriate
+    if settings['filter_band'][0] > Probe.sampling_rate/2 or settings['filter_band'][1] > Probe.sampling_rate/2:
+        raise ValueError("Input setting 'filter_band' exceeds Nyquist limit for sampling rate of", Probe.sampling_rate)
     # Check that Probe neighborhood function is appropriate. Otherwise it can
     # generate seemingly mysterious errors
     try:

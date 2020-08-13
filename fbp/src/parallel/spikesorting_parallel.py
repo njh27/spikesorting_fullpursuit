@@ -133,6 +133,7 @@ def allocate_cpus_by_chan(samples_over_thresh):
 
 
 class NoSpikesError(Exception):
+    # Dummy exception class soley for exiting the 'try' loop if there are no spikes
     pass
 
 

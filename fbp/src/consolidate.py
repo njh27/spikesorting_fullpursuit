@@ -1185,9 +1185,8 @@ class SegSummary(object):
                 overlap_ratio[neuron2_ind, neuron1_ind] = overlap_ratio[neuron1_ind, neuron2_ind]
                 delta_ratio[neuron1_ind, neuron2_ind] = delta
                 delta_ratio[neuron2_ind, neuron1_ind] = delta_ratio[neuron1_ind, neuron2_ind]
-                if (overlap_ratio[neuron1_ind, neuron2_ind] >=
-                                    overlap_ratio_threshold * delta_ratio[neuron1_ind, neuron2_ind] +
-                                    expected_ratio[neuron1_ind, neuron2_ind]):
+                if (overlap_ratio[neuron1_ind, neuron2_ind] - expected_ratio[neuron1_ind, neuron2_ind] >
+                                    overlap_ratio_threshold * delta_ratio[neuron1_ind, neuron2_ind]):
                     # Overlap is higher than chance and at least one of these will be removed
                     violation_partners[neuron1_ind].add(neuron2_ind)
                     violation_partners[neuron2_ind].add(neuron1_ind)
@@ -2312,7 +2311,7 @@ class WorkItemSummary(object):
                 is_all_linked = False
         return is_all_linked
 
-    def remove_redundant_neurons(self, seg, overlap_ratio_threshold=1):
+    def remove_redundant_neurons(self, seg, overlap_ratio_threshold=2):
         """
         Note that this function does not actually delete anything. It removes
         links between segments for redundant units and it adds a flag under

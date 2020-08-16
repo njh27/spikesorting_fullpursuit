@@ -189,7 +189,9 @@ class TestDataset(object):
     def gen_noise_voltage_array(self):
         noise_voltage_array = np.zeros((self.num_channels, int(self.samples_per_second*self.duration)), dtype=self.electrode_dtype)
         if self.percent_shared_noise > 0:
-            # Make a shared array
+            # Make a shared array. There are other ways this could be done, but here
+            # all channels get percent_shared_noise amplitude shared noise plus
+            # 1 - percent_shared_noise independent noise
             shared_noise = self.percent_shared_noise * self.gen_bandlimited_noise()
             for i in range (0, self.num_channels):
                 noise_voltage_array[i, :] = shared_noise

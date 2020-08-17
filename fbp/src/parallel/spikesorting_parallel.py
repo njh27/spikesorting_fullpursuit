@@ -159,7 +159,7 @@ def threshold_and_zca_voltage_parallel(seg_voltages, sigma, zca_cushion, n_sampl
         seg_voltages_to_share.append(share_voltage)
         shapes_to_share.append(seg_voltages[seg].shape)
 
-    # Run in main process so available in main 
+    # Run in main process so available in main
     init_zca_voltage(seg_voltages_to_share, shapes_to_share, seg_voltages[0].dtype)
 
     order_results = []
@@ -179,56 +179,6 @@ def threshold_and_zca_voltage_parallel(seg_voltages, sigma, zca_cushion, n_sampl
     mkl.set_num_threads(n_threads) # Reset threads back
 
     return thresholds_list, seg_over_thresh_list
-
-
-
-
-# def init_pool_dict(volt_array, volt_shape, init_dict=None):
-#     global pool_dict
-#     pool_dict = {}
-#     pool_dict['share_voltage'] = volt_array
-#     pool_dict['share_voltage_shape'] = volt_shape
-#     if init_dict is not None:
-#         for k in init_dict.keys():
-#             pool_dict[k] = init_dict[k]
-#     return
-#
-#
-# def filter_one_chan(chan, b_filt, a_filt, voltage_type):
-#
-#     mkl.set_num_threads(2)
-#     voltage = np.frombuffer(pool_dict['share_voltage'], dtype=voltage_type).reshape(pool_dict['share_voltage_shape'])
-#     filt_voltage = filtfilt(b_filt, a_filt, voltage[chan, :], padlen=None).astype(voltage_type)
-#     return filt_voltage
-#
-#
-# def filter_parallel(Probe, low_cutoff=300, high_cutoff=6000):
-#
-#     print("Allocating filter array and copying voltage")
-#     filt_X = mp.RawArray(np.ctypeslib.as_ctypes_type(Probe.v_dtype), Probe.voltage.size)
-#     filt_X_np = np.frombuffer(filt_X, dtype=Probe.v_dtype).reshape(Probe.voltage.shape)
-#     np.copyto(filt_X_np, Probe.voltage)
-#     low_cutoff = low_cutoff / (Probe.sampling_rate / 2)
-#     high_cutoff = high_cutoff / (Probe.sampling_rate / 2)
-#     b_filt, a_filt = butter(1, [low_cutoff, high_cutoff], btype='band')
-#     print("Performing voltage filtering")
-#     filt_results = []
-#     # Number of processes was giving me out of memory error on Windows 10 until
-#     # I dropped it to half number of cores.
-#     with mp.Pool(processes=psutil.cpu_count(logical=False)//2, initializer=init_pool_dict, initargs=(filt_X, Probe.voltage.shape)) as pool:
-#         try:
-#             for chan in range(0, Probe.num_channels):
-#                 filt_results.append(pool.apply_async(filter_one_chan, args=(chan, b_filt, a_filt,  Probe.v_dtype)))
-#         finally:
-#             pool.close()
-#             pool.join()
-#     filt_voltage = np.vstack([x.get() for x in filt_results])
-#
-#     return filt_voltage
-
-
-
-
 
 
 def allocate_cpus_by_chan(samples_over_thresh):

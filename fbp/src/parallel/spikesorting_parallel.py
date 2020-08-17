@@ -159,11 +159,11 @@ def threshold_and_zca_voltage_parallel(seg_voltages, sigma, zca_cushion, n_sampl
         seg_voltages_to_share.append(share_voltage)
         shapes_to_share.append(seg_voltages[seg].shape)
 
-    # Run in main process so available in main and all children
+    # Run in main process so available in main 
     init_zca_voltage(seg_voltages_to_share, shapes_to_share, seg_voltages[0].dtype)
 
     order_results = []
-    with mp.Pool(processes=n_processes, initializer=None, initargs=()) as pool:
+    with mp.Pool(processes=n_processes, initializer=init_zca_voltage, initargs=(seg_voltages_to_share, shapes_to_share, seg_voltages[0].dtype)) as pool:
         try:
             for seg in range(0, len(seg_voltages)):
                 order_results.append(pool.apply_async(parallel_zca_and_threshold, args=(seg, sigma, zca_cushion, n_samples)))

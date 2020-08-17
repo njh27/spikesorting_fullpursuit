@@ -69,10 +69,10 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
             sigma[j, i] = sigma[i, j]
             ij_samples[0, j] = out_samples.size
             ij_samples[1, j] = valid_samples.size
-        if i < voltage_data.shape[0] - 1:
-            print("ZCA channel", i, "is from approximately", np.around(np.nanmean(ij_samples[0, :])), "samples of", np.around(np.nanmean(ij_samples[1, :])), "available points")
-        else:
-            print("ZCA channel", i, "is from approximately", out_samples.size, "samples of", valid_samples.size, "available points")
+        # if i < voltage_data.shape[0] - 1:
+        #     print("ZCA channel", i, "is from approximately", np.around(np.nanmean(ij_samples[0, :])), "samples of", np.around(np.nanmean(ij_samples[1, :])), "available points")
+        # else:
+        #     print("ZCA channel", i, "is from approximately", out_samples.size, "samples of", valid_samples.size, "available points")
 
     U, S, _ = linalg.svd(sigma)
     zca_matrix = U @ np.diag(1.0 / np.sqrt(S + 1e-9)) @ U.T

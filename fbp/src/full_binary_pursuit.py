@@ -59,12 +59,12 @@ def remove_overlap_templates(templates, n_samples_per_chan, n_chans,
         best_inds = None
 
         for n1 in range(0, templates.shape[0]):
-            if (n_template_spikes[n1] < 10*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > templates_SS[test_unit]):
+            if (n_template_spikes[n1] < 5*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > templates_SS[test_unit]):
                 continue
             template_1 = templates[n1, :]
 
             for n2 in range(n1+1, templates.shape[0]):
-                if (n_template_spikes[n2] < 10*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > templates_SS[test_unit]):
+                if (n_template_spikes[n2] < 5*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > templates_SS[test_unit]):
                     continue
                 template_2 = templates[n2, :]
 
@@ -233,6 +233,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     seg_summary = SegSummary(seg_data, seg_w_items, sort_info, v_dtype,
                         absolute_refractory_period=absolute_refractory_period,
                         verbose=False)
+    if len(seg_summary.summaries) == 0:
+        print("Found no neuron templates for binary pursuit")
+        return [[[], [], [], [], None]]
 
     print("Entered with", len(seg_summary.summaries), "templates in segment", seg_number)
     # for n in seg_summary.summaries:

@@ -94,12 +94,14 @@ class TestDataset(object):
     def __init__(self, num_channels, duration, random_seed=None,
                  neuron_templates=None, frequency_range=(500, 8000),
                  samples_per_second=40000, amplitude=1, percent_shared_noise=0,
-                 electrode_type='Probe', electrode_dtype=None):
+                 correlate1_2=False, electrode_type='Probe',
+                 electrode_dtype=None):
         self.num_channels = num_channels
         self.duration = duration
         self.frequency_range = frequency_range
         self.samples_per_second = samples_per_second
         self.electrode_dtype = electrode_dtype
+        self.correlate1_2 = correlate1_2
 
         if electrode_type.lower() == 'probe':
             self.Probe = TestProbe(self.samples_per_second,
@@ -230,7 +232,7 @@ class TestDataset(object):
             #     spiketrain[:] = False
             #     spiketrain[self.actual_IDs[neuron]] = True
 
-            if False: #neuron == 1:
+            if self.correlate1_2 and neuron == 1:
                 print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
                 n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 5
                 select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)

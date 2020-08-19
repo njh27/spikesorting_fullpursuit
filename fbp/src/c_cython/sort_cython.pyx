@@ -368,8 +368,10 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
             as_ind += 1
         all_template_shifts.append(all_shifts)
 
+    # Check in order of descending template sum squared
+    template_SS_order = np.argsort(templates_SS)[-1::-1]
     cdef Py_ssize_t test_unit, n1, n2, s1_ind, s2_ind
-    for test_unit in range(0, templates.shape[0]):
+    for test_unit in template_SS_order:
         test_template = templates[test_unit, :]
 
         min_residual_SS = np.inf

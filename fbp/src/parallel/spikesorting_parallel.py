@@ -84,7 +84,7 @@ def spike_sorting_settings_parallel(**kwargs):
         if key in ['min_firing_rate', 'sigma_noise_penalty',
                     'max_binary_pursuit_clip_width_factor']:
 
-            if settings[key] <= 0:
+            if settings[key] < 0:
                 print("Input setting '{0}' was invalid and converted to zero".format(key))
 
     return settings

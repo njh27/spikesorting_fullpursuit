@@ -81,7 +81,7 @@ class TestProbe(electrode.AbstractProbe):
             """
         start = max(channel - 2, 0)
         stop = min(channel + 3, self.num_channels)
-        start, stop = 0, 5
+
         return np.arange(start, stop)
 
 
@@ -359,13 +359,19 @@ class TestDataset(object):
             spiketrain[-(half_temp_width+2):] = False # or overlap end
             self.actual_IDs[neuron] = np.nonzero(spiketrain)[0] - half_temp_width
 
-            if neuron == 1:
+            if self.correlate1_2 and neuron == 1:
                 print("!!! MAKING UNIT 2 CORRELATE WITH UNIT 1 !!!")
-                n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 10
+                n_correlated_spikes = self.actual_IDs[neuron].shape[0] // 5
                 select_inds0 = np.random.choice(self.actual_IDs[neuron-1].shape[0], n_correlated_spikes, replace=False)
                 select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
                 self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 10, n_correlated_spikes)
                 self.actual_IDs[neuron].sort()
+                overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
+                self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
+                self.actual_IDs[neuron] = np.unique(self.actual_IDs[neuron])
+                # Spike train is used for actual convolution so reset here
+                spiketrain[:] = False
+                spiketrain[self.actual_IDs[neuron]] = True
 
             remove_IDs = np.zeros(self.actual_IDs[neuron].size, dtype=np.bool)
             for i, spk_ind in enumerate(self.actual_IDs[neuron]):

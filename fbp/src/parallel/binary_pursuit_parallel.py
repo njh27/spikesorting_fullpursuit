@@ -232,56 +232,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         prg = cl.Program(ctx, kernels)
         prg.build() # David has a bunch of PYOPENCL_BUILD_OPTIONS used here
 
-        # Determine the segment size that we need to use to fit into the
-        # memory on this GPU device.
-        gpu_memory_size = device.get_info(cl.device_info.GLOBAL_MEM_SIZE) # Total memory size in bytes
-        # Save 50% or 1GB, whichever is less for the operating system to use
-        # assuming this is not a headless system.
-        gpu_memory_size = max(gpu_memory_size * 0.5, gpu_memory_size - (1024 * 1024 * 1024))
-        if max_gpu_memory is not None:
-            gpu_memory_size = min(gpu_memory_size, max_gpu_memory)
-        # Windows 10 only allows 80% of the memory on the graphics card to be used,
-        # the rest is reserved for WDDMv2. See discussion here:
-        # https://www.nvidia.com/en-us/geforce/forums/geforce-graphics-cards/5/269554/windows-10wddm-grabbing-gpu-vram/
-        regex_version = re.search('[0-9][0-9][.]', sys_platform.version())
-        if (sys_platform.system() == 'Windows') and (float(regex_version.group()) >= 10.):
-            gpu_memory_size = min(device.get_info(cl.device_info.GLOBAL_MEM_SIZE) * 0.75,
-                                  gpu_memory_size)
-        assert gpu_memory_size > 0
-
-        # Estimate the number of bytes that 1 second of data take up
-        # This is skipping the bias and template squared error buffers which are small
-        constant_memory_usage = templates_vector.nbytes + template_labels.nbytes
-        # Usage for voltage
-        memory_usage_per_second = (n_chans * sampling_rate * np.dtype(np.float32).itemsize)
-        # Add usage for likelihood functions
-        memory_usage_per_second += (templates.shape[0] * sampling_rate * np.dtype(np.float32).itemsize)
-        # Usage for new spike info storage buffers depends on samples divided by template size
-        memory_usage_per_second += (sampling_rate / template_samples_per_chan) * \
-                                    (np.dtype(np.uint32).itemsize + # additional indices
-                                     np.dtype(np.uint32).itemsize + # additional labels
-                                     np.dtype(np.uint32).itemsize + # best indices
-                                     np.dtype(np.uint32).itemsize + # best labels
-                                     np.dtype(np.float32).itemsize) # best likelihoods
-
-        # Estimate how much data we can look at in each data 'chunk'
-        num_seconds_per_chunk = (gpu_memory_size - constant_memory_usage) \
-                                / (memory_usage_per_second)
-        # Do not exceed the length of a buffer in bytes that can be addressed
-        # for the single largest data buffer, the voltage
-        # Note: there is also a max allocation size,
-        # device.get_info(cl.device_info.MAX_MEM_ALLOC_SIZE)
-        print("GPU has", device.get_info(cl.device_info.ADDRESS_BITS), "address bits")
-        max_addressable_seconds = (((1 << device.get_info(cl.device_info.ADDRESS_BITS)) - 1)
-                                    / (np.dtype(np.float32).itemsize * sampling_rate
-                                     * n_chans))
-        num_seconds_per_chunk = min(num_seconds_per_chunk, np.floor(max_addressable_seconds))
-        # Convert from seconds to indices, the actual currency of this function's computations
-        num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * sampling_rate))
-
-        if num_indices_per_chunk < 4 * template_samples_per_chan:
-            raise ValueError("Cannot fit enough data on GPU to run binary pursuit. Decrease neighborhoods and/or clip width.")
-
         # Get all of our kernels
         compute_residual_kernel = prg.compute_residual
         compute_full_likelihood_kernel = prg.compute_full_likelihood
@@ -318,6 +268,72 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         max_enqueue_check_overlap = np.int64(check_overlap_local_work_size * (device.max_compute_units))
         max_enqueue_pursuit = np.int64(pursuit_local_work_size * (device.max_compute_units))
         max_enqueue_adjusted = np.int64(adjusted_local_work_size * (device.max_compute_units))
+
+        # Determine the segment size that we need to use to fit into the
+        # memory on this GPU device.
+        gpu_memory_size = device.get_info(cl.device_info.GLOBAL_MEM_SIZE) # Total memory size in bytes
+        # Save 50% or 1GB, whichever is less for the operating system to use
+        # assuming this is not a headless system.
+        gpu_memory_size = max(gpu_memory_size * 0.5, gpu_memory_size - (1024 * 1024 * 1024))
+        if max_gpu_memory is not None:
+            gpu_memory_size = min(gpu_memory_size, max_gpu_memory)
+        # Windows 10 only allows 80% of the memory on the graphics card to be used,
+        # the rest is reserved for WDDMv2. See discussion here:
+        # https://www.nvidia.com/en-us/geforce/forums/geforce-graphics-cards/5/269554/windows-10wddm-grabbing-gpu-vram/
+        regex_version = re.search('[0-9][0-9][.]', sys_platform.version())
+        if (sys_platform.system() == 'Windows') and (float(regex_version.group()) >= 10.):
+            gpu_memory_size = min(device.get_info(cl.device_info.GLOBAL_MEM_SIZE) * 0.75,
+                                  gpu_memory_size)
+        assert gpu_memory_size > 0
+
+        # Need to comute this stuff up here for GPU memory usage calculation
+        if n_max_shift_inds is None or n_max_shift_inds < 0:
+            # Default to half clip width
+            n_max_shift_inds = template_samples_per_chan // 2
+        # Must be uint32
+        n_max_shift_inds = np.uint32(n_max_shift_inds)
+        print("Maximum shift indices to check", n_max_shift_inds)
+        # NOTE: Everything about the overlaps kernel numbers must be int64
+        # or risk overflow
+        items_per_index = np.int64((2 * n_max_shift_inds + 1) * (2 * n_max_shift_inds + 1) * templates.shape[0])
+        # Round ceiling gives number of work groups needed per recheck index
+        n_local_ID = np.int64(((items_per_index - 1) / overlap_local_work_size)+1)
+
+        # Estimate the number of bytes that 1 second of data take up
+        # This is skipping the bias and template squared error buffers which are small
+        constant_memory_usage = templates_vector.nbytes + template_labels.nbytes
+        # Usage for voltage
+        memory_usage_per_second = (n_chans * sampling_rate * np.dtype(np.float32).itemsize)
+        # Add usage for likelihood functions
+        memory_usage_per_second += (templates.shape[0] * sampling_rate * np.dtype(np.float32).itemsize)
+        # Usage for new spike info storage buffers depends on samples divided by template size
+        memory_usage_per_second += (sampling_rate / template_samples_per_chan) * \
+                                    (np.dtype(np.uint32).itemsize + # additional indices
+                                     np.dtype(np.uint32).itemsize + # additional labels
+                                     np.dtype(np.uint32).itemsize + # best indices
+                                     np.dtype(np.uint32).itemsize + # best labels
+                                     np.dtype(np.float32).itemsize + # best likelihoods
+                                     # n_local_ID / 3 because we can't add a spike at more than 1 in 3 windows at a time
+                                     (n_local_ID / 3) * np.dtype(np.float32).itemsize + # Overlap likelihoods
+                                     (n_local_ID / 3) * np.dtype(np.uint32).itemsize ) # Overlap labels
+
+        # Estimate how much data we can look at in each data 'chunk'
+        num_seconds_per_chunk = (gpu_memory_size - constant_memory_usage) \
+                                / (memory_usage_per_second)
+        # Do not exceed the length of a buffer in bytes that can be addressed
+        # for the single largest data buffer, the voltage
+        # Note: there is also a max allocation size,
+        # device.get_info(cl.device_info.MAX_MEM_ALLOC_SIZE)
+        device_address_bits = device.get_info(cl.device_info.ADDRESS_BITS)
+        max_addressable_seconds = (((1 << device_address_bits) - 1)
+                                    / (np.dtype(np.float32).itemsize * sampling_rate
+                                     * n_chans))
+        num_seconds_per_chunk = min(num_seconds_per_chunk, np.floor(max_addressable_seconds))
+        # Convert from seconds to indices, the actual currency of this function's computations
+        num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * sampling_rate))
+
+        if num_indices_per_chunk < 4 * template_samples_per_chan:
+            raise ValueError("Cannot fit enough data on GPU to run binary pursuit. Decrease channels or get a new GPU.")
 
         # Set up our final outputs
         num_additional_spikes = np.zeros(1, dtype=np.uint32)
@@ -406,22 +422,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
         template_sum_squared_by_channel_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared_by_channel)
         gamma_noise_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=gamma_noise)
-
-        if n_max_shift_inds is None or n_max_shift_inds < 0:
-            # Default to half clip width
-            n_max_shift_inds = template_samples_per_chan // 2
-        # Must be uint32
-        n_max_shift_inds = np.uint32(n_max_shift_inds)
-        # template_pre_inds, template_post_inds = compute_shift_indices(templates, template_samples_per_chan, n_chans)
-        # template_pre_inds[template_pre_inds < -n_max_shift_inds] = -n_max_shift_inds
-        # template_post_inds[template_post_inds > n_max_shift_inds + 1] = n_max_shift_inds + 1
-        # template_pre_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
-        # template_post_inds = np.zeros(templates.shape[0] * templates.shape[0], dtype=np.int32)
-        # template_inds_range = np.array([-n_max_shift_inds, n_max_shift_inds+1], dtype=np.int32)
-        print("Maximum shift to check", n_max_shift_inds)
-
-        # template_pre_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_pre_inds)
-        # template_post_inds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_post_inds)
 
         # Determine our chunk onset indices, making sure that each new start
         # index overlaps the previous chunk by 3 template widths so that no
@@ -653,9 +653,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     # NOTE: Everything about the overlaps kernel numbers must be int64
                     # or risk overflow
                     # Reset number of indices to check for overlap recheck kernel
-                    items_per_index = np.int64((2 * n_max_shift_inds + 1) * (2 * n_max_shift_inds + 1) * templates.shape[0])
-                    # Round ceiling gives number of work groups needed per recheck index
-                    n_local_ID = np.int64(((items_per_index - 1) / overlap_local_work_size)+1)
                     # Number of leftover workers for each index
                     n_local_ID_leftover = np.int64((overlap_local_work_size * n_local_ID) % items_per_index)
                     # Total work is then indices, times number per index, plus the leftovers from work groups
@@ -664,8 +661,10 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                     total_work_size_overlap = overlap_local_work_size * np.int64(np.ceil(total_work_size_overlap / overlap_local_work_size))
                     print("Checking", total_work_size_overlap, "overlap spike shifts")
 
-                    if total_work_size_overlap > 2 ** 32 - 1 and n_loops == 1:
-                        print("Current work size will OVERFLOW 32 bit graphics card. Decrease segment/chunk size if it fails.")
+                    if total_work_size_overlap > (1 << device_address_bits) - 1:
+                        print("GPU has", device_address_bits, "address bits")
+                        print("Current work size of", total_work_size_overlap, "will OVERFLOW a", device_address_bits, "bit graphics card.")
+                        print("Decrease segment duration/number of channels in data file or get a new GPU.")
 
                     # Enqueues max_enqueue_overlap total spikes to be sorted.
                     # This yields a multiple such that at the end of each enqueue

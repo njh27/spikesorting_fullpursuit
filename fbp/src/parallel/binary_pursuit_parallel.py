@@ -277,7 +277,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         gpu_memory_size = max(gpu_memory_size * 0.5, gpu_memory_size - (1024 * 1024 * 1024))
         if max_gpu_memory is not None:
             gpu_memory_size = min(gpu_memory_size, max_gpu_memory)
-        # Windows 10 only allows 80% of the memory on the graphics card to be used,
+        # Windows 10 only allows 75% of the memory on the graphics card to be used,
         # the rest is reserved for WDDMv2. See discussion here:
         # https://www.nvidia.com/en-us/geforce/forums/geforce-graphics-cards/5/269554/windows-10wddm-grabbing-gpu-vram/
         regex_version = re.search('[0-9][0-9][.]', sys_platform.version())
@@ -314,6 +314,10 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                                      np.dtype(np.uint32).itemsize + # best labels
                                      np.dtype(np.float32).itemsize + # best likelihoods
                                      # n_local_ID / 3 because we can't add a spike at more than 1 in 3 windows at a time
+                                     # NOTE: this should basically be worst case and could arbitrarily
+                                     # be made smaller to avoid doing multiple chunks in most cases. Probably
+                                     # not quite by a factor of 10, by 5 or 6 qualitatively should cover
+                                     # most cases.
                                      (n_local_ID / 3) * np.dtype(np.float32).itemsize + # Overlap likelihoods
                                      (n_local_ID / 3) * np.dtype(np.uint32).itemsize ) # Overlap labels
 
@@ -844,8 +848,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 overlap_group_best_likelihood_buffer.release()
                 overlap_group_best_work_id_buffer.release()
             full_likelihood_function_buffer.release()
-            template_sum_squared_by_channel_buffer.release()
-            gamma_noise_buffer.release()
             queue.finish()
 
             # Read out the adjusted spikes here before releasing
@@ -919,6 +921,8 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
         template_buffer.release()
         template_sum_squared_buffer.release()
+        template_sum_squared_by_channel_buffer.release()
+        gamma_noise_buffer.release()
 
     if len(secret_spike_indices) > 0:
         event_indices = np.int64(np.hstack(secret_spike_indices))

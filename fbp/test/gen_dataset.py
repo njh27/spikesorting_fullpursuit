@@ -320,7 +320,7 @@ class TestDataset(object):
         ag = plt.gcf()
         ag.set_size_inches(15, 12)
         plt.show()
-        return
+        return ag, preview_templates
 
     def gen_test_dataset_with_drift(self, firing_rates, template_inds, drift_funs,
                 refractory_wins=1.5e-3, scaled_spike_thresh=None):

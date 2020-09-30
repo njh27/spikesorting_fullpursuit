@@ -21,14 +21,10 @@ def spike_sorting_settings_parallel(**kwargs):
     settings = {}
 
     settings['sigma'] = 4.0 # Threshold based on  noise level
-    settings['verbose'] = False
-    settings['test_flag'] = False # Indicates a test run of parallel code that does NOT spawn multiple processes
-    settings['log_dir'] = None # Directory where output logs will be saved as text files
-    # settings['tmp_clips_dir'] = None # Directory where spike clips will be stored for transfer between processes (deleted at completion)
     settings['clip_width'] = [-6e-4, 10e-4]# Width of clip in seconds
     settings['do_branch_PCA'] = True # Use branch pca method to split clusters
     settings['do_branch_PCA_by_chan'] = False
-    settings['filter_band'] = (300, 8000) # This is information for the sorter to use. Sorting DOES NOT FILTER THE DATA!
+    settings['filter_band'] = (300, 6000) # This is information for the sorter to use. Sorting DOES NOT FILTER THE DATA!
     settings['do_ZCA_transform'] = True
     settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
     settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
@@ -45,6 +41,10 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['sigma_noise_penalty'] = 1.645 # Number of noise standard deviations to penalize binary pursuit by. Higher numbers reduce false positives, increase false negatives
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
+    settings['verbose'] = False
+    settings['test_flag'] = False # Indicates a test run of parallel code that does NOT spawn multiple processes
+    settings['log_dir'] = None # Directory where output logs will be saved as text files
+    # settings['tmp_clips_dir'] = None # Directory where spike clips will be stored for transfer between processes (deleted at completion)
 
     for k in kwargs.keys():
         if k not in settings:

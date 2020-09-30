@@ -1,8 +1,5 @@
 import numpy as np
 from spikesorting_fullpursuit import segment, preprocessing, sort, binary_pursuit
-from fbp.src import preprocessing
-from fbp.src import sort
-from fbp.src import binary_pursuit
 import warnings
 import copy
 

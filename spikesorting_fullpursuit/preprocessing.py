@@ -2,9 +2,9 @@ import numpy as np
 from numpy import linalg as la
 from scipy import signal, linalg
 from scipy.spatial.distance import pdist
-from fbp.src.c_cython import sort_cython
+from spikesorting_fullpursuit.c_cython import sort_cython
 
-import matplotlib.pyplot as plt
+
 
 def get_full_zca_matrix(data, rowvar=True):
     """ Computes ZCA matrix for data. rowvar=False means that COLUMNS represent
@@ -195,12 +195,6 @@ def optimal_reconstruction_pca_order(spikes, check_components=None,
 
     max_vaf_components = comp
 
-    # plt.plot(vaf)
-    # plt.scatter(max_vaf_components, vaf[max_vaf_components])
-    # plt.show()
-    # plt.plot(components[:, comp_order[0:comp]])
-    # plt.show()
-
     is_worse_than_mean = False
     if vaf[1] < 0:
         # First PC is worse than the mean
@@ -378,11 +372,7 @@ def minimal_redundancy_template_order(spikes, templates, max_templates=None, fir
         df = max_templates
     new_temp_order = new_temp_order[:, 0:df]
     print("CHOSE", df, "TEMPLATES FOR PROJECTION")
-    # for tdf in range(0, df):
-    #     plt.plot(new_temp_order[:, tdf])
-    #     plt.show()
-    # plt.plot(vaf)
-    # plt.show()
+
     return new_temp_order.T
 
 

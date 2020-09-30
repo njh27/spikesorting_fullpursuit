@@ -2,21 +2,17 @@ import numpy as np
 import pickle
 import os
 from copy import copy
-from fbp.src.consolidate import SegSummary
-from fbp.src.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples
-from fbp.src.parallel import binary_pursuit_parallel
-from fbp.src.c_cython import sort_cython
-
-
-
-import matplotlib.pyplot as plt
+from spikesorting_fullpursuit.consolidate import SegSummary
+from spikesorting_fullpursuit.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples
+from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
+from spikesorting_fullpursuit.c_cython import sort_cython
 
 
 
 def remove_overlap_templates(templates, n_samples_per_chan, n_chans,
                             n_pre_inds, n_post_inds, n_template_spikes):
     """ Use this for testing. There is a corresponding cython verison that should
-        be faster. """
+        be much faster. """
 
     def get_shifted_template(template, shift):
         """ """
@@ -90,13 +86,6 @@ def remove_overlap_templates(templates, n_samples_per_chan, n_chans,
         # print("MIN RESIDUAL", min_residual_SS)
         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:
             templates_to_delete[test_unit] = True
-            # print("Deleting this template")
-            # plt.plot(templates[test_unit])
-            # plt.show()
-            # print("As a sum of these tempalates at shifts", best_shifts)
-            # plt.plot(all_template_shifts[best_pair[0]][best_inds[0], :])
-            # plt.plot(all_template_shifts[best_pair[1]][best_inds[1], :])
-            # plt.show()
 
     return templates_to_delete
 
@@ -238,11 +227,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         return [[[], [], [], [], None]]
 
     print("Entered with", len(seg_summary.summaries), "templates in segment", seg_number)
-    # for n in seg_summary.summaries:
-    #     plt.plot(n['pursuit_template'])
-    #     plt.show()
 
-    # print("SKIPPING SUM TEMPLATES CHECK BECAUSE ITS BROKEN")
     print("Checking", len(seg_summary.summaries), "neurons for potential sums")
     templates = []
     n_template_spikes = []
@@ -264,8 +249,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             del seg_summary.summaries[x]
     # print("TEMPLATE REDUCTION IS OFF !!!!!")
     print("Removing sums reduced number of templates to", len(seg_summary.summaries))
-    # plt.plot(templates[~templates_to_delete, :].T)
-    # plt.show()
 
     # print("SHARPEN IS OFF!!!!")
     seg_summary.sharpen_across_chans()
@@ -325,17 +308,12 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             #         clips[:, chan*sort_info['n_samples_per_chan']:(chan+1)*sort_info['n_samples_per_chan']] = 0.0
             templates.append(np.median(clips, axis=0))
             next_label += 1
-            # plt.plot(n['pursuit_template'])
-            # plt.plot(templates[-1])
-            # plt.show()
 
     del seg_summary
 
     templates = np.vstack(templates)
     print("Sharpening reduced number of templates to", templates.shape[0])
     print("Starting full binary pursuit search with", templates.shape[0], "templates in segment", seg_number)
-    # plt.plot(templates.T)
-    # plt.show()
 
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, sort_info['sampling_rate'],

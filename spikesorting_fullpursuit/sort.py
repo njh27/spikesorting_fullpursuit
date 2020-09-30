@@ -2,10 +2,9 @@ import numpy as np
 from numpy import linalg as la
 from scipy.fftpack import dct, idct, fft, ifft
 from scipy.optimize import fsolve, fminbound
-from fbp.src import isotonic
-from fbp.src.c_cython import sort_cython
-from fbp.src import multinomial_gof
-import matplotlib.pyplot as plt
+from spikesorting_fullpursuit import isotonic
+from spikesorting_fullpursuit.c_cython import sort_cython
+from spikesorting_fullpursuit import multinomial_gof
 
 
 
@@ -385,20 +384,6 @@ def iso_cut(projection, p_value_cut_thresh):
             print("!!! CUTPOINT ISNT A DIP !!!, skipping this cut")
             p_value = 1.
             cutpoint = None
-
-    # fig = plt.figure()
-    # axes = plt.axes()
-    # axes.plot(x_axis[critical_range], residual_densities_fit, color='b')
-    # axes.plot(x_axis, null_counts, color='g')
-    # axes.plot(x_axis, obs_counts, color='r')
-    # axes.plot(x_axis[critical_range], null_counts[critical_range], color='k')
-    # axes.scatter(x_axis[peak_density_ind], null_counts[peak_density_ind], s=50, color='b')
-    # if cutpoint is not None:
-    #     axes.axvline(cutpoint, color='k')
-    # plt.show()
-    # # plot.pretty(fig=fig)
-    # # plot_fname = 'isocut_fits'
-    # # plot.save_figure_composer("/Users/{0}/OneDrive - Duke University/Sync/{1}.fyp".format(dirname_here, plot_fname), fig)
 
     return p_value, cutpoint
 

@@ -9,11 +9,9 @@ import multiprocessing as mp
 import psutil
 import time
 from traceback import print_tb
-from fbp.src.parallel import segment_parallel
-from fbp.src import sort
-from fbp.src.parallel import binary_pursuit_parallel
-from fbp.src import preprocessing
-from fbp.src import full_binary_pursuit
+from spikesorting_fullpursuit.parallel import segment_parallel
+from spikesorting_fullpursuit import sort, preprocessing, full_binary_pursuit
+from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 
 
 

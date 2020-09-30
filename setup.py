@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 import numpy as np
 
 ext  =  [Extension('spikesorting_fullpursuit.c_cython.sort_cython', sources=['spikesorting_fullpursuit/c_cython/sort_cython.pyx'])]
-pkg_req = ['numpy', 'Cython']
+pkg_req = ['numpy', 'Cython', 'pyopencl (>= 1.2)']
 
 setup(name='spikesorting_fullpursuit',
       version='1.0',

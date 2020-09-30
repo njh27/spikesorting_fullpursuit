@@ -1,9 +1,7 @@
 import numpy as np
 from scipy import signal
 import copy
-from fbp.src import sort
 
-import matplotlib.pyplot as plt
 
 
 """

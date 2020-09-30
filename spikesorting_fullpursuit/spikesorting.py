@@ -1,13 +1,12 @@
 import numpy as np
-from fbp.src import segment
+from spikesorting_fullpursuit import segment, preprocessing, sort, binary_pursuit
 from fbp.src import preprocessing
 from fbp.src import sort
 from fbp.src import binary_pursuit
-from fbp.src import consolidate
 import warnings
 import copy
 
-import matplotlib.pyplot as plt
+
 
 def spike_sorting_settings(**kwargs):
     settings = {}

@@ -3,15 +3,11 @@ import os
 import platform as sys_platform
 import re
 import math
-from fbp.src.sort import reorder_labels
-from fbp.src import segment
-# from fbp.src.overlap import reassign_simultaneous_spiking_clusters, get_zero_phase_kernel, remove_overlapping_spikes
+from spikesorting_fullpursuit.sort import reorder_labels
+from spikesorting_fullpursuit import segment
 from scipy.signal import fftconvolve
 import pyopencl as cl
 os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
-
-
-import matplotlib.pyplot as plt
 
 
 

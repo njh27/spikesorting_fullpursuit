@@ -1,8 +1,7 @@
 import numpy as np
 from scipy import signal
 import copy
-from fbp.src import sort
-from fbp.src import consolidate
+from spikesorting_fullpursuit import sort
 
 
 

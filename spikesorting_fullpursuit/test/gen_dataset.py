@@ -1,10 +1,8 @@
 import numpy as np
 from scipy import signal
 from scipy import stats
-from fbp.src import electrode
-from fbp.src import spikesorting
-from fbp.src.parallel import spikesorting_parallel
-from fbp.src import consolidate
+from spikesorting_fullpursuit import electrode, spikesorting, consolidate
+from spikesorting_fullpursuit.parallel import spikesorting_parallel
 import matplotlib.pyplot as plt
 
 

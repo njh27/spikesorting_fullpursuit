@@ -1,8 +1,8 @@
 import numpy as np
-from fbp.src import segment
-from fbp.src.sort import merge_clusters, initial_cluster_farthest
-from fbp.src import preprocessing
-from fbp.src.c_cython import sort_cython
+from spikesorting_fullpursuit import segment
+from spikesorting_fullpursuit.sort import merge_clusters, initial_cluster_farthest
+from spikesorting_fullpursuit import preprocessing
+from spikesorting_fullpursuit.c_cython import sort_cython
 from scipy import stats
 from scipy.optimize import nnls, lsq_linear
 import copy

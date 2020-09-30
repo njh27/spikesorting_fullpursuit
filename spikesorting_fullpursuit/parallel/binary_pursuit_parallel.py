@@ -3,13 +3,11 @@ import os
 import platform as sys_platform
 import re
 import time
-from fbp.src.sort import reorder_labels
-from fbp.src import segment
-from fbp.src.parallel import segment_parallel
-from fbp.src.consolidate import find_overlapping_spike_bool
+from spikesorting_fullpursuit.sort import reorder_labels
+from spikesorting_fullpursuit import segment
+from spikesorting_fullpursuit.parallel import segment_parallel
+from spikesorting_fullpursuit.consolidate import find_overlapping_spike_bool
 from scipy.signal import fftconvolve
-
-import matplotlib.pyplot as plt
 
 
 

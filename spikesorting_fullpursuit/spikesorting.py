@@ -17,8 +17,8 @@ def spike_sorting_settings(**kwargs):
     settings['do_ZCA_transform'] = True
     settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
     settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
-    settings['check_components'] = None # Number of PCs to check. None means all, else integer
-    settings['max_components'] = 10 # Max number to use, of those checked, integer
+    settings['check_components'] = 20 # Number of PCs to check. None means all, else integer
+    settings['max_components'] = 5 # Max number to use, of those checked, integer
     settings['min_firing_rate'] = 1. # Neurons with fewer threshold crossings than this are removed
     settings['p_value_cut_thresh'] = 0.05
     settings['do_binary_pursuit'] = True

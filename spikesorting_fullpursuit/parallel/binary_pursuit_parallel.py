@@ -6,7 +6,6 @@ import time
 from spikesorting_fullpursuit.sort import reorder_labels
 from spikesorting_fullpursuit import segment
 from spikesorting_fullpursuit.parallel import segment_parallel
-from spikesorting_fullpursuit.consolidate import find_overlapping_spike_bool
 from scipy.signal import fftconvolve
 
 

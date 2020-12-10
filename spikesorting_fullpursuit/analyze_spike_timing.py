@@ -1,6 +1,8 @@
 import numpy as np
 
 
+""" This module contains helper functions for analysis of spike timing among
+sorted units in the form of creating CCGs and identifying identical spikes. """
 
 def zero_symmetric_ccg(spikes_1, spikes_2, samples_window=40, d_samples=40, return_trains=False):
     """ Returns the cross correlogram of

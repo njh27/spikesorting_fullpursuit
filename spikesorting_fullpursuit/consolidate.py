@@ -2,21 +2,10 @@ import numpy as np
 from spikesorting_fullpursuit import segment
 from spikesorting_fullpursuit.sort import merge_clusters, initial_cluster_farthest
 from spikesorting_fullpursuit import preprocessing
+from spikesorting_fullpursuit.analyze_spike_timing import remove_spike_event_duplicates
 from spikesorting_fullpursuit.c_cython import sort_cython
 
-from spikesorting_fullpursuit.analyze_spike_timing import zero_symmetric_ccg,
-
-from scipy import stats
-from scipy.optimize import nnls, lsq_linear
-import copy
-import warnings
-
-
 import matplotlib.pyplot as plt
-
-
-
-
 
 
 class SegSummary(object):

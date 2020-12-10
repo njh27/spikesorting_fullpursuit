@@ -1,8 +1,10 @@
 import numpy as np
 from scipy import signal
 from scipy import stats
-from spikesorting_fullpursuit import electrode, spikesorting, consolidate
+from spikesorting_fullpursuit import electrode, spikesorting
 from spikesorting_fullpursuit.parallel import spikesorting_parallel
+from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
+from spikesorting_fullpursuit.postprocessing import WorkItemSummary
 import matplotlib.pyplot as plt
 
 
@@ -225,7 +227,7 @@ class TestDataset(object):
 
 
             # if neuron == 1:
-            #     overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron-1], overlap_tol=162)
+            #     overlapping_spike_bool = find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron-1], overlap_tol=162)
             #     self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
             #     spiketrain[:] = False
             #     spiketrain[self.actual_IDs[neuron]] = True
@@ -237,7 +239,7 @@ class TestDataset(object):
                 select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
                 self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 10, n_correlated_spikes)
                 self.actual_IDs[neuron].sort()
-                overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
+                overlapping_spike_bool = find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
                 self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
                 self.actual_IDs[neuron] = np.unique(self.actual_IDs[neuron])
                 # Spike train is used for actual convolution so reset here
@@ -364,7 +366,7 @@ class TestDataset(object):
                 select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
                 self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 10, n_correlated_spikes)
                 self.actual_IDs[neuron].sort()
-                overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
+                overlapping_spike_bool = find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
                 self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
                 self.actual_IDs[neuron] = np.unique(self.actual_IDs[neuron])
                 # Spike train is used for actual convolution so reset here
@@ -466,14 +468,14 @@ class TestDataset(object):
         sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
 
         # Make default work summary to check and organize data
-        single_wis = consolidate.WorkItemSummary(sort_data, work_items, sort_info)
+        single_wis = WorkItemSummary(sort_data, work_items, sort_info)
 
 
         np.random.set_state(first_state)
         sort_data, work_items, sort_info = spikesorting_parallel.spike_sort_parallel(self.Probe, **par_sort_kwargs)
         self.random_state = first_state
 
-        parallel_wis = consolidate.WorkItemSummary(sort_data, work_items, sort_info)
+        parallel_wis = WorkItemSummary(sort_data, work_items, sort_info)
 
         for key in single_wis.sort_info.keys():
             assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key]), "key {0} does not match".format(key)

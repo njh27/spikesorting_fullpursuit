@@ -1,4 +1,9 @@
 import numpy as np
+from spikesorting_fullpursuit.sort import merge_clusters
+from spikesorting_fullpursuit import preprocessing
+from spikesorting_fullpursuit import analyze_spike_timing
+
+import warnings
 
 
 
@@ -172,7 +177,7 @@ def combine_two_neurons(neuron1, neuron2):
     # Remove any identical index duplicates (either from error or
     # from combining overlapping segments), preferentially keeping
     # the waveform most similar to its channel's template
-    keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
+    keep_bool = analyze_spike_timing.remove_spike_event_duplicates_across_chans(combined_neuron)
     combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
     combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
     combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
@@ -208,7 +213,7 @@ def combine_two_neurons(neuron1, neuron2):
     combined_neuron['duration_s'] = (combined_neuron['spike_indices'][-1] - combined_neuron['spike_indices'][0]) \
                                    / (combined_neuron['sort_info']['sampling_rate'])
     combined_neuron['firing_rate'] = combined_neuron['spike_indices'].shape[0] / combined_neuron['duration_s']
-    combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(
+    combined_neuron['fraction_mua'] = analyze_spike_timing.calc_fraction_mua_to_peak(
                     combined_neuron["spike_indices"],
                     combined_neuron['sort_info']['sampling_rate'],
                     combined_neuron['duplicate_tol_inds'],
@@ -1100,7 +1105,7 @@ class WorkItemSummary(object):
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
                     neuron['snr'] = self.get_snr(chan, seg, neuron["template"])
-                    neuron['fraction_mua'] = calc_fraction_mua_to_peak(
+                    neuron['fraction_mua'] = analyze_spike_timing.calc_fraction_mua_to_peak(
                                                 neuron["spike_indices"],
                                                 self.sort_info['sampling_rate'],
                                                 neuron['duplicate_tol_inds'],
@@ -1680,7 +1685,7 @@ class WorkItemSummary(object):
         # Remove any identical index duplicates (either from error or
         # from combining overlapping segments), preferentially keeping
         # the waveform most similar to its channel's template
-        keep_bool = remove_spike_event_duplicates_across_chans(combined_neuron)
+        keep_bool = analyze_spike_timing.remove_spike_event_duplicates_across_chans(combined_neuron)
         combined_neuron["spike_indices"] = combined_neuron["spike_indices"][keep_bool]
         combined_neuron["binary_pursuit_bool"] = combined_neuron["binary_pursuit_bool"][keep_bool]
         combined_neuron['clips'] = combined_neuron['clips'][keep_bool, :]
@@ -1721,7 +1726,7 @@ class WorkItemSummary(object):
             combined_neuron['firing_rate'] = 0.
         else:
             combined_neuron['firing_rate'] = combined_neuron['spike_indices'].shape[0] / combined_neuron['duration_s']
-        combined_neuron['fraction_mua'] = calc_fraction_mua_to_peak(
+        combined_neuron['fraction_mua'] = analyze_spike_timing.calc_fraction_mua_to_peak(
                         combined_neuron["spike_indices"],
                         self.sort_info['sampling_rate'],
                         combined_neuron['duplicate_tol_inds'],

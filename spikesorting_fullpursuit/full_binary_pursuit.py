@@ -167,8 +167,8 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
 
 
 def full_binary_pursuit(work_items, data_dict, seg_number,
-                        sort_info, v_dtype, overlap_ratio_threshold=2,
-                        absolute_refractory_period=12e-4,
+                        sort_info, v_dtype, overlap_ratio_threshold,
+                        absolute_refractory_period,
                         kernels_path=None, max_gpu_memory=None):
 
     # Get numpy view of voltage for clips and binary pursuit
@@ -316,13 +316,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     print("Starting full binary pursuit search with", templates.shape[0], "templates in segment", seg_number)
 
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
-                    templates, voltage, sort_info['sampling_rate'],
-                    v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
-                    thresh_sigma=sort_info['sigma_noise_penalty'],
+                    templates, voltage, v_dtype, sort_info,
                     n_max_shift_inds=original_n_samples_per_chan-1,
-                    get_adjusted_clips=sort_info['get_adjusted_clips'],
-                    kernels_path=None,
-                    max_gpu_memory=max_gpu_memory)
+                    kernels_path=None, max_gpu_memory=max_gpu_memory)
 
     if not sort_info['get_adjusted_clips']:
         clips, _ = get_multichannel_clips(clips_dict, voltage,

@@ -37,6 +37,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
     # sigma_noise_penalty = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
     settings['sigma_noise_penalty'] = 1.645 # Number of noise standard deviations to penalize binary pursuit by. Higher numbers reduce false positives, increase false negatives
+    settings['absolute_refractory_period'] = 15e-4
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
     settings['verbose'] = False
@@ -907,7 +908,7 @@ def spike_sort_parallel(Probe, **kwargs):
         seg_data = full_binary_pursuit.full_binary_pursuit(work_items,
                     data_dict, seg_number, sort_info, Probe.v_dtype,
                     overlap_ratio_threshold=2,
-                    absolute_refractory_period=20e-4,
+                    absolute_refractory_period=settings['absolute_refractory_period'],
                     kernels_path=None,
                     max_gpu_memory=settings['max_gpu_memory'])
         sort_data.extend(seg_data)

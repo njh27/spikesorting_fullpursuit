@@ -126,10 +126,9 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
     return template_pre_inds, template_post_inds
 
 
-def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
-                   clip_width, template_samples_per_chan, thresh_sigma=1.645,
-                   n_max_shift_inds=None, get_adjusted_clips=False,
-                   kernels_path=None, max_gpu_memory=None):
+def binary_pursuit(templates, voltage, v_dtype, sort_info, chan_thresholds,
+                   n_max_shift_inds=None, kernels_path=None,
+                   max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
 
@@ -175,7 +174,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
     # Ease of use variables
     n_chans = np.uint32(voltage.shape[0])
     n_samples = voltage.shape[1]
-    chan_win, clip_width = segment_parallel.time_window_to_samples(clip_width, sampling_rate)
+    sampling_rate = sort_info['sampling_rate']
+    chan_win, _ = segment_parallel.time_window_to_samples(sort_info['clip_width'], sampling_rate)
+    template_samples_per_chan = sort_info['n_samples_per_chan']
 
     # Templates must be a 2D float32
     if templates.ndim == 1:
@@ -387,8 +388,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             # Assumes zero-centered (which median usually isn't)
             MAD = np.median(np.abs(neighbor_bias))
             std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
+            chan_thresholds
             print("Channel", chan, "has MAD_std of", std_noise)
-            gamma_noise[chan] = np.float32(thresh_sigma * std_noise)
+            gamma_noise[chan] = np.float32(sort_info['sigma_noise_penalty'] * std_noise)
             for n in range(0, templates.shape[0]):
                 spike_biases[n] += np.float32(np.sqrt(template_sum_squared_by_channel[n*n_chans + chan]) * gamma_noise[chan])
 
@@ -862,7 +864,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
                 print("Found", chunk_total_additional_spikes, "secret spikes this chunk.", flush=True)
 
-                if get_adjusted_clips:
+                if sort_info['get_adjusted_clips']:
                     print("Getting adjusted clips for", all_chunk_crossings.shape[0], "total spikes this chunk", flush=True)
 
                     all_adjusted_clips = np.zeros((chunk_total_additional_spikes + chunk_crossings.shape[0]) * templates.shape[1], dtype=np.float32)

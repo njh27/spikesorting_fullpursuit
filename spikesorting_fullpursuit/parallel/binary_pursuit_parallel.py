@@ -374,7 +374,6 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         neighbor_bias = np.zeros(n_total_sample_points, dtype=np.float32)
         gamma_noise = np.zeros(n_chans, dtype=np.float32)
         spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
-        new_bias = np.zeros(templates.shape[0], dtype=np.float32)
         # Compute bias separately for each neuron, summed over channels
         for chan in range(0, n_chans):
             neighbor_bias[:] = 0.0
@@ -388,6 +387,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             # Assumes zero-centered (which median usually isn't)
             MAD = np.median(np.abs(neighbor_bias))
             std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
+            print("Channel", chan, "has MAD_std of", std_noise)
             gamma_noise[chan] = np.float32(thresh_sigma * std_noise)
             for n in range(0, templates.shape[0]):
                 spike_biases[n] += np.float32(np.sqrt(template_sum_squared_by_channel[n*n_chans + chan]) * gamma_noise[chan])

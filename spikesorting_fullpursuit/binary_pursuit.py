@@ -309,28 +309,21 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
             # Compute the template_sum_squared and bias terms
             spike_biases = np.zeros(templates.shape[0], dtype=np.float32)
             # Compute bias separately for each neuron
-            for n in range(0, templates.shape[0]):
-                neighbor_bias = np.zeros((stop_index - start_index), dtype=np.float32)
-                for chan in range(0, n_neighbor_chans):
-                    cv_win = [chan * (stop_index - start_index),
-                              chan * (stop_index - start_index) + (stop_index - start_index)]
-                    neighbor_bias += np.float32(fftconvolve(
-                                residual_voltage[cv_win[0]:cv_win[1]],
-                                fft_kernels[n*n_neighbor_chans + chan],
-                                mode='same'))
+            for chan in range(0, n_chans):
+                neighbor_bias[:] = 0.0
+                for s_ind, s in enumerate(sample_start_inds):
+                    neighbor_bias[s_ind*sample_duration:(s_ind+1)*sample_duration] += np.float32(
+                            voltage[chan, s:s+sample_duration])
                 # Use MAD to estimate STD of the noise and set bias at
                 # thresh_sigma standard deviations. The typical extremely large
                 # n value for neighbor_bias makes this calculation converge to
                 # normal distribution
-                # median_bias = np.median(neighbor_bias)
-                # MAD = np.median(np.abs(median_bias - neighbor_bias))
-                # std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-                # spike_biases[n] = np.float32(median_bias + thresh_sigma*std_noise)
-
                 # Assumes zero-centered (which median usually isn't)
                 MAD = np.median(np.abs(neighbor_bias))
                 std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-                spike_biases[n] = np.float32(thresh_sigma*std_noise)
+                gamma_noise[chan] = np.float32(thresh_sigma * std_noise)
+                for n in range(0, templates.shape[0]):
+                    spike_biases[n] += np.float32(np.sqrt(template_sum_squared_by_channel[n*n_chans + chan]) * gamma_noise[chan])
 
             # Delete stuff no longer needed for this chunk
             del residual_voltage

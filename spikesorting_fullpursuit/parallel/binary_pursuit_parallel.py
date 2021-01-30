@@ -126,7 +126,7 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
     return template_pre_inds, template_post_inds
 
 
-def binary_pursuit(templates, voltage, v_dtype, sort_info, chan_thresholds,
+def binary_pursuit(templates, voltage, v_dtype, sort_info,
                    n_max_shift_inds=None, kernels_path=None,
                    max_gpu_memory=None):
     """
@@ -347,6 +347,7 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, chan_thresholds,
         adjusted_spike_clips = []
 
         separability = {}
+        separability['template_SSE'] = {}
         # Compute our template sum squared error (see note below).
         # This is a num_templates vector
         template_sum_squared = np.float32(-0.5 * np.sum(templates * templates, axis=1))
@@ -944,4 +945,4 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, chan_thresholds,
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
 
-    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, separability

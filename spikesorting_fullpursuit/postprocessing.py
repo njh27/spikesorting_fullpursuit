@@ -476,7 +476,7 @@ class WorkItemSummary(object):
         main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][seg]['chan_neighbor_ind'],
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
         # Within channel alignment shouldn't be off by more than about half spike width
-        duplicate_tol_inds = calc_spike_half_width(
+        duplicate_tol_inds = analyze_spike_timing.calc_spike_half_width(
                                 self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]]) + 1
         refractory_adjustment = duplicate_tol_inds / self.sort_info['sampling_rate']
         if self.absolute_refractory_period - refractory_adjustment <= 0:
@@ -531,7 +531,7 @@ class WorkItemSummary(object):
         main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][seg]['chan_neighbor_ind'],
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
         # Within channel alignment shouldn't be off by more than about half spike width
-        duplicate_tol_inds = calc_spike_half_width(
+        duplicate_tol_inds = analyze_spike_timing.calc_spike_half_width(
                                 self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]]) + 1
         all_isis = np.diff(unit_spikes)
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
@@ -775,7 +775,7 @@ class WorkItemSummary(object):
                         union_template = np.mean(union_clips, axis=0)
                         # We are unioning spikes that may need sharpened due
                         # to alignment problem so use full spike width tol inds
-                        spike_half_width = calc_spike_half_width(
+                        spike_half_width = analyze_spike_timing.calc_spike_half_width(
                             union_clips[:, curr_chan_inds]) + 1
                         keep_bool = remove_spike_event_duplicates(union_spikes,
                                         union_clips, union_template,
@@ -1088,7 +1088,7 @@ class WorkItemSummary(object):
 
                     # Set duplicate tolerance as half spike width since within
                     # channel summary shouldn't be off by this
-                    neuron['duplicate_tol_inds'] = calc_spike_half_width(
+                    neuron['duplicate_tol_inds'] = analyze_spike_timing.calc_spike_half_width(
                         neuron['clips'][:, neuron['main_win'][0]:neuron['main_win'][1]]) + 1
                     if not self.sort_info['binary_pursuit_only']:
                         # Keep duplicates found in binary pursuit since it can reject
@@ -1677,7 +1677,7 @@ class WorkItemSummary(object):
         combined_neuron['duplicate_tol_inds'] = 0
         for c in combined_neuron['channel']:
             c_main_win = combined_neuron['main_windows'][c]
-            curr_spike_width = calc_spike_half_width(
+            curr_spike_width = analyze_spike_timing.calc_spike_half_width(
                 combined_neuron['clips'][:, c_main_win[0]:c_main_win[1]]) + 1
             if curr_spike_width > combined_neuron['duplicate_tol_inds']:
                 combined_neuron['duplicate_tol_inds'] = curr_spike_width

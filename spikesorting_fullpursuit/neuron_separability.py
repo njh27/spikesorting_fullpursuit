@@ -16,13 +16,13 @@ def compute_metrics(templates, voltage, sort_info, thresholds=None):
     separability_metrics = {}
     # Compute our template sum squared error (see note below).
     # This is a num_templates vector
-    separability_metrics['template_SS'] = np.sum(templates * templates, axis=1))
+    separability_metrics['template_SS'] = np.sum(templates * templates, axis=1)
     separability_metrics['template_SS_by_chan'] = np.zeros((n_templates, n_chans))
     # Need to get convolution kernel separate for each channel and each template
     for n in range(0, n_templates):
         for chan in range(0, n_chans):
             t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
-            separability_metrics['template_SS_by_chan'][n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
+            separability_metrics['template_SS_by_chan'][n, chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
 
     if thresholds is None:
         thresholds = np.empty((n_chans, ))
@@ -39,6 +39,6 @@ def compute_metrics(templates, voltage, sort_info, thresholds=None):
         separability_metrics['std_noise'][chan] = thresholds[chan] / sort_info['sigma']
         separability_metrics['gamma_noise'][chan] = sort_info['sigma_noise_penalty'] * separability_metrics['std_noise'][chan]
         for n in range(0, n_templates):
-            separability_metrics['neuron_biases'][n] += np.sqrt(separability_metrics['template_SS_by_chan'][n, chan]) * separability_metrics['gamma_noise'][chan])
+            separability_metrics['neuron_biases'][n] += np.sqrt(separability_metrics['template_SS_by_chan'][n, chan]) * separability_metrics['gamma_noise'][chan]
 
     return separability_metrics

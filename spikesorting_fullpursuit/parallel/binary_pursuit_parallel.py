@@ -351,80 +351,10 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, thresholds,
 
         # Compute our template sum squared error (see note below).
         # This is a num_templates vector
-        template_sum_squared = np.float32(-0.5 * np.sum(templates * templates, axis=1))
-        template_sum_squared_by_channel = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
-        # Need to get convolution kernel separate for each channel and each template
-        for n in range(0, templates.shape[0]):
-            for chan in range(0, n_chans):
-                t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
-                template_sum_squared_by_channel[n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
-
-        # Compute the template bias terms over voltage data
-        spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
-        sample_duration = sampling_rate # One second
-        if n_samples < sample_duration:
-            # This is stupid, but would make following code fail
-            sample_start_inds = [0]
-            n_total_sample_points = n_samples
-            sample_duration = n_samples
-        else:
-            sample_start_inds = []
-            cssi = 0
-            # -sample_duration ensures at least sample_duration of data for each sample point
-            while cssi < (n_samples - sample_duration):
-                sample_start_inds.append(cssi)
-                cssi += int(sampling_rate * 60) # pick index every minute
-            n_total_sample_points = int(sampling_rate * len(sample_start_inds))
-        neighbor_bias = np.zeros(n_total_sample_points, dtype=np.float32)
-        gamma_noise = np.zeros(n_chans, dtype=np.float32)
-        spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
-        # Compute bias separately for each neuron, summed over channels
-        for chan in range(0, n_chans):
-            neighbor_bias[:] = 0.0
-            for s_ind, s in enumerate(sample_start_inds):
-                neighbor_bias[s_ind*sample_duration:(s_ind+1)*sample_duration] += np.float32(
-                        voltage[chan, s:s+sample_duration])
-            # Use MAD to estimate STD of the noise and set bias at
-            # thresh_sigma standard deviations. The typical extremely large
-            # n value for neighbor_bias makes this calculation converge to
-            # normal distribution
-            # Assumes zero-centered (which median usually isn't)
-            MAD = np.median(np.abs(neighbor_bias))
-            std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            print("Channel", chan, "has MAD_std of", std_noise)
-            gamma_noise[chan] = np.float32(sort_info['sigma_noise_penalty'] * std_noise)
-            for n in range(0, templates.shape[0]):
-                spike_biases[n] += np.float32(np.sqrt(template_sum_squared_by_channel[n*n_chans + chan]) * gamma_noise[chan])
-
-
-
-
-        # NOTE: These noise templates can sometimes really improve the sort
-        # quality by absorbing junk. Not sure if they should be removed...
-        # noise_templates = (-1*template_sum_squared - spike_biases) <= 0
-        # # Do first since need previous number of templates
-        # templates = templates[~noise_templates, :]
-        # print("Removing", np.count_nonzero(noise_templates), "templates for not being greater than noise term.")
-        # if templates.size == 0:
-        #     # No good templates remain so return no spikes
-        #     print("All templates removed for being too close to noise")
-        #     return np.zeros(0), np.zeros(0), np.zeros(0, dtype=np.bool), np.zeros((0, n_chans * template_samples_per_chan))
-        # # Templates must be a 2D float32
-        # if templates.ndim == 1:
-        #     templates = np.reshape(templates, (1, -1))
-        # print("There are", templates.shape[0], "templates remaining for binary pursuit.")
-        # templates_vector = templates.reshape(templates.size).astype(np.float32)
-        # template_sum_squared = template_sum_squared[~noise_templates]
-        # new_template_sum_squared_by_channel = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
-        # for n in range(0, templates.shape[0]):
-        #     for chan in range(0, n_chans):
-        #         t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
-        #         new_template_sum_squared_by_channel[n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
-        # template_sum_squared_by_channel = new_template_sum_squared_by_channel
-
-
-        # Delete stuff no longer needed for this chunk
-        del neighbor_bias
+        template_sum_squared = np.float32(-0.5 * separability_metrics['template_SS'])
+        template_sum_squared_by_channel = np.float32(separability_metrics['template_SS_by_chan'].flatten(order='C'))
+        gamma_noise = np.float32(separability_metrics['gamma_noise'])
+        neuron_biases = np.float32(separability_metrics['neuron_biases'])
 
         template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
@@ -482,7 +412,7 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, thresholds,
             total_work_size_pursuit = pursuit_local_work_size * np.int64(np.ceil(num_template_widths / pursuit_local_work_size))
 
             # Construct our buffers
-            spike_biases_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=spike_biases)
+            spike_biases_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=neuron_biases)
             num_additional_spikes_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(1, dtype=np.uint32)) # NOTE: Must be :rw for atomic to work
             additional_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
             additional_spike_labels_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))

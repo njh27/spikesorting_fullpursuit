@@ -4,7 +4,7 @@ import platform as sys_platform
 import re
 import time
 from spikesorting_fullpursuit.sort import reorder_labels
-from spikesorting_fullpursuit import segment
+from spikesorting_fullpursuit import segment, neuron_separability
 from spikesorting_fullpursuit.parallel import segment_parallel
 from scipy.signal import fftconvolve
 
@@ -126,7 +126,7 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
     return template_pre_inds, template_post_inds
 
 
-def binary_pursuit(templates, voltage, v_dtype, sort_info,
+def binary_pursuit(templates, voltage, v_dtype, sort_info, thresholds,
                    n_max_shift_inds=None, kernels_path=None,
                    max_gpu_memory=None):
     """
@@ -346,19 +346,18 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
         secret_spike_bool = []
         adjusted_spike_clips = []
 
-        separability = {}
-        separability['template_SSE'] = {}
+
+        separability_metrics = neuron_separability.compute_metrics(templates, voltage, sort_info, thresholds=thresholds)
+
         # Compute our template sum squared error (see note below).
         # This is a num_templates vector
         template_sum_squared = np.float32(-0.5 * np.sum(templates * templates, axis=1))
         template_sum_squared_by_channel = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
         # Need to get convolution kernel separate for each channel and each template
         for n in range(0, templates.shape[0]):
-            separability['template_SSE'][n] = {}
             for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
                 template_sum_squared_by_channel[n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
-                separability['template_SSE'][n][chan] = template_sum_squared_by_channel
 
         # Compute the template bias terms over voltage data
         spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
@@ -380,7 +379,6 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
         gamma_noise = np.zeros(n_chans, dtype=np.float32)
         spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
         # Compute bias separately for each neuron, summed over channels
-        separability['std_noise'] = {}
         for chan in range(0, n_chans):
             neighbor_bias[:] = 0.0
             for s_ind, s in enumerate(sample_start_inds):
@@ -397,11 +395,9 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
             gamma_noise[chan] = np.float32(sort_info['sigma_noise_penalty'] * std_noise)
             for n in range(0, templates.shape[0]):
                 spike_biases[n] += np.float32(np.sqrt(template_sum_squared_by_channel[n*n_chans + chan]) * gamma_noise[chan])
-            # Store std Noise for postprocessing
-            separability['std_noise'][chan] = std_noise
-        separability['noise_penalty'] = {}
-        for n in range(0, templates.shape[0]):
-            separability['noise_penalty'][n] = spike_biases[n]
+
+
+
 
         # NOTE: These noise templates can sometimes really improve the sort
         # quality by absorbing junk. Not sure if they should be removed...
@@ -945,4 +941,4 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
 
-    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, separability
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips

@@ -768,7 +768,6 @@ def spike_sort_parallel(Probe, **kwargs):
                 if cn_ind is None:
                     raise ValueError("Probe get_neighbors(chan) function must return a neighborhood that includes the channel 'chan'.")
                 chan_neighbor_inds.append(cn_ind)
-            print("threshold for work item chan", chan, "is", thresholds_list[x]/4.0)
             work_items.append({'channel': chan,
                                'neighbors': chan_neighbors[chan],
                                'chan_neighbor_ind': chan_neighbor_inds[chan],

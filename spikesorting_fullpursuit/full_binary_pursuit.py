@@ -315,8 +315,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     print("Sharpening reduced number of templates to", templates.shape[0])
     print("Starting full binary pursuit search with", templates.shape[0], "templates in segment", seg_number)
 
-    crossings, neuron_labels, bp_bool, clips, separability = binary_pursuit_parallel.binary_pursuit(
-                    templates, voltage, v_dtype, sort_info,
+    crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
+                    templates, voltage, v_dtype, sort_info, seg_w_items['thresholds'],
                     n_max_shift_inds=original_n_samples_per_chan-1,
                     kernels_path=None, max_gpu_memory=max_gpu_memory)
 

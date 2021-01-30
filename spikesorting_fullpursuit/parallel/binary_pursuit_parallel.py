@@ -346,15 +346,18 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, chan_thresholds,
         secret_spike_bool = []
         adjusted_spike_clips = []
 
+        separability = {}
         # Compute our template sum squared error (see note below).
         # This is a num_templates vector
         template_sum_squared = np.float32(-0.5 * np.sum(templates * templates, axis=1))
         template_sum_squared_by_channel = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
         # Need to get convolution kernel separate for each channel and each template
         for n in range(0, templates.shape[0]):
+            separability['template_SSE'][n] = {}
             for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
                 template_sum_squared_by_channel[n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
+                separability['template_SSE'][n][chan] = template_sum_squared_by_channel
 
         # Compute the template bias terms over voltage data
         spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
@@ -376,6 +379,7 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, chan_thresholds,
         gamma_noise = np.zeros(n_chans, dtype=np.float32)
         spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
         # Compute bias separately for each neuron, summed over channels
+        separability['std_noise'] = {}
         for chan in range(0, n_chans):
             neighbor_bias[:] = 0.0
             for s_ind, s in enumerate(sample_start_inds):
@@ -388,11 +392,15 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, chan_thresholds,
             # Assumes zero-centered (which median usually isn't)
             MAD = np.median(np.abs(neighbor_bias))
             std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            chan_thresholds
             print("Channel", chan, "has MAD_std of", std_noise)
             gamma_noise[chan] = np.float32(sort_info['sigma_noise_penalty'] * std_noise)
             for n in range(0, templates.shape[0]):
                 spike_biases[n] += np.float32(np.sqrt(template_sum_squared_by_channel[n*n_chans + chan]) * gamma_noise[chan])
+            # Store std Noise for postprocessing
+            separability['std_noise'][chan] = std_noise
+        separability['noise_penalty'] = {}
+        for n in range(0, templates.shape[0]):
+            separability['noise_penalty'][n] = spike_biases[n]
 
         # NOTE: These noise templates can sometimes really improve the sort
         # quality by absorbing junk. Not sure if they should be removed...

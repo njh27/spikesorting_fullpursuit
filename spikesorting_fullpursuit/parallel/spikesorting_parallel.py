@@ -917,6 +917,5 @@ def spike_sort_parallel(Probe, **kwargs):
         print("Item number", pe[0], "had the following error:")
         print("            ", pe[1])
 
-    # Delete directory containing clips
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info

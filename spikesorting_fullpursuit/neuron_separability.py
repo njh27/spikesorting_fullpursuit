@@ -9,7 +9,6 @@ def compute_metrics(templates, voltage, sort_info, thresholds=None):
 
     # Ease of use variables
     n_chans = voltage.shape[0]
-    n_samples = voltage.shape[1]
     n_templates = templates.shape[0]
     template_samples_per_chan = sort_info['n_samples_per_chan']
 

@@ -394,7 +394,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         else:
             # This work item found nothing (or raised an exception)
             seg_data.append([[], [], [], [], curr_item['ID']])
-    # Make everything compatible with regular consolidate.WorkItemSummary
+    # Make everything compatible with regular postprocessing.WorkItemSummary
     sort_info['binary_pursuit_only'] = True
 
     return seg_data

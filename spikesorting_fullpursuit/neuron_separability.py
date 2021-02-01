@@ -13,6 +13,7 @@ def compute_metrics(templates, voltage, sort_info, thresholds=None):
     template_samples_per_chan = sort_info['n_samples_per_chan']
 
     separability_metrics = {}
+    separability_metrics['templates'] = templates
     # Compute our template sum squared error (see note below).
     # This is a num_templates vector
     separability_metrics['template_SS'] = np.sum(templates * templates, axis=1)
@@ -41,3 +42,30 @@ def compute_metrics(templates, voltage, sort_info, thresholds=None):
             separability_metrics['neuron_biases'][n] += np.sqrt(separability_metrics['template_SS_by_chan'][n, chan]) * separability_metrics['gamma_noise'][chan]
 
     return separability_metrics
+
+
+def pairwise_separability(separability_metrics, n_chans):
+
+    # Compute separability measure for all pairs of neurons
+    pair_separability_matrix = np.zeros((separability_metrics['templates'].shape[0], separability_metrics['templates'].shape[0]))
+    for n1 in range(0, separability_metrics['templates'].shape[0]):
+        var_L_n1 = 0
+        for chan in range(0, n_chans):
+            var_L_n1 += (separability_metrics['std_noise'][chan] ** 2) * separability_metrics['template_SS_by_chan'][n1, chan]
+        E_L_n1 = 0.5 * separability_metrics['template_SS'][n1] - separability_metrics['neuron_biases'][n1]
+
+        for n2 in range(n1, separability_metrics['templates'].shape[0]):
+            var_L_n2 = 0
+            for chan in range(0, n_chans):
+                var_L_n2 += (separability_metrics['std_noise'][chan] ** 2) * separability_metrics['template_SS_by_chan'][n2, chan]
+            E_L_n2 =  (np.sum(separability_metrics['templates'][n1, :] * separability_metrics['templates'][n2, :])
+                        - 0.5 * separability_metrics['template_SS'][n2] - separability_metrics['neuron_biases'][n2])
+
+            d_prime = np.abs(E_L_n1 - E_L_n2) / np.sqrt(0.5 * (var_L_n1 + var_L_n2))
+            pair_separability_matrix[n1, n2] = d_prime
+            pair_separability_matrix[n2, n1] = d_prime
+
+
+
+
+    return

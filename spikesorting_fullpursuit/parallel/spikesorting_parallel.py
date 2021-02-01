@@ -902,6 +902,7 @@ def spike_sort_parallel(Probe, **kwargs):
                       'n_samples_per_chan': curr_chan_win[1] - curr_chan_win[0],
                       'sampling_rate': Probe.sampling_rate,
                       'n_segments': len(segment_onsets)})
+    sort_info['separability_metrics'] = [[] for x in range(0, sort_info['n_segments'])]
 
     for seg_number in range(0, len(segment_onsets)):
         seg_data = full_binary_pursuit.full_binary_pursuit(work_items,

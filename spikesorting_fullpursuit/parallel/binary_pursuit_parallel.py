@@ -349,8 +349,8 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, thresholds,
 
         separability_metrics = neuron_separability.compute_metrics(templates, voltage, sort_info, thresholds=thresholds)
 
-        # Compute our template sum squared error (see note below).
-        # This is a num_templates vector
+        # Compute info needed for binary pursuit (see note below).
+        # Multiply by -0.5 to accomodate simplified delta likelihood function
         template_sum_squared = np.float32(-0.5 * separability_metrics['template_SS'])
         template_sum_squared_by_channel = np.float32(separability_metrics['template_SS_by_chan'].flatten(order='C'))
         gamma_noise = np.float32(separability_metrics['gamma_noise'])
@@ -871,4 +871,4 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, thresholds,
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
 
-    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, separability_metrics

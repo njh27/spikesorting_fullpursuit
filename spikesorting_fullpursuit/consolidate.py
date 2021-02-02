@@ -7,6 +7,51 @@ from spikesorting_fullpursuit.analyze_spike_timing import remove_spike_event_dup
 import matplotlib.pyplot as plt
 
 
+
+def optimal_align_templates(temp_1, temp_2, n_chans, max_shift=None):
+    """ """
+
+    n_samples_per_chan = temp_1.shape[0] // n_chans
+    print("input samples per chan", n_samples_per_chan)
+    if temp_1.shape[0] != temp_2.shape[0] or temp_1.ndim > 1 or n_samples_per_chan == 0:
+        raise ValueError("Input templates must be 1D vectors of the same size")
+
+    cross_corr = np.correlate(temp_1, temp_2, mode='full')
+    xcorr_center = cross_corr.shape[0]//2
+    if max_shift is None:
+        max_xcorr_ind = np.argmax(cross_corr)
+        optimal_shift = max_xcorr_ind - xcorr_center
+    else:
+        max_xcorr_ind = np.argmax(cross_corr[xcorr_center-max_shift:xcorr_center+max_shift+1])
+        max_xcorr_ind += (xcorr_center-max_shift)
+        optimal_shift = max_xcorr_ind - xcorr_center
+
+    if optimal_shift == 0:
+        return optimal_shift, temp_1, temp_2
+
+    # Align and truncate templates separately on each channel
+    shift_temp1 = []
+    shift_temp2 = []
+    for chan in range(0, n_chans):
+        chan_temp_1 = temp_1[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan]
+        chan_temp_2 = temp_2[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan]
+        if optimal_shift > 0:
+            shift_temp1.append(chan_temp_1[optimal_shift:])
+            shift_temp2.append(chan_temp_2[:-1*optimal_shift])
+        elif optimal_shift < 0:
+            shift_temp1.append(chan_temp_1[:optimal_shift])
+            shift_temp2.append(chan_temp_2[-1*optimal_shift:])
+        else:
+            # Should be impossible since we return above if optimal_shift == 0
+            raise RuntimeError("Optimal shift not found")
+
+    shift_temp1 = np.hstack(shift_temp1)
+    shift_temp2 = np.hstack(shift_temp2)
+    shift_samples_per_chan = shift_temp1.shape[0] // n_chans
+
+    return shift_temp1, shift_temp2, optimal_shift, shift_samples_per_chan
+
+
 class SegSummary(object):
     """ Main class that gathers all the sorted data and consolidates it within
     each segment. This is called after clustering, but before running binary

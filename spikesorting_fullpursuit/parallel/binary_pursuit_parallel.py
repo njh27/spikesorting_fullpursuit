@@ -4,7 +4,7 @@ import platform as sys_platform
 import re
 import time
 from spikesorting_fullpursuit.sort import reorder_labels
-from spikesorting_fullpursuit import segment, neuron_separability
+from spikesorting_fullpursuit import segment
 from spikesorting_fullpursuit.parallel import segment_parallel
 from scipy.signal import fftconvolve
 
@@ -127,7 +127,7 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
 
 
 def binary_pursuit(templates, voltage, v_dtype, sort_info, thresholds,
-                   n_max_shift_inds=None, kernels_path=None,
+                   separability_metrics, n_max_shift_inds=None, kernels_path=None,
                    max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
@@ -345,9 +345,6 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, thresholds,
         secret_spike_labels = []
         secret_spike_bool = []
         adjusted_spike_clips = []
-
-
-        separability_metrics = neuron_separability.compute_metrics(templates, voltage, sort_info, thresholds=thresholds)
 
         # Compute info needed for binary pursuit (see note below).
         # Multiply by -0.5 to accomodate simplified delta likelihood function
@@ -871,4 +868,4 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, thresholds,
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
 
-    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips, separability_metrics
+    return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips

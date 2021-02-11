@@ -8,15 +8,18 @@ import matplotlib.pyplot as plt
 
 
 
-def optimal_align_templates(temp_1, temp_2, n_chans, max_shift=None):
+def optimal_align_templates(temp_1, temp_2, n_chans, max_shift=None, align_abs=False):
     """ """
 
     n_samples_per_chan = temp_1.shape[0] // n_chans
-    print("input samples per chan", n_samples_per_chan)
     if temp_1.shape[0] != temp_2.shape[0] or temp_1.ndim > 1 or n_samples_per_chan == 0:
         raise ValueError("Input templates must be 1D vectors of the same size")
 
-    cross_corr = np.correlate(temp_1, temp_2, mode='full')
+    if align_abs:
+        # Use absolute value of cross correlation function to align
+        cross_corr = np.abs(np.correlate(temp_1, temp_2, mode='full'))
+    else:
+        cross_corr = np.correlate(temp_1, temp_2, mode='full')
     xcorr_center = cross_corr.shape[0]//2
     if max_shift is None:
         max_xcorr_ind = np.argmax(cross_corr)
@@ -27,7 +30,7 @@ def optimal_align_templates(temp_1, temp_2, n_chans, max_shift=None):
         optimal_shift = max_xcorr_ind - xcorr_center
 
     if optimal_shift == 0:
-        return optimal_shift, temp_1, temp_2
+        return temp_1, temp_2, optimal_shift, n_samples_per_chan
 
     # Align and truncate templates separately on each channel
     shift_temp1 = []

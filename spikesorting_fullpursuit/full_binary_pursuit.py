@@ -312,20 +312,26 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             #     if chan not in n['neighbors']:
             #         clips[:, chan*sort_info['n_samples_per_chan']:(chan+1)*sort_info['n_samples_per_chan']] = 0.0
             templates.append(np.mean(clips, axis=0))
-            neuron_clips.append(clips)
+
+            # rand_inds = np.random.randint(500, voltage.shape[1] - 500, 10000)
+            # clips, _ = get_multichannel_clips(clips_dict, voltage,
+            #                         rand_inds,
+            #                         clip_width=sort_info['clip_width'])
+            # neuron_clips.append(clips)
+
             next_label += 1
 
     del seg_summary
-
-    separability_metrics = neuron_separability.compute_metrics(templates, neuron_clips, sort_info, thresholds)
+    separability_metrics = neuron_separability.compute_metrics(templates,
+                            voltage, 10000, sort_info, seg_w_items[0]['thresholds'])
 
     templates = np.vstack(templates)
     print("Sharpening reduced number of templates to", templates.shape[0])
     print("Starting full binary pursuit search with", templates.shape[0], "templates in segment", seg_number)
 
-    crossings, neuron_labels, bp_bool, clips, separability_metrics = binary_pursuit_parallel.binary_pursuit(
-                    templates, voltage, v_dtype, sort_info, s
-                    eg_w_items[0]['thresholds'], separability_metrics,
+    crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
+                    templates, voltage, v_dtype, sort_info,
+                    seg_w_items[0]['thresholds'], separability_metrics,
                     n_max_shift_inds=original_n_samples_per_chan-1,
                     kernels_path=None, max_gpu_memory=max_gpu_memory)
 

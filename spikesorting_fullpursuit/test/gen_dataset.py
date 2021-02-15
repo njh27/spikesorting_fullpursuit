@@ -201,7 +201,8 @@ class TestDataset(object):
         for i in range (0, self.num_channels):
             self.voltage_array[i, :] += ((1-self.percent_shared_noise) * self.gen_bandlimited_noise()).astype(self.electrode_dtype)
 
-    def gen_test_dataset(self, firing_rates, template_inds, chan_scaling_factors, refractory_wins=1.5e-3):
+    def gen_test_dataset(self, firing_rates, template_inds, chan_scaling_factors,
+                         refractory_wins=1.5e-3, remove_overlaps=False):
         """ Creates the test data set by making a noise voltage array and adding
         in spikes for the neurons in template_inds with corresponding rates and
         scaling.
@@ -224,11 +225,30 @@ class TestDataset(object):
         if self.voltage_array is None:
             self.gen_noise_voltage_array()
         for neuron in range(0, len(firing_rates)):
-            # Generate one spike train for each neuron
+            # Generate one set of spike times for each neuron
             spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
             self.actual_IDs[neuron] = np.where(spiketrain)[0]
 
+        if remove_overlaps:
+            # Remove any spike times that might overlap with each other within half a template
+            overlapping_bools = []
+            for n1 in range(0, len(self.actual_IDs)):
+                overlapping_bools.append(np.ones(self.actual_IDs[n1].shape[0], dtype=np.bool))
+                for n2 in range(0, len(self.actual_IDs)):
+                    if n1 == n2:
+                        continue
+                    overlapping_spike_bool = find_overlapping_spike_bool(
+                            self.actual_IDs[n1], self.actual_IDs[n2], overlap_tol=self.neuron_templates[0].shape[0])
+                    overlapping_bools[n1] = np.logical_and(overlapping_bools[n1], ~overlapping_spike_bool)
+            for ob in range(0, len(self.actual_IDs)):
+                self.actual_IDs[ob] = self.actual_IDs[ob][overlapping_bools[ob]]
 
+
+        for neuron in range(0, len(firing_rates)):
+            # Set boolean spike train from spike times. spiketrain was made above
+            # so just zero it out here
+            spiketrain[:] = False
+            spiketrain[self.actual_IDs[neuron]] = True
             # if neuron == 1:
             #     overlapping_spike_bool = find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron-1], overlap_tol=162)
             #     self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
@@ -248,8 +268,6 @@ class TestDataset(object):
                 # Spike train is used for actual convolution so reset here
                 spiketrain[:] = False
                 spiketrain[self.actual_IDs[neuron]] = True
-
-
 
             for chan in range(0, self.num_channels):
                 # Apply spike train to every channel this neuron is present on

@@ -26,7 +26,7 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info, thresholds):
     # Need to get sum squares and noise covariance separate for each channel and template
     separability_metrics['channel_covariance_mats'] = []
 
-
+    emp_noise_bias = [0 for n in range(0, n_templates)]
     for chan in range(0, n_chans):
         n_noise_clips_found = 0
         noise_clips_found = []
@@ -40,15 +40,24 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info, thresholds):
         chan_cov = np.cov(noise_clips_found, rowvar=False)
         separability_metrics['channel_covariance_mats'].append(chan_cov)
 
+        t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
+        for n in range(0, n_templates):
+            emp_noise_bias[n] += np.var(noise_clips_found @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
+            # print("neuron chan mean", np.mean(noise_clips_found @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None]))
+    print("Empirical noise bias", emp_noise_bias)
+
     separability_metrics['neuron_biases'] = np.zeros(n_templates)
     for n in range(0, n_templates):
         for chan in range(0, n_chans):
             t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
             separability_metrics['template_SS_by_chan'][n, chan] = np.sum(
                     separability_metrics['templates'][n, t_win[0]:t_win[1]] ** 2)
+
             separability_metrics['neuron_biases'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
                                             @ separability_metrics['channel_covariance_mats'][chan]
                                             @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
+        # print("Theoretical noise bias", separability_metrics['neuron_biases'][n])
+
         # Convert bias from variance to standard deviations
         separability_metrics['neuron_biases'][n] = sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_biases'][n])
 
@@ -61,9 +70,10 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info, thresholds):
         separability_metrics['std_noise'][chan] = thresholds[chan] / sort_info['sigma']
         # gamma_noise is used only for overlap recheck indices noise term for sum of 2 templates
         separability_metrics['gamma_noise'][chan] = sort_info['sigma_noise_penalty'] * separability_metrics['std_noise'][chan]
-        # for n in range(0, n_templates):
-        #     separability_metrics['neuron_biases'][n] += np.sqrt(separability_metrics['template_SS_by_chan'][n, chan]) * separability_metrics['gamma_noise'][chan]
-
+    #     for n in range(0, n_templates):
+    #         separability_metrics['neuron_biases'][n] += np.sqrt(separability_metrics['template_SS_by_chan'][n, chan]) * separability_metrics['gamma_noise'][chan]
+    #
+    # print("OLD noise bias", separability_metrics['neuron_biases'])
     return separability_metrics
 
 
@@ -88,7 +98,11 @@ def pairwise_separability(separability_metrics, sort_info):
                                 separability_metrics['templates'][n1, :],
                                 separability_metrics['templates'][n2, :],
                                 n_chans, max_shift=max_shift, align_abs=True)
+            print("Using optimal shift of", optimal_shift)
             var_diff = 0
+            var_1 = 0
+            var_2 = 0
+            covar = 0
             for chan in range(0, n_chans):
                 s_win = [chan*shift_samples_per_chan, (chan+1)*shift_samples_per_chan]
                 # Adjust covariance matrix to new templates, shifting according to template 1
@@ -99,18 +113,31 @@ def pairwise_separability(separability_metrics, sort_info):
                 # Multiply template with covariance then template transpose to
                 # get variance of the likelihood function (or the difference)
                 diff_template = shift_temp1[s_win[0]:s_win[1]] - shift_temp2[s_win[0]:s_win[1]]
-                var_diff += (diff_template[None, s_win[0]:s_win[1]]
+                var_diff += (diff_template[None, :]
                              @ s_chan_cov
-                             @ diff_template[s_win[0]:s_win[1], None])
+                             @ diff_template[:, None])
 
+                var_1 += (shift_temp1[s_win[0]:s_win[1]][None, :]
+                         @ s_chan_cov
+                         @ shift_temp1[s_win[0]:s_win[1]][:, None])
+                var_2 += (shift_temp2[s_win[0]:s_win[1]][None, :]
+                         @ s_chan_cov
+                         @ shift_temp2[s_win[0]:s_win[1]][:, None])
+                covar += (shift_temp1[s_win[0]:s_win[1]][None, :]
+                         @ s_chan_cov
+                         @ shift_temp2[s_win[0]:s_win[1]][:, None])
+
+
+            # var_diff = var_1 + var_2 - 2*covar
             n_1_n2_SS = np.dot(shift_temp1, shift_temp2)
             # Assuming full template 2 data here as this will be counted in
             # computation of likelihood function
-            E_L_n2 = (n_1_n2_SS - 0.5 * np.dot(separability_metrics['templates'][n2, :], separability_metrics['templates'][n2, :])
+            E_L_n2 = (n_1_n2_SS - 0.5 * separability_metrics['template_SS'][n2]
                         - separability_metrics['neuron_biases'][n2])
 
+            print("Var sum", var_1 + var_2, "covar", covar, "total =", var_1 + var_2 - 2*covar)
             E_diff_n1_n2 = E_L_n1 - E_L_n2
-            print("exepcted diff", E_diff_n1_n2, "var diff", var_diff)
+            print("exepcted diff", E_diff_n1_n2, "var diff", var_diff, "for neurons", n1, n2)
             if var_diff > 0:
                 pair_separability_matrix[n1, n2] = norm.cdf(0, E_diff_n1_n2, np.sqrt(var_diff))
             else:
@@ -158,10 +185,16 @@ def get_singlechannel_clips(voltage, channel, spike_times, window):
 def empirical_separability(voltage, spike_times, templates, window_samples, separability_metrics, add_spikes=False):
     """ """
 
-    overlapping_spike_bool_0_1 = find_overlapping_spike_bool(spike_times[0], spike_times[1], overlap_tol=window_samples[1])
-    overlapping_spike_bool_1_0 = find_overlapping_spike_bool(spike_times[1], spike_times[0], overlap_tol=window_samples[1])
-    spike_times[0] = spike_times[0][~overlapping_spike_bool_0_1]
-    spike_times[1] = spike_times[1][~overlapping_spike_bool_1_0]
+    overlapping_bools = []
+    for s1 in range(0, len(spike_times)):
+        overlapping_bools.append(np.ones(spike_times[s1].shape[0], dtype=np.bool))
+        for s2 in range(0, len(spike_times)):
+            if s1 == s2:
+                continue
+            overlapping_spike_bool = find_overlapping_spike_bool(spike_times[s1], spike_times[s2], overlap_tol=window_samples[1])
+            overlapping_bools[s1] = np.logical_and(overlapping_bools[s1], ~overlapping_spike_bool)
+    for ob in range(0, len(spike_times)):
+        spike_times[ob] = spike_times[ob][overlapping_bools[ob]]
 
     LL_E_diff_mat = np.zeros((templates.shape[0], templates.shape[0]))
     LL_Var_diff_mat = np.zeros((templates.shape[0], templates.shape[0]))

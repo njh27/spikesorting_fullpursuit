@@ -323,7 +323,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
 
     del seg_summary
     separability_metrics = neuron_separability.compute_metrics(templates,
-                            voltage, 10000, sort_info, seg_w_items[0]['thresholds'])
+                            voltage, 100000, sort_info, seg_w_items[0]['thresholds'])
 
     templates = np.vstack(templates)
     print("Sharpening reduced number of templates to", templates.shape[0])
@@ -331,7 +331,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
 
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, v_dtype, sort_info,
-                    seg_w_items[0]['thresholds'], separability_metrics,
+                    separability_metrics,
                     n_max_shift_inds=original_n_samples_per_chan-1,
                     kernels_path=None, max_gpu_memory=max_gpu_memory)
 

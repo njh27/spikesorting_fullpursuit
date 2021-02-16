@@ -95,7 +95,7 @@ class TestDataset(object):
                  neuron_templates=None, frequency_range=(500, 8000),
                  samples_per_second=40000, amplitude=1, percent_shared_noise=0,
                  correlate1_2=False, electrode_type='Probe',
-                 electrode_dtype=None):
+                 electrode_dtype=np.float32):
         self.num_channels = num_channels
         self.duration = duration
         self.voltage_array = None

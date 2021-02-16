@@ -56,7 +56,7 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info, thresholds):
             separability_metrics['neuron_biases'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
                                             @ separability_metrics['channel_covariance_mats'][chan]
                                             @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
-        # print("Theoretical noise bias", separability_metrics['neuron_biases'][n])
+        print("Theoretical noise bias", separability_metrics['neuron_biases'][n])
 
         # Convert bias from variance to standard deviations
         separability_metrics['neuron_biases'][n] = sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_biases'][n])
@@ -80,17 +80,28 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info, thresholds):
 def pairwise_separability(separability_metrics, sort_info):
     """
     Note that output matrix of separabilty errors is not necessarily symmetric
-    due to the shifting alignment of templates.
+    due to the shifting alignment of templates and noise bias terms.
     """
     n_chans = sort_info['n_channels']
     template_samples_per_chan = sort_info['n_samples_per_chan']
     max_shift = (template_samples_per_chan // 4) - 1
     n_neurons = separability_metrics['templates'].shape[0]
 
+    # Compute separability from noise for each neuron
+    neuron_noise_separability = np.zeros(n_neurons)
     # Compute separability measure for all pairs of neurons
     pair_separability_matrix = np.zeros((n_neurons, n_neurons))
     for n1 in range(0, n_neurons):
         E_L_n1 = 0.5 * separability_metrics['template_SS'][n1] - separability_metrics['neuron_biases'][n1]
+        Var_L_n1 = 0
+        for chan in range(0, n_chans):
+            t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
+            Var_L_n1 += (separability_metrics['templates'][n1, :][None, :]
+                         @ separability_metrics['channel_covariance_mats'][chan]
+                         @ separability_metrics['templates'][n1, :][:, None])
+
+        neuron_noise_separability[n1] = norm.cdf(0, E_L_n1, np.sqrt(Var_L_n1))
+
         for n2 in range(0, separability_metrics['templates'].shape[0]):
             # Need to optimally align n2 template with n1 template for computing
             # the covariance/difference of their Likelihood functions
@@ -138,12 +149,20 @@ def pairwise_separability(separability_metrics, sort_info):
             print("Var sum", var_1 + var_2, "covar", covar, "total =", var_1 + var_2 - 2*covar)
             E_diff_n1_n2 = E_L_n1 - E_L_n2
             print("exepcted diff", E_diff_n1_n2, "var diff", var_diff, "for neurons", n1, n2)
+
+            p_L_n1_lt0 = norm.cdf(0, E_L_n1, np.sqrt(var_1))
+            p_L_n2_lt0 = norm.cdf(0, E_L_n2, np.sqrt(var_2))
+            print("p n1 less than 0", p_L_n1_lt0, "n2", p_L_n2_lt0, "both", p_L_n1_lt0*p_L_n2_lt0)
+
+            p_L_n1_gt0 = norm.sf(0, E_L_n1, np.sqrt(var_1))
+            p_L_n2_gt0 = norm.sf(0, E_L_n2, np.sqrt(var_2))
+
             if var_diff > 0:
-                pair_separability_matrix[n1, n2] = norm.cdf(0, E_diff_n1_n2, np.sqrt(var_diff))
+                pair_separability_matrix[n1, n2] = norm.cdf(0, E_diff_n1_n2, np.sqrt(var_diff))  * p_L_n2_gt0
             else:
                 pair_separability_matrix[n1, n2] = 0
 
-    return pair_separability_matrix
+    return pair_separability_matrix, neuron_noise_separability
 
 
 def get_singlechannel_clips(voltage, channel, spike_times, window):

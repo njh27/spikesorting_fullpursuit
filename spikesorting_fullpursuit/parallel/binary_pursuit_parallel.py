@@ -126,7 +126,7 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
     return template_pre_inds, template_post_inds
 
 
-def binary_pursuit(templates, voltage, v_dtype, sort_info, thresholds,
+def binary_pursuit(templates, voltage, v_dtype, sort_info,
                    separability_metrics, n_max_shift_inds=None, kernels_path=None,
                    max_gpu_memory=None):
     """
@@ -577,7 +577,7 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info, thresholds,
                 queue.finish() # Needs to finish copy before deciding indices
                 # Use overlap_recheck_window data to determine window indices for overlap recheck
                 overlap_window_indices = np.uint32(np.nonzero(overlap_recheck_window)[0])
-                do_overlap_recheck = True
+                do_overlap_recheck = False
                 if overlap_window_indices.shape[0] > 0 and do_overlap_recheck:
                     # Still more flagged spikes to check
                     # print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")

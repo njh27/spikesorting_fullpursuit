@@ -2,10 +2,14 @@ import numpy as np
 from scipy import signal
 from scipy import stats
 from spikesorting_fullpursuit import neuron_separability
+from spikesorting_fullpursuit.segment import median_threshold
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
+from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 import matplotlib.pyplot as plt
 
+
+from sklearn.covariance import EmpiricalCovariance, MinCovDet
 
 
 dict_other_templates = {'upsidedown_47a': np.array(
@@ -72,10 +76,6 @@ class RunBinaryPursuit(object):
             self.percent_shared_noise = 1.
         if self.percent_shared_noise < 0.:
             self.percent_shared_noise = 0.
-        self.random_seed = random_seed
-        np.random.seed(self.random_seed)
-        self.random_state = np.random.get_state()
-        np.random.set_state(self.random_state)
 
     def get_default_templates(self):
         templates = np.array([
@@ -165,7 +165,7 @@ class RunBinaryPursuit(object):
             refractory_wins = np.repeat(refractory_wins, len(firing_rates))
         # Reset neuron actual IDs for each neuron
         self.actual_IDs = [[] for neur in range(0, len(firing_rates))]
-        self.actual_templates = [np.zeros((0, self.neuron_templates.shape[1]), dtype=self.voltage_dtype) for neur in range(0, len(firing_rates))]
+        self.actual_templates = [np.zeros((1, 0), dtype=self.voltage_dtype) for neur in range(0, len(firing_rates))]
         if self.voltage_array is None:
             self.gen_noise_voltage_array()
         for neuron in range(0, len(firing_rates)):
@@ -219,7 +219,7 @@ class RunBinaryPursuit(object):
                 # Filter the kernel to match the noise band
                 convolve_kernel = signal.filtfilt(b_filt, a_filt, convolve_kernel, axis=0, padlen=None)
                 convolve_kernel = convolve_kernel.astype(self.voltage_dtype)
-                self.actual_templates[neuron] = np.hstack((self.actual_templates[neuron], convolve_kernel))
+                self.actual_templates[neuron] = np.hstack((self.actual_templates[neuron], convolve_kernel.reshape(1, -1)))
                 if chan_scaling_factors[neuron][chan] <= 0:
                     continue
                 self.voltage_array[chan, :] += (signal.fftconvolve(spiketrain, convolve_kernel, mode='same')).astype(self.voltage_dtype)
@@ -238,7 +238,7 @@ class RunBinaryPursuit(object):
 
         # Reset neuron actual IDs for each neuron
         self.actual_IDs = [[] for neur in range(0, len(template_inds))]
-        self.actual_templates = [np.zeros((0, self.neuron_templates.shape[1]), dtype=self.voltage_dtype) for neur in range(0, len(template_inds))]
+        self.actual_templates = [np.zeros((1, 0), dtype=self.voltage_dtype) for neur in range(0, len(firing_rates))]
         if self.voltage_array is None:
             self.gen_noise_voltage_array()
         for neuron in range(0, len(template_inds)):
@@ -250,46 +250,184 @@ class RunBinaryPursuit(object):
                 # Filter the kernel to match the noise band
                 convolve_kernel = signal.filtfilt(b_filt, a_filt, convolve_kernel, axis=0, padlen=None)
                 convolve_kernel = convolve_kernel.astype(self.voltage_dtype)
-                self.actual_templates[neuron] = np.hstack((self.actual_templates[neuron], convolve_kernel))
+                self.actual_templates[neuron] = np.hstack((self.actual_templates[neuron], convolve_kernel.reshape(1, -1)))
                 if chan_scaling_factors[neuron][chan] <= 0:
                     continue
                 self.voltage_array[chan, :] += (signal.fftconvolve(spiketrain[neuron], convolve_kernel, mode='same')).astype(self.voltage_dtype)
 
     def sort_test_dataset(self, kwargs):
 
-        sort_info = {'sigma_noise_penalty': 1.645,
+        self.sort_info = {'sigma_noise_penalty': 1.645,
                     'get_adjusted_clips': False,
                     'max_gpu_memory': None,
-                    'max_shift_inds': None}
+                    'max_shift_inds': None,
+                    'sigma': 4.}
 
         for key in kwargs:
-            sort_info[key] = kwargs[key]
+            self.sort_info[key] = kwargs[key]
 
         # Subtract 1 from pre_time since clip width assumes time zero center
         pre_time = ((self.neuron_templates.shape[1] - 1) // 2) / self.samples_per_second
         post_time = (self.neuron_templates.shape[1] - (self.neuron_templates.shape[1] // 2)) / self.samples_per_second
         # These sort info values must match voltage and templates and cannot be
         # changed by input
-        sort_info = {'n_channels': self.num_channels,
-                     'n_samples_per_chan': test_data.neuron_templates.shape[1],
+        self.sort_info.update({'n_channels': self.num_channels,
+                     'n_samples_per_chan': self.neuron_templates.shape[1],
                      'clip_width': [pre_time, post_time],
                      'sampling_rate': self.samples_per_second,
-                     }
-        # This is currently a dummy variable for finding old noise bias term
-        sort_info['sigma'] = 1.
-        if sort_info['max_shift_inds'] is None:
-            sort_info['max_shift_inds'] = sort_info['n_samples_per_chan'] - 1
+                     })
+        if self.sort_info['max_shift_inds'] is None:
+            self.sort_info['max_shift_inds'] = self.sort_info['n_samples_per_chan'] - 1
 
-        separability_metrics = neuron_separability.compute_metrics(templates,
-                                voltage, 100000, sort_info, seg_w_items[0]['thresholds'])
+        thresholds = median_threshold(self.voltage_array, self.sort_info['sigma'])
 
         bp_templates = np.vstack(self.actual_templates)
-        crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
-                        bp_templates, self.voltage_array, self.voltage_dtype,
-                        sort_info, separability_metrics,
-                        n_max_shift_inds=sort_info['max_shift_inds'],
-                        kernels_path=None, max_gpu_memory=sort_info['max_gpu_memory'])
+        self.separability_metrics = self.compute_metrics(bp_templates,
+                                self.voltage_array, 100000, self.sort_info, thresholds,
+                                self.actual_IDs)
+        # self.separability_metrics = neuron_separability.compute_metrics(bp_templates,
+        #                         self.voltage_array, 100000, self.sort_info, thresholds)
 
-        self.binary_pursuit_results = {'spike_indices': crossings,
-                                       'neuron_labels': neuron_labels,
-                                       'spike_clips': clips}
+
+        crossings, neuron_labels, bp_bool, _ = binary_pursuit_parallel.binary_pursuit(
+                        bp_templates, self.voltage_array, self.voltage_dtype,
+                        self.sort_info, self.separability_metrics,
+                        n_max_shift_inds=self.sort_info['max_shift_inds'],
+                        kernels_path=None, max_gpu_memory=self.sort_info['max_gpu_memory'])
+
+        self.binary_pursuit_results = {'spike_indices': [],
+                                       'neuron_labels': []}
+        # Map the binary pursuit spike times to neuron labels that should match actual_IDs
+        for n_num in np.unique(neuron_labels):
+            n_num_spike_indices = crossings[neuron_labels == n_num]
+            index_order = np.argsort(n_num_spike_indices)
+            n_num_spike_indices = n_num_spike_indices[index_order]
+            self.binary_pursuit_results['neuron_labels'].append(n_num)
+            self.binary_pursuit_results['spike_indices'].append(n_num_spike_indices)
+
+    def compute_metrics(self, templates, voltage, n_noise_samples, sort_info,
+                        thresholds, actual_spike_times):
+        """ Calculate variance and template sum squared metrics needed to compute
+        separability_metrics between units and the delta likelihood function for binary
+        pursuit. """
+
+        # Ease of use variables
+        n_chans = sort_info['n_channels']
+        n_templates = len(templates)
+        template_samples_per_chan = sort_info['n_samples_per_chan']
+        window, clip_width = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
+        max_clip_samples = np.amax(np.abs(window)) + 1
+
+        separability_metrics = {}
+        separability_metrics['templates'] = np.vstack(templates)
+        # Compute our template sum squared error (see note below).
+        separability_metrics['template_SS'] = np.sum(separability_metrics['templates'] ** 2, axis=1)
+        separability_metrics['template_SS_by_chan'] = np.zeros((n_templates, n_chans))
+        # Need to get sum squares and noise covariance separate for each channel and template
+        separability_metrics['channel_covariance_mats'] = []
+
+        mcd_cov = []
+        emp_noise_bias = [0 for n in range(0, n_templates)]
+        for chan in range(0, n_chans):
+            n_noise_clips_found = 0
+            noise_clips_found = []
+            while n_noise_clips_found < n_noise_samples:
+                rand_inds = np.random.randint(max_clip_samples, voltage.shape[1] - max_clip_samples, n_noise_samples-n_noise_clips_found)
+
+                # rand_inds.sort()
+                # bad_inds = np.zeros(rand_inds.shape[0], dtype=np.bool)
+                # for n_spikes in actual_spike_times:
+                #     overlap_bool = find_overlapping_spike_bool(rand_inds, n_spikes, 50)
+                #     bad_inds = np.logical_or(bad_inds, overlap_bool)
+                # rand_inds = rand_inds[~bad_inds]
+
+                noise_clips, _ = get_singlechannel_clips(voltage, chan, rand_inds, window)
+
+                noise_clips = noise_clips[np.all(noise_clips < thresholds[chan], axis=1), :]
+
+                n_noise_clips_found += noise_clips.shape[0]
+                noise_clips_found.append(noise_clips)
+            noise_clips_found = np.vstack(noise_clips_found)
+            chan_cov = np.cov(noise_clips_found, rowvar=False)
+            # separability_metrics['channel_covariance_mats'].append(chan_cov)
+
+            rob_cov = MinCovDet(store_precision=False, assume_centered=True,
+                 support_fraction=1., random_state=None)
+            rob_cov.fit(noise_clips_found)
+            mcd_cov.append(rob_cov.raw_covariance_)
+            separability_metrics['channel_covariance_mats'].append(rob_cov.raw_covariance_)
+            print(noise_clips_found.shape, mcd_cov[0].shape, chan_cov.shape)
+            # print(mcd_cov[0])
+            # print(separability_metrics['channel_covariance_mats'])
+
+            t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
+            for n in range(0, n_templates):
+                emp_noise_bias[n] += np.var(noise_clips_found @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
+                # print("neuron chan mean", np.mean(noise_clips_found @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None]))
+        print("Empirical noise bias", emp_noise_bias)
+
+        separability_metrics['neuron_biases'] = np.zeros(n_templates)
+        for n in range(0, n_templates):
+            for chan in range(0, n_chans):
+                t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
+                separability_metrics['template_SS_by_chan'][n, chan] = np.sum(
+                        separability_metrics['templates'][n, t_win[0]:t_win[1]] ** 2)
+
+                separability_metrics['neuron_biases'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
+                                                @ separability_metrics['channel_covariance_mats'][chan]
+                                                @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
+            print("Theoretical noise bias", separability_metrics['neuron_biases'][n])
+
+            # Convert bias from variance to standard deviations
+            separability_metrics['neuron_biases'][n] = sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_biases'][n])
+
+        separability_metrics['gamma_noise'] = np.zeros(n_chans)
+
+        separability_metrics['std_noise'] = np.zeros(n_chans)
+        # Compute bias separately for each neuron, on each channel
+        for chan in range(0, n_chans):
+            # Convert channel threshold to normal standard deviation
+            separability_metrics['std_noise'][chan] = thresholds[chan] / sort_info['sigma']
+            # gamma_noise is used only for overlap recheck indices noise term for sum of 2 templates
+            separability_metrics['gamma_noise'][chan] = sort_info['sigma_noise_penalty'] * separability_metrics['std_noise'][chan]
+        #     for n in range(0, n_templates):
+        #         separability_metrics['neuron_biases'][n] += np.sqrt(separability_metrics['template_SS_by_chan'][n, chan]) * separability_metrics['gamma_noise'][chan]
+        #
+        # print("OLD noise bias", separability_metrics['neuron_biases'])
+        return separability_metrics
+
+
+def get_singlechannel_clips(voltage, channel, spike_times, window):
+
+    if spike_times.ndim > 1:
+        raise ValueError("Event_indices must be one dimensional array of indices")
+
+    # Ignore spikes whose clips extend beyond the data and create mask for removing them
+    valid_event_indices = np.ones(spike_times.shape[0], dtype=np.bool)
+    start_ind = 0
+    n = spike_times[start_ind]
+
+    while (n + window[0]) < 0:
+        valid_event_indices[start_ind] = False
+        start_ind += 1
+        if start_ind == spike_times.size:
+            # There are no valid indices
+            valid_event_indices[:] = False
+            return None, valid_event_indices
+        n = spike_times[start_ind]
+    stop_ind = spike_times.shape[0] - 1
+    n = spike_times[stop_ind]
+    while (n + window[1]) >= voltage.shape[1]:
+        valid_event_indices[stop_ind] = False
+        stop_ind -= 1
+        if stop_ind < 0:
+            # There are no valid indices
+            valid_event_indices[:] = False
+            return None, valid_event_indices
+        n = spike_times[stop_ind]
+
+    spike_clips = np.empty((np.count_nonzero(valid_event_indices), window[1] - window[0]))
+    for out_ind, spk in enumerate(range(start_ind, stop_ind+1)): # Add 1 to index through last valid index
+        spike_clips[out_ind, :] = voltage[channel, spike_times[spk]+window[0]:spike_times[spk]+window[1]]
+
+    return spike_clips, valid_event_indices

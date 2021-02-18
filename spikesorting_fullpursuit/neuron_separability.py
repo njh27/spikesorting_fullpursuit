@@ -89,6 +89,7 @@ def pairwise_separability(separability_metrics, sort_info):
 
     # Compute separability from noise for each neuron
     neuron_noise_separability = np.zeros(n_neurons)
+    neuron_noise_false_positives = np.zeros(n_neurons)
     # Compute separability measure for all pairs of neurons
     pair_separability_matrix = np.zeros((n_neurons, n_neurons))
     for n1 in range(0, n_neurons):
@@ -96,11 +97,13 @@ def pairwise_separability(separability_metrics, sort_info):
         Var_L_n1 = 0
         for chan in range(0, n_chans):
             t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
-            Var_L_n1 += (separability_metrics['templates'][n1, :][None, :]
+            Var_L_n1 += (separability_metrics['templates'][n1, t_win[0]:t_win[1]][None, :]
                          @ separability_metrics['channel_covariance_mats'][chan]
-                         @ separability_metrics['templates'][n1, :][:, None])
+                         @ separability_metrics['templates'][n1, t_win[0]:t_win[1]][:, None])
 
         neuron_noise_separability[n1] = norm.cdf(0, E_L_n1, np.sqrt(Var_L_n1))
+        ll_threshold = 0.5 * separability_metrics['template_SS'][n1] + separability_metrics['neuron_biases'][n1]
+        neuron_noise_false_positives[n1] = norm.sf(ll_threshold, 0, np.sqrt(Var_L_n1))
 
         for n2 in range(0, separability_metrics['templates'].shape[0]):
             # Need to optimally align n2 template with n1 template for computing
@@ -138,7 +141,6 @@ def pairwise_separability(separability_metrics, sort_info):
                          @ s_chan_cov
                          @ shift_temp2[s_win[0]:s_win[1]][:, None])
 
-
             # var_diff = var_1 + var_2 - 2*covar
             n_1_n2_SS = np.dot(shift_temp1, shift_temp2)
             # Assuming full template 2 data here as this will be counted in
@@ -146,23 +148,25 @@ def pairwise_separability(separability_metrics, sort_info):
             E_L_n2 = (n_1_n2_SS - 0.5 * separability_metrics['template_SS'][n2]
                         - separability_metrics['neuron_biases'][n2])
 
-            print("Var sum", var_1 + var_2, "covar", covar, "total =", var_1 + var_2 - 2*covar)
+            # Expected difference between n1 and n2 likelihood functions
             E_diff_n1_n2 = E_L_n1 - E_L_n2
-            print("exepcted diff", E_diff_n1_n2, "var diff", var_diff, "for neurons", n1, n2)
-
-            p_L_n1_lt0 = norm.cdf(0, E_L_n1, np.sqrt(var_1))
-            p_L_n2_lt0 = norm.cdf(0, E_L_n2, np.sqrt(var_2))
-            print("p n1 less than 0", p_L_n1_lt0, "n2", p_L_n2_lt0, "both", p_L_n1_lt0*p_L_n2_lt0)
-
-            p_L_n1_gt0 = norm.sf(0, E_L_n1, np.sqrt(var_1))
-            p_L_n2_gt0 = norm.sf(0, E_L_n2, np.sqrt(var_2))
-
             if var_diff > 0:
-                pair_separability_matrix[n1, n2] = norm.cdf(0, E_diff_n1_n2, np.sqrt(var_diff))  * p_L_n2_gt0
+                # Probability likelihood n1 - n2 < 0
+                p_diff = norm.cdf(0, E_diff_n1_n2, np.sqrt(var_diff))
+                # Probability both likelihoods are less than zero and neither assigned
+                p_L_n1_lt0 = norm.cdf(0, E_L_n1, np.sqrt(var_1))
+                p_L_n2_lt0 = norm.cdf(0, E_L_n2, np.sqrt(var_2))
+                p_both_lt0 = p_L_n1_lt0*p_L_n2_lt0
+                # Probability n2 is less than zero, so isn't incorrectly assigned
+                p_L_n2_gt0 = norm.sf(0, E_L_n2, np.sqrt(var_2))
+                # Probability a spike from unit n1 will be assigned to unit n2,
+                # assuming independence of the probability n1/n2 are less than 0
+                pair_separability_matrix[n1, n2] = p_diff * p_L_n2_gt0 * (1 - p_both_lt0)
             else:
+                # No variance (should be the same unit)
                 pair_separability_matrix[n1, n2] = 0
 
-    return pair_separability_matrix, neuron_noise_separability
+    return pair_separability_matrix, neuron_noise_separability, neuron_noise_false_positives
 
 
 def get_singlechannel_clips(voltage, channel, spike_times, window):

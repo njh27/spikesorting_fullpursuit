@@ -578,6 +578,7 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
                 # Use overlap_recheck_window data to determine window indices for overlap recheck
                 overlap_window_indices = np.uint32(np.nonzero(overlap_recheck_window)[0])
                 do_overlap_recheck = False
+                print("!!! SKIPPING OVERLAP RECHECK AT LINE 581 IN BINARY PURSUIT")
                 if overlap_window_indices.shape[0] > 0 and do_overlap_recheck:
                     # Still more flagged spikes to check
                     # print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")

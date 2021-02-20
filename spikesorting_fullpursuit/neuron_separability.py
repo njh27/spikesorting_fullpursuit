@@ -39,7 +39,6 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
 
     # Compute bias for each neuron from its per channel variance
     separability_metrics['neuron_biases'] = np.zeros(n_templates)
-    double_bias = np.zeros(n_templates)
     for n in range(0, n_templates):
         for chan in range(0, n_chans):
             t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
@@ -49,6 +48,7 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
             separability_metrics['neuron_biases'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
                                             @ separability_metrics['channel_covariance_mats'][chan]
                                             @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
+
         # Convert bias from variance to threshold standard deviations
         separability_metrics['neuron_biases'][n] = sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_biases'][n])
 

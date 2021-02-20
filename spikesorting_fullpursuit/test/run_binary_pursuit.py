@@ -2,7 +2,6 @@ import numpy as np
 from scipy import signal
 from scipy import stats
 from spikesorting_fullpursuit import neuron_separability
-from spikesorting_fullpursuit.robust_covariance import MinCovDet
 from spikesorting_fullpursuit.segment import median_threshold
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
@@ -280,9 +279,6 @@ class RunBinaryPursuit(object):
         thresholds = median_threshold(self.voltage_array, self.sort_info['sigma'])
 
         bp_templates = np.vstack(self.actual_templates)
-        # self.separability_metrics = self.compute_metrics(bp_templates,
-        #                         self.voltage_array, 100000, self.sort_info, thresholds,
-        #                         self.actual_IDs)
         self.separability_metrics = neuron_separability.compute_metrics(bp_templates,
                                 self.voltage_array, 100000, self.sort_info, thresholds)
 

@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 import os
 from copy import copy
+from spikesorting_fullpursuit import neuron_separability
 from spikesorting_fullpursuit.consolidate import SegSummary
 from spikesorting_fullpursuit.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
@@ -167,8 +168,8 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
 
 
 def full_binary_pursuit(work_items, data_dict, seg_number,
-                        sort_info, v_dtype, overlap_ratio_threshold=2,
-                        absolute_refractory_period=12e-4,
+                        sort_info, v_dtype, overlap_ratio_threshold,
+                        absolute_refractory_period,
                         kernels_path=None, max_gpu_memory=None):
 
     # Get numpy view of voltage for clips and binary pursuit
@@ -277,6 +278,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
 
+    # Reassign binary pursuit clip width to clip width
+    # (This is slightly confusing but keeps certain code compatability.
+    # We will reset it to original value at the end.)
     sort_info['clip_width'], original_clip_starts, original_clip_stops = \
                 get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info)
     # Store newly assigned binary pursuit clip width for final output
@@ -297,6 +301,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     print("Binary pursuit samples per chan", sort_info['n_samples_per_chan'], "from", original_n_samples_per_chan)
 
     templates = []
+    neuron_clips = []
     next_label = 0
     for n in neurons:
         if not n['deleted_as_redundant']:
@@ -306,34 +311,43 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             # for chan in range(0, sort_info['n_channels']):
             #     if chan not in n['neighbors']:
             #         clips[:, chan*sort_info['n_samples_per_chan']:(chan+1)*sort_info['n_samples_per_chan']] = 0.0
-            templates.append(np.median(clips, axis=0))
+            templates.append(np.mean(clips, axis=0))
+
+            # rand_inds = np.random.randint(500, voltage.shape[1] - 500, 10000)
+            # clips, _ = get_multichannel_clips(clips_dict, voltage,
+            #                         rand_inds,
+            #                         clip_width=sort_info['clip_width'])
+            # neuron_clips.append(clips)
+
             next_label += 1
 
     del seg_summary
+    separability_metrics = neuron_separability.compute_metrics(templates,
+                            voltage, 100000, sort_info, seg_w_items[0]['thresholds'])
 
     templates = np.vstack(templates)
     print("Sharpening reduced number of templates to", templates.shape[0])
     print("Starting full binary pursuit search with", templates.shape[0], "templates in segment", seg_number)
 
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
-                    templates, voltage, sort_info['sampling_rate'],
-                    v_dtype, sort_info['clip_width'], sort_info['n_samples_per_chan'],
-                    thresh_sigma=sort_info['sigma_noise_penalty'],
+                    templates, voltage, v_dtype, sort_info,
+                    separability_metrics,
                     n_max_shift_inds=original_n_samples_per_chan-1,
-                    get_adjusted_clips=sort_info['get_adjusted_clips'],
-                    kernels_path=None,
-                    max_gpu_memory=max_gpu_memory)
+                    kernels_path=None, max_gpu_memory=max_gpu_memory)
 
     if not sort_info['get_adjusted_clips']:
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 crossings, clip_width=sort_info['clip_width'])
+
+    # Save the separability metrics as used (and output) by binary_pursuit
+    sort_info['separability_metrics'][seg_number] = separability_metrics
 
     chans_to_template_labels = {}
     for chan in range(0, sort_info['n_channels']):
         chans_to_template_labels[chan] = []
     for unit in np.unique(neuron_labels):
         # Find this unit's channel as the channel with max SNR of template
-        curr_template = np.median(clips[neuron_labels == unit, :], axis=0)
+        curr_template = np.mean(clips[neuron_labels == unit, :], axis=0)
         unit_best_snr = -1.0
         unit_best_chan = None
         for chan in range(0, sort_info['n_channels']):
@@ -398,7 +412,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         else:
             # This work item found nothing (or raised an exception)
             seg_data.append([[], [], [], [], curr_item['ID']])
-    # Make everything compatible with regular consolidate.WorkItemSummary
+    # Make everything compatible with regular postprocessing.WorkItemSummary
     sort_info['binary_pursuit_only'] = True
 
     return seg_data

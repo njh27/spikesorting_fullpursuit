@@ -6,7 +6,6 @@ import time
 from spikesorting_fullpursuit.sort import reorder_labels
 from spikesorting_fullpursuit import segment
 from spikesorting_fullpursuit.parallel import segment_parallel
-from spikesorting_fullpursuit.consolidate import find_overlapping_spike_bool
 from scipy.signal import fftconvolve
 
 
@@ -127,10 +126,9 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
     return template_pre_inds, template_post_inds
 
 
-def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
-                   clip_width, template_samples_per_chan, thresh_sigma=1.645,
-                   n_max_shift_inds=None, get_adjusted_clips=False,
-                   kernels_path=None, max_gpu_memory=None):
+def binary_pursuit(templates, voltage, v_dtype, sort_info,
+                   separability_metrics, n_max_shift_inds=None, kernels_path=None,
+                   max_gpu_memory=None):
     """
     	binary_pursuit_opencl(voltage, crossings, labels, clips)
 
@@ -176,7 +174,9 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
     # Ease of use variables
     n_chans = np.uint32(voltage.shape[0])
     n_samples = voltage.shape[1]
-    chan_win, clip_width = segment_parallel.time_window_to_samples(clip_width, sampling_rate)
+    sampling_rate = sort_info['sampling_rate']
+    chan_win, _ = segment_parallel.time_window_to_samples(sort_info['clip_width'], sampling_rate)
+    template_samples_per_chan = sort_info['n_samples_per_chan']
 
     # Templates must be a 2D float32
     if templates.ndim == 1:
@@ -346,79 +346,12 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
         secret_spike_bool = []
         adjusted_spike_clips = []
 
-        # Compute our template sum squared error (see note below).
-        # This is a num_templates vector
-        template_sum_squared = np.float32(-0.5 * np.sum(templates * templates, axis=1))
-        template_sum_squared_by_channel = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
-        # Need to get convolution kernel separate for each channel and each template
-        for n in range(0, templates.shape[0]):
-            for chan in range(0, n_chans):
-                t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
-                template_sum_squared_by_channel[n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
-
-        # Compute the template bias terms over voltage data
-        spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
-        sample_duration = sampling_rate # One second
-        if n_samples < sample_duration:
-            # This is stupid, but would make following code fail
-            sample_start_inds = [0]
-            n_total_sample_points = n_samples
-            sample_duration = n_samples
-        else:
-            sample_start_inds = []
-            cssi = 0
-            # -sample_duration ensures at least sample_duration of data for each sample point
-            while cssi < (n_samples - sample_duration):
-                sample_start_inds.append(cssi)
-                cssi += int(sampling_rate * 60) # pick index every minute
-            n_total_sample_points = int(sampling_rate * len(sample_start_inds))
-        neighbor_bias = np.zeros(n_total_sample_points, dtype=np.float32)
-        gamma_noise = np.zeros(n_chans, dtype=np.float32)
-        spike_biases  = np.zeros(templates.shape[0], dtype=np.float32)
-        new_bias = np.zeros(templates.shape[0], dtype=np.float32)
-        # Compute bias separately for each neuron, summed over channels
-        for chan in range(0, n_chans):
-            neighbor_bias[:] = 0.0
-            for s_ind, s in enumerate(sample_start_inds):
-                neighbor_bias[s_ind*sample_duration:(s_ind+1)*sample_duration] += np.float32(
-                        voltage[chan, s:s+sample_duration])
-            # Use MAD to estimate STD of the noise and set bias at
-            # thresh_sigma standard deviations. The typical extremely large
-            # n value for neighbor_bias makes this calculation converge to
-            # normal distribution
-            # Assumes zero-centered (which median usually isn't)
-            MAD = np.median(np.abs(neighbor_bias))
-            std_noise = MAD / 0.6745 # Convert MAD to normal dist STD
-            gamma_noise[chan] = np.float32(thresh_sigma * std_noise)
-            for n in range(0, templates.shape[0]):
-                spike_biases[n] += np.float32(np.sqrt(template_sum_squared_by_channel[n*n_chans + chan]) * gamma_noise[chan])
-
-        # NOTE: These noise templates can sometimes really improve the sort
-        # quality by absorbing junk. Not sure if they should be removed...
-        # noise_templates = (-1*template_sum_squared - spike_biases) <= 0
-        # # Do first since need previous number of templates
-        # templates = templates[~noise_templates, :]
-        # print("Removing", np.count_nonzero(noise_templates), "templates for not being greater than noise term.")
-        # if templates.size == 0:
-        #     # No good templates remain so return no spikes
-        #     print("All templates removed for being too close to noise")
-        #     return np.zeros(0), np.zeros(0), np.zeros(0, dtype=np.bool), np.zeros((0, n_chans * template_samples_per_chan))
-        # # Templates must be a 2D float32
-        # if templates.ndim == 1:
-        #     templates = np.reshape(templates, (1, -1))
-        # print("There are", templates.shape[0], "templates remaining for binary pursuit.")
-        # templates_vector = templates.reshape(templates.size).astype(np.float32)
-        # template_sum_squared = template_sum_squared[~noise_templates]
-        # new_template_sum_squared_by_channel = np.zeros(templates.shape[0] * n_chans, dtype=np.float32)
-        # for n in range(0, templates.shape[0]):
-        #     for chan in range(0, n_chans):
-        #         t_win = [chan*template_samples_per_chan, chan*template_samples_per_chan + template_samples_per_chan]
-        #         new_template_sum_squared_by_channel[n*n_chans + chan] = np.sum(templates[n, t_win[0]:t_win[1]] ** 2)
-        # template_sum_squared_by_channel = new_template_sum_squared_by_channel
-
-
-        # Delete stuff no longer needed for this chunk
-        del neighbor_bias
+        # Compute info needed for binary pursuit (see note below).
+        # Multiply by -0.5 to accomodate simplified delta likelihood function
+        template_sum_squared = np.float32(-0.5 * separability_metrics['template_SS'])
+        template_sum_squared_by_channel = np.float32(separability_metrics['template_SS_by_chan'].flatten(order='C'))
+        gamma_noise = np.float32(separability_metrics['gamma_noise'])
+        neuron_biases = np.float32(separability_metrics['neuron_biases'])
 
         template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
@@ -476,7 +409,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             total_work_size_pursuit = pursuit_local_work_size * np.int64(np.ceil(num_template_widths / pursuit_local_work_size))
 
             # Construct our buffers
-            spike_biases_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=spike_biases)
+            spike_biases_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=neuron_biases)
             num_additional_spikes_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(1, dtype=np.uint32)) # NOTE: Must be :rw for atomic to work
             additional_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
             additional_spike_labels_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
@@ -644,8 +577,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
                 queue.finish() # Needs to finish copy before deciding indices
                 # Use overlap_recheck_window data to determine window indices for overlap recheck
                 overlap_window_indices = np.uint32(np.nonzero(overlap_recheck_window)[0])
-                do_overlap_recheck = True
-                if overlap_window_indices.shape[0] > 0 and do_overlap_recheck:
+                if overlap_window_indices.shape[0] > 0 and sort_info['do_overlap_recheck']:
                     # Still more flagged spikes to check
                     # print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")
                     # Copy the overlap window indices to the overlap indices buffer
@@ -842,7 +774,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
             overlap_window_indices_buffer.release()
             overlap_best_spike_indices_buffer.release()
             overlap_best_spike_labels_buffer.release()
-            if do_overlap_recheck:
+            if sort_info['do_overlap_recheck']:
                 overlap_group_best_likelihood_buffer.release()
                 overlap_group_best_work_id_buffer.release()
             full_likelihood_function_buffer.release()
@@ -863,7 +795,7 @@ def binary_pursuit(templates, voltage, sampling_rate, v_dtype,
 
                 print("Found", chunk_total_additional_spikes, "secret spikes this chunk.", flush=True)
 
-                if get_adjusted_clips:
+                if sort_info['get_adjusted_clips']:
                     print("Getting adjusted clips for", all_chunk_crossings.shape[0], "total spikes this chunk", flush=True)
 
                     all_adjusted_clips = np.zeros((chunk_total_additional_spikes + chunk_crossings.shape[0]) * templates.shape[1], dtype=np.float32)

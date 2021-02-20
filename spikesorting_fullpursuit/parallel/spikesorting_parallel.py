@@ -37,8 +37,10 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
     # sigma_noise_penalty = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
     settings['sigma_noise_penalty'] = 1.645 # Number of noise standard deviations to penalize binary pursuit by. Higher numbers reduce false positives, increase false negatives
+    settings['absolute_refractory_period'] = 15e-4
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
+    settings['do_overlap_recheck'] = True
     settings['verbose'] = False
     settings['test_flag'] = False # Indicates a test run of parallel code that does NOT spawn multiple processes
     settings['log_dir'] = None # Directory where output logs will be saved as text files
@@ -901,12 +903,13 @@ def spike_sort_parallel(Probe, **kwargs):
                       'n_samples_per_chan': curr_chan_win[1] - curr_chan_win[0],
                       'sampling_rate': Probe.sampling_rate,
                       'n_segments': len(segment_onsets)})
+    sort_info['separability_metrics'] = [[] for x in range(0, sort_info['n_segments'])]
 
     for seg_number in range(0, len(segment_onsets)):
         seg_data = full_binary_pursuit.full_binary_pursuit(work_items,
                     data_dict, seg_number, sort_info, Probe.v_dtype,
                     overlap_ratio_threshold=2,
-                    absolute_refractory_period=20e-4,
+                    absolute_refractory_period=settings['absolute_refractory_period'],
                     kernels_path=None,
                     max_gpu_memory=settings['max_gpu_memory'])
         sort_data.extend(seg_data)
@@ -916,6 +919,5 @@ def spike_sort_parallel(Probe, **kwargs):
         print("Item number", pe[0], "had the following error:")
         print("            ", pe[1])
 
-    # Delete directory containing clips
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info

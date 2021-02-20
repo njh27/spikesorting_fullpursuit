@@ -1,8 +1,10 @@
 import numpy as np
 from scipy import signal
 from scipy import stats
-from spikesorting_fullpursuit import electrode, spikesorting, consolidate
+from spikesorting_fullpursuit import electrode, spikesorting
 from spikesorting_fullpursuit.parallel import spikesorting_parallel
+from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
+from spikesorting_fullpursuit.postprocessing import WorkItemSummary
 import matplotlib.pyplot as plt
 
 
@@ -93,9 +95,10 @@ class TestDataset(object):
                  neuron_templates=None, frequency_range=(500, 8000),
                  samples_per_second=40000, amplitude=1, percent_shared_noise=0,
                  correlate1_2=False, electrode_type='Probe',
-                 electrode_dtype=None):
+                 electrode_dtype=np.float32):
         self.num_channels = num_channels
         self.duration = duration
+        self.voltage_array = None
         self.frequency_range = frequency_range
         self.samples_per_second = samples_per_second
         self.electrode_dtype = electrode_dtype
@@ -187,19 +190,19 @@ class TestDataset(object):
         return bandlimited_noise
 
     def gen_noise_voltage_array(self):
-        noise_voltage_array = np.zeros((self.num_channels, int(self.samples_per_second*self.duration)), dtype=self.electrode_dtype)
+        self.voltage_array = np.zeros((self.num_channels, int(self.samples_per_second*self.duration)), dtype=self.electrode_dtype)
         if self.percent_shared_noise > 0:
             # Make a shared array. There are other ways this could be done, but here
             # all channels get percent_shared_noise amplitude shared noise plus
             # 1 - percent_shared_noise independent noise
             shared_noise = self.percent_shared_noise * self.gen_bandlimited_noise()
             for i in range (0, self.num_channels):
-                noise_voltage_array[i, :] = shared_noise
+                self.voltage_array[i, :] = shared_noise
         for i in range (0, self.num_channels):
-            noise_voltage_array[i, :] += ((1-self.percent_shared_noise) * self.gen_bandlimited_noise()).astype(self.electrode_dtype)
-        return noise_voltage_array
+            self.voltage_array[i, :] += ((1-self.percent_shared_noise) * self.gen_bandlimited_noise()).astype(self.electrode_dtype)
 
-    def gen_test_dataset(self, firing_rates, template_inds, chan_scaling_factors, refractory_wins=1.5e-3):
+    def gen_test_dataset(self, firing_rates, template_inds, chan_scaling_factors,
+                         refractory_wins=1.5e-3, remove_overlaps=False):
         """ Creates the test data set by making a noise voltage array and adding
         in spikes for the neurons in template_inds with corresponding rates and
         scaling.
@@ -207,6 +210,9 @@ class TestDataset(object):
         if len(firing_rates) != len(template_inds) or len(firing_rates) != len(chan_scaling_factors):
             raise ValueError("Input rates, templates, and scaling factors must all be the same length!")
 
+        # Need to clear old voltage if spikes have been assigned
+        if len(self.actual_IDs) > 0:
+            self.voltage_array = None
         low_cutoff = self.frequency_range[0] / (self.samples_per_second / 2)
         high_cutoff = self.frequency_range[1] / (self.samples_per_second / 2)
         b_filt, a_filt = signal.butter(1, [low_cutoff, high_cutoff], btype='band')
@@ -216,16 +222,35 @@ class TestDataset(object):
         # Reset neuron actual IDs for each neuron
         self.actual_IDs = [[] for neur in range(0, len(firing_rates))]
         self.actual_templates = [np.zeros((0, self.neuron_templates.shape[1]), dtype=self.electrode_dtype) for neur in range(0, len(firing_rates))]
-        voltage_array = self.gen_noise_voltage_array()
-        # voltage_array = np.zeros_like(voltage_array)
+        if self.voltage_array is None:
+            self.gen_noise_voltage_array()
         for neuron in range(0, len(firing_rates)):
-            # Generate one spike train for each neuron
+            # Generate one set of spike times for each neuron
             spiketrain = self.gen_poisson_spiketrain(firing_rate=firing_rates[neuron], tau_ref=refractory_wins[neuron])
             self.actual_IDs[neuron] = np.where(spiketrain)[0]
 
+        if remove_overlaps:
+            # Remove any spike times that might overlap with each other within half a template
+            overlapping_bools = []
+            for n1 in range(0, len(self.actual_IDs)):
+                overlapping_bools.append(np.ones(self.actual_IDs[n1].shape[0], dtype=np.bool))
+                for n2 in range(0, len(self.actual_IDs)):
+                    if n1 == n2:
+                        continue
+                    overlapping_spike_bool = find_overlapping_spike_bool(
+                            self.actual_IDs[n1], self.actual_IDs[n2], overlap_tol=self.neuron_templates[0].shape[0])
+                    overlapping_bools[n1] = np.logical_and(overlapping_bools[n1], ~overlapping_spike_bool)
+            for ob in range(0, len(self.actual_IDs)):
+                self.actual_IDs[ob] = self.actual_IDs[ob][overlapping_bools[ob]]
 
+
+        for neuron in range(0, len(firing_rates)):
+            # Set boolean spike train from spike times. spiketrain was made above
+            # so just zero it out here
+            spiketrain[:] = False
+            spiketrain[self.actual_IDs[neuron]] = True
             # if neuron == 1:
-            #     overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron-1], overlap_tol=162)
+            #     overlapping_spike_bool = find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron-1], overlap_tol=162)
             #     self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
             #     spiketrain[:] = False
             #     spiketrain[self.actual_IDs[neuron]] = True
@@ -237,14 +262,12 @@ class TestDataset(object):
                 select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
                 self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 10, n_correlated_spikes)
                 self.actual_IDs[neuron].sort()
-                overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
+                overlapping_spike_bool = find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
                 self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
                 self.actual_IDs[neuron] = np.unique(self.actual_IDs[neuron])
                 # Spike train is used for actual convolution so reset here
                 spiketrain[:] = False
                 spiketrain[self.actual_IDs[neuron]] = True
-
-
 
             for chan in range(0, self.num_channels):
                 # Apply spike train to every channel this neuron is present on
@@ -255,8 +278,8 @@ class TestDataset(object):
                 self.actual_templates[neuron] = np.vstack((self.actual_templates[neuron], convolve_kernel))
                 if chan_scaling_factors[neuron][chan] <= 0:
                     continue
-                voltage_array[chan, :] += (signal.fftconvolve(spiketrain, convolve_kernel, mode='same')).astype(self.electrode_dtype)
-        self.Probe.set_new_voltage(voltage_array)
+                self.voltage_array[chan, :] += (signal.fftconvolve(spiketrain, convolve_kernel, mode='same')).astype(self.electrode_dtype)
+        self.Probe.set_new_voltage(self.voltage_array)
 
     def gen_test_dataset_from_spikes(self, spiketrain, template_inds, chan_scaling_factors):
         """ Generates the random voltage array and adds spikes at the times
@@ -273,8 +296,8 @@ class TestDataset(object):
         # Reset neuron actual IDs for each neuron
         self.actual_IDs = [[] for neur in range(0, len(template_inds))]
         self.actual_templates = [np.zeros((0, self.neuron_templates.shape[1]), dtype=self.electrode_dtype) for neur in range(0, len(template_inds))]
-        voltage_array = self.gen_noise_voltage_array()
-        # voltage_array = np.zeros_like(voltage_array)
+        if self.voltage_array is None:
+            self.gen_noise_voltage_array()
         for neuron in range(0, len(template_inds)):
             # Generate one spike train for each neuron
             self.actual_IDs[neuron] = np.where(spiketrain[neuron])[0]
@@ -287,8 +310,8 @@ class TestDataset(object):
                 self.actual_templates[neuron] = np.vstack((self.actual_templates[neuron], convolve_kernel))
                 if chan_scaling_factors[neuron][chan] <= 0:
                     continue
-                voltage_array[chan, :] += (signal.fftconvolve(spiketrain[neuron], convolve_kernel, mode='same')).astype(self.electrode_dtype)
-        self.Probe.set_new_voltage(voltage_array)
+                self.voltage_array[chan, :] += (signal.fftconvolve(spiketrain[neuron], convolve_kernel, mode='same')).astype(self.electrode_dtype)
+        self.Probe.set_new_voltage(self.voltage_array)
 
     def gen_dynamic_test_dataset(self, firing_rates, template_inds, chan_scaling_factors, refractory_wins=1.5e-3):
         """
@@ -343,7 +366,8 @@ class TestDataset(object):
         self.actual_IDs = [[] for neur in range(0, len(firing_rates))]
         self.actual_templates = [np.empty((0, self.neuron_templates.shape[1]), dtype=self.electrode_dtype) for neur in range(0, len(firing_rates))]
         half_temp_width = (self.neuron_templates.shape[1] // 2)
-        voltage_array = self.gen_noise_voltage_array()
+        if self.voltage_array is None:
+            self.gen_noise_voltage_array()
         for neuron in range(0, len(firing_rates)):
             # Store templates used, use scaling at time zero
             chan_scaling_factors = drift_funs[neuron](0)
@@ -364,7 +388,7 @@ class TestDataset(object):
                 select_inds1 = np.random.choice(self.actual_IDs[neuron].shape[0], n_correlated_spikes, replace=False)
                 self.actual_IDs[neuron][select_inds1] = self.actual_IDs[neuron-1][select_inds0] + np.random.randint(0, 10, n_correlated_spikes)
                 self.actual_IDs[neuron].sort()
-                overlapping_spike_bool = consolidate.find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
+                overlapping_spike_bool = find_overlapping_spike_bool(self.actual_IDs[neuron], self.actual_IDs[neuron], overlap_tol=int(1.5e-3 * 40000), except_equal=True)
                 self.actual_IDs[neuron] = self.actual_IDs[neuron][~overlapping_spike_bool]
                 self.actual_IDs[neuron] = np.unique(self.actual_IDs[neuron])
                 # Spike train is used for actual convolution so reset here
@@ -382,11 +406,11 @@ class TestDataset(object):
                     filt_template = signal.filtfilt(b_filt, a_filt, self.neuron_templates[template_inds[neuron], :], axis=0, padlen=None)
                     scaled_template = chan_scaling_factors[chan] * filt_template
                     scaled_template = scaled_template.astype(self.electrode_dtype)
-                    voltage_array[chan, spk_ind:(spk_ind+self.neuron_templates.shape[1])] += scaled_template
+                    self.voltage_array[chan, spk_ind:(spk_ind+self.neuron_templates.shape[1])] += scaled_template
             print("Removing", np.count_nonzero(remove_IDs), "neuron", neuron, "spikes for scale factors less than", scaled_spike_thresh)
             self.actual_IDs[neuron] = self.actual_IDs[neuron][~remove_IDs]
             self.actual_IDs[neuron] += half_temp_width # Re-center the spike times
-        self.Probe.set_new_voltage(voltage_array)
+        self.Probe.set_new_voltage(self.voltage_array)
 
     def sort_test_dataset(self, kwargs):
 
@@ -466,14 +490,14 @@ class TestDataset(object):
         sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
 
         # Make default work summary to check and organize data
-        single_wis = consolidate.WorkItemSummary(sort_data, work_items, sort_info)
+        single_wis = WorkItemSummary(sort_data, work_items, sort_info)
 
 
         np.random.set_state(first_state)
         sort_data, work_items, sort_info = spikesorting_parallel.spike_sort_parallel(self.Probe, **par_sort_kwargs)
         self.random_state = first_state
 
-        parallel_wis = consolidate.WorkItemSummary(sort_data, work_items, sort_info)
+        parallel_wis = WorkItemSummary(sort_data, work_items, sort_info)
 
         for key in single_wis.sort_info.keys():
             assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key]), "key {0} does not match".format(key)

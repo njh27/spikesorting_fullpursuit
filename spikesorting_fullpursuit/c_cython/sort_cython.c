@@ -4,12 +4,12 @@
 {
     "distutils": {
         "depends": [],
-        "name": "sort_cython",
+        "name": "spikesorting_fullpursuit.c_cython.sort_cython",
         "sources": [
-            "sort_cython.pyx"
+            "spikesorting_fullpursuit/c_cython/sort_cython.pyx"
         ]
     },
-    "module_name": "sort_cython"
+    "module_name": "spikesorting_fullpursuit.c_cython.sort_cython"
 }
 END: Cython Metadata */
 
@@ -615,8 +615,8 @@ static CYTHON_INLINE float __PYX_NAN() {
   #endif
 #endif
 
-#define __PYX_HAVE__sort_cython
-#define __PYX_HAVE_API__sort_cython
+#define __PYX_HAVE__spikesorting_fullpursuit__c_cython__sort_cython
+#define __PYX_HAVE_API__spikesorting_fullpursuit__c_cython__sort_cython
 /* Early includes */
 #include <string.h>
 #include <stdio.h>
@@ -858,7 +858,7 @@ static const char *__pyx_filename;
 
 
 static const char *__pyx_f[] = {
-  "sort_cython.pyx",
+  "spikesorting_fullpursuit/c_cython/sort_cython.pyx",
   "__init__.pxd",
   "stringsource",
   "type.pxd",
@@ -972,7 +972,7 @@ typedef volatile __pyx_atomic_int_type __pyx_atomic_int;
 #define __Pyx_FastGilFuncInit()
 
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":775
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":775
  * # in Cython to enable them only on the right systems.
  * 
  * ctypedef npy_int8       int8_t             # <<<<<<<<<<<<<<
@@ -981,7 +981,7 @@ typedef volatile __pyx_atomic_int_type __pyx_atomic_int;
  */
 typedef npy_int8 __pyx_t_5numpy_int8_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":776
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":776
  * 
  * ctypedef npy_int8       int8_t
  * ctypedef npy_int16      int16_t             # <<<<<<<<<<<<<<
@@ -990,7 +990,7 @@ typedef npy_int8 __pyx_t_5numpy_int8_t;
  */
 typedef npy_int16 __pyx_t_5numpy_int16_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":777
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":777
  * ctypedef npy_int8       int8_t
  * ctypedef npy_int16      int16_t
  * ctypedef npy_int32      int32_t             # <<<<<<<<<<<<<<
@@ -999,7 +999,7 @@ typedef npy_int16 __pyx_t_5numpy_int16_t;
  */
 typedef npy_int32 __pyx_t_5numpy_int32_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":778
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":778
  * ctypedef npy_int16      int16_t
  * ctypedef npy_int32      int32_t
  * ctypedef npy_int64      int64_t             # <<<<<<<<<<<<<<
@@ -1008,7 +1008,7 @@ typedef npy_int32 __pyx_t_5numpy_int32_t;
  */
 typedef npy_int64 __pyx_t_5numpy_int64_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":782
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":782
  * #ctypedef npy_int128     int128_t
  * 
  * ctypedef npy_uint8      uint8_t             # <<<<<<<<<<<<<<
@@ -1017,7 +1017,7 @@ typedef npy_int64 __pyx_t_5numpy_int64_t;
  */
 typedef npy_uint8 __pyx_t_5numpy_uint8_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":783
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":783
  * 
  * ctypedef npy_uint8      uint8_t
  * ctypedef npy_uint16     uint16_t             # <<<<<<<<<<<<<<
@@ -1026,7 +1026,7 @@ typedef npy_uint8 __pyx_t_5numpy_uint8_t;
  */
 typedef npy_uint16 __pyx_t_5numpy_uint16_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":784
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":784
  * ctypedef npy_uint8      uint8_t
  * ctypedef npy_uint16     uint16_t
  * ctypedef npy_uint32     uint32_t             # <<<<<<<<<<<<<<
@@ -1035,7 +1035,7 @@ typedef npy_uint16 __pyx_t_5numpy_uint16_t;
  */
 typedef npy_uint32 __pyx_t_5numpy_uint32_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":785
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":785
  * ctypedef npy_uint16     uint16_t
  * ctypedef npy_uint32     uint32_t
  * ctypedef npy_uint64     uint64_t             # <<<<<<<<<<<<<<
@@ -1044,7 +1044,7 @@ typedef npy_uint32 __pyx_t_5numpy_uint32_t;
  */
 typedef npy_uint64 __pyx_t_5numpy_uint64_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":789
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":789
  * #ctypedef npy_uint128    uint128_t
  * 
  * ctypedef npy_float32    float32_t             # <<<<<<<<<<<<<<
@@ -1053,7 +1053,7 @@ typedef npy_uint64 __pyx_t_5numpy_uint64_t;
  */
 typedef npy_float32 __pyx_t_5numpy_float32_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":790
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":790
  * 
  * ctypedef npy_float32    float32_t
  * ctypedef npy_float64    float64_t             # <<<<<<<<<<<<<<
@@ -1062,7 +1062,7 @@ typedef npy_float32 __pyx_t_5numpy_float32_t;
  */
 typedef npy_float64 __pyx_t_5numpy_float64_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":799
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":799
  * # The int types are mapped a bit surprising --
  * # numpy.int corresponds to 'l' and numpy.long to 'q'
  * ctypedef npy_long       int_t             # <<<<<<<<<<<<<<
@@ -1071,7 +1071,7 @@ typedef npy_float64 __pyx_t_5numpy_float64_t;
  */
 typedef npy_long __pyx_t_5numpy_int_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":800
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":800
  * # numpy.int corresponds to 'l' and numpy.long to 'q'
  * ctypedef npy_long       int_t
  * ctypedef npy_longlong   long_t             # <<<<<<<<<<<<<<
@@ -1080,7 +1080,7 @@ typedef npy_long __pyx_t_5numpy_int_t;
  */
 typedef npy_longlong __pyx_t_5numpy_long_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":801
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":801
  * ctypedef npy_long       int_t
  * ctypedef npy_longlong   long_t
  * ctypedef npy_longlong   longlong_t             # <<<<<<<<<<<<<<
@@ -1089,7 +1089,7 @@ typedef npy_longlong __pyx_t_5numpy_long_t;
  */
 typedef npy_longlong __pyx_t_5numpy_longlong_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":803
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":803
  * ctypedef npy_longlong   longlong_t
  * 
  * ctypedef npy_ulong      uint_t             # <<<<<<<<<<<<<<
@@ -1098,7 +1098,7 @@ typedef npy_longlong __pyx_t_5numpy_longlong_t;
  */
 typedef npy_ulong __pyx_t_5numpy_uint_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":804
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":804
  * 
  * ctypedef npy_ulong      uint_t
  * ctypedef npy_ulonglong  ulong_t             # <<<<<<<<<<<<<<
@@ -1107,7 +1107,7 @@ typedef npy_ulong __pyx_t_5numpy_uint_t;
  */
 typedef npy_ulonglong __pyx_t_5numpy_ulong_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":805
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":805
  * ctypedef npy_ulong      uint_t
  * ctypedef npy_ulonglong  ulong_t
  * ctypedef npy_ulonglong  ulonglong_t             # <<<<<<<<<<<<<<
@@ -1116,7 +1116,7 @@ typedef npy_ulonglong __pyx_t_5numpy_ulong_t;
  */
 typedef npy_ulonglong __pyx_t_5numpy_ulonglong_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":807
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":807
  * ctypedef npy_ulonglong  ulonglong_t
  * 
  * ctypedef npy_intp       intp_t             # <<<<<<<<<<<<<<
@@ -1125,7 +1125,7 @@ typedef npy_ulonglong __pyx_t_5numpy_ulonglong_t;
  */
 typedef npy_intp __pyx_t_5numpy_intp_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":808
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":808
  * 
  * ctypedef npy_intp       intp_t
  * ctypedef npy_uintp      uintp_t             # <<<<<<<<<<<<<<
@@ -1134,7 +1134,7 @@ typedef npy_intp __pyx_t_5numpy_intp_t;
  */
 typedef npy_uintp __pyx_t_5numpy_uintp_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":810
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":810
  * ctypedef npy_uintp      uintp_t
  * 
  * ctypedef npy_double     float_t             # <<<<<<<<<<<<<<
@@ -1143,7 +1143,7 @@ typedef npy_uintp __pyx_t_5numpy_uintp_t;
  */
 typedef npy_double __pyx_t_5numpy_float_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":811
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":811
  * 
  * ctypedef npy_double     float_t
  * ctypedef npy_double     double_t             # <<<<<<<<<<<<<<
@@ -1152,7 +1152,7 @@ typedef npy_double __pyx_t_5numpy_float_t;
  */
 typedef npy_double __pyx_t_5numpy_double_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":812
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":812
  * ctypedef npy_double     float_t
  * ctypedef npy_double     double_t
  * ctypedef npy_longdouble longdouble_t             # <<<<<<<<<<<<<<
@@ -1186,13 +1186,13 @@ static CYTHON_INLINE __pyx_t_float_complex __pyx_t_float_complex_from_parts(floa
 
 
 /*--- Type declarations ---*/
-struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates;
+struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates;
 struct __pyx_array_obj;
 struct __pyx_MemviewEnum_obj;
 struct __pyx_memoryview_obj;
 struct __pyx_memoryviewslice_obj;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":814
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":814
  * ctypedef npy_longdouble longdouble_t
  * 
  * ctypedef npy_cfloat      cfloat_t             # <<<<<<<<<<<<<<
@@ -1201,7 +1201,7 @@ struct __pyx_memoryviewslice_obj;
  */
 typedef npy_cfloat __pyx_t_5numpy_cfloat_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":815
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":815
  * 
  * ctypedef npy_cfloat      cfloat_t
  * ctypedef npy_cdouble     cdouble_t             # <<<<<<<<<<<<<<
@@ -1210,7 +1210,7 @@ typedef npy_cfloat __pyx_t_5numpy_cfloat_t;
  */
 typedef npy_cdouble __pyx_t_5numpy_cdouble_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":816
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":816
  * ctypedef npy_cfloat      cfloat_t
  * ctypedef npy_cdouble     cdouble_t
  * ctypedef npy_clongdouble clongdouble_t             # <<<<<<<<<<<<<<
@@ -1219,7 +1219,7 @@ typedef npy_cdouble __pyx_t_5numpy_cdouble_t;
  */
 typedef npy_clongdouble __pyx_t_5numpy_clongdouble_t;
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":818
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":818
  * ctypedef npy_clongdouble clongdouble_t
  * 
  * ctypedef npy_cdouble     complex_t             # <<<<<<<<<<<<<<
@@ -1228,14 +1228,14 @@ typedef npy_clongdouble __pyx_t_5numpy_clongdouble_t;
  */
 typedef npy_cdouble __pyx_t_5numpy_complex_t;
 
-/* "sort_cython.pyx":333
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
  *         Py_ssize_t n_samples_per_chan, Py_ssize_t n_chans, int64_t n_pre_inds,
  *         int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
  */
-struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates {
+struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates {
   PyObject_HEAD
   Py_ssize_t __pyx_v_n_chans;
   Py_ssize_t __pyx_v_n_samples_per_chan;
@@ -2317,8 +2317,8 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *, cha
 
 /* Module declarations from 'libc.stdlib' */
 
-/* Module declarations from 'sort_cython' */
-static PyTypeObject *__pyx_ptype_11sort_cython___pyx_scope_struct__remove_overlap_templates = 0;
+/* Module declarations from 'spikesorting_fullpursuit.c_cython.sort_cython' */
+static PyTypeObject *__pyx_ptype_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates = 0;
 static PyTypeObject *__pyx_array_type = 0;
 static PyTypeObject *__pyx_MemviewEnum_type = 0;
 static PyTypeObject *__pyx_memoryview_type = 0;
@@ -2330,10 +2330,10 @@ static PyObject *contiguous = 0;
 static PyObject *indirect_contiguous = 0;
 static int __pyx_memoryview_thread_locks_used;
 static PyThread_type_lock __pyx_memoryview_thread_locks[8];
-static int64_t __pyx_f_11sort_cython_sign_fun(double); /*proto*/
-static double __pyx_f_11sort_cython_fixed_point(double, int64_t, __Pyx_memviewslice, __Pyx_memviewslice); /*proto*/
-static double __pyx_f_11sort_cython_fixed_point_abs(double, int64_t, __Pyx_memviewslice, __Pyx_memviewslice); /*proto*/
-static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t, __Pyx_memviewslice, __Pyx_memviewslice, double, double, double, double); /*proto*/
+static int64_t __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_sign_fun(double); /*proto*/
+static double __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point(double, int64_t, __Pyx_memviewslice, __Pyx_memviewslice); /*proto*/
+static double __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point_abs(double, int64_t, __Pyx_memviewslice, __Pyx_memviewslice); /*proto*/
+static double __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t, __Pyx_memviewslice, __Pyx_memviewslice, double, double, double, double); /*proto*/
 static struct __pyx_array_obj *__pyx_array_new(PyObject *, Py_ssize_t, char *, char *, char *); /*proto*/
 static void *__pyx_align_pointer(void *, size_t); /*proto*/
 static PyObject *__pyx_memoryview_new(PyObject *, int, int, __Pyx_TypeInfo *); /*proto*/
@@ -2372,11 +2372,11 @@ static __Pyx_TypeInfo __Pyx_TypeInfo_nn_npy_bool = { "npy_bool", NULL, sizeof(np
 static __Pyx_TypeInfo __Pyx_TypeInfo_float = { "float", NULL, sizeof(float), { 0 }, 0, 'R', 0, 0 };
 static __Pyx_TypeInfo __Pyx_TypeInfo_nn_int64_t = { "int64_t", NULL, sizeof(int64_t), { 0 }, 0, IS_UNSIGNED(int64_t) ? 'U' : 'I', IS_UNSIGNED(int64_t), 0 };
 static __Pyx_TypeInfo __Pyx_TypeInfo_Py_ssize_t = { "Py_ssize_t", NULL, sizeof(Py_ssize_t), { 0 }, 0, IS_UNSIGNED(Py_ssize_t) ? 'U' : 'I', IS_UNSIGNED(Py_ssize_t), 0 };
-#define __Pyx_MODULE_NAME "sort_cython"
-extern int __pyx_module_is_main_sort_cython;
-int __pyx_module_is_main_sort_cython = 0;
+#define __Pyx_MODULE_NAME "spikesorting_fullpursuit.c_cython.sort_cython"
+extern int __pyx_module_is_main_spikesorting_fullpursuit__c_cython__sort_cython;
+int __pyx_module_is_main_spikesorting_fullpursuit__c_cython__sort_cython = 0;
 
-/* Implementation of 'sort_cython' */
+/* Implementation of 'spikesorting_fullpursuit.c_cython.sort_cython' */
 static PyObject *__pyx_builtin_ValueError;
 static PyObject *__pyx_builtin_range;
 static PyObject *__pyx_builtin_RuntimeError;
@@ -2580,7 +2580,6 @@ static const char __pyx_k_curr_answer[] = "curr_answer";
 static const char __pyx_k_n_post_inds[] = "n_post_inds";
 static const char __pyx_k_resid_error[] = "resid_error";
 static const char __pyx_k_residual_SS[] = "residual_SS";
-static const char __pyx_k_sort_cython[] = "sort_cython";
 static const char __pyx_k_RuntimeError[] = "RuntimeError";
 static const char __pyx_k_centroid_ptr[] = "centroid_ptr";
 static const char __pyx_k_density_view[] = "density_view";
@@ -2610,7 +2609,6 @@ static const char __pyx_k_min_residual_SS[] = "min_residual_SS";
 static const char __pyx_k_pyx_PickleError[] = "__pyx_PickleError";
 static const char __pyx_k_resid_error_ptr[] = "resid_error_ptr";
 static const char __pyx_k_setstate_cython[] = "__setstate_cython__";
-static const char __pyx_k_sort_cython_pyx[] = "sort_cython.pyx";
 static const char __pyx_k_check_components[] = "check_components";
 static const char __pyx_k_density_midslice[] = "density_midslice";
 static const char __pyx_k_shifted_template[] = "shifted_template";
@@ -2671,9 +2669,11 @@ static const char __pyx_k_ndarray_is_not_Fortran_contiguou[] = "ndarray is not F
 static const char __pyx_k_no_default___reduce___due_to_non[] = "no default __reduce__ due to non-trivial __cinit__";
 static const char __pyx_k_numpy_core_umath_failed_to_impor[] = "numpy.core.umath failed to import";
 static const char __pyx_k_optimal_reconstruction_pca_order[] = "optimal_reconstruction_pca_order";
+static const char __pyx_k_spikesorting_fullpursuit_c_cytho[] = "spikesorting_fullpursuit/c_cython/sort_cython.pyx";
 static const char __pyx_k_unable_to_allocate_shape_and_str[] = "unable to allocate shape and strides.";
 static const char __pyx_k_Format_string_allocated_too_shor_2[] = "Format string allocated too short.";
 static const char __pyx_k_optimal_reconstruction_pca_order_2[] = "optimal_reconstruction_pca_order_F";
+static const char __pyx_k_spikesorting_fullpursuit_c_cytho_2[] = "spikesorting_fullpursuit.c_cython.sort_cython";
 static PyObject *__pyx_n_s_ASCII;
 static PyObject *__pyx_kp_s_Buffer_view_does_not_expose_stri;
 static PyObject *__pyx_n_s_C;
@@ -2909,14 +2909,14 @@ static PyObject *__pyx_n_s_shifted_t1;
 static PyObject *__pyx_n_s_shifted_t2;
 static PyObject *__pyx_n_s_shifted_template;
 static PyObject *__pyx_n_s_size;
-static PyObject *__pyx_n_s_sort_cython;
-static PyObject *__pyx_kp_s_sort_cython_pyx;
 static PyObject *__pyx_n_s_spike_copy;
 static PyObject *__pyx_n_s_spike_std;
 static PyObject *__pyx_n_s_spikes;
 static PyObject *__pyx_n_s_spikes_ptr;
 static PyObject *__pyx_n_s_spikes_x;
 static PyObject *__pyx_n_s_spikes_y;
+static PyObject *__pyx_kp_s_spikesorting_fullpursuit_c_cytho;
+static PyObject *__pyx_n_s_spikesorting_fullpursuit_c_cytho_2;
 static PyObject *__pyx_n_s_start;
 static PyObject *__pyx_n_s_std;
 static PyObject *__pyx_n_s_step;
@@ -2963,14 +2963,14 @@ static PyObject *__pyx_n_s_xmesh_view;
 static PyObject *__pyx_n_s_y;
 static PyObject *__pyx_n_s_zeros;
 static PyObject *__pyx_n_s_zeros_like;
-static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spikes, PyObject *__pyx_v_compute_pcs, PyObject *__pyx_v_pcs_as_index, PyObject *__pyx_v_return_V, PyObject *__pyx_v_return_E); /* proto */
-static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components); /* proto */
-static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components); /* proto */
-static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_v_template, PyObject *__pyx_v_shift); /* proto */
-static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, PyArrayObject *__pyx_v_n_template_spikes); /* proto */
-static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, int64_t __pyx_v_label); /* proto */
-static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, PyObject *__pyx_v_previously_compared_pairs); /* proto */
-static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_data, int64_t __pyx_v_n_points); /* proto */
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spikes, PyObject *__pyx_v_compute_pcs, PyObject *__pyx_v_pcs_as_index, PyObject *__pyx_v_return_V, PyObject *__pyx_v_return_E); /* proto */
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_2optimal_reconstruction_pca_order(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components); /* proto */
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_4optimal_reconstruction_pca_order_F(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components); /* proto */
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_v_template, PyObject *__pyx_v_shift); /* proto */
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, PyArrayObject *__pyx_v_n_template_spikes); /* proto */
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, int64_t __pyx_v_label); /* proto */
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_10identify_clusters_to_compare(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, PyObject *__pyx_v_previously_compared_pairs); /* proto */
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_data, int64_t __pyx_v_n_points); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
 static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static int __pyx_array___pyx_pf_15View_dot_MemoryView_5array___cinit__(struct __pyx_array_obj *__pyx_v_self, PyObject *__pyx_v_shape, Py_ssize_t __pyx_v_itemsize, PyObject *__pyx_v_format, PyObject *__pyx_v_mode, int __pyx_v_allocate_buffer); /* proto */
@@ -3015,7 +3015,7 @@ static PyObject *__pyx_pf_15View_dot_MemoryView_16_memoryviewslice_4base___get__
 static PyObject *__pyx_pf___pyx_memoryviewslice___reduce_cython__(CYTHON_UNUSED struct __pyx_memoryviewslice_obj *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf___pyx_memoryviewslice_2__setstate_cython__(CYTHON_UNUSED struct __pyx_memoryviewslice_obj *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_15View_dot_MemoryView___pyx_unpickle_Enum(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
-static PyObject *__pyx_tp_new_11sort_cython___pyx_scope_struct__remove_overlap_templates(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
+static PyObject *__pyx_tp_new_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_array(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_Enum(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_memoryview(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
@@ -3085,7 +3085,7 @@ static PyObject *__pyx_codeobj__51;
 static PyObject *__pyx_codeobj__58;
 /* Late includes */
 
-/* "sort_cython.pyx":13
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":13
  * 
  * 
  * def pca_scores(spikes, compute_pcs=None, pcs_as_index=True, return_V=False, return_E=False):             # <<<<<<<<<<<<<<
@@ -3094,10 +3094,10 @@ static PyObject *__pyx_codeobj__58;
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_11sort_cython_1pca_scores(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_11sort_cython_pca_scores[] = "\n      pca(spikes)\n\n  Given a set of spikes which is an MxN matrix (M spikes x N timepoints), we\n  determine the principle components given a set of spikes. The principle components\n  are returned in order of decreasing variance (i.e, the first components returned\n  have the highest variance).\n\n  Each column in the returned output corresponds to one principle component. To\n  compute the \"weight\" for each PCA, simply multiply matrix wise.\n   pca(spikes)[:, 1] * spikes[1, :]\n  to get the weight of the first principle component for the first spike.\n  If pc_count is a scalar\n  ";
-static PyMethodDef __pyx_mdef_11sort_cython_1pca_scores = {"pca_scores", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_1pca_scores, METH_VARARGS|METH_KEYWORDS, __pyx_doc_11sort_cython_pca_scores};
-static PyObject *__pyx_pw_11sort_cython_1pca_scores(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_1pca_scores(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_pca_scores[] = "\n      pca(spikes)\n\n  Given a set of spikes which is an MxN matrix (M spikes x N timepoints), we\n  determine the principle components given a set of spikes. The principle components\n  are returned in order of decreasing variance (i.e, the first components returned\n  have the highest variance).\n\n  Each column in the returned output corresponds to one principle component. To\n  compute the \"weight\" for each PCA, simply multiply matrix wise.\n   pca(spikes)[:, 1] * spikes[1, :]\n  to get the weight of the first principle component for the first spike.\n  If pc_count is a scalar\n  ";
+static PyMethodDef __pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_1pca_scores = {"pca_scores", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_1pca_scores, METH_VARARGS|METH_KEYWORDS, __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_pca_scores};
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_1pca_scores(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyObject *__pyx_v_spikes = 0;
   PyObject *__pyx_v_compute_pcs = 0;
   PyObject *__pyx_v_pcs_as_index = 0;
@@ -3191,18 +3191,18 @@ static PyObject *__pyx_pw_11sort_cython_1pca_scores(PyObject *__pyx_self, PyObje
   __pyx_L5_argtuple_error:;
   __Pyx_RaiseArgtupleInvalid("pca_scores", 0, 1, 5, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 13, __pyx_L3_error)
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sort_cython.pca_scores", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.pca_scores", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_11sort_cython_pca_scores(__pyx_self, __pyx_v_spikes, __pyx_v_compute_pcs, __pyx_v_pcs_as_index, __pyx_v_return_V, __pyx_v_return_E);
+  __pyx_r = __pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_pca_scores(__pyx_self, __pyx_v_spikes, __pyx_v_compute_pcs, __pyx_v_pcs_as_index, __pyx_v_return_V, __pyx_v_return_E);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spikes, PyObject *__pyx_v_compute_pcs, PyObject *__pyx_v_pcs_as_index, PyObject *__pyx_v_return_V, PyObject *__pyx_v_return_E) {
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spikes, PyObject *__pyx_v_compute_pcs, PyObject *__pyx_v_pcs_as_index, PyObject *__pyx_v_return_V, PyObject *__pyx_v_return_E) {
   PyObject *__pyx_v_spike_std = NULL;
   PyObject *__pyx_v_spike_copy = NULL;
   PyObject *__pyx_v_C = NULL;
@@ -3226,7 +3226,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   __Pyx_RefNannySetupContext("pca_scores", 0);
   __Pyx_INCREF(__pyx_v_compute_pcs);
 
-  /* "sort_cython.pyx":28
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":28
  *   If pc_count is a scalar
  *   """
  *   if spikes.ndim != 2:             # <<<<<<<<<<<<<<
@@ -3242,7 +3242,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   if (unlikely(__pyx_t_3)) {
 
-    /* "sort_cython.pyx":29
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":29
  *   """
  *   if spikes.ndim != 2:
  *       raise ValueError("Input 'spikes' must be a 2 dimensional array to compute PCA")             # <<<<<<<<<<<<<<
@@ -3255,7 +3255,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __PYX_ERR(0, 29, __pyx_L1_error)
 
-    /* "sort_cython.pyx":28
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":28
  *   If pc_count is a scalar
  *   """
  *   if spikes.ndim != 2:             # <<<<<<<<<<<<<<
@@ -3264,7 +3264,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
  */
   }
 
-  /* "sort_cython.pyx":30
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":30
  *   if spikes.ndim != 2:
  *       raise ValueError("Input 'spikes' must be a 2 dimensional array to compute PCA")
  *   if spikes.shape[0] <= 1:             # <<<<<<<<<<<<<<
@@ -3282,7 +3282,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   if (unlikely(__pyx_t_3)) {
 
-    /* "sort_cython.pyx":31
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":31
  *       raise ValueError("Input 'spikes' must be a 2 dimensional array to compute PCA")
  *   if spikes.shape[0] <= 1:
  *       raise ValueError("Must input more than 1 spike to compute PCA")             # <<<<<<<<<<<<<<
@@ -3295,7 +3295,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
     __PYX_ERR(0, 31, __pyx_L1_error)
 
-    /* "sort_cython.pyx":30
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":30
  *   if spikes.ndim != 2:
  *       raise ValueError("Input 'spikes' must be a 2 dimensional array to compute PCA")
  *   if spikes.shape[0] <= 1:             # <<<<<<<<<<<<<<
@@ -3304,7 +3304,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
  */
   }
 
-  /* "sort_cython.pyx":32
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":32
  *   if spikes.shape[0] <= 1:
  *       raise ValueError("Must input more than 1 spike to compute PCA")
  *   if compute_pcs is None:             # <<<<<<<<<<<<<<
@@ -3315,7 +3315,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   __pyx_t_4 = (__pyx_t_3 != 0);
   if (__pyx_t_4) {
 
-    /* "sort_cython.pyx":33
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":33
  *       raise ValueError("Must input more than 1 spike to compute PCA")
  *   if compute_pcs is None:
  *       compute_pcs = spikes.shape[1]             # <<<<<<<<<<<<<<
@@ -3330,7 +3330,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __Pyx_DECREF_SET(__pyx_v_compute_pcs, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "sort_cython.pyx":32
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":32
  *   if spikes.shape[0] <= 1:
  *       raise ValueError("Must input more than 1 spike to compute PCA")
  *   if compute_pcs is None:             # <<<<<<<<<<<<<<
@@ -3339,7 +3339,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
  */
   }
 
-  /* "sort_cython.pyx":34
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":34
  *   if compute_pcs is None:
  *       compute_pcs = spikes.shape[1]
  *   spike_std = np.std(spikes, axis=0)             # <<<<<<<<<<<<<<
@@ -3367,7 +3367,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   __pyx_v_spike_std = __pyx_t_6;
   __pyx_t_6 = 0;
 
-  /* "sort_cython.pyx":36
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":36
  *   spike_std = np.std(spikes, axis=0)
  * 
  *   if np.all(spike_std != 0):             # <<<<<<<<<<<<<<
@@ -3401,7 +3401,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
   if (__pyx_t_4) {
 
-    /* "sort_cython.pyx":37
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":37
  * 
  *   if np.all(spike_std != 0):
  *       spike_copy = np.copy(spikes)             # <<<<<<<<<<<<<<
@@ -3431,7 +3431,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __pyx_v_spike_copy = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "sort_cython.pyx":38
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":38
  *   if np.all(spike_std != 0):
  *       spike_copy = np.copy(spikes)
  *       spike_copy -= np.mean(spike_copy, axis=0)             # <<<<<<<<<<<<<<
@@ -3462,7 +3462,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __Pyx_DECREF_SET(__pyx_v_spike_copy, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "sort_cython.pyx":39
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":39
  *       spike_copy = np.copy(spikes)
  *       spike_copy -= np.mean(spike_copy, axis=0)
  *       spike_copy /= spike_std             # <<<<<<<<<<<<<<
@@ -3474,7 +3474,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __Pyx_DECREF_SET(__pyx_v_spike_copy, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "sort_cython.pyx":40
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":40
  *       spike_copy -= np.mean(spike_copy, axis=0)
  *       spike_copy /= spike_std
  *       C = np.cov(spike_copy, rowvar=False)             # <<<<<<<<<<<<<<
@@ -3502,7 +3502,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __pyx_v_C = __pyx_t_5;
     __pyx_t_5 = 0;
 
-    /* "sort_cython.pyx":41
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":41
  *       spike_copy /= spike_std
  *       C = np.cov(spike_copy, rowvar=False)
  *       E, V = la.eigh(C)             # <<<<<<<<<<<<<<
@@ -3580,7 +3580,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __pyx_v_V = __pyx_t_6;
     __pyx_t_6 = 0;
 
-    /* "sort_cython.pyx":45
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":45
  *       # If pcs_as_index is true, treat compute_pcs as index of specific components
  *       # else compute_pcs must be a scalar and we index from 0:compute_pcs
  *       if pcs_as_index:             # <<<<<<<<<<<<<<
@@ -3590,7 +3590,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_v_pcs_as_index); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 45, __pyx_L1_error)
     if (__pyx_t_4) {
 
-      /* "sort_cython.pyx":46
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":46
  *       # else compute_pcs must be a scalar and we index from 0:compute_pcs
  *       if pcs_as_index:
  *           key = np.argsort(E)[::-1][compute_pcs]             # <<<<<<<<<<<<<<
@@ -3626,7 +3626,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
       __pyx_v_key = __pyx_t_5;
       __pyx_t_5 = 0;
 
-      /* "sort_cython.pyx":45
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":45
  *       # If pcs_as_index is true, treat compute_pcs as index of specific components
  *       # else compute_pcs must be a scalar and we index from 0:compute_pcs
  *       if pcs_as_index:             # <<<<<<<<<<<<<<
@@ -3636,7 +3636,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
       goto __pyx_L9;
     }
 
-    /* "sort_cython.pyx":48
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":48
  *           key = np.argsort(E)[::-1][compute_pcs]
  *       else:
  *           key = np.argsort(E)[::-1][:compute_pcs]             # <<<<<<<<<<<<<<
@@ -3675,7 +3675,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     }
     __pyx_L9:;
 
-    /* "sort_cython.pyx":50
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":50
  *           key = np.argsort(E)[::-1][:compute_pcs]
  * 
  *       E, V = E[key], V[:, key]             # <<<<<<<<<<<<<<
@@ -3700,7 +3700,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __Pyx_DECREF_SET(__pyx_v_V, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "sort_cython.pyx":51
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":51
  * 
  *       E, V = E[key], V[:, key]
  *       U = np.matmul(spike_copy, V)             # <<<<<<<<<<<<<<
@@ -3760,7 +3760,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __pyx_v_U = __pyx_t_1;
     __pyx_t_1 = 0;
 
-    /* "sort_cython.pyx":36
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":36
  *   spike_std = np.std(spikes, axis=0)
  * 
  *   if np.all(spike_std != 0):             # <<<<<<<<<<<<<<
@@ -3770,7 +3770,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     goto __pyx_L6;
   }
 
-  /* "sort_cython.pyx":54
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":54
  *   else:
  *       # No variance, all PCs are equal! Return None(s)
  *       U = None             # <<<<<<<<<<<<<<
@@ -3781,7 +3781,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __Pyx_INCREF(Py_None);
     __pyx_v_U = Py_None;
 
-    /* "sort_cython.pyx":55
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":55
  *       # No variance, all PCs are equal! Return None(s)
  *       U = None
  *       V = None             # <<<<<<<<<<<<<<
@@ -3791,7 +3791,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __Pyx_INCREF(Py_None);
     __pyx_v_V = Py_None;
 
-    /* "sort_cython.pyx":56
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":56
  *       U = None
  *       V = None
  *       E = None             # <<<<<<<<<<<<<<
@@ -3803,7 +3803,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   }
   __pyx_L6:;
 
-  /* "sort_cython.pyx":58
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":58
  *       E = None
  * 
  *   if return_V and return_E:             # <<<<<<<<<<<<<<
@@ -3821,7 +3821,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   __pyx_L11_bool_binop_done:;
   if (__pyx_t_4) {
 
-    /* "sort_cython.pyx":59
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":59
  * 
  *   if return_V and return_E:
  *       return U, V, E             # <<<<<<<<<<<<<<
@@ -3844,7 +3844,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":58
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":58
  *       E = None
  * 
  *   if return_V and return_E:             # <<<<<<<<<<<<<<
@@ -3853,7 +3853,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
  */
   }
 
-  /* "sort_cython.pyx":60
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":60
  *   if return_V and return_E:
  *       return U, V, E
  *   elif return_V:             # <<<<<<<<<<<<<<
@@ -3863,7 +3863,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_v_return_V); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 60, __pyx_L1_error)
   if (__pyx_t_4) {
 
-    /* "sort_cython.pyx":61
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":61
  *       return U, V, E
  *   elif return_V:
  *       return U, V             # <<<<<<<<<<<<<<
@@ -3883,7 +3883,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":60
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":60
  *   if return_V and return_E:
  *       return U, V, E
  *   elif return_V:             # <<<<<<<<<<<<<<
@@ -3892,7 +3892,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
  */
   }
 
-  /* "sort_cython.pyx":62
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":62
  *   elif return_V:
  *       return U, V
  *   elif return_E:             # <<<<<<<<<<<<<<
@@ -3902,7 +3902,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_v_return_E); if (unlikely(__pyx_t_4 < 0)) __PYX_ERR(0, 62, __pyx_L1_error)
   if (__pyx_t_4) {
 
-    /* "sort_cython.pyx":63
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":63
  *       return U, V
  *   elif return_E:
  *       return U, E             # <<<<<<<<<<<<<<
@@ -3922,7 +3922,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     __pyx_t_1 = 0;
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":62
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":62
  *   elif return_V:
  *       return U, V
  *   elif return_E:             # <<<<<<<<<<<<<<
@@ -3931,7 +3931,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
  */
   }
 
-  /* "sort_cython.pyx":65
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":65
  *       return U, E
  *   else:
  *       return U             # <<<<<<<<<<<<<<
@@ -3945,7 +3945,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
     goto __pyx_L0;
   }
 
-  /* "sort_cython.pyx":13
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":13
  * 
  * 
  * def pca_scores(spikes, compute_pcs=None, pcs_as_index=True, return_V=False, return_E=False):             # <<<<<<<<<<<<<<
@@ -3959,7 +3959,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   __Pyx_XDECREF(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_5);
   __Pyx_XDECREF(__pyx_t_6);
-  __Pyx_AddTraceback("sort_cython.pca_scores", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.pca_scores", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_spike_std);
@@ -3975,7 +3975,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":71
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":71
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes not None,             # <<<<<<<<<<<<<<
@@ -3984,10 +3984,10 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_11sort_cython_3optimal_reconstruction_pca_order(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_11sort_cython_2optimal_reconstruction_pca_order[] = "\n  Used as an alternative to 'max_pca_components_cross_validation'.\n  This function computes the reconstruction based on each principal component\n  separately and then reorders the principal components according to their\n  reconstruction accuracy rather than variance accounted for.  It then iterates\n  through the reconstructions adding one PC at a time in this new order and at each\n  step computing the ratio of improvement from the addition of a PC.  All PCs up to\n  and including the first local maxima of this VAF function are output as the\n  the optimal ones to use. ";
-static PyMethodDef __pyx_mdef_11sort_cython_3optimal_reconstruction_pca_order = {"optimal_reconstruction_pca_order", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_3optimal_reconstruction_pca_order, METH_VARARGS|METH_KEYWORDS, __pyx_doc_11sort_cython_2optimal_reconstruction_pca_order};
-static PyObject *__pyx_pw_11sort_cython_3optimal_reconstruction_pca_order(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_3optimal_reconstruction_pca_order(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_2optimal_reconstruction_pca_order[] = "\n  Used as an alternative to 'max_pca_components_cross_validation'.\n  This function computes the reconstruction based on each principal component\n  separately and then reorders the principal components according to their\n  reconstruction accuracy rather than variance accounted for.  It then iterates\n  through the reconstructions adding one PC at a time in this new order and at each\n  step computing the ratio of improvement from the addition of a PC.  All PCs up to\n  and including the first local maxima of this VAF function are output as the\n  the optimal ones to use. ";
+static PyMethodDef __pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_3optimal_reconstruction_pca_order = {"optimal_reconstruction_pca_order", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_3optimal_reconstruction_pca_order, METH_VARARGS|METH_KEYWORDS, __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_2optimal_reconstruction_pca_order};
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_3optimal_reconstruction_pca_order(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyArrayObject *__pyx_v_spikes = 0;
   PyObject *__pyx_v_check_components = 0;
   PyObject *__pyx_v_max_components = 0;
@@ -4002,7 +4002,7 @@ static PyObject *__pyx_pw_11sort_cython_3optimal_reconstruction_pca_order(PyObje
     static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_spikes,&__pyx_n_s_check_components,&__pyx_n_s_max_components,&__pyx_n_s_min_components,0};
     PyObject* values[4] = {0,0,0,0};
 
-    /* "sort_cython.pyx":72
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":72
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes not None,
  *         check_components=None, max_components=None, int64_t min_components=0):             # <<<<<<<<<<<<<<
@@ -4079,14 +4079,14 @@ static PyObject *__pyx_pw_11sort_cython_3optimal_reconstruction_pca_order(PyObje
   __pyx_L5_argtuple_error:;
   __Pyx_RaiseArgtupleInvalid("optimal_reconstruction_pca_order", 0, 1, 4, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 71, __pyx_L3_error)
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sort_cython.optimal_reconstruction_pca_order", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.optimal_reconstruction_pca_order", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_spikes), __pyx_ptype_5numpy_ndarray, 0, "spikes", 0))) __PYX_ERR(0, 71, __pyx_L1_error)
-  __pyx_r = __pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(__pyx_self, __pyx_v_spikes, __pyx_v_check_components, __pyx_v_max_components, __pyx_v_min_components);
+  __pyx_r = __pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_2optimal_reconstruction_pca_order(__pyx_self, __pyx_v_spikes, __pyx_v_check_components, __pyx_v_max_components, __pyx_v_min_components);
 
-  /* "sort_cython.pyx":71
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":71
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes not None,             # <<<<<<<<<<<<<<
@@ -4103,7 +4103,7 @@ static PyObject *__pyx_pw_11sort_cython_3optimal_reconstruction_pca_order(PyObje
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components) {
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_2optimal_reconstruction_pca_order(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components) {
   Py_ssize_t __pyx_v_comp;
   Py_ssize_t __pyx_v_x;
   Py_ssize_t __pyx_v_y;
@@ -4205,7 +4205,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   }
   __pyx_pybuffernd_spikes.diminfo[0].strides = __pyx_pybuffernd_spikes.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_spikes.diminfo[0].shape = __pyx_pybuffernd_spikes.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_spikes.diminfo[1].strides = __pyx_pybuffernd_spikes.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_spikes.diminfo[1].shape = __pyx_pybuffernd_spikes.rcbuffer->pybuffer.shape[1];
 
-  /* "sort_cython.pyx":86
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":86
  *   cdef double curr_answer
  *   cdef double *spikes_ptr
  *   cdef Py_ssize_t spikes_x = spikes.shape[0]             # <<<<<<<<<<<<<<
@@ -4214,7 +4214,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   __pyx_v_spikes_x = (__pyx_v_spikes->dimensions[0]);
 
-  /* "sort_cython.pyx":87
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":87
  *   cdef double *spikes_ptr
  *   cdef Py_ssize_t spikes_x = spikes.shape[0]
  *   cdef Py_ssize_t spikes_y = spikes.shape[1]             # <<<<<<<<<<<<<<
@@ -4223,7 +4223,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   __pyx_v_spikes_y = (__pyx_v_spikes->dimensions[1]);
 
-  /* "sort_cython.pyx":90
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":90
  * 
  *   # Limit max-components based on the size of the dimensions of spikes
  *   if max_components is None:             # <<<<<<<<<<<<<<
@@ -4234,7 +4234,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_2 = (__pyx_t_1 != 0);
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":91
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":91
  *   # Limit max-components based on the size of the dimensions of spikes
  *   if max_components is None:
  *     max_components = spikes_y             # <<<<<<<<<<<<<<
@@ -4246,7 +4246,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __Pyx_DECREF_SET(__pyx_v_max_components, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "sort_cython.pyx":90
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":90
  * 
  *   # Limit max-components based on the size of the dimensions of spikes
  *   if max_components is None:             # <<<<<<<<<<<<<<
@@ -4255,7 +4255,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   }
 
-  /* "sort_cython.pyx":92
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":92
  *   if max_components is None:
  *     max_components = spikes_y
  *   if check_components is None:             # <<<<<<<<<<<<<<
@@ -4266,7 +4266,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_1 = (__pyx_t_2 != 0);
   if (__pyx_t_1) {
 
-    /* "sort_cython.pyx":93
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":93
  *     max_components = spikes_y
  *   if check_components is None:
  *     check_components = spikes_y             # <<<<<<<<<<<<<<
@@ -4278,7 +4278,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __Pyx_DECREF_SET(__pyx_v_check_components, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "sort_cython.pyx":92
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":92
  *   if max_components is None:
  *     max_components = spikes_y
  *   if check_components is None:             # <<<<<<<<<<<<<<
@@ -4287,7 +4287,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   }
 
-  /* "sort_cython.pyx":94
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":94
  *   if check_components is None:
  *     check_components = spikes_y
  *   max_components = np.amin([max_components, spikes_y])             # <<<<<<<<<<<<<<
@@ -4328,7 +4328,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __Pyx_DECREF_SET(__pyx_v_max_components, __pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "sort_cython.pyx":95
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":95
  *     check_components = spikes_y
  *   max_components = np.amin([max_components, spikes_y])
  *   check_components = np.amin([check_components, spikes_y])             # <<<<<<<<<<<<<<
@@ -4369,7 +4369,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __Pyx_DECREF_SET(__pyx_v_check_components, __pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "sort_cython.pyx":96
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":96
  *   max_components = np.amin([max_components, spikes_y])
  *   check_components = np.amin([check_components, spikes_y])
  *   check_comp_ssize_t = <Py_ssize_t>check_components             # <<<<<<<<<<<<<<
@@ -4379,7 +4379,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_7 = __Pyx_PyIndex_AsSsize_t(__pyx_v_check_components); if (unlikely((__pyx_t_7 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 96, __pyx_L1_error)
   __pyx_v_check_comp_ssize_t = ((Py_ssize_t)__pyx_t_7);
 
-  /* "sort_cython.pyx":99
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":99
  * 
  *   # Get residual sum of squared error for each PC separately
  *   cdef np.ndarray[double, ndim=1, mode="c"] resid_error = np.zeros(check_components)             # <<<<<<<<<<<<<<
@@ -4420,7 +4420,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_v_resid_error = ((PyArrayObject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "sort_cython.pyx":100
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":100
  *   # Get residual sum of squared error for each PC separately
  *   cdef np.ndarray[double, ndim=1, mode="c"] resid_error = np.zeros(check_components)
  *   cdef double *resid_error_ptr = &resid_error[0]             # <<<<<<<<<<<<<<
@@ -4430,7 +4430,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_9 = 0;
   __pyx_v_resid_error_ptr = (&(*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_resid_error.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_resid_error.diminfo[0].strides)));
 
-  /* "sort_cython.pyx":102
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":102
  *   cdef double *resid_error_ptr = &resid_error[0]
  *   cdef np.ndarray[double, ndim=2, mode="fortran"] components
  *   _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)             # <<<<<<<<<<<<<<
@@ -4527,7 +4527,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_v_components = ((PyArrayObject *)__pyx_t_4);
   __pyx_t_4 = 0;
 
-  /* "sort_cython.pyx":103
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":103
  *   cdef np.ndarray[double, ndim=2, mode="fortran"] components
  *   _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)
  *   if components is None:             # <<<<<<<<<<<<<<
@@ -4538,7 +4538,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_2 = (__pyx_t_1 != 0);
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":105
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":105
  *   if components is None:
  *     # Couldn't compute PCs
  *     return np.zeros(1, dtype=np.int64), True             # <<<<<<<<<<<<<<
@@ -4576,7 +4576,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __pyx_t_5 = 0;
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":103
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":103
  *   cdef np.ndarray[double, ndim=2, mode="fortran"] components
  *   _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)
  *   if components is None:             # <<<<<<<<<<<<<<
@@ -4585,7 +4585,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   }
 
-  /* "sort_cython.pyx":106
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":106
  *     # Couldn't compute PCs
  *     return np.zeros(1, dtype=np.int64), True
  *   cdef double *components_ptr = &components[0, 0]             # <<<<<<<<<<<<<<
@@ -4596,7 +4596,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_16 = 0;
   __pyx_v_components_ptr = (&(*__Pyx_BufPtrFortranContig2d(double *, __pyx_pybuffernd_components.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_components.diminfo[0].strides, __pyx_t_16, __pyx_pybuffernd_components.diminfo[1].strides)));
 
-  /* "sort_cython.pyx":109
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":109
  *   cdef double *reconstruction_ptr
  * 
  *   cdef double RESS = 0.0             # <<<<<<<<<<<<<<
@@ -4605,7 +4605,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   __pyx_v_RESS = 0.0;
 
-  /* "sort_cython.pyx":111
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":111
  *   cdef double RESS = 0.0
  *   cdef int64_t idx_sp, idx_rec
  *   for comp in range(0, check_comp_ssize_t):             # <<<<<<<<<<<<<<
@@ -4617,7 +4617,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   for (__pyx_t_18 = 0; __pyx_t_18 < __pyx_t_17; __pyx_t_18+=1) {
     __pyx_v_comp = __pyx_t_18;
 
-    /* "sort_cython.pyx":114
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":114
  *     # Compute (spikes @ components[:, comp][:, None]). Here we can store the
  *     # result of this first multiplication in reconstruction
  *     reconstruction_ptr = <double *> calloc(spikes_x * spikes_y, sizeof(double))             # <<<<<<<<<<<<<<
@@ -4626,7 +4626,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     __pyx_v_reconstruction_ptr = ((double *)calloc((__pyx_v_spikes_x * __pyx_v_spikes_y), (sizeof(double))));
 
-    /* "sort_cython.pyx":115
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":115
  *     # result of this first multiplication in reconstruction
  *     reconstruction_ptr = <double *> calloc(spikes_x * spikes_y, sizeof(double))
  *     spikes_ptr = &spikes[0,0]             # <<<<<<<<<<<<<<
@@ -4637,7 +4637,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __pyx_t_9 = 0;
     __pyx_v_spikes_ptr = (&(*__Pyx_BufPtrCContig2d(double *, __pyx_pybuffernd_spikes.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_spikes.diminfo[0].strides, __pyx_t_9, __pyx_pybuffernd_spikes.diminfo[1].strides)));
 
-    /* "sort_cython.pyx":116
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":116
  *     reconstruction_ptr = <double *> calloc(spikes_x * spikes_y, sizeof(double))
  *     spikes_ptr = &spikes[0,0]
  *     idx_sp = 0             # <<<<<<<<<<<<<<
@@ -4646,7 +4646,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     __pyx_v_idx_sp = 0;
 
-    /* "sort_cython.pyx":117
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":117
  *     spikes_ptr = &spikes[0,0]
  *     idx_sp = 0
  *     for x in range(0, spikes_x):             # <<<<<<<<<<<<<<
@@ -4658,7 +4658,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     for (__pyx_t_21 = 0; __pyx_t_21 < __pyx_t_20; __pyx_t_21+=1) {
       __pyx_v_x = __pyx_t_21;
 
-      /* "sort_cython.pyx":118
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":118
  *     idx_sp = 0
  *     for x in range(0, spikes_x):
  *       idx_rec = x * spikes_y + comp             # <<<<<<<<<<<<<<
@@ -4667,7 +4667,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
       __pyx_v_idx_rec = ((__pyx_v_x * __pyx_v_spikes_y) + __pyx_v_comp);
 
-      /* "sort_cython.pyx":119
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":119
  *     for x in range(0, spikes_x):
  *       idx_rec = x * spikes_y + comp
  *       for y in range(0, spikes_y):             # <<<<<<<<<<<<<<
@@ -4679,7 +4679,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
       for (__pyx_t_24 = 0; __pyx_t_24 < __pyx_t_23; __pyx_t_24+=1) {
         __pyx_v_y = __pyx_t_24;
 
-        /* "sort_cython.pyx":120
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":120
  *       idx_rec = x * spikes_y + comp
  *       for y in range(0, spikes_y):
  *         reconstruction_ptr[idx_rec] += spikes_ptr[idx_sp] * components_ptr[spikes_y * comp + y]             # <<<<<<<<<<<<<<
@@ -4689,7 +4689,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
         __pyx_t_25 = __pyx_v_idx_rec;
         (__pyx_v_reconstruction_ptr[__pyx_t_25]) = ((__pyx_v_reconstruction_ptr[__pyx_t_25]) + ((__pyx_v_spikes_ptr[__pyx_v_idx_sp]) * (__pyx_v_components_ptr[((__pyx_v_spikes_y * __pyx_v_comp) + __pyx_v_y)])));
 
-        /* "sort_cython.pyx":121
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":121
  *       for y in range(0, spikes_y):
  *         reconstruction_ptr[idx_rec] += spikes_ptr[idx_sp] * components_ptr[spikes_y * comp + y]
  *         idx_sp += 1             # <<<<<<<<<<<<<<
@@ -4700,7 +4700,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
       }
     }
 
-    /* "sort_cython.pyx":124
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":124
  * 
  *     # reconstruction_ptr = &reconstruction[0, 0]
  *     spikes_ptr = &spikes[0,0]             # <<<<<<<<<<<<<<
@@ -4711,7 +4711,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __pyx_t_16 = 0;
     __pyx_v_spikes_ptr = (&(*__Pyx_BufPtrCContig2d(double *, __pyx_pybuffernd_spikes.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_spikes.diminfo[0].strides, __pyx_t_16, __pyx_pybuffernd_spikes.diminfo[1].strides)));
 
-    /* "sort_cython.pyx":125
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":125
  *     # reconstruction_ptr = &reconstruction[0, 0]
  *     spikes_ptr = &spikes[0,0]
  *     idx_sp = 0             # <<<<<<<<<<<<<<
@@ -4720,7 +4720,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     __pyx_v_idx_sp = 0;
 
-    /* "sort_cython.pyx":127
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":127
  *     idx_sp = 0
  *     # Now compute result above (reconstruction[x, comp]) @ components[:, comp][:, None].T
  *     for x in range(0, spikes_x):             # <<<<<<<<<<<<<<
@@ -4732,7 +4732,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     for (__pyx_t_21 = 0; __pyx_t_21 < __pyx_t_20; __pyx_t_21+=1) {
       __pyx_v_x = __pyx_t_21;
 
-      /* "sort_cython.pyx":128
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":128
  *     # Now compute result above (reconstruction[x, comp]) @ components[:, comp][:, None].T
  *     for x in range(0, spikes_x):
  *       curr_answer = reconstruction_ptr[x * spikes_y + comp]             # <<<<<<<<<<<<<<
@@ -4741,7 +4741,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
       __pyx_v_curr_answer = (__pyx_v_reconstruction_ptr[((__pyx_v_x * __pyx_v_spikes_y) + __pyx_v_comp)]);
 
-      /* "sort_cython.pyx":129
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":129
  *     for x in range(0, spikes_x):
  *       curr_answer = reconstruction_ptr[x * spikes_y + comp]
  *       for y in range(0, spikes_y):             # <<<<<<<<<<<<<<
@@ -4753,7 +4753,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
       for (__pyx_t_24 = 0; __pyx_t_24 < __pyx_t_23; __pyx_t_24+=1) {
         __pyx_v_y = __pyx_t_24;
 
-        /* "sort_cython.pyx":130
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":130
  *       curr_answer = reconstruction_ptr[x * spikes_y + comp]
  *       for y in range(0, spikes_y):
  *         reconstruction_ptr[idx_sp] = curr_answer * components_ptr[spikes_y * comp + y]             # <<<<<<<<<<<<<<
@@ -4762,7 +4762,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
         (__pyx_v_reconstruction_ptr[__pyx_v_idx_sp]) = (__pyx_v_curr_answer * (__pyx_v_components_ptr[((__pyx_v_spikes_y * __pyx_v_comp) + __pyx_v_y)]));
 
-        /* "sort_cython.pyx":131
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":131
  *       for y in range(0, spikes_y):
  *         reconstruction_ptr[idx_sp] = curr_answer * components_ptr[spikes_y * comp + y]
  *         RESS += (reconstruction_ptr[idx_sp] - spikes_ptr[idx_sp]) ** 2             # <<<<<<<<<<<<<<
@@ -4771,7 +4771,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
         __pyx_v_RESS = (__pyx_v_RESS + pow(((__pyx_v_reconstruction_ptr[__pyx_v_idx_sp]) - (__pyx_v_spikes_ptr[__pyx_v_idx_sp])), 2.0));
 
-        /* "sort_cython.pyx":132
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":132
  *         reconstruction_ptr[idx_sp] = curr_answer * components_ptr[spikes_y * comp + y]
  *         RESS += (reconstruction_ptr[idx_sp] - spikes_ptr[idx_sp]) ** 2
  *         idx_sp += 1             # <<<<<<<<<<<<<<
@@ -4782,7 +4782,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
       }
     }
 
-    /* "sort_cython.pyx":135
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":135
  * 
  *     # Compute mean residual error over all points
  *     RESS /= spikes_x * spikes_y             # <<<<<<<<<<<<<<
@@ -4791,7 +4791,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     __pyx_v_RESS = (__pyx_v_RESS / (__pyx_v_spikes_x * __pyx_v_spikes_y));
 
-    /* "sort_cython.pyx":136
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":136
  *     # Compute mean residual error over all points
  *     RESS /= spikes_x * spikes_y
  *     resid_error_ptr[comp] = RESS             # <<<<<<<<<<<<<<
@@ -4800,7 +4800,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     (__pyx_v_resid_error_ptr[__pyx_v_comp]) = __pyx_v_RESS;
 
-    /* "sort_cython.pyx":137
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":137
  *     RESS /= spikes_x * spikes_y
  *     resid_error_ptr[comp] = RESS
  *     free(reconstruction_ptr)             # <<<<<<<<<<<<<<
@@ -4809,7 +4809,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     free(__pyx_v_reconstruction_ptr);
 
-    /* "sort_cython.pyx":138
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":138
  *     resid_error_ptr[comp] = RESS
  *     free(reconstruction_ptr)
  *     RESS = 0.0             # <<<<<<<<<<<<<<
@@ -4819,7 +4819,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __pyx_v_RESS = 0.0;
   }
 
-  /* "sort_cython.pyx":141
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":141
  * 
  *   # Optimal order of components based on reconstruction accuracy
  *   comp_order = np.argsort(resid_error)             # <<<<<<<<<<<<<<
@@ -4849,7 +4849,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_v_comp_order = __pyx_t_5;
   __pyx_t_5 = 0;
 
-  /* "sort_cython.pyx":144
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":144
  * 
  *   # Find improvement given by addition of each ordered PC
  *   cdef np.ndarray[double, ndim=1, mode="c"] vaf = np.zeros(check_comp_ssize_t)             # <<<<<<<<<<<<<<
@@ -4893,7 +4893,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_v_vaf = ((PyArrayObject *)__pyx_t_5);
   __pyx_t_5 = 0;
 
-  /* "sort_cython.pyx":145
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":145
  *   # Find improvement given by addition of each ordered PC
  *   cdef np.ndarray[double, ndim=1, mode="c"] vaf = np.zeros(check_comp_ssize_t)
  *   cdef double *vaf_ptr = &vaf[0]             # <<<<<<<<<<<<<<
@@ -4903,7 +4903,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_16 = 0;
   __pyx_v_vaf_ptr = (&(*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_vaf.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_vaf.diminfo[0].strides)));
 
-  /* "sort_cython.pyx":148
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":148
  *   cdef double PRESS
  *   # Start with PRESS as total error, i.e. no improvement
  *   spikes_ptr = &spikes[0,0]             # <<<<<<<<<<<<<<
@@ -4914,7 +4914,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_9 = 0;
   __pyx_v_spikes_ptr = (&(*__Pyx_BufPtrCContig2d(double *, __pyx_pybuffernd_spikes.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_spikes.diminfo[0].strides, __pyx_t_9, __pyx_pybuffernd_spikes.diminfo[1].strides)));
 
-  /* "sort_cython.pyx":149
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":149
  *   # Start with PRESS as total error, i.e. no improvement
  *   spikes_ptr = &spikes[0,0]
  *   idx_sp = 0             # <<<<<<<<<<<<<<
@@ -4923,7 +4923,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   __pyx_v_idx_sp = 0;
 
-  /* "sort_cython.pyx":150
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":150
  *   spikes_ptr = &spikes[0,0]
  *   idx_sp = 0
  *   for x in range(0, spikes_x):             # <<<<<<<<<<<<<<
@@ -4935,7 +4935,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   for (__pyx_t_18 = 0; __pyx_t_18 < __pyx_t_17; __pyx_t_18+=1) {
     __pyx_v_x = __pyx_t_18;
 
-    /* "sort_cython.pyx":151
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":151
  *   idx_sp = 0
  *   for x in range(0, spikes_x):
  *     for y in range(0, spikes_y):             # <<<<<<<<<<<<<<
@@ -4947,7 +4947,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     for (__pyx_t_21 = 0; __pyx_t_21 < __pyx_t_20; __pyx_t_21+=1) {
       __pyx_v_y = __pyx_t_21;
 
-      /* "sort_cython.pyx":152
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":152
  *   for x in range(0, spikes_x):
  *     for y in range(0, spikes_y):
  *       PRESS += spikes_ptr[idx_sp] ** 2             # <<<<<<<<<<<<<<
@@ -4956,7 +4956,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
       __pyx_v_PRESS = (__pyx_v_PRESS + pow((__pyx_v_spikes_ptr[__pyx_v_idx_sp]), 2.0));
 
-      /* "sort_cython.pyx":153
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":153
  *     for y in range(0, spikes_y):
  *       PRESS += spikes_ptr[idx_sp] ** 2
  *       idx_sp += 1             # <<<<<<<<<<<<<<
@@ -4967,7 +4967,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     }
   }
 
-  /* "sort_cython.pyx":154
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":154
  *       PRESS += spikes_ptr[idx_sp] ** 2
  *       idx_sp += 1
  *   PRESS /= spikes_x * spikes_y             # <<<<<<<<<<<<<<
@@ -4976,7 +4976,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   __pyx_v_PRESS = (__pyx_v_PRESS / (__pyx_v_spikes_x * __pyx_v_spikes_y));
 
-  /* "sort_cython.pyx":155
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":155
  *       idx_sp += 1
  *   PRESS /= spikes_x * spikes_y
  *   RESS = np.mean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)             # <<<<<<<<<<<<<<
@@ -5068,7 +5068,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __Pyx_DECREF(__pyx_t_27); __pyx_t_27 = 0;
   __pyx_v_RESS = __pyx_t_31;
 
-  /* "sort_cython.pyx":156
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":156
  *   PRESS /= spikes_x * spikes_y
  *   RESS = np.mean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)
  *   vaf_ptr[0] = 1. - RESS / PRESS             # <<<<<<<<<<<<<<
@@ -5077,7 +5077,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   (__pyx_v_vaf_ptr[0]) = (1. - (__pyx_v_RESS / __pyx_v_PRESS));
 
-  /* "sort_cython.pyx":158
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":158
  *   vaf_ptr[0] = 1. - RESS / PRESS
  * 
  *   PRESS = RESS             # <<<<<<<<<<<<<<
@@ -5086,7 +5086,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   __pyx_v_PRESS = __pyx_v_RESS;
 
-  /* "sort_cython.pyx":160
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":160
  *   PRESS = RESS
  *   cdef Py_ssize_t max_vaf_components
  *   for comp in range(1, check_comp_ssize_t):             # <<<<<<<<<<<<<<
@@ -5098,7 +5098,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   for (__pyx_t_18 = 1; __pyx_t_18 < __pyx_t_17; __pyx_t_18+=1) {
     __pyx_v_comp = __pyx_t_18;
 
-    /* "sort_cython.pyx":161
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":161
  *   cdef Py_ssize_t max_vaf_components
  *   for comp in range(1, check_comp_ssize_t):
  *     reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T             # <<<<<<<<<<<<<<
@@ -5144,7 +5144,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __Pyx_XDECREF_SET(__pyx_v_reconstruction, __pyx_t_27);
     __pyx_t_27 = 0;
 
-    /* "sort_cython.pyx":162
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":162
  *   for comp in range(1, check_comp_ssize_t):
  *     reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T
  *     RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)             # <<<<<<<<<<<<<<
@@ -5196,7 +5196,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __Pyx_DECREF(__pyx_t_27); __pyx_t_27 = 0;
     __pyx_v_RESS = __pyx_t_31;
 
-    /* "sort_cython.pyx":163
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":163
  *     reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T
  *     RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
  *     vaf_ptr[comp] = 1. - RESS / PRESS             # <<<<<<<<<<<<<<
@@ -5205,7 +5205,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     (__pyx_v_vaf_ptr[__pyx_v_comp]) = (1. - (__pyx_v_RESS / __pyx_v_PRESS));
 
-    /* "sort_cython.pyx":164
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":164
  *     RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
  *     vaf_ptr[comp] = 1. - RESS / PRESS
  *     PRESS = RESS             # <<<<<<<<<<<<<<
@@ -5214,7 +5214,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     __pyx_v_PRESS = __pyx_v_RESS;
 
-    /* "sort_cython.pyx":167
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":167
  * 
  *     # Choose first local maxima
  *     if (vaf[comp] < vaf[comp - 1]):             # <<<<<<<<<<<<<<
@@ -5226,7 +5226,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __pyx_t_2 = (((*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_vaf.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_vaf.diminfo[0].strides)) < (*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_vaf.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_vaf.diminfo[0].strides))) != 0);
     if (__pyx_t_2) {
 
-      /* "sort_cython.pyx":168
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":168
  *     # Choose first local maxima
  *     if (vaf[comp] < vaf[comp - 1]):
  *       break             # <<<<<<<<<<<<<<
@@ -5235,7 +5235,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
       goto __pyx_L23_break;
 
-      /* "sort_cython.pyx":167
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":167
  * 
  *     # Choose first local maxima
  *     if (vaf[comp] < vaf[comp - 1]):             # <<<<<<<<<<<<<<
@@ -5244,7 +5244,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     }
 
-    /* "sort_cython.pyx":169
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":169
  *     if (vaf[comp] < vaf[comp - 1]):
  *       break
  *     if comp == max_components:             # <<<<<<<<<<<<<<
@@ -5259,7 +5259,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     if (__pyx_t_2) {
 
-      /* "sort_cython.pyx":171
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":171
  *     if comp == max_components:
  *       # Won't use more than this so break
  *       break             # <<<<<<<<<<<<<<
@@ -5268,7 +5268,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
       goto __pyx_L23_break;
 
-      /* "sort_cython.pyx":169
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":169
  *     if (vaf[comp] < vaf[comp - 1]):
  *       break
  *     if comp == max_components:             # <<<<<<<<<<<<<<
@@ -5279,7 +5279,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   }
   __pyx_L23_break:;
 
-  /* "sort_cython.pyx":173
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":173
  *       break
  * 
  *   max_vaf_components = comp             # <<<<<<<<<<<<<<
@@ -5288,7 +5288,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   __pyx_v_max_vaf_components = __pyx_v_comp;
 
-  /* "sort_cython.pyx":174
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":174
  * 
  *   max_vaf_components = comp
  *   cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)             # <<<<<<<<<<<<<<
@@ -5327,7 +5327,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_v_is_worse_than_mean = ((PyArrayObject *)__pyx_t_5);
   __pyx_t_5 = 0;
 
-  /* "sort_cython.pyx":175
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":175
  *   max_vaf_components = comp
  *   cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
  *   cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]             # <<<<<<<<<<<<<<
@@ -5337,7 +5337,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_16 = 0;
   __pyx_v_iwtm_ptr = (&(*__Pyx_BufPtrStrided1d(npy_bool *, __pyx_pybuffernd_is_worse_than_mean.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_is_worse_than_mean.diminfo[0].strides)));
 
-  /* "sort_cython.pyx":176
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":176
  *   cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
  *   cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]
  *   if vaf_ptr[1] < 0:             # <<<<<<<<<<<<<<
@@ -5347,7 +5347,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_2 = (((__pyx_v_vaf_ptr[1]) < 0.0) != 0);
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":178
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":178
  *   if vaf_ptr[1] < 0:
  *     # First PC is worse than the mean
  *     iwtm_ptr[0] = True             # <<<<<<<<<<<<<<
@@ -5356,7 +5356,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     (__pyx_v_iwtm_ptr[0]) = 1;
 
-    /* "sort_cython.pyx":179
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":179
  *     # First PC is worse than the mean
  *     iwtm_ptr[0] = True
  *     max_vaf_components = 1             # <<<<<<<<<<<<<<
@@ -5365,7 +5365,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     __pyx_v_max_vaf_components = 1;
 
-    /* "sort_cython.pyx":176
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":176
  *   cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
  *   cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]
  *   if vaf_ptr[1] < 0:             # <<<<<<<<<<<<<<
@@ -5374,7 +5374,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   }
 
-  /* "sort_cython.pyx":182
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":182
  * 
  *   # This is to account for slice indexing and edge effects
  *   if max_vaf_components >= check_comp_ssize_t - 1:             # <<<<<<<<<<<<<<
@@ -5384,7 +5384,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_2 = ((__pyx_v_max_vaf_components >= (__pyx_v_check_comp_ssize_t - 1)) != 0);
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":184
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":184
  *   if max_vaf_components >= check_comp_ssize_t - 1:
  *     # This implies that we found no maxima before reaching the end of vaf
  *     if vaf_ptr[check_comp_ssize_t - 1] > vaf_ptr[check_comp_ssize_t - 2]:             # <<<<<<<<<<<<<<
@@ -5394,7 +5394,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __pyx_t_2 = (((__pyx_v_vaf_ptr[(__pyx_v_check_comp_ssize_t - 1)]) > (__pyx_v_vaf_ptr[(__pyx_v_check_comp_ssize_t - 2)])) != 0);
     if (__pyx_t_2) {
 
-      /* "sort_cython.pyx":186
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":186
  *     if vaf_ptr[check_comp_ssize_t - 1] > vaf_ptr[check_comp_ssize_t - 2]:
  *       # vaf still increasing so choose last point
  *       max_vaf_components = check_comp_ssize_t             # <<<<<<<<<<<<<<
@@ -5403,7 +5403,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
       __pyx_v_max_vaf_components = __pyx_v_check_comp_ssize_t;
 
-      /* "sort_cython.pyx":184
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":184
  *   if max_vaf_components >= check_comp_ssize_t - 1:
  *     # This implies that we found no maxima before reaching the end of vaf
  *     if vaf_ptr[check_comp_ssize_t - 1] > vaf_ptr[check_comp_ssize_t - 2]:             # <<<<<<<<<<<<<<
@@ -5413,7 +5413,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
       goto __pyx_L28;
     }
 
-    /* "sort_cython.pyx":189
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":189
  *     else:
  *       # vaf has become flat so choose second to last point
  *       max_vaf_components = check_comp_ssize_t - 1             # <<<<<<<<<<<<<<
@@ -5425,7 +5425,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     }
     __pyx_L28:;
 
-    /* "sort_cython.pyx":182
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":182
  * 
  *   # This is to account for slice indexing and edge effects
  *   if max_vaf_components >= check_comp_ssize_t - 1:             # <<<<<<<<<<<<<<
@@ -5434,7 +5434,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   }
 
-  /* "sort_cython.pyx":190
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":190
  *       # vaf has become flat so choose second to last point
  *       max_vaf_components = check_comp_ssize_t - 1
  *   if max_vaf_components < min_components:             # <<<<<<<<<<<<<<
@@ -5444,7 +5444,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_2 = ((__pyx_v_max_vaf_components < __pyx_v_min_components) != 0);
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":191
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":191
  *       max_vaf_components = check_comp_ssize_t - 1
  *   if max_vaf_components < min_components:
  *     max_vaf_components = min_components             # <<<<<<<<<<<<<<
@@ -5453,7 +5453,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
     __pyx_v_max_vaf_components = __pyx_v_min_components;
 
-    /* "sort_cython.pyx":190
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":190
  *       # vaf has become flat so choose second to last point
  *       max_vaf_components = check_comp_ssize_t - 1
  *   if max_vaf_components < min_components:             # <<<<<<<<<<<<<<
@@ -5462,7 +5462,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   }
 
-  /* "sort_cython.pyx":192
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":192
  *   if max_vaf_components < min_components:
  *     max_vaf_components = min_components
  *   if max_vaf_components > max_components:             # <<<<<<<<<<<<<<
@@ -5477,7 +5477,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":193
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":193
  *     max_vaf_components = min_components
  *   if max_vaf_components > max_components:
  *     max_vaf_components = max_components             # <<<<<<<<<<<<<<
@@ -5487,7 +5487,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __pyx_t_7 = __Pyx_PyIndex_AsSsize_t(__pyx_v_max_components); if (unlikely((__pyx_t_7 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 193, __pyx_L1_error)
     __pyx_v_max_vaf_components = __pyx_t_7;
 
-    /* "sort_cython.pyx":192
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":192
  *   if max_vaf_components < min_components:
  *     max_vaf_components = min_components
  *   if max_vaf_components > max_components:             # <<<<<<<<<<<<<<
@@ -5496,7 +5496,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
   }
 
-  /* "sort_cython.pyx":195
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":195
  *     max_vaf_components = max_components
  * 
  *   return comp_order[0:max_vaf_components], is_worse_than_mean             # <<<<<<<<<<<<<<
@@ -5518,7 +5518,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   __pyx_t_5 = 0;
   goto __pyx_L0;
 
-  /* "sort_cython.pyx":71
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":71
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes not None,             # <<<<<<<<<<<<<<
@@ -5546,7 +5546,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_spikes.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_vaf.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("sort_cython.optimal_reconstruction_pca_order", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.optimal_reconstruction_pca_order", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -5570,7 +5570,7 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":201
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":201
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"] spikes not None,             # <<<<<<<<<<<<<<
@@ -5579,10 +5579,10 @@ static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_11sort_cython_5optimal_reconstruction_pca_order_F(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_11sort_cython_4optimal_reconstruction_pca_order_F[] = "\n  Used as an alternative to 'max_pca_components_cross_validation'.\n  This function computes the reconstruction based on each principal component\n  separately and then reorders the principal components according to their\n  reconstruction accuracy rather than variance accounted for.  It then iterates\n  through the reconstructions adding one PC at a time in this new order and at each\n  step computing the ratio of improvement from the addition of a PC.  All PCs up to\n  and including the first local maxima of this VAF function are output as the\n  the optimal ones to use. ";
-static PyMethodDef __pyx_mdef_11sort_cython_5optimal_reconstruction_pca_order_F = {"optimal_reconstruction_pca_order_F", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_5optimal_reconstruction_pca_order_F, METH_VARARGS|METH_KEYWORDS, __pyx_doc_11sort_cython_4optimal_reconstruction_pca_order_F};
-static PyObject *__pyx_pw_11sort_cython_5optimal_reconstruction_pca_order_F(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_5optimal_reconstruction_pca_order_F(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_4optimal_reconstruction_pca_order_F[] = "\n  Used as an alternative to 'max_pca_components_cross_validation'.\n  This function computes the reconstruction based on each principal component\n  separately and then reorders the principal components according to their\n  reconstruction accuracy rather than variance accounted for.  It then iterates\n  through the reconstructions adding one PC at a time in this new order and at each\n  step computing the ratio of improvement from the addition of a PC.  All PCs up to\n  and including the first local maxima of this VAF function are output as the\n  the optimal ones to use. ";
+static PyMethodDef __pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_5optimal_reconstruction_pca_order_F = {"optimal_reconstruction_pca_order_F", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_5optimal_reconstruction_pca_order_F, METH_VARARGS|METH_KEYWORDS, __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_4optimal_reconstruction_pca_order_F};
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_5optimal_reconstruction_pca_order_F(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyArrayObject *__pyx_v_spikes = 0;
   PyObject *__pyx_v_check_components = 0;
   PyObject *__pyx_v_max_components = 0;
@@ -5597,7 +5597,7 @@ static PyObject *__pyx_pw_11sort_cython_5optimal_reconstruction_pca_order_F(PyOb
     static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_spikes,&__pyx_n_s_check_components,&__pyx_n_s_max_components,&__pyx_n_s_min_components,0};
     PyObject* values[4] = {0,0,0,0};
 
-    /* "sort_cython.pyx":202
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":202
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"] spikes not None,
  *         check_components=None, max_components=None, int64_t min_components=0):             # <<<<<<<<<<<<<<
@@ -5674,14 +5674,14 @@ static PyObject *__pyx_pw_11sort_cython_5optimal_reconstruction_pca_order_F(PyOb
   __pyx_L5_argtuple_error:;
   __Pyx_RaiseArgtupleInvalid("optimal_reconstruction_pca_order_F", 0, 1, 4, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 201, __pyx_L3_error)
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sort_cython.optimal_reconstruction_pca_order_F", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.optimal_reconstruction_pca_order_F", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_spikes), __pyx_ptype_5numpy_ndarray, 0, "spikes", 0))) __PYX_ERR(0, 201, __pyx_L1_error)
-  __pyx_r = __pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(__pyx_self, __pyx_v_spikes, __pyx_v_check_components, __pyx_v_max_components, __pyx_v_min_components);
+  __pyx_r = __pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_4optimal_reconstruction_pca_order_F(__pyx_self, __pyx_v_spikes, __pyx_v_check_components, __pyx_v_max_components, __pyx_v_min_components);
 
-  /* "sort_cython.pyx":201
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":201
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"] spikes not None,             # <<<<<<<<<<<<<<
@@ -5698,7 +5698,7 @@ static PyObject *__pyx_pw_11sort_cython_5optimal_reconstruction_pca_order_F(PyOb
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components) {
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_4optimal_reconstruction_pca_order_F(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components) {
   Py_ssize_t __pyx_v_comp;
   Py_ssize_t __pyx_v_x;
   Py_ssize_t __pyx_v_y;
@@ -5800,7 +5800,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   }
   __pyx_pybuffernd_spikes.diminfo[0].strides = __pyx_pybuffernd_spikes.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_spikes.diminfo[0].shape = __pyx_pybuffernd_spikes.rcbuffer->pybuffer.shape[0]; __pyx_pybuffernd_spikes.diminfo[1].strides = __pyx_pybuffernd_spikes.rcbuffer->pybuffer.strides[1]; __pyx_pybuffernd_spikes.diminfo[1].shape = __pyx_pybuffernd_spikes.rcbuffer->pybuffer.shape[1];
 
-  /* "sort_cython.pyx":216
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":216
  *   cdef double curr_answer
  *   cdef double *spikes_ptr
  *   cdef Py_ssize_t spikes_x = spikes.shape[0]             # <<<<<<<<<<<<<<
@@ -5809,7 +5809,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   __pyx_v_spikes_x = (__pyx_v_spikes->dimensions[0]);
 
-  /* "sort_cython.pyx":217
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":217
  *   cdef double *spikes_ptr
  *   cdef Py_ssize_t spikes_x = spikes.shape[0]
  *   cdef Py_ssize_t spikes_y = spikes.shape[1]             # <<<<<<<<<<<<<<
@@ -5818,7 +5818,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   __pyx_v_spikes_y = (__pyx_v_spikes->dimensions[1]);
 
-  /* "sort_cython.pyx":220
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":220
  * 
  *   # Limit max-components based on the size of the dimensions of spikes
  *   if max_components is None:             # <<<<<<<<<<<<<<
@@ -5829,7 +5829,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_2 = (__pyx_t_1 != 0);
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":221
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":221
  *   # Limit max-components based on the size of the dimensions of spikes
  *   if max_components is None:
  *     max_components = spikes_y             # <<<<<<<<<<<<<<
@@ -5841,7 +5841,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __Pyx_DECREF_SET(__pyx_v_max_components, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "sort_cython.pyx":220
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":220
  * 
  *   # Limit max-components based on the size of the dimensions of spikes
  *   if max_components is None:             # <<<<<<<<<<<<<<
@@ -5850,7 +5850,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   }
 
-  /* "sort_cython.pyx":222
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":222
  *   if max_components is None:
  *     max_components = spikes_y
  *   if check_components is None:             # <<<<<<<<<<<<<<
@@ -5861,7 +5861,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_1 = (__pyx_t_2 != 0);
   if (__pyx_t_1) {
 
-    /* "sort_cython.pyx":223
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":223
  *     max_components = spikes_y
  *   if check_components is None:
  *     check_components = spikes_y             # <<<<<<<<<<<<<<
@@ -5873,7 +5873,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __Pyx_DECREF_SET(__pyx_v_check_components, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "sort_cython.pyx":222
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":222
  *   if max_components is None:
  *     max_components = spikes_y
  *   if check_components is None:             # <<<<<<<<<<<<<<
@@ -5882,7 +5882,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   }
 
-  /* "sort_cython.pyx":224
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":224
  *   if check_components is None:
  *     check_components = spikes_y
  *   max_components = np.amin([max_components, spikes_y])             # <<<<<<<<<<<<<<
@@ -5923,7 +5923,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __Pyx_DECREF_SET(__pyx_v_max_components, __pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "sort_cython.pyx":225
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":225
  *     check_components = spikes_y
  *   max_components = np.amin([max_components, spikes_y])
  *   check_components = np.amin([check_components, spikes_y])             # <<<<<<<<<<<<<<
@@ -5964,7 +5964,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __Pyx_DECREF_SET(__pyx_v_check_components, __pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "sort_cython.pyx":226
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":226
  *   max_components = np.amin([max_components, spikes_y])
  *   check_components = np.amin([check_components, spikes_y])
  *   check_comp_ssize_t = <Py_ssize_t>check_components             # <<<<<<<<<<<<<<
@@ -5974,7 +5974,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_7 = __Pyx_PyIndex_AsSsize_t(__pyx_v_check_components); if (unlikely((__pyx_t_7 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 226, __pyx_L1_error)
   __pyx_v_check_comp_ssize_t = ((Py_ssize_t)__pyx_t_7);
 
-  /* "sort_cython.pyx":229
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":229
  * 
  *   # Get residual sum of squared error for each PC separately
  *   cdef np.ndarray[double, ndim=1, mode="c"] resid_error = np.zeros(check_components)             # <<<<<<<<<<<<<<
@@ -6015,7 +6015,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_v_resid_error = ((PyArrayObject *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "sort_cython.pyx":230
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":230
  *   # Get residual sum of squared error for each PC separately
  *   cdef np.ndarray[double, ndim=1, mode="c"] resid_error = np.zeros(check_components)
  *   cdef double *resid_error_ptr = &resid_error[0]             # <<<<<<<<<<<<<<
@@ -6025,7 +6025,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_9 = 0;
   __pyx_v_resid_error_ptr = (&(*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_resid_error.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_resid_error.diminfo[0].strides)));
 
-  /* "sort_cython.pyx":232
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":232
  *   cdef double *resid_error_ptr = &resid_error[0]
  *   cdef np.ndarray[double, ndim=2, mode="fortran"] components
  *   _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)             # <<<<<<<<<<<<<<
@@ -6122,7 +6122,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_v_components = ((PyArrayObject *)__pyx_t_4);
   __pyx_t_4 = 0;
 
-  /* "sort_cython.pyx":233
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":233
  *   cdef np.ndarray[double, ndim=2, mode="fortran"] components
  *   _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)
  *   if components is None:             # <<<<<<<<<<<<<<
@@ -6133,7 +6133,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_2 = (__pyx_t_1 != 0);
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":235
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":235
  *   if components is None:
  *     # Couldn't compute PCs
  *     return np.zeros(1, dtype=np.int64), True             # <<<<<<<<<<<<<<
@@ -6171,7 +6171,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __pyx_t_5 = 0;
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":233
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":233
  *   cdef np.ndarray[double, ndim=2, mode="fortran"] components
  *   _, components = pca_scores(spikes, check_components, pcs_as_index=False, return_V=True)
  *   if components is None:             # <<<<<<<<<<<<<<
@@ -6180,7 +6180,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   }
 
-  /* "sort_cython.pyx":236
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":236
  *     # Couldn't compute PCs
  *     return np.zeros(1, dtype=np.int64), True
  *   cdef double *components_ptr = &components[0, 0]             # <<<<<<<<<<<<<<
@@ -6191,7 +6191,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_16 = 0;
   __pyx_v_components_ptr = (&(*__Pyx_BufPtrFortranContig2d(double *, __pyx_pybuffernd_components.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_components.diminfo[0].strides, __pyx_t_16, __pyx_pybuffernd_components.diminfo[1].strides)));
 
-  /* "sort_cython.pyx":239
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":239
  *   cdef double *reconstruction_ptr
  * 
  *   cdef double RESS = 0.0             # <<<<<<<<<<<<<<
@@ -6200,7 +6200,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   __pyx_v_RESS = 0.0;
 
-  /* "sort_cython.pyx":241
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":241
  *   cdef double RESS = 0.0
  *   cdef int64_t idx_sp, idx_rec
  *   for comp in range(0, check_comp_ssize_t):             # <<<<<<<<<<<<<<
@@ -6212,7 +6212,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   for (__pyx_t_18 = 0; __pyx_t_18 < __pyx_t_17; __pyx_t_18+=1) {
     __pyx_v_comp = __pyx_t_18;
 
-    /* "sort_cython.pyx":244
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":244
  *     # Compute (spikes @ components[:, comp][:, None]). Here we can store the
  *     # result of this first multiplication in reconstruction
  *     reconstruction_ptr = <double *> calloc(spikes_x * spikes_y, sizeof(double))             # <<<<<<<<<<<<<<
@@ -6221,7 +6221,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     __pyx_v_reconstruction_ptr = ((double *)calloc((__pyx_v_spikes_x * __pyx_v_spikes_y), (sizeof(double))));
 
-    /* "sort_cython.pyx":245
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":245
  *     # result of this first multiplication in reconstruction
  *     reconstruction_ptr = <double *> calloc(spikes_x * spikes_y, sizeof(double))
  *     spikes_ptr = &spikes[0,0]             # <<<<<<<<<<<<<<
@@ -6232,7 +6232,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __pyx_t_9 = 0;
     __pyx_v_spikes_ptr = (&(*__Pyx_BufPtrFortranContig2d(double *, __pyx_pybuffernd_spikes.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_spikes.diminfo[0].strides, __pyx_t_9, __pyx_pybuffernd_spikes.diminfo[1].strides)));
 
-    /* "sort_cython.pyx":246
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":246
  *     reconstruction_ptr = <double *> calloc(spikes_x * spikes_y, sizeof(double))
  *     spikes_ptr = &spikes[0,0]
  *     idx_sp = 0             # <<<<<<<<<<<<<<
@@ -6241,7 +6241,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     __pyx_v_idx_sp = 0;
 
-    /* "sort_cython.pyx":247
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":247
  *     spikes_ptr = &spikes[0,0]
  *     idx_sp = 0
  *     for x in range(0, spikes_x):             # <<<<<<<<<<<<<<
@@ -6253,7 +6253,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     for (__pyx_t_21 = 0; __pyx_t_21 < __pyx_t_20; __pyx_t_21+=1) {
       __pyx_v_x = __pyx_t_21;
 
-      /* "sort_cython.pyx":248
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":248
  *     idx_sp = 0
  *     for x in range(0, spikes_x):
  *       idx_rec = x * spikes_y + comp             # <<<<<<<<<<<<<<
@@ -6262,7 +6262,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
       __pyx_v_idx_rec = ((__pyx_v_x * __pyx_v_spikes_y) + __pyx_v_comp);
 
-      /* "sort_cython.pyx":249
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":249
  *     for x in range(0, spikes_x):
  *       idx_rec = x * spikes_y + comp
  *       for y in range(0, spikes_y):             # <<<<<<<<<<<<<<
@@ -6274,7 +6274,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
       for (__pyx_t_24 = 0; __pyx_t_24 < __pyx_t_23; __pyx_t_24+=1) {
         __pyx_v_y = __pyx_t_24;
 
-        /* "sort_cython.pyx":252
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":252
  *         # This more complicated indexing into F ordered spikes array still seems
  *         # faster assuming that x > y (as is usually the case)
  *         reconstruction_ptr[idx_rec] += spikes_ptr[spikes_x * y + x] * components_ptr[spikes_y * comp + y]             # <<<<<<<<<<<<<<
@@ -6284,7 +6284,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
         __pyx_t_25 = __pyx_v_idx_rec;
         (__pyx_v_reconstruction_ptr[__pyx_t_25]) = ((__pyx_v_reconstruction_ptr[__pyx_t_25]) + ((__pyx_v_spikes_ptr[((__pyx_v_spikes_x * __pyx_v_y) + __pyx_v_x)]) * (__pyx_v_components_ptr[((__pyx_v_spikes_y * __pyx_v_comp) + __pyx_v_y)])));
 
-        /* "sort_cython.pyx":253
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":253
  *         # faster assuming that x > y (as is usually the case)
  *         reconstruction_ptr[idx_rec] += spikes_ptr[spikes_x * y + x] * components_ptr[spikes_y * comp + y]
  *         idx_sp += 1             # <<<<<<<<<<<<<<
@@ -6295,7 +6295,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
       }
     }
 
-    /* "sort_cython.pyx":256
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":256
  * 
  *     # reconstruction_ptr = &reconstruction[0, 0]
  *     spikes_ptr = &spikes[0,0]             # <<<<<<<<<<<<<<
@@ -6306,7 +6306,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __pyx_t_16 = 0;
     __pyx_v_spikes_ptr = (&(*__Pyx_BufPtrFortranContig2d(double *, __pyx_pybuffernd_spikes.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_spikes.diminfo[0].strides, __pyx_t_16, __pyx_pybuffernd_spikes.diminfo[1].strides)));
 
-    /* "sort_cython.pyx":257
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":257
  *     # reconstruction_ptr = &reconstruction[0, 0]
  *     spikes_ptr = &spikes[0,0]
  *     idx_sp = 0             # <<<<<<<<<<<<<<
@@ -6315,7 +6315,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     __pyx_v_idx_sp = 0;
 
-    /* "sort_cython.pyx":259
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":259
  *     idx_sp = 0
  *     # Now compute result above (reconstruction[x, comp]) @ components[:, comp][:, None].T
  *     for x in range(0, spikes_x):             # <<<<<<<<<<<<<<
@@ -6327,7 +6327,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     for (__pyx_t_21 = 0; __pyx_t_21 < __pyx_t_20; __pyx_t_21+=1) {
       __pyx_v_x = __pyx_t_21;
 
-      /* "sort_cython.pyx":260
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":260
  *     # Now compute result above (reconstruction[x, comp]) @ components[:, comp][:, None].T
  *     for x in range(0, spikes_x):
  *       curr_answer = reconstruction_ptr[x * spikes_y + comp]             # <<<<<<<<<<<<<<
@@ -6336,7 +6336,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
       __pyx_v_curr_answer = (__pyx_v_reconstruction_ptr[((__pyx_v_x * __pyx_v_spikes_y) + __pyx_v_comp)]);
 
-      /* "sort_cython.pyx":261
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":261
  *     for x in range(0, spikes_x):
  *       curr_answer = reconstruction_ptr[x * spikes_y + comp]
  *       for y in range(0, spikes_y):             # <<<<<<<<<<<<<<
@@ -6348,7 +6348,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
       for (__pyx_t_24 = 0; __pyx_t_24 < __pyx_t_23; __pyx_t_24+=1) {
         __pyx_v_y = __pyx_t_24;
 
-        /* "sort_cython.pyx":262
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":262
  *       curr_answer = reconstruction_ptr[x * spikes_y + comp]
  *       for y in range(0, spikes_y):
  *         reconstruction_ptr[idx_sp] = curr_answer * components_ptr[spikes_y * comp + y]             # <<<<<<<<<<<<<<
@@ -6357,7 +6357,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
         (__pyx_v_reconstruction_ptr[__pyx_v_idx_sp]) = (__pyx_v_curr_answer * (__pyx_v_components_ptr[((__pyx_v_spikes_y * __pyx_v_comp) + __pyx_v_y)]));
 
-        /* "sort_cython.pyx":263
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":263
  *       for y in range(0, spikes_y):
  *         reconstruction_ptr[idx_sp] = curr_answer * components_ptr[spikes_y * comp + y]
  *         RESS += (reconstruction_ptr[idx_sp] - spikes_ptr[spikes_x * y + x]) ** 2             # <<<<<<<<<<<<<<
@@ -6366,7 +6366,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
         __pyx_v_RESS = (__pyx_v_RESS + pow(((__pyx_v_reconstruction_ptr[__pyx_v_idx_sp]) - (__pyx_v_spikes_ptr[((__pyx_v_spikes_x * __pyx_v_y) + __pyx_v_x)])), 2.0));
 
-        /* "sort_cython.pyx":264
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":264
  *         reconstruction_ptr[idx_sp] = curr_answer * components_ptr[spikes_y * comp + y]
  *         RESS += (reconstruction_ptr[idx_sp] - spikes_ptr[spikes_x * y + x]) ** 2
  *         idx_sp += 1             # <<<<<<<<<<<<<<
@@ -6377,7 +6377,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
       }
     }
 
-    /* "sort_cython.pyx":267
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":267
  * 
  *     # Compute mean residual error over all points
  *     RESS /= spikes_x * spikes_y             # <<<<<<<<<<<<<<
@@ -6386,7 +6386,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     __pyx_v_RESS = (__pyx_v_RESS / (__pyx_v_spikes_x * __pyx_v_spikes_y));
 
-    /* "sort_cython.pyx":268
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":268
  *     # Compute mean residual error over all points
  *     RESS /= spikes_x * spikes_y
  *     resid_error_ptr[comp] = RESS             # <<<<<<<<<<<<<<
@@ -6395,7 +6395,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     (__pyx_v_resid_error_ptr[__pyx_v_comp]) = __pyx_v_RESS;
 
-    /* "sort_cython.pyx":269
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":269
  *     RESS /= spikes_x * spikes_y
  *     resid_error_ptr[comp] = RESS
  *     free(reconstruction_ptr)             # <<<<<<<<<<<<<<
@@ -6404,7 +6404,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     free(__pyx_v_reconstruction_ptr);
 
-    /* "sort_cython.pyx":270
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":270
  *     resid_error_ptr[comp] = RESS
  *     free(reconstruction_ptr)
  *     RESS = 0.0             # <<<<<<<<<<<<<<
@@ -6414,7 +6414,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __pyx_v_RESS = 0.0;
   }
 
-  /* "sort_cython.pyx":273
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":273
  * 
  *   # Optimal order of components based on reconstruction accuracy
  *   comp_order = np.argsort(resid_error)             # <<<<<<<<<<<<<<
@@ -6444,7 +6444,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_v_comp_order = __pyx_t_5;
   __pyx_t_5 = 0;
 
-  /* "sort_cython.pyx":276
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":276
  * 
  *   # Find improvement given by addition of each ordered PC
  *   cdef np.ndarray[double, ndim=1, mode="c"] vaf = np.zeros(check_comp_ssize_t)             # <<<<<<<<<<<<<<
@@ -6488,7 +6488,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_v_vaf = ((PyArrayObject *)__pyx_t_5);
   __pyx_t_5 = 0;
 
-  /* "sort_cython.pyx":277
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":277
  *   # Find improvement given by addition of each ordered PC
  *   cdef np.ndarray[double, ndim=1, mode="c"] vaf = np.zeros(check_comp_ssize_t)
  *   cdef double *vaf_ptr = &vaf[0]             # <<<<<<<<<<<<<<
@@ -6498,7 +6498,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_16 = 0;
   __pyx_v_vaf_ptr = (&(*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_vaf.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_vaf.diminfo[0].strides)));
 
-  /* "sort_cython.pyx":280
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":280
  *   cdef double PRESS
  *   # Start with PRESS as total error, i.e. no improvement
  *   spikes_ptr = &spikes[0,0]             # <<<<<<<<<<<<<<
@@ -6509,7 +6509,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_9 = 0;
   __pyx_v_spikes_ptr = (&(*__Pyx_BufPtrFortranContig2d(double *, __pyx_pybuffernd_spikes.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_spikes.diminfo[0].strides, __pyx_t_9, __pyx_pybuffernd_spikes.diminfo[1].strides)));
 
-  /* "sort_cython.pyx":281
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":281
  *   # Start with PRESS as total error, i.e. no improvement
  *   spikes_ptr = &spikes[0,0]
  *   idx_sp = 0             # <<<<<<<<<<<<<<
@@ -6518,7 +6518,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   __pyx_v_idx_sp = 0;
 
-  /* "sort_cython.pyx":282
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":282
  *   spikes_ptr = &spikes[0,0]
  *   idx_sp = 0
  *   for x in range(0, spikes_x):             # <<<<<<<<<<<<<<
@@ -6530,7 +6530,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   for (__pyx_t_18 = 0; __pyx_t_18 < __pyx_t_17; __pyx_t_18+=1) {
     __pyx_v_x = __pyx_t_18;
 
-    /* "sort_cython.pyx":283
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":283
  *   idx_sp = 0
  *   for x in range(0, spikes_x):
  *     for y in range(0, spikes_y):             # <<<<<<<<<<<<<<
@@ -6542,7 +6542,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     for (__pyx_t_21 = 0; __pyx_t_21 < __pyx_t_20; __pyx_t_21+=1) {
       __pyx_v_y = __pyx_t_21;
 
-      /* "sort_cython.pyx":284
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":284
  *   for x in range(0, spikes_x):
  *     for y in range(0, spikes_y):
  *       PRESS += spikes_ptr[idx_sp] ** 2             # <<<<<<<<<<<<<<
@@ -6551,7 +6551,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
       __pyx_v_PRESS = (__pyx_v_PRESS + pow((__pyx_v_spikes_ptr[__pyx_v_idx_sp]), 2.0));
 
-      /* "sort_cython.pyx":285
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":285
  *     for y in range(0, spikes_y):
  *       PRESS += spikes_ptr[idx_sp] ** 2
  *       idx_sp += 1             # <<<<<<<<<<<<<<
@@ -6562,7 +6562,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     }
   }
 
-  /* "sort_cython.pyx":286
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":286
  *       PRESS += spikes_ptr[idx_sp] ** 2
  *       idx_sp += 1
  *   PRESS /= spikes_x * spikes_y             # <<<<<<<<<<<<<<
@@ -6571,7 +6571,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   __pyx_v_PRESS = (__pyx_v_PRESS / (__pyx_v_spikes_x * __pyx_v_spikes_y));
 
-  /* "sort_cython.pyx":287
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":287
  *       idx_sp += 1
  *   PRESS /= spikes_x * spikes_y
  *   RESS = np.mean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)             # <<<<<<<<<<<<<<
@@ -6663,7 +6663,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __Pyx_DECREF(__pyx_t_27); __pyx_t_27 = 0;
   __pyx_v_RESS = __pyx_t_31;
 
-  /* "sort_cython.pyx":288
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":288
  *   PRESS /= spikes_x * spikes_y
  *   RESS = np.mean(np.mean((spikes - np.mean(np.mean(spikes, axis=0))) ** 2, axis=1), axis=0)
  *   vaf_ptr[0] = 1. - RESS / PRESS             # <<<<<<<<<<<<<<
@@ -6672,7 +6672,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   (__pyx_v_vaf_ptr[0]) = (1. - (__pyx_v_RESS / __pyx_v_PRESS));
 
-  /* "sort_cython.pyx":290
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":290
  *   vaf_ptr[0] = 1. - RESS / PRESS
  * 
  *   PRESS = RESS             # <<<<<<<<<<<<<<
@@ -6681,7 +6681,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   __pyx_v_PRESS = __pyx_v_RESS;
 
-  /* "sort_cython.pyx":292
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":292
  *   PRESS = RESS
  *   cdef Py_ssize_t max_vaf_components
  *   for comp in range(1, check_comp_ssize_t):             # <<<<<<<<<<<<<<
@@ -6693,7 +6693,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   for (__pyx_t_18 = 1; __pyx_t_18 < __pyx_t_17; __pyx_t_18+=1) {
     __pyx_v_comp = __pyx_t_18;
 
-    /* "sort_cython.pyx":293
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":293
  *   cdef Py_ssize_t max_vaf_components
  *   for comp in range(1, check_comp_ssize_t):
  *     reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T             # <<<<<<<<<<<<<<
@@ -6739,7 +6739,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __Pyx_XDECREF_SET(__pyx_v_reconstruction, __pyx_t_27);
     __pyx_t_27 = 0;
 
-    /* "sort_cython.pyx":294
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":294
  *   for comp in range(1, check_comp_ssize_t):
  *     reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T
  *     RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)             # <<<<<<<<<<<<<<
@@ -6791,7 +6791,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __Pyx_DECREF(__pyx_t_27); __pyx_t_27 = 0;
     __pyx_v_RESS = __pyx_t_31;
 
-    /* "sort_cython.pyx":295
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":295
  *     reconstruction = (spikes @ components[:, comp_order[0:comp]]) @ components[:, comp_order[0:comp]].T
  *     RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
  *     vaf_ptr[comp] = 1. - RESS / PRESS             # <<<<<<<<<<<<<<
@@ -6800,7 +6800,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     (__pyx_v_vaf_ptr[__pyx_v_comp]) = (1. - (__pyx_v_RESS / __pyx_v_PRESS));
 
-    /* "sort_cython.pyx":296
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":296
  *     RESS = np.mean(np.mean((reconstruction - spikes) ** 2, axis=1), axis=0)
  *     vaf_ptr[comp] = 1. - RESS / PRESS
  *     PRESS = RESS             # <<<<<<<<<<<<<<
@@ -6809,7 +6809,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     __pyx_v_PRESS = __pyx_v_RESS;
 
-    /* "sort_cython.pyx":299
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":299
  * 
  *     # Choose first local maxima
  *     if (vaf[comp] < vaf[comp - 1]):             # <<<<<<<<<<<<<<
@@ -6821,7 +6821,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __pyx_t_2 = (((*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_vaf.rcbuffer->pybuffer.buf, __pyx_t_9, __pyx_pybuffernd_vaf.diminfo[0].strides)) < (*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_vaf.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_vaf.diminfo[0].strides))) != 0);
     if (__pyx_t_2) {
 
-      /* "sort_cython.pyx":300
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":300
  *     # Choose first local maxima
  *     if (vaf[comp] < vaf[comp - 1]):
  *       break             # <<<<<<<<<<<<<<
@@ -6830,7 +6830,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
       goto __pyx_L23_break;
 
-      /* "sort_cython.pyx":299
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":299
  * 
  *     # Choose first local maxima
  *     if (vaf[comp] < vaf[comp - 1]):             # <<<<<<<<<<<<<<
@@ -6839,7 +6839,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     }
 
-    /* "sort_cython.pyx":301
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":301
  *     if (vaf[comp] < vaf[comp - 1]):
  *       break
  *     if comp == max_components:             # <<<<<<<<<<<<<<
@@ -6854,7 +6854,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     if (__pyx_t_2) {
 
-      /* "sort_cython.pyx":303
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":303
  *     if comp == max_components:
  *       # Won't use more than this so break
  *       break             # <<<<<<<<<<<<<<
@@ -6863,7 +6863,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
       goto __pyx_L23_break;
 
-      /* "sort_cython.pyx":301
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":301
  *     if (vaf[comp] < vaf[comp - 1]):
  *       break
  *     if comp == max_components:             # <<<<<<<<<<<<<<
@@ -6874,7 +6874,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   }
   __pyx_L23_break:;
 
-  /* "sort_cython.pyx":305
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":305
  *       break
  * 
  *   max_vaf_components = comp             # <<<<<<<<<<<<<<
@@ -6883,7 +6883,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   __pyx_v_max_vaf_components = __pyx_v_comp;
 
-  /* "sort_cython.pyx":306
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":306
  * 
  *   max_vaf_components = comp
  *   cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)             # <<<<<<<<<<<<<<
@@ -6922,7 +6922,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_v_is_worse_than_mean = ((PyArrayObject *)__pyx_t_5);
   __pyx_t_5 = 0;
 
-  /* "sort_cython.pyx":307
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":307
  *   max_vaf_components = comp
  *   cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
  *   cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]             # <<<<<<<<<<<<<<
@@ -6932,7 +6932,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_16 = 0;
   __pyx_v_iwtm_ptr = (&(*__Pyx_BufPtrStrided1d(npy_bool *, __pyx_pybuffernd_is_worse_than_mean.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_is_worse_than_mean.diminfo[0].strides)));
 
-  /* "sort_cython.pyx":308
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":308
  *   cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
  *   cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]
  *   if vaf_ptr[1] < 0:             # <<<<<<<<<<<<<<
@@ -6942,7 +6942,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_2 = (((__pyx_v_vaf_ptr[1]) < 0.0) != 0);
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":310
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":310
  *   if vaf_ptr[1] < 0:
  *     # First PC is worse than the mean
  *     iwtm_ptr[0] = True             # <<<<<<<<<<<<<<
@@ -6951,7 +6951,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     (__pyx_v_iwtm_ptr[0]) = 1;
 
-    /* "sort_cython.pyx":311
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":311
  *     # First PC is worse than the mean
  *     iwtm_ptr[0] = True
  *     max_vaf_components = 1             # <<<<<<<<<<<<<<
@@ -6960,7 +6960,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     __pyx_v_max_vaf_components = 1;
 
-    /* "sort_cython.pyx":308
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":308
  *   cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
  *   cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]
  *   if vaf_ptr[1] < 0:             # <<<<<<<<<<<<<<
@@ -6969,7 +6969,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   }
 
-  /* "sort_cython.pyx":314
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":314
  * 
  *   # This is to account for slice indexing and edge effects
  *   if max_vaf_components >= check_comp_ssize_t - 1:             # <<<<<<<<<<<<<<
@@ -6979,7 +6979,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_2 = ((__pyx_v_max_vaf_components >= (__pyx_v_check_comp_ssize_t - 1)) != 0);
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":316
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":316
  *   if max_vaf_components >= check_comp_ssize_t - 1:
  *     # This implies that we found no maxima before reaching the end of vaf
  *     if vaf_ptr[check_comp_ssize_t - 1] > vaf_ptr[check_comp_ssize_t - 2]:             # <<<<<<<<<<<<<<
@@ -6989,7 +6989,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __pyx_t_2 = (((__pyx_v_vaf_ptr[(__pyx_v_check_comp_ssize_t - 1)]) > (__pyx_v_vaf_ptr[(__pyx_v_check_comp_ssize_t - 2)])) != 0);
     if (__pyx_t_2) {
 
-      /* "sort_cython.pyx":318
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":318
  *     if vaf_ptr[check_comp_ssize_t - 1] > vaf_ptr[check_comp_ssize_t - 2]:
  *       # vaf still increasing so choose last point
  *       max_vaf_components = check_comp_ssize_t             # <<<<<<<<<<<<<<
@@ -6998,7 +6998,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
       __pyx_v_max_vaf_components = __pyx_v_check_comp_ssize_t;
 
-      /* "sort_cython.pyx":316
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":316
  *   if max_vaf_components >= check_comp_ssize_t - 1:
  *     # This implies that we found no maxima before reaching the end of vaf
  *     if vaf_ptr[check_comp_ssize_t - 1] > vaf_ptr[check_comp_ssize_t - 2]:             # <<<<<<<<<<<<<<
@@ -7008,7 +7008,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
       goto __pyx_L28;
     }
 
-    /* "sort_cython.pyx":321
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":321
  *     else:
  *       # vaf has become flat so choose second to last point
  *       max_vaf_components = check_comp_ssize_t - 1             # <<<<<<<<<<<<<<
@@ -7020,7 +7020,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     }
     __pyx_L28:;
 
-    /* "sort_cython.pyx":314
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":314
  * 
  *   # This is to account for slice indexing and edge effects
  *   if max_vaf_components >= check_comp_ssize_t - 1:             # <<<<<<<<<<<<<<
@@ -7029,7 +7029,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   }
 
-  /* "sort_cython.pyx":322
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":322
  *       # vaf has become flat so choose second to last point
  *       max_vaf_components = check_comp_ssize_t - 1
  *   if max_vaf_components < min_components:             # <<<<<<<<<<<<<<
@@ -7039,7 +7039,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_2 = ((__pyx_v_max_vaf_components < __pyx_v_min_components) != 0);
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":323
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":323
  *       max_vaf_components = check_comp_ssize_t - 1
  *   if max_vaf_components < min_components:
  *     max_vaf_components = min_components             # <<<<<<<<<<<<<<
@@ -7048,7 +7048,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
     __pyx_v_max_vaf_components = __pyx_v_min_components;
 
-    /* "sort_cython.pyx":322
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":322
  *       # vaf has become flat so choose second to last point
  *       max_vaf_components = check_comp_ssize_t - 1
  *   if max_vaf_components < min_components:             # <<<<<<<<<<<<<<
@@ -7057,7 +7057,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   }
 
-  /* "sort_cython.pyx":324
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":324
  *   if max_vaf_components < min_components:
  *     max_vaf_components = min_components
  *   if max_vaf_components > max_components:             # <<<<<<<<<<<<<<
@@ -7072,7 +7072,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
   if (__pyx_t_2) {
 
-    /* "sort_cython.pyx":325
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":325
  *     max_vaf_components = min_components
  *   if max_vaf_components > max_components:
  *     max_vaf_components = max_components             # <<<<<<<<<<<<<<
@@ -7082,7 +7082,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __pyx_t_7 = __Pyx_PyIndex_AsSsize_t(__pyx_v_max_components); if (unlikely((__pyx_t_7 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 325, __pyx_L1_error)
     __pyx_v_max_vaf_components = __pyx_t_7;
 
-    /* "sort_cython.pyx":324
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":324
  *   if max_vaf_components < min_components:
  *     max_vaf_components = min_components
  *   if max_vaf_components > max_components:             # <<<<<<<<<<<<<<
@@ -7091,7 +7091,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
   }
 
-  /* "sort_cython.pyx":327
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":327
  *     max_vaf_components = max_components
  * 
  *   return comp_order[0:max_vaf_components], is_worse_than_mean             # <<<<<<<<<<<<<<
@@ -7113,7 +7113,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   __pyx_t_5 = 0;
   goto __pyx_L0;
 
-  /* "sort_cython.pyx":201
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":201
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"] spikes not None,             # <<<<<<<<<<<<<<
@@ -7141,7 +7141,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_spikes.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_vaf.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("sort_cython.optimal_reconstruction_pca_order_F", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.optimal_reconstruction_pca_order_F", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -7165,7 +7165,7 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":333
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
@@ -7174,9 +7174,9 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static PyMethodDef __pyx_mdef_11sort_cython_7remove_overlap_templates = {"remove_overlap_templates", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_7remove_overlap_templates, METH_VARARGS|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_7remove_overlap_templates(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static PyMethodDef __pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_7remove_overlap_templates = {"remove_overlap_templates", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_7remove_overlap_templates, METH_VARARGS|METH_KEYWORDS, 0};
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_7remove_overlap_templates(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyArrayObject *__pyx_v_templates = 0;
   Py_ssize_t __pyx_v_n_samples_per_chan;
   Py_ssize_t __pyx_v_n_chans;
@@ -7271,13 +7271,13 @@ static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__py
   __pyx_L5_argtuple_error:;
   __Pyx_RaiseArgtupleInvalid("remove_overlap_templates", 1, 6, 6, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 333, __pyx_L3_error)
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sort_cython.remove_overlap_templates", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.remove_overlap_templates", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_templates), __pyx_ptype_5numpy_ndarray, 1, "templates", 0))) __PYX_ERR(0, 333, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_n_template_spikes), __pyx_ptype_5numpy_ndarray, 1, "n_template_spikes", 0))) __PYX_ERR(0, 335, __pyx_L1_error)
-  __pyx_r = __pyx_pf_11sort_cython_6remove_overlap_templates(__pyx_self, __pyx_v_templates, __pyx_v_n_samples_per_chan, __pyx_v_n_chans, __pyx_v_n_pre_inds, __pyx_v_n_post_inds, __pyx_v_n_template_spikes);
+  __pyx_r = __pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_6remove_overlap_templates(__pyx_self, __pyx_v_templates, __pyx_v_n_samples_per_chan, __pyx_v_n_chans, __pyx_v_n_pre_inds, __pyx_v_n_post_inds, __pyx_v_n_template_spikes);
 
   /* function exit code */
   goto __pyx_L0;
@@ -7288,7 +7288,7 @@ static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__py
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":338
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":338
  * 
  *     cdef Py_ssize_t chan, shift
  *     def get_shifted_template(template, shift):             # <<<<<<<<<<<<<<
@@ -7297,10 +7297,10 @@ static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__py
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_11sort_cython_24remove_overlap_templates_1get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_11sort_cython_24remove_overlap_templates_get_shifted_template[] = " ";
-static PyMethodDef __pyx_mdef_11sort_cython_24remove_overlap_templates_1get_shifted_template = {"get_shifted_template", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_24remove_overlap_templates_1get_shifted_template, METH_VARARGS|METH_KEYWORDS, __pyx_doc_11sort_cython_24remove_overlap_templates_get_shifted_template};
-static PyObject *__pyx_pw_11sort_cython_24remove_overlap_templates_1get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_1get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_get_shifted_template[] = " ";
+static PyMethodDef __pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_1get_shifted_template = {"get_shifted_template", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_1get_shifted_template, METH_VARARGS|METH_KEYWORDS, __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_get_shifted_template};
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_1get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyObject *__pyx_v_template = 0;
   PyObject *__pyx_v_shift = 0;
   int __pyx_lineno = 0;
@@ -7351,20 +7351,20 @@ static PyObject *__pyx_pw_11sort_cython_24remove_overlap_templates_1get_shifted_
   __pyx_L5_argtuple_error:;
   __Pyx_RaiseArgtupleInvalid("get_shifted_template", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 338, __pyx_L3_error)
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sort_cython.remove_overlap_templates.get_shifted_template", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.remove_overlap_templates.get_shifted_template", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_template(__pyx_self, __pyx_v_template, __pyx_v_shift);
+  __pyx_r = __pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_get_shifted_template(__pyx_self, __pyx_v_template, __pyx_v_shift);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_v_template, PyObject *__pyx_v_shift) {
-  struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_cur_scope;
-  struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_outer_scope;
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_v_template, PyObject *__pyx_v_shift) {
+  struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_cur_scope;
+  struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_outer_scope;
   PyObject *__pyx_v_shifted_template = NULL;
   PyObject *__pyx_v_chan = NULL;
   PyObject *__pyx_v_chan_temp = NULL;
@@ -7383,10 +7383,10 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("get_shifted_template", 0);
-  __pyx_outer_scope = (struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *) __Pyx_CyFunction_GetClosure(__pyx_self);
+  __pyx_outer_scope = (struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates *) __Pyx_CyFunction_GetClosure(__pyx_self);
   __pyx_cur_scope = __pyx_outer_scope;
 
-  /* "sort_cython.pyx":340
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":340
  *     def get_shifted_template(template, shift):
  *         """ """
  *         shifted_template = np.zeros_like(template)             # <<<<<<<<<<<<<<
@@ -7416,7 +7416,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
   __pyx_v_shifted_template = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":341
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":341
  *         """ """
  *         shifted_template = np.zeros_like(template)
  *         for chan in range(0, n_chans):             # <<<<<<<<<<<<<<
@@ -7479,7 +7479,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
     __Pyx_XDECREF_SET(__pyx_v_chan, __pyx_t_1);
     __pyx_t_1 = 0;
 
-    /* "sort_cython.pyx":342
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":342
  *         shifted_template = np.zeros_like(template)
  *         for chan in range(0, n_chans):
  *             chan_temp = template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan]             # <<<<<<<<<<<<<<
@@ -7506,7 +7506,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
     __Pyx_XDECREF_SET(__pyx_v_chan_temp, __pyx_t_6);
     __pyx_t_6 = 0;
 
-    /* "sort_cython.pyx":343
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":343
  *         for chan in range(0, n_chans):
  *             chan_temp = template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan]
  *             if shift > 0:             # <<<<<<<<<<<<<<
@@ -7518,7 +7518,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     if (__pyx_t_8) {
 
-      /* "sort_cython.pyx":345
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":345
  *             if shift > 0:
  *                 shifted_template[chan*n_samples_per_chan+shift:(chan+1)*n_samples_per_chan] = \
  *                                 chan_temp[:-shift]             # <<<<<<<<<<<<<<
@@ -7531,7 +7531,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
       __Pyx_GOTREF(__pyx_t_7);
       __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
 
-      /* "sort_cython.pyx":344
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":344
  *             chan_temp = template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan]
  *             if shift > 0:
  *                 shifted_template[chan*n_samples_per_chan+shift:(chan+1)*n_samples_per_chan] = \             # <<<<<<<<<<<<<<
@@ -7559,7 +7559,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
       __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-      /* "sort_cython.pyx":343
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":343
  *         for chan in range(0, n_chans):
  *             chan_temp = template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan]
  *             if shift > 0:             # <<<<<<<<<<<<<<
@@ -7569,7 +7569,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
       goto __pyx_L5;
     }
 
-    /* "sort_cython.pyx":348
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":348
  *             else:
  *                 shifted_template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan+shift] = \
  *                                 chan_temp[-shift:]             # <<<<<<<<<<<<<<
@@ -7583,7 +7583,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-      /* "sort_cython.pyx":347
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":347
  *                                 chan_temp[:-shift]
  *             else:
  *                 shifted_template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan+shift] = \             # <<<<<<<<<<<<<<
@@ -7613,7 +7613,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
     }
     __pyx_L5:;
 
-    /* "sort_cython.pyx":341
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":341
  *         """ """
  *         shifted_template = np.zeros_like(template)
  *         for chan in range(0, n_chans):             # <<<<<<<<<<<<<<
@@ -7623,7 +7623,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
   }
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
 
-  /* "sort_cython.pyx":349
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":349
  *                 shifted_template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan+shift] = \
  *                                 chan_temp[-shift:]
  *         return shifted_template             # <<<<<<<<<<<<<<
@@ -7635,7 +7635,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
   __pyx_r = __pyx_v_shifted_template;
   goto __pyx_L0;
 
-  /* "sort_cython.pyx":338
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":338
  * 
  *     cdef Py_ssize_t chan, shift
  *     def get_shifted_template(template, shift):             # <<<<<<<<<<<<<<
@@ -7651,7 +7651,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
   __Pyx_XDECREF(__pyx_t_6);
   __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_9);
-  __Pyx_AddTraceback("sort_cython.remove_overlap_templates.get_shifted_template", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.remove_overlap_templates.get_shifted_template", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_shifted_template);
@@ -7662,7 +7662,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":333
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
@@ -7670,8 +7670,8 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
  *         int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
  */
 
-static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, PyArrayObject *__pyx_v_n_template_spikes) {
-  struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_cur_scope;
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, PyArrayObject *__pyx_v_n_template_spikes) {
+  struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_cur_scope;
   PyObject *__pyx_v_get_shifted_template = 0;
   PyObject *__pyx_v_templates_to_delete = NULL;
   PyObject *__pyx_v_templates_SS = NULL;
@@ -7733,9 +7733,9 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("remove_overlap_templates", 0);
-  __pyx_cur_scope = (struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *)__pyx_tp_new_11sort_cython___pyx_scope_struct__remove_overlap_templates(__pyx_ptype_11sort_cython___pyx_scope_struct__remove_overlap_templates, __pyx_empty_tuple, NULL);
+  __pyx_cur_scope = (struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates *)__pyx_tp_new_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates(__pyx_ptype_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates, __pyx_empty_tuple, NULL);
   if (unlikely(!__pyx_cur_scope)) {
-    __pyx_cur_scope = ((struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *)Py_None);
+    __pyx_cur_scope = ((struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates *)Py_None);
     __Pyx_INCREF(Py_None);
     __PYX_ERR(0, 333, __pyx_L1_error)
   } else {
@@ -7762,19 +7762,19 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   }
   __pyx_pybuffernd_n_template_spikes.diminfo[0].strides = __pyx_pybuffernd_n_template_spikes.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_n_template_spikes.diminfo[0].shape = __pyx_pybuffernd_n_template_spikes.rcbuffer->pybuffer.shape[0];
 
-  /* "sort_cython.pyx":338
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":338
  * 
  *     cdef Py_ssize_t chan, shift
  *     def get_shifted_template(template, shift):             # <<<<<<<<<<<<<<
  *         """ """
  *         shifted_template = np.zeros_like(template)
  */
-  __pyx_t_1 = __Pyx_CyFunction_New(&__pyx_mdef_11sort_cython_24remove_overlap_templates_1get_shifted_template, 0, __pyx_n_s_remove_overlap_templates_locals, ((PyObject*)__pyx_cur_scope), __pyx_n_s_sort_cython, __pyx_d, ((PyObject *)__pyx_codeobj__7)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 338, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_CyFunction_New(&__pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_1get_shifted_template, 0, __pyx_n_s_remove_overlap_templates_locals, ((PyObject*)__pyx_cur_scope), __pyx_n_s_spikesorting_fullpursuit_c_cytho_2, __pyx_d, ((PyObject *)__pyx_codeobj__7)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 338, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_get_shifted_template = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":352
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":352
  * 
  * 
  *     templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)             # <<<<<<<<<<<<<<
@@ -7810,7 +7810,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   __pyx_v_templates_to_delete = __pyx_t_5;
   __pyx_t_5 = 0;
 
-  /* "sort_cython.pyx":353
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":353
  * 
  *     templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
  *     if templates.shape[0] < 3:             # <<<<<<<<<<<<<<
@@ -7820,7 +7820,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   __pyx_t_6 = (((__pyx_v_templates->dimensions[0]) < 3) != 0);
   if (__pyx_t_6) {
 
-    /* "sort_cython.pyx":355
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":355
  *     if templates.shape[0] < 3:
  *         # Need at least 3 templates for one to be sum of two others
  *         return templates_to_delete             # <<<<<<<<<<<<<<
@@ -7832,7 +7832,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __pyx_r = __pyx_v_templates_to_delete;
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":353
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":353
  * 
  *     templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
  *     if templates.shape[0] < 3:             # <<<<<<<<<<<<<<
@@ -7841,7 +7841,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
   }
 
-  /* "sort_cython.pyx":356
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":356
  *         # Need at least 3 templates for one to be sum of two others
  *         return templates_to_delete
  *     templates_SS = np.sum(templates ** 2, axis=1)             # <<<<<<<<<<<<<<
@@ -7871,7 +7871,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   __pyx_v_templates_SS = __pyx_t_2;
   __pyx_t_2 = 0;
 
-  /* "sort_cython.pyx":357
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":357
  *         return templates_to_delete
  *     templates_SS = np.sum(templates ** 2, axis=1)
  *     sum_n1_n2_template = np.zeros(templates.shape[1])             # <<<<<<<<<<<<<<
@@ -7904,7 +7904,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   __pyx_v_sum_n1_n2_template = __pyx_t_2;
   __pyx_t_2 = 0;
 
-  /* "sort_cython.pyx":361
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":361
  *     # Compute the possible template shifts up front so not iteratively repeating
  *     # the same computation over and over again
  *     all_template_shifts = []             # <<<<<<<<<<<<<<
@@ -7916,7 +7916,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   __pyx_v_all_template_shifts = ((PyObject*)__pyx_t_2);
   __pyx_t_2 = 0;
 
-  /* "sort_cython.pyx":363
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":363
  *     all_template_shifts = []
  *     cdef Py_ssize_t t, as_ind
  *     for t in range(0, templates.shape[0]):             # <<<<<<<<<<<<<<
@@ -7928,7 +7928,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   for (__pyx_t_9 = 0; __pyx_t_9 < __pyx_t_8; __pyx_t_9+=1) {
     __pyx_v_t = __pyx_t_9;
 
-    /* "sort_cython.pyx":364
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":364
  *     cdef Py_ssize_t t, as_ind
  *     for t in range(0, templates.shape[0]):
  *         all_shifts = np.zeros((n_post_inds+1 + n_pre_inds, templates.shape[1]))             # <<<<<<<<<<<<<<
@@ -7971,7 +7971,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_XDECREF_SET(__pyx_v_all_shifts, __pyx_t_2);
     __pyx_t_2 = 0;
 
-    /* "sort_cython.pyx":365
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":365
  *     for t in range(0, templates.shape[0]):
  *         all_shifts = np.zeros((n_post_inds+1 + n_pre_inds, templates.shape[1]))
  *         as_ind = 0             # <<<<<<<<<<<<<<
@@ -7980,7 +7980,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
     __pyx_v_as_ind = 0;
 
-    /* "sort_cython.pyx":366
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":366
  *         all_shifts = np.zeros((n_post_inds+1 + n_pre_inds, templates.shape[1]))
  *         as_ind = 0
  *         for s in range(-n_pre_inds, n_post_inds+1):             # <<<<<<<<<<<<<<
@@ -7992,7 +7992,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     for (__pyx_t_12 = (-__pyx_v_n_pre_inds); __pyx_t_12 < __pyx_t_11; __pyx_t_12+=1) {
       __pyx_v_s = __pyx_t_12;
 
-      /* "sort_cython.pyx":367
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":367
  *         as_ind = 0
  *         for s in range(-n_pre_inds, n_post_inds+1):
  *             all_shifts[as_ind, :] = get_shifted_template(templates[t, :], s)             # <<<<<<<<<<<<<<
@@ -8014,7 +8014,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __pyx_t_5 = __Pyx_PyInt_From_int64_t(__pyx_v_s); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 367, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_4 = __pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_template(__pyx_v_get_shifted_template, __pyx_t_2, __pyx_t_5); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 367, __pyx_L1_error)
+      __pyx_t_4 = __pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_24remove_overlap_templates_get_shifted_template(__pyx_v_get_shifted_template, __pyx_t_2, __pyx_t_5); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 367, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_4);
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -8032,7 +8032,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
 
-      /* "sort_cython.pyx":368
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":368
  *         for s in range(-n_pre_inds, n_post_inds+1):
  *             all_shifts[as_ind, :] = get_shifted_template(templates[t, :], s)
  *             as_ind += 1             # <<<<<<<<<<<<<<
@@ -8042,7 +8042,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __pyx_v_as_ind = (__pyx_v_as_ind + 1);
     }
 
-    /* "sort_cython.pyx":369
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":369
  *             all_shifts[as_ind, :] = get_shifted_template(templates[t, :], s)
  *             as_ind += 1
  *         all_template_shifts.append(all_shifts)             # <<<<<<<<<<<<<<
@@ -8052,7 +8052,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __pyx_t_13 = __Pyx_PyList_Append(__pyx_v_all_template_shifts, __pyx_v_all_shifts); if (unlikely(__pyx_t_13 == ((int)-1))) __PYX_ERR(0, 369, __pyx_L1_error)
   }
 
-  /* "sort_cython.pyx":372
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":372
  * 
  *     # Check in order of descending template sum squared
  *     template_SS_order = np.argsort(templates_SS)[-1::-1]             # <<<<<<<<<<<<<<
@@ -8085,7 +8085,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   __pyx_v_template_SS_order = __pyx_t_5;
   __pyx_t_5 = 0;
 
-  /* "sort_cython.pyx":374
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":374
  *     template_SS_order = np.argsort(templates_SS)[-1::-1]
  *     cdef Py_ssize_t test_unit, n1, n2, s1_ind, s2_ind
  *     for test_unit in template_SS_order:             # <<<<<<<<<<<<<<
@@ -8135,7 +8135,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
     __pyx_v_test_unit = __pyx_t_15;
 
-    /* "sort_cython.pyx":375
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":375
  *     cdef Py_ssize_t test_unit, n1, n2, s1_ind, s2_ind
  *     for test_unit in template_SS_order:
  *         test_template = templates[test_unit, :]             # <<<<<<<<<<<<<<
@@ -8158,7 +8158,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_XDECREF_SET(__pyx_v_test_template, __pyx_t_4);
     __pyx_t_4 = 0;
 
-    /* "sort_cython.pyx":377
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":377
  *         test_template = templates[test_unit, :]
  * 
  *         min_residual_SS = np.inf             # <<<<<<<<<<<<<<
@@ -8173,7 +8173,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_XDECREF_SET(__pyx_v_min_residual_SS, __pyx_t_2);
     __pyx_t_2 = 0;
 
-    /* "sort_cython.pyx":378
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":378
  * 
  *         min_residual_SS = np.inf
  *         best_pair = None             # <<<<<<<<<<<<<<
@@ -8183,7 +8183,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_INCREF(Py_None);
     __Pyx_XDECREF_SET(__pyx_v_best_pair, ((PyObject*)Py_None));
 
-    /* "sort_cython.pyx":379
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":379
  *         min_residual_SS = np.inf
  *         best_pair = None
  *         best_shifts = None             # <<<<<<<<<<<<<<
@@ -8193,7 +8193,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_INCREF(Py_None);
     __Pyx_XDECREF_SET(__pyx_v_best_shifts, ((PyObject*)Py_None));
 
-    /* "sort_cython.pyx":380
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":380
  *         best_pair = None
  *         best_shifts = None
  *         best_inds = None             # <<<<<<<<<<<<<<
@@ -8203,7 +8203,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_INCREF(Py_None);
     __Pyx_XDECREF_SET(__pyx_v_best_inds, ((PyObject*)Py_None));
 
-    /* "sort_cython.pyx":382
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":382
  *         best_inds = None
  * 
  *         for n1 in range(0, templates.shape[0]):             # <<<<<<<<<<<<<<
@@ -8215,7 +8215,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     for (__pyx_t_15 = 0; __pyx_t_15 < __pyx_t_8; __pyx_t_15+=1) {
       __pyx_v_n1 = __pyx_t_15;
 
-      /* "sort_cython.pyx":383
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":383
  * 
  *         for n1 in range(0, templates.shape[0]):
  *             if (n_template_spikes[n1] < 5*n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
@@ -8235,7 +8235,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __pyx_L13_bool_binop_done:;
       if (__pyx_t_6) {
 
-        /* "sort_cython.pyx":384
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":384
  *         for n1 in range(0, templates.shape[0]):
  *             if (n_template_spikes[n1] < 5*n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
  *                 continue             # <<<<<<<<<<<<<<
@@ -8244,7 +8244,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
         goto __pyx_L10_continue;
 
-        /* "sort_cython.pyx":383
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":383
  * 
  *         for n1 in range(0, templates.shape[0]):
  *             if (n_template_spikes[n1] < 5*n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
@@ -8253,7 +8253,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
       }
 
-      /* "sort_cython.pyx":385
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":385
  *             if (n_template_spikes[n1] < 5*n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
  *                 continue
  *             if templates_to_delete[n1]:             # <<<<<<<<<<<<<<
@@ -8266,7 +8266,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
       if (__pyx_t_6) {
 
-        /* "sort_cython.pyx":386
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":386
  *                 continue
  *             if templates_to_delete[n1]:
  *               continue             # <<<<<<<<<<<<<<
@@ -8275,7 +8275,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
         goto __pyx_L10_continue;
 
-        /* "sort_cython.pyx":385
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":385
  *             if (n_template_spikes[n1] < 5*n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
  *                 continue
  *             if templates_to_delete[n1]:             # <<<<<<<<<<<<<<
@@ -8284,7 +8284,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
       }
 
-      /* "sort_cython.pyx":387
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":387
  *             if templates_to_delete[n1]:
  *               continue
  *             template_1 = templates[n1, :]             # <<<<<<<<<<<<<<
@@ -8307,7 +8307,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __Pyx_XDECREF_SET(__pyx_v_template_1, __pyx_t_2);
       __pyx_t_2 = 0;
 
-      /* "sort_cython.pyx":389
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":389
  *             template_1 = templates[n1, :]
  * 
  *             for n2 in range(n1+1, templates.shape[0]):             # <<<<<<<<<<<<<<
@@ -8319,7 +8319,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       for (__pyx_t_21 = (__pyx_v_n1 + 1); __pyx_t_21 < __pyx_t_20; __pyx_t_21+=1) {
         __pyx_v_n2 = __pyx_t_21;
 
-        /* "sort_cython.pyx":390
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":390
  * 
  *             for n2 in range(n1+1, templates.shape[0]):
  *                 if (n_template_spikes[n2] < 5*n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
@@ -8339,7 +8339,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
         __pyx_L19_bool_binop_done:;
         if (__pyx_t_6) {
 
-          /* "sort_cython.pyx":391
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":391
  *             for n2 in range(n1+1, templates.shape[0]):
  *                 if (n_template_spikes[n2] < 5*n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
  *                     continue             # <<<<<<<<<<<<<<
@@ -8348,7 +8348,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
           goto __pyx_L16_continue;
 
-          /* "sort_cython.pyx":390
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":390
  * 
  *             for n2 in range(n1+1, templates.shape[0]):
  *                 if (n_template_spikes[n2] < 5*n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
@@ -8357,7 +8357,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
         }
 
-        /* "sort_cython.pyx":392
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":392
  *                 if (n_template_spikes[n2] < 5*n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
  *                     continue
  *                 if templates_to_delete[n2]:             # <<<<<<<<<<<<<<
@@ -8370,7 +8370,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
         __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
         if (__pyx_t_6) {
 
-          /* "sort_cython.pyx":393
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":393
  *                     continue
  *                 if templates_to_delete[n2]:
  *                   continue             # <<<<<<<<<<<<<<
@@ -8379,7 +8379,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
           goto __pyx_L16_continue;
 
-          /* "sort_cython.pyx":392
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":392
  *                 if (n_template_spikes[n2] < 5*n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
  *                     continue
  *                 if templates_to_delete[n2]:             # <<<<<<<<<<<<<<
@@ -8388,7 +8388,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
         }
 
-        /* "sort_cython.pyx":394
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":394
  *                 if templates_to_delete[n2]:
  *                   continue
  *                 template_2 = templates[n2, :]             # <<<<<<<<<<<<<<
@@ -8411,7 +8411,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
         __Pyx_XDECREF_SET(__pyx_v_template_2, __pyx_t_2);
         __pyx_t_2 = 0;
 
-        /* "sort_cython.pyx":396
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":396
  *                 template_2 = templates[n2, :]
  * 
  *                 s1_ind = 0             # <<<<<<<<<<<<<<
@@ -8420,7 +8420,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
         __pyx_v_s1_ind = 0;
 
-        /* "sort_cython.pyx":397
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":397
  * 
  *                 s1_ind = 0
  *                 for shift1 in range(-n_pre_inds, n_post_inds+1):             # <<<<<<<<<<<<<<
@@ -8432,7 +8432,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
         for (__pyx_t_12 = (-__pyx_v_n_pre_inds); __pyx_t_12 < __pyx_t_11; __pyx_t_12+=1) {
           __pyx_v_shift1 = __pyx_t_12;
 
-          /* "sort_cython.pyx":398
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":398
  *                 s1_ind = 0
  *                 for shift1 in range(-n_pre_inds, n_post_inds+1):
  *                     shifted_t1 = all_template_shifts[n1][s1_ind, :]             # <<<<<<<<<<<<<<
@@ -8455,7 +8455,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
           __Pyx_XDECREF_SET(__pyx_v_shifted_t1, __pyx_t_2);
           __pyx_t_2 = 0;
 
-          /* "sort_cython.pyx":399
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":399
  *                 for shift1 in range(-n_pre_inds, n_post_inds+1):
  *                     shifted_t1 = all_template_shifts[n1][s1_ind, :]
  *                     s2_ind = 0             # <<<<<<<<<<<<<<
@@ -8464,7 +8464,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
           __pyx_v_s2_ind = 0;
 
-          /* "sort_cython.pyx":400
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":400
  *                     shifted_t1 = all_template_shifts[n1][s1_ind, :]
  *                     s2_ind = 0
  *                     for shift2 in range(-n_pre_inds, n_post_inds+1):             # <<<<<<<<<<<<<<
@@ -8476,7 +8476,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
           for (__pyx_t_24 = (-__pyx_v_n_pre_inds); __pyx_t_24 < __pyx_t_23; __pyx_t_24+=1) {
             __pyx_v_shift2 = __pyx_t_24;
 
-            /* "sort_cython.pyx":402
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":402
  *                     for shift2 in range(-n_pre_inds, n_post_inds+1):
  *                         # Copy data from t1 shift into sum
  *                         sum_n1_n2_template[:] = shifted_t1[:]             # <<<<<<<<<<<<<<
@@ -8488,7 +8488,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
             if (__Pyx_PyObject_SetSlice(__pyx_v_sum_n1_n2_template, __pyx_t_2, 0, 0, NULL, NULL, &__pyx_slice__4, 0, 0, 0) < 0) __PYX_ERR(0, 402, __pyx_L1_error)
             __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-            /* "sort_cython.pyx":403
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":403
  *                         # Copy data from t1 shift into sum
  *                         sum_n1_n2_template[:] = shifted_t1[:]
  *                         shifted_t2 = all_template_shifts[n2][s2_ind, :]             # <<<<<<<<<<<<<<
@@ -8511,7 +8511,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
             __Pyx_XDECREF_SET(__pyx_v_shifted_t2, __pyx_t_2);
             __pyx_t_2 = 0;
 
-            /* "sort_cython.pyx":404
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":404
  *                         sum_n1_n2_template[:] = shifted_t1[:]
  *                         shifted_t2 = all_template_shifts[n2][s2_ind, :]
  *                         sum_n1_n2_template += shifted_t2             # <<<<<<<<<<<<<<
@@ -8523,7 +8523,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
             __Pyx_DECREF_SET(__pyx_v_sum_n1_n2_template, __pyx_t_2);
             __pyx_t_2 = 0;
 
-            /* "sort_cython.pyx":406
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":406
  *                         sum_n1_n2_template += shifted_t2
  * 
  *                         residual_SS = np.sum((test_template - sum_n1_n2_template) ** 2)             # <<<<<<<<<<<<<<
@@ -8559,7 +8559,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
             __Pyx_XDECREF_SET(__pyx_v_residual_SS, __pyx_t_2);
             __pyx_t_2 = 0;
 
-            /* "sort_cython.pyx":407
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":407
  * 
  *                         residual_SS = np.sum((test_template - sum_n1_n2_template) ** 2)
  *                         if residual_SS < min_residual_SS:             # <<<<<<<<<<<<<<
@@ -8571,7 +8571,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
             __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
             if (__pyx_t_6) {
 
-              /* "sort_cython.pyx":408
+              /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":408
  *                         residual_SS = np.sum((test_template - sum_n1_n2_template) ** 2)
  *                         if residual_SS < min_residual_SS:
  *                             min_residual_SS = residual_SS             # <<<<<<<<<<<<<<
@@ -8581,7 +8581,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
               __Pyx_INCREF(__pyx_v_residual_SS);
               __Pyx_DECREF_SET(__pyx_v_min_residual_SS, __pyx_v_residual_SS);
 
-              /* "sort_cython.pyx":409
+              /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":409
  *                         if residual_SS < min_residual_SS:
  *                             min_residual_SS = residual_SS
  *                             best_pair = [n1, n2]             # <<<<<<<<<<<<<<
@@ -8603,7 +8603,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
               __Pyx_DECREF_SET(__pyx_v_best_pair, ((PyObject*)__pyx_t_3));
               __pyx_t_3 = 0;
 
-              /* "sort_cython.pyx":410
+              /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":410
  *                             min_residual_SS = residual_SS
  *                             best_pair = [n1, n2]
  *                             best_shifts = [shift1, shift2]             # <<<<<<<<<<<<<<
@@ -8625,7 +8625,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
               __Pyx_DECREF_SET(__pyx_v_best_shifts, ((PyObject*)__pyx_t_2));
               __pyx_t_2 = 0;
 
-              /* "sort_cython.pyx":411
+              /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":411
  *                             best_pair = [n1, n2]
  *                             best_shifts = [shift1, shift2]
  *                             best_inds = [s1_ind, s2_ind]             # <<<<<<<<<<<<<<
@@ -8647,7 +8647,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
               __Pyx_DECREF_SET(__pyx_v_best_inds, ((PyObject*)__pyx_t_3));
               __pyx_t_3 = 0;
 
-              /* "sort_cython.pyx":407
+              /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":407
  * 
  *                         residual_SS = np.sum((test_template - sum_n1_n2_template) ** 2)
  *                         if residual_SS < min_residual_SS:             # <<<<<<<<<<<<<<
@@ -8656,7 +8656,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
             }
 
-            /* "sort_cython.pyx":413
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":413
  *                             best_inds = [s1_ind, s2_ind]
  * 
  *                         s2_ind += 1             # <<<<<<<<<<<<<<
@@ -8666,7 +8666,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
             __pyx_v_s2_ind = (__pyx_v_s2_ind + 1);
           }
 
-          /* "sort_cython.pyx":414
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":414
  * 
  *                         s2_ind += 1
  *                     s1_ind += 1             # <<<<<<<<<<<<<<
@@ -8680,7 +8680,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __pyx_L10_continue:;
     }
 
-    /* "sort_cython.pyx":416
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":416
  *                     s1_ind += 1
  *         # print("MIN RESIDUAL", min_residual_SS)
  *         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:             # <<<<<<<<<<<<<<
@@ -8701,7 +8701,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     if (__pyx_t_6) {
 
-      /* "sort_cython.pyx":417
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":417
  *         # print("MIN RESIDUAL", min_residual_SS)
  *         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:
  *             templates_to_delete[test_unit] = True             # <<<<<<<<<<<<<<
@@ -8710,7 +8710,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
       if (unlikely(__Pyx_SetItemInt(__pyx_v_templates_to_delete, __pyx_v_test_unit, Py_True, Py_ssize_t, 1, PyInt_FromSsize_t, 0, 0, 0) < 0)) __PYX_ERR(0, 417, __pyx_L1_error)
 
-      /* "sort_cython.pyx":416
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":416
  *                     s1_ind += 1
  *         # print("MIN RESIDUAL", min_residual_SS)
  *         if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:             # <<<<<<<<<<<<<<
@@ -8719,7 +8719,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
     }
 
-    /* "sort_cython.pyx":374
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":374
  *     template_SS_order = np.argsort(templates_SS)[-1::-1]
  *     cdef Py_ssize_t test_unit, n1, n2, s1_ind, s2_ind
  *     for test_unit in template_SS_order:             # <<<<<<<<<<<<<<
@@ -8729,7 +8729,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   }
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
-  /* "sort_cython.pyx":419
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":419
  *             templates_to_delete[test_unit] = True
  * 
  *     return templates_to_delete             # <<<<<<<<<<<<<<
@@ -8741,7 +8741,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   __pyx_r = __pyx_v_templates_to_delete;
   goto __pyx_L0;
 
-  /* "sort_cython.pyx":333
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
@@ -8763,7 +8763,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_n_template_spikes.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_templates.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("sort_cython.remove_overlap_templates", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.remove_overlap_templates", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -8793,7 +8793,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":424
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":424
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def compute_cluster_centroid(double[:, ::1] scores not None,             # <<<<<<<<<<<<<<
@@ -8802,10 +8802,10 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_11sort_cython_9compute_cluster_centroid(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_11sort_cython_8compute_cluster_centroid[] = "np.ndarray[np.double_t, ndim=1]\n  Compute the mean of scores corresponding to a given label along axis=0.\n\n  Returns a vector of the selected mean scores. If label is not found in the\n  vector labels, centroid is return as a numpy array of np.nan.\n\n  Compute the centroids of the a given cluster given the scores and labels\n  for each spike. The centroid is just given by the mean of all of the\n  selected points corresponding to the input label in the vector labels.\n\n  Parameters\n  ----------\n  scores : numpy ndarray float64\n      Each row of data will be treated as an observation and each column as a\n      dimension over which distance will be computed.  Must be two\n      dimensional.\n  labels : numpy ndarray int64_t\n      Must be a one dimensional vector such that labels.size =\n      scores.shape[0].  Each element of label indicates the cluster group to\n      which the corresponding row of scores belongs.\n  label : int64_t\n      Indicates the cluster label to average over.  All labels == label will\n      be used to compute the average for the output.\n\n  Returns\n  -------\n  centroid : numpy ndarray\n      A new array the size of scores.shape[1] indicating the mean value\n      over all scores belonging to the cluster indicated by label.\n  ";
-static PyMethodDef __pyx_mdef_11sort_cython_9compute_cluster_centroid = {"compute_cluster_centroid", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_9compute_cluster_centroid, METH_VARARGS|METH_KEYWORDS, __pyx_doc_11sort_cython_8compute_cluster_centroid};
-static PyObject *__pyx_pw_11sort_cython_9compute_cluster_centroid(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_9compute_cluster_centroid(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_8compute_cluster_centroid[] = "np.ndarray[np.double_t, ndim=1]\n  Compute the mean of scores corresponding to a given label along axis=0.\n\n  Returns a vector of the selected mean scores. If label is not found in the\n  vector labels, centroid is return as a numpy array of np.nan.\n\n  Compute the centroids of the a given cluster given the scores and labels\n  for each spike. The centroid is just given by the mean of all of the\n  selected points corresponding to the input label in the vector labels.\n\n  Parameters\n  ----------\n  scores : numpy ndarray float64\n      Each row of data will be treated as an observation and each column as a\n      dimension over which distance will be computed.  Must be two\n      dimensional.\n  labels : numpy ndarray int64_t\n      Must be a one dimensional vector such that labels.size =\n      scores.shape[0].  Each element of label indicates the cluster group to\n      which the corresponding row of scores belongs.\n  label : int64_t\n      Indicates the cluster label to average over.  All labels == label will\n      be used to compute the average for the output.\n\n  Returns\n  -------\n  centroid : numpy ndarray\n      A new array the size of scores.shape[1] indicating the mean value\n      over all scores belonging to the cluster indicated by label.\n  ";
+static PyMethodDef __pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_9compute_cluster_centroid = {"compute_cluster_centroid", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_9compute_cluster_centroid, METH_VARARGS|METH_KEYWORDS, __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_8compute_cluster_centroid};
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_9compute_cluster_centroid(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   __Pyx_memviewslice __pyx_v_scores = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_labels = { 0, 0, { 0 }, { 0 }, { 0 } };
   int64_t __pyx_v_label;
@@ -8867,7 +8867,7 @@ static PyObject *__pyx_pw_11sort_cython_9compute_cluster_centroid(PyObject *__py
   __pyx_L5_argtuple_error:;
   __Pyx_RaiseArgtupleInvalid("compute_cluster_centroid", 1, 3, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 424, __pyx_L3_error)
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sort_cython.compute_cluster_centroid", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.compute_cluster_centroid", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
@@ -8877,7 +8877,7 @@ static PyObject *__pyx_pw_11sort_cython_9compute_cluster_centroid(PyObject *__py
   if (unlikely(((PyObject *)__pyx_v_labels.memview) == Py_None)) {
     PyErr_Format(PyExc_TypeError, "Argument '%.200s' must not be None", "labels"); __PYX_ERR(0, 425, __pyx_L1_error)
   }
-  __pyx_r = __pyx_pf_11sort_cython_8compute_cluster_centroid(__pyx_self, __pyx_v_scores, __pyx_v_labels, __pyx_v_label);
+  __pyx_r = __pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_8compute_cluster_centroid(__pyx_self, __pyx_v_scores, __pyx_v_labels, __pyx_v_label);
 
   /* function exit code */
   goto __pyx_L0;
@@ -8888,7 +8888,7 @@ static PyObject *__pyx_pw_11sort_cython_9compute_cluster_centroid(PyObject *__py
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, int64_t __pyx_v_label) {
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, int64_t __pyx_v_label) {
   Py_ssize_t __pyx_v_x;
   Py_ssize_t __pyx_v_y;
   int64_t __pyx_v_n_points;
@@ -8924,7 +8924,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
   __pyx_pybuffernd_centroid.data = NULL;
   __pyx_pybuffernd_centroid.rcbuffer = &__pyx_pybuffer_centroid;
 
-  /* "sort_cython.pyx":457
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":457
  *   """
  *   cdef Py_ssize_t x, y
  *   cdef int64_t n_points = 0             # <<<<<<<<<<<<<<
@@ -8933,7 +8933,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
  */
   __pyx_v_n_points = 0;
 
-  /* "sort_cython.pyx":458
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":458
  *   cdef Py_ssize_t x, y
  *   cdef int64_t n_points = 0
  *   cdef np.ndarray[double, ndim=1, mode="c"] centroid = np.zeros(scores.shape[1])             # <<<<<<<<<<<<<<
@@ -8977,7 +8977,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
   __pyx_v_centroid = ((PyArrayObject *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":459
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":459
  *   cdef int64_t n_points = 0
  *   cdef np.ndarray[double, ndim=1, mode="c"] centroid = np.zeros(scores.shape[1])
  *   cdef double *centroid_ptr = &centroid[0]             # <<<<<<<<<<<<<<
@@ -8987,7 +8987,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
   __pyx_t_6 = 0;
   __pyx_v_centroid_ptr = (&(*__Pyx_BufPtrCContig1d(double *, __pyx_pybuffernd_centroid.rcbuffer->pybuffer.buf, __pyx_t_6, __pyx_pybuffernd_centroid.diminfo[0].strides)));
 
-  /* "sort_cython.pyx":461
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":461
  *   cdef double *centroid_ptr = &centroid[0]
  * 
  *   for x in range(0, labels.shape[0]):             # <<<<<<<<<<<<<<
@@ -8999,7 +8999,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
   for (__pyx_t_9 = 0; __pyx_t_9 < __pyx_t_8; __pyx_t_9+=1) {
     __pyx_v_x = __pyx_t_9;
 
-    /* "sort_cython.pyx":462
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":462
  * 
  *   for x in range(0, labels.shape[0]):
  *     if labels[x] == label:             # <<<<<<<<<<<<<<
@@ -9010,7 +9010,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
     __pyx_t_10 = (((*((int64_t *) ( /* dim=0 */ ((char *) (((int64_t *) __pyx_v_labels.data) + __pyx_t_6)) ))) == __pyx_v_label) != 0);
     if (__pyx_t_10) {
 
-      /* "sort_cython.pyx":463
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":463
  *   for x in range(0, labels.shape[0]):
  *     if labels[x] == label:
  *       n_points += 1             # <<<<<<<<<<<<<<
@@ -9019,7 +9019,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
  */
       __pyx_v_n_points = (__pyx_v_n_points + 1);
 
-      /* "sort_cython.pyx":464
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":464
  *     if labels[x] == label:
  *       n_points += 1
  *       for y in range(0, scores.shape[1]):             # <<<<<<<<<<<<<<
@@ -9031,7 +9031,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
       for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_12; __pyx_t_13+=1) {
         __pyx_v_y = __pyx_t_13;
 
-        /* "sort_cython.pyx":465
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":465
  *       n_points += 1
  *       for y in range(0, scores.shape[1]):
  *         centroid_ptr[y] += scores[x, y]             # <<<<<<<<<<<<<<
@@ -9044,7 +9044,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
         (__pyx_v_centroid_ptr[__pyx_t_14]) = ((__pyx_v_centroid_ptr[__pyx_t_14]) + (*((double *) ( /* dim=1 */ ((char *) (((double *) ( /* dim=0 */ (__pyx_v_scores.data + __pyx_t_6 * __pyx_v_scores.strides[0]) )) + __pyx_t_15)) ))));
       }
 
-      /* "sort_cython.pyx":462
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":462
  * 
  *   for x in range(0, labels.shape[0]):
  *     if labels[x] == label:             # <<<<<<<<<<<<<<
@@ -9054,7 +9054,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
     }
   }
 
-  /* "sort_cython.pyx":466
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":466
  *       for y in range(0, scores.shape[1]):
  *         centroid_ptr[y] += scores[x, y]
  *   if n_points > 0:             # <<<<<<<<<<<<<<
@@ -9064,7 +9064,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
   __pyx_t_10 = ((__pyx_v_n_points > 0) != 0);
   if (__pyx_t_10) {
 
-    /* "sort_cython.pyx":467
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":467
  *         centroid_ptr[y] += scores[x, y]
  *   if n_points > 0:
  *     for y in range(0, centroid.shape[0]):             # <<<<<<<<<<<<<<
@@ -9076,7 +9076,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
     for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_17; __pyx_t_7+=1) {
       __pyx_v_y = __pyx_t_7;
 
-      /* "sort_cython.pyx":468
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":468
  *   if n_points > 0:
  *     for y in range(0, centroid.shape[0]):
  *       centroid_ptr[y] /= n_points             # <<<<<<<<<<<<<<
@@ -9087,7 +9087,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
       (__pyx_v_centroid_ptr[__pyx_t_8]) = ((__pyx_v_centroid_ptr[__pyx_t_8]) / __pyx_v_n_points);
     }
 
-    /* "sort_cython.pyx":466
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":466
  *       for y in range(0, scores.shape[1]):
  *         centroid_ptr[y] += scores[x, y]
  *   if n_points > 0:             # <<<<<<<<<<<<<<
@@ -9097,7 +9097,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
     goto __pyx_L8;
   }
 
-  /* "sort_cython.pyx":471
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":471
  *   else:
  *     # No centroid matching requested label so returns nans
  *     for y in range(0, centroid.shape[0]):             # <<<<<<<<<<<<<<
@@ -9110,7 +9110,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
     for (__pyx_t_7 = 0; __pyx_t_7 < __pyx_t_17; __pyx_t_7+=1) {
       __pyx_v_y = __pyx_t_7;
 
-      /* "sort_cython.pyx":472
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":472
  *     # No centroid matching requested label so returns nans
  *     for y in range(0, centroid.shape[0]):
  *       centroid_ptr[y] = NAN             # <<<<<<<<<<<<<<
@@ -9122,7 +9122,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
   }
   __pyx_L8:;
 
-  /* "sort_cython.pyx":473
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":473
  *     for y in range(0, centroid.shape[0]):
  *       centroid_ptr[y] = NAN
  *   return np.asarray(centroid)             # <<<<<<<<<<<<<<
@@ -9154,7 +9154,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "sort_cython.pyx":424
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":424
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def compute_cluster_centroid(double[:, ::1] scores not None,             # <<<<<<<<<<<<<<
@@ -9174,7 +9174,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
     __Pyx_ErrFetch(&__pyx_type, &__pyx_value, &__pyx_tb);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_centroid.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("sort_cython.compute_cluster_centroid", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.compute_cluster_centroid", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -9188,7 +9188,7 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":479
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":479
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def identify_clusters_to_compare(double[:, ::1] scores, int64_t[::1] labels, list previously_compared_pairs):             # <<<<<<<<<<<<<<
@@ -9197,10 +9197,10 @@ static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED 
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_11sort_cython_11identify_clusters_to_compare(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_11sort_cython_10identify_clusters_to_compare[] = " This helper function identifies clusters to compare. It does this by\n  determining mutually close clusters (as defined by the L2 norm). That is,\n  it finds the first two clusters that are the closest to each other.\n  If such a pair is not found, it returns a tuple containing (0, 0)\n  ";
-static PyMethodDef __pyx_mdef_11sort_cython_11identify_clusters_to_compare = {"identify_clusters_to_compare", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_11identify_clusters_to_compare, METH_VARARGS|METH_KEYWORDS, __pyx_doc_11sort_cython_10identify_clusters_to_compare};
-static PyObject *__pyx_pw_11sort_cython_11identify_clusters_to_compare(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_11identify_clusters_to_compare(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_10identify_clusters_to_compare[] = " This helper function identifies clusters to compare. It does this by\n  determining mutually close clusters (as defined by the L2 norm). That is,\n  it finds the first two clusters that are the closest to each other.\n  If such a pair is not found, it returns a tuple containing (0, 0)\n  ";
+static PyMethodDef __pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_11identify_clusters_to_compare = {"identify_clusters_to_compare", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_11identify_clusters_to_compare, METH_VARARGS|METH_KEYWORDS, __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_10identify_clusters_to_compare};
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_11identify_clusters_to_compare(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   __Pyx_memviewslice __pyx_v_scores = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_labels = { 0, 0, { 0 }, { 0 }, { 0 } };
   PyObject *__pyx_v_previously_compared_pairs = 0;
@@ -9262,12 +9262,12 @@ static PyObject *__pyx_pw_11sort_cython_11identify_clusters_to_compare(PyObject 
   __pyx_L5_argtuple_error:;
   __Pyx_RaiseArgtupleInvalid("identify_clusters_to_compare", 1, 3, 3, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 479, __pyx_L3_error)
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sort_cython.identify_clusters_to_compare", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.identify_clusters_to_compare", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_previously_compared_pairs), (&PyList_Type), 1, "previously_compared_pairs", 1))) __PYX_ERR(0, 479, __pyx_L1_error)
-  __pyx_r = __pyx_pf_11sort_cython_10identify_clusters_to_compare(__pyx_self, __pyx_v_scores, __pyx_v_labels, __pyx_v_previously_compared_pairs);
+  __pyx_r = __pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_10identify_clusters_to_compare(__pyx_self, __pyx_v_scores, __pyx_v_labels, __pyx_v_previously_compared_pairs);
 
   /* function exit code */
   goto __pyx_L0;
@@ -9278,7 +9278,7 @@ static PyObject *__pyx_pw_11sort_cython_11identify_clusters_to_compare(PyObject 
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, PyObject *__pyx_v_previously_compared_pairs) {
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_10identify_clusters_to_compare(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, PyObject *__pyx_v_previously_compared_pairs) {
   Py_ssize_t __pyx_v_i;
   Py_ssize_t __pyx_v_x;
   Py_ssize_t __pyx_v_y;
@@ -9329,7 +9329,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("identify_clusters_to_compare", 0);
 
-  /* "sort_cython.pyx":493
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":493
  *   # cdef double[:, ::1] scores_view = scores
  *   # cdef int64_t[::1] labels_view = labels
  *   unique_labels = np.unique(labels)             # <<<<<<<<<<<<<<
@@ -9362,7 +9362,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __pyx_v_unique_labels = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":494
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":494
  *   # cdef int64_t[::1] labels_view = labels
  *   unique_labels = np.unique(labels)
  *   cdef int64_t[::1] unique_labels_view = unique_labels             # <<<<<<<<<<<<<<
@@ -9374,7 +9374,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __pyx_t_5.memview = NULL;
   __pyx_t_5.data = NULL;
 
-  /* "sort_cython.pyx":495
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":495
  *   unique_labels = np.unique(labels)
  *   cdef int64_t[::1] unique_labels_view = unique_labels
  *   centroids = np.zeros((unique_labels_view.shape[0], scores.shape[1]), dtype=np.double)             # <<<<<<<<<<<<<<
@@ -9420,7 +9420,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __pyx_v_centroids = __pyx_t_6;
   __pyx_t_6 = 0;
 
-  /* "sort_cython.pyx":496
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":496
  *   cdef int64_t[::1] unique_labels_view = unique_labels
  *   centroids = np.zeros((unique_labels_view.shape[0], scores.shape[1]), dtype=np.double)
  *   cdef double[:, ::1] centroids_view = centroids             # <<<<<<<<<<<<<<
@@ -9432,7 +9432,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __pyx_t_7.memview = NULL;
   __pyx_t_7.data = NULL;
 
-  /* "sort_cython.pyx":499
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":499
  * 
  *   # Get cluster centroid for each label
  *   for i in range (0, centroids_view.shape[0]):             # <<<<<<<<<<<<<<
@@ -9444,7 +9444,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   for (__pyx_t_10 = 0; __pyx_t_10 < __pyx_t_9; __pyx_t_10+=1) {
     __pyx_v_i = __pyx_t_10;
 
-    /* "sort_cython.pyx":500
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":500
  *   # Get cluster centroid for each label
  *   for i in range (0, centroids_view.shape[0]):
  *     n_points = 0             # <<<<<<<<<<<<<<
@@ -9453,7 +9453,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
  */
     __pyx_v_n_points = 0;
 
-    /* "sort_cython.pyx":501
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":501
  *   for i in range (0, centroids_view.shape[0]):
  *     n_points = 0
  *     for x in range(0, labels.shape[0]):             # <<<<<<<<<<<<<<
@@ -9465,7 +9465,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_12; __pyx_t_13+=1) {
       __pyx_v_x = __pyx_t_13;
 
-      /* "sort_cython.pyx":502
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":502
  *     n_points = 0
  *     for x in range(0, labels.shape[0]):
  *       if labels[x] == unique_labels_view[i]:             # <<<<<<<<<<<<<<
@@ -9477,7 +9477,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       __pyx_t_16 = (((*((int64_t *) ( /* dim=0 */ ((char *) (((int64_t *) __pyx_v_labels.data) + __pyx_t_14)) ))) == (*((int64_t *) ( /* dim=0 */ ((char *) (((int64_t *) __pyx_v_unique_labels_view.data) + __pyx_t_15)) )))) != 0);
       if (__pyx_t_16) {
 
-        /* "sort_cython.pyx":503
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":503
  *     for x in range(0, labels.shape[0]):
  *       if labels[x] == unique_labels_view[i]:
  *         n_points += 1             # <<<<<<<<<<<<<<
@@ -9486,7 +9486,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
  */
         __pyx_v_n_points = (__pyx_v_n_points + 1);
 
-        /* "sort_cython.pyx":504
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":504
  *       if labels[x] == unique_labels_view[i]:
  *         n_points += 1
  *         for y in range(0, centroids_view.shape[1]):             # <<<<<<<<<<<<<<
@@ -9498,7 +9498,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
         for (__pyx_t_19 = 0; __pyx_t_19 < __pyx_t_18; __pyx_t_19+=1) {
           __pyx_v_y = __pyx_t_19;
 
-          /* "sort_cython.pyx":505
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":505
  *         n_points += 1
  *         for y in range(0, centroids_view.shape[1]):
  *           centroids_view[i, y] += scores[x, y]             # <<<<<<<<<<<<<<
@@ -9512,7 +9512,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
           *((double *) ( /* dim=1 */ ((char *) (((double *) ( /* dim=0 */ (__pyx_v_centroids_view.data + __pyx_t_20 * __pyx_v_centroids_view.strides[0]) )) + __pyx_t_21)) )) += (*((double *) ( /* dim=1 */ ((char *) (((double *) ( /* dim=0 */ (__pyx_v_scores.data + __pyx_t_15 * __pyx_v_scores.strides[0]) )) + __pyx_t_14)) )));
         }
 
-        /* "sort_cython.pyx":502
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":502
  *     n_points = 0
  *     for x in range(0, labels.shape[0]):
  *       if labels[x] == unique_labels_view[i]:             # <<<<<<<<<<<<<<
@@ -9522,7 +9522,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       }
     }
 
-    /* "sort_cython.pyx":506
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":506
  *         for y in range(0, centroids_view.shape[1]):
  *           centroids_view[i, y] += scores[x, y]
  *     for y in range(0, centroids_view.shape[1]):             # <<<<<<<<<<<<<<
@@ -9534,7 +9534,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_12; __pyx_t_13+=1) {
       __pyx_v_y = __pyx_t_13;
 
-      /* "sort_cython.pyx":507
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":507
  *           centroids_view[i, y] += scores[x, y]
  *     for y in range(0, centroids_view.shape[1]):
  *       centroids_view[i, y] /= n_points             # <<<<<<<<<<<<<<
@@ -9547,7 +9547,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     }
   }
 
-  /* "sort_cython.pyx":511
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":511
  *   # Compute the squareds distance between each cluster and all other clusters
  *   # MUST initialize min_distance_cluster to zeros to account for previous pairs
  *   min_distance_cluster = np.zeros((centroids_view.shape[0], ), dtype=np.intp)             # <<<<<<<<<<<<<<
@@ -9588,7 +9588,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __pyx_v_min_distance_cluster = __pyx_t_1;
   __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":512
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":512
  *   # MUST initialize min_distance_cluster to zeros to account for previous pairs
  *   min_distance_cluster = np.zeros((centroids_view.shape[0], ), dtype=np.intp)
  *   cdef Py_ssize_t[::1] min_distance_cluster_view = min_distance_cluster             # <<<<<<<<<<<<<<
@@ -9600,7 +9600,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __pyx_t_22.memview = NULL;
   __pyx_t_22.data = NULL;
 
-  /* "sort_cython.pyx":513
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":513
  *   min_distance_cluster = np.zeros((centroids_view.shape[0], ), dtype=np.intp)
  *   cdef Py_ssize_t[::1] min_distance_cluster_view = min_distance_cluster
  *   this_distance = np.zeros((centroids_view.shape[0], ), dtype=np.double)             # <<<<<<<<<<<<<<
@@ -9641,7 +9641,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __pyx_v_this_distance = __pyx_t_3;
   __pyx_t_3 = 0;
 
-  /* "sort_cython.pyx":514
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":514
  *   cdef Py_ssize_t[::1] min_distance_cluster_view = min_distance_cluster
  *   this_distance = np.zeros((centroids_view.shape[0], ), dtype=np.double)
  *   cdef double[::1] this_distance_view = this_distance             # <<<<<<<<<<<<<<
@@ -9653,7 +9653,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __pyx_t_23.memview = NULL;
   __pyx_t_23.data = NULL;
 
-  /* "sort_cython.pyx":515
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":515
  *   this_distance = np.zeros((centroids_view.shape[0], ), dtype=np.double)
  *   cdef double[::1] this_distance_view = this_distance
  *   for i in range (0, centroids_view.shape[0]):             # <<<<<<<<<<<<<<
@@ -9665,7 +9665,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   for (__pyx_t_10 = 0; __pyx_t_10 < __pyx_t_9; __pyx_t_10+=1) {
     __pyx_v_i = __pyx_t_10;
 
-    /* "sort_cython.pyx":517
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":517
  *   for i in range (0, centroids_view.shape[0]):
  *     # reset distances to zero
  *     for x in range(0, this_distance_view.shape[0]):             # <<<<<<<<<<<<<<
@@ -9677,7 +9677,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_12; __pyx_t_13+=1) {
       __pyx_v_x = __pyx_t_13;
 
-      /* "sort_cython.pyx":518
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":518
  *     # reset distances to zero
  *     for x in range(0, this_distance_view.shape[0]):
  *       this_distance_view[x] = 0.0             # <<<<<<<<<<<<<<
@@ -9688,7 +9688,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_this_distance_view.data) + __pyx_t_15)) )) = 0.0;
     }
 
-    /* "sort_cython.pyx":519
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":519
  *     for x in range(0, this_distance_view.shape[0]):
  *       this_distance_view[x] = 0.0
  *     for x in range(0, centroids_view.shape[0]):             # <<<<<<<<<<<<<<
@@ -9700,7 +9700,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_12; __pyx_t_13+=1) {
       __pyx_v_x = __pyx_t_13;
 
-      /* "sort_cython.pyx":520
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":520
  *       this_distance_view[x] = 0.0
  *     for x in range(0, centroids_view.shape[0]):
  *       for y in range(0, centroids_view.shape[1]):             # <<<<<<<<<<<<<<
@@ -9712,7 +9712,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       for (__pyx_t_19 = 0; __pyx_t_19 < __pyx_t_18; __pyx_t_19+=1) {
         __pyx_v_y = __pyx_t_19;
 
-        /* "sort_cython.pyx":521
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":521
  *     for x in range(0, centroids_view.shape[0]):
  *       for y in range(0, centroids_view.shape[1]):
  *         this_distance_view[x] += (centroids_view[x, y] - centroids_view[i, y]) ** 2             # <<<<<<<<<<<<<<
@@ -9728,7 +9728,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       }
     }
 
-    /* "sort_cython.pyx":522
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":522
  *       for y in range(0, centroids_view.shape[1]):
  *         this_distance_view[x] += (centroids_view[x, y] - centroids_view[i, y]) ** 2
  *     this_distance_view[i] = INFINITY             # <<<<<<<<<<<<<<
@@ -9738,7 +9738,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     __pyx_t_20 = __pyx_v_i;
     *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_this_distance_view.data) + __pyx_t_20)) )) = NPY_INFINITY;
 
-    /* "sort_cython.pyx":525
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":525
  * 
  *     # Remove previously compared pairs
  *     for x in range(0, len(previously_compared_pairs)):             # <<<<<<<<<<<<<<
@@ -9754,7 +9754,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_12; __pyx_t_13+=1) {
       __pyx_v_x = __pyx_t_13;
 
-      /* "sort_cython.pyx":526
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":526
  *     # Remove previously compared pairs
  *     for x in range(0, len(previously_compared_pairs)):
  *       c1 = previously_compared_pairs[x][0]             # <<<<<<<<<<<<<<
@@ -9771,7 +9771,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __pyx_v_c1 = __pyx_t_25;
 
-      /* "sort_cython.pyx":527
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":527
  *     for x in range(0, len(previously_compared_pairs)):
  *       c1 = previously_compared_pairs[x][0]
  *       c2 = previously_compared_pairs[x][1]             # <<<<<<<<<<<<<<
@@ -9788,7 +9788,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __pyx_v_c2 = __pyx_t_25;
 
-      /* "sort_cython.pyx":528
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":528
  *       c1 = previously_compared_pairs[x][0]
  *       c2 = previously_compared_pairs[x][1]
  *       if c1 == unique_labels_view[i]:             # <<<<<<<<<<<<<<
@@ -9799,7 +9799,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       __pyx_t_16 = ((__pyx_v_c1 == (*((int64_t *) ( /* dim=0 */ ((char *) (((int64_t *) __pyx_v_unique_labels_view.data) + __pyx_t_20)) )))) != 0);
       if (__pyx_t_16) {
 
-        /* "sort_cython.pyx":529
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":529
  *       c2 = previously_compared_pairs[x][1]
  *       if c1 == unique_labels_view[i]:
  *         for y in range(0, unique_labels_view.shape[0]):             # <<<<<<<<<<<<<<
@@ -9811,7 +9811,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
         for (__pyx_t_19 = 0; __pyx_t_19 < __pyx_t_18; __pyx_t_19+=1) {
           __pyx_v_y = __pyx_t_19;
 
-          /* "sort_cython.pyx":530
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":530
  *       if c1 == unique_labels_view[i]:
  *         for y in range(0, unique_labels_view.shape[0]):
  *           if unique_labels_view[y] == c2:             # <<<<<<<<<<<<<<
@@ -9822,7 +9822,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
           __pyx_t_16 = (((*((int64_t *) ( /* dim=0 */ ((char *) (((int64_t *) __pyx_v_unique_labels_view.data) + __pyx_t_20)) ))) == __pyx_v_c2) != 0);
           if (__pyx_t_16) {
 
-            /* "sort_cython.pyx":531
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":531
  *         for y in range(0, unique_labels_view.shape[0]):
  *           if unique_labels_view[y] == c2:
  *             this_distance_view[y] = INFINITY             # <<<<<<<<<<<<<<
@@ -9832,7 +9832,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
             __pyx_t_20 = __pyx_v_y;
             *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_this_distance_view.data) + __pyx_t_20)) )) = NPY_INFINITY;
 
-            /* "sort_cython.pyx":532
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":532
  *           if unique_labels_view[y] == c2:
  *             this_distance_view[y] = INFINITY
  *             break             # <<<<<<<<<<<<<<
@@ -9841,7 +9841,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
  */
             goto __pyx_L24_break;
 
-            /* "sort_cython.pyx":530
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":530
  *       if c1 == unique_labels_view[i]:
  *         for y in range(0, unique_labels_view.shape[0]):
  *           if unique_labels_view[y] == c2:             # <<<<<<<<<<<<<<
@@ -9852,7 +9852,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
         }
         __pyx_L24_break:;
 
-        /* "sort_cython.pyx":528
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":528
  *       c1 = previously_compared_pairs[x][0]
  *       c2 = previously_compared_pairs[x][1]
  *       if c1 == unique_labels_view[i]:             # <<<<<<<<<<<<<<
@@ -9862,7 +9862,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
         goto __pyx_L22;
       }
 
-      /* "sort_cython.pyx":533
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":533
  *             this_distance_view[y] = INFINITY
  *             break
  *       elif c2 == unique_labels_view[i]:             # <<<<<<<<<<<<<<
@@ -9873,7 +9873,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       __pyx_t_16 = ((__pyx_v_c2 == (*((int64_t *) ( /* dim=0 */ ((char *) (((int64_t *) __pyx_v_unique_labels_view.data) + __pyx_t_20)) )))) != 0);
       if (__pyx_t_16) {
 
-        /* "sort_cython.pyx":534
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":534
  *             break
  *       elif c2 == unique_labels_view[i]:
  *         for y in range(0, unique_labels_view.shape[0]):             # <<<<<<<<<<<<<<
@@ -9885,7 +9885,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
         for (__pyx_t_19 = 0; __pyx_t_19 < __pyx_t_18; __pyx_t_19+=1) {
           __pyx_v_y = __pyx_t_19;
 
-          /* "sort_cython.pyx":535
+          /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":535
  *       elif c2 == unique_labels_view[i]:
  *         for y in range(0, unique_labels_view.shape[0]):
  *           if unique_labels_view[y] == c1:             # <<<<<<<<<<<<<<
@@ -9896,7 +9896,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
           __pyx_t_16 = (((*((int64_t *) ( /* dim=0 */ ((char *) (((int64_t *) __pyx_v_unique_labels_view.data) + __pyx_t_20)) ))) == __pyx_v_c1) != 0);
           if (__pyx_t_16) {
 
-            /* "sort_cython.pyx":536
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":536
  *         for y in range(0, unique_labels_view.shape[0]):
  *           if unique_labels_view[y] == c1:
  *             this_distance_view[y] = INFINITY             # <<<<<<<<<<<<<<
@@ -9906,7 +9906,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
             __pyx_t_20 = __pyx_v_y;
             *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_this_distance_view.data) + __pyx_t_20)) )) = NPY_INFINITY;
 
-            /* "sort_cython.pyx":537
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":537
  *           if unique_labels_view[y] == c1:
  *             this_distance_view[y] = INFINITY
  *             break             # <<<<<<<<<<<<<<
@@ -9915,7 +9915,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
  */
             goto __pyx_L27_break;
 
-            /* "sort_cython.pyx":535
+            /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":535
  *       elif c2 == unique_labels_view[i]:
  *         for y in range(0, unique_labels_view.shape[0]):
  *           if unique_labels_view[y] == c1:             # <<<<<<<<<<<<<<
@@ -9926,7 +9926,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
         }
         __pyx_L27_break:;
 
-        /* "sort_cython.pyx":533
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":533
  *             this_distance_view[y] = INFINITY
  *             break
  *       elif c2 == unique_labels_view[i]:             # <<<<<<<<<<<<<<
@@ -9937,7 +9937,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       __pyx_L22:;
     }
 
-    /* "sort_cython.pyx":540
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":540
  * 
  *     # Find np.argmin(this_distance)
  *     dist_min = INFINITY             # <<<<<<<<<<<<<<
@@ -9946,7 +9946,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
  */
     __pyx_v_dist_min = NPY_INFINITY;
 
-    /* "sort_cython.pyx":541
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":541
  *     # Find np.argmin(this_distance)
  *     dist_min = INFINITY
  *     for x in range(0, this_distance_view.shape[0]):             # <<<<<<<<<<<<<<
@@ -9958,7 +9958,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     for (__pyx_t_13 = 0; __pyx_t_13 < __pyx_t_12; __pyx_t_13+=1) {
       __pyx_v_x = __pyx_t_13;
 
-      /* "sort_cython.pyx":542
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":542
  *     dist_min = INFINITY
  *     for x in range(0, this_distance_view.shape[0]):
  *       if this_distance_view[x] < dist_min:             # <<<<<<<<<<<<<<
@@ -9969,7 +9969,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       __pyx_t_16 = (((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_this_distance_view.data) + __pyx_t_20)) ))) < __pyx_v_dist_min) != 0);
       if (__pyx_t_16) {
 
-        /* "sort_cython.pyx":543
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":543
  *     for x in range(0, this_distance_view.shape[0]):
  *       if this_distance_view[x] < dist_min:
  *         dist_min = this_distance_view[x]             # <<<<<<<<<<<<<<
@@ -9979,7 +9979,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
         __pyx_t_20 = __pyx_v_x;
         __pyx_v_dist_min = (*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_this_distance_view.data) + __pyx_t_20)) )));
 
-        /* "sort_cython.pyx":544
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":544
  *       if this_distance_view[x] < dist_min:
  *         dist_min = this_distance_view[x]
  *         min_distance_cluster_view[i] = x             # <<<<<<<<<<<<<<
@@ -9989,7 +9989,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
         __pyx_t_20 = __pyx_v_i;
         *((Py_ssize_t *) ( /* dim=0 */ ((char *) (((Py_ssize_t *) __pyx_v_min_distance_cluster_view.data) + __pyx_t_20)) )) = __pyx_v_x;
 
-        /* "sort_cython.pyx":542
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":542
  *     dist_min = INFINITY
  *     for x in range(0, this_distance_view.shape[0]):
  *       if this_distance_view[x] < dist_min:             # <<<<<<<<<<<<<<
@@ -10000,7 +10000,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     }
   }
 
-  /* "sort_cython.pyx":550
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":550
  *   # Now that we have the distances, we want to find the first pairs that
  *   # are mutally each other's minimum distance
  *   cdef list minimum_distance_pairs = []             # <<<<<<<<<<<<<<
@@ -10012,7 +10012,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __pyx_v_minimum_distance_pairs = ((PyObject*)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "sort_cython.pyx":551
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":551
  *   # are mutally each other's minimum distance
  *   cdef list minimum_distance_pairs = []
  *   for x in range (0, unique_labels_view.shape[0]):             # <<<<<<<<<<<<<<
@@ -10024,7 +10024,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   for (__pyx_t_10 = 0; __pyx_t_10 < __pyx_t_9; __pyx_t_10+=1) {
     __pyx_v_x = __pyx_t_10;
 
-    /* "sort_cython.pyx":552
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":552
  *   cdef list minimum_distance_pairs = []
  *   for x in range (0, unique_labels_view.shape[0]):
  *     for y in range (x+1, unique_labels_view.shape[0]): # NOTE: Assumes unique labels are sorted             # <<<<<<<<<<<<<<
@@ -10036,7 +10036,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     for (__pyx_t_13 = (__pyx_v_x + 1); __pyx_t_13 < __pyx_t_12; __pyx_t_13+=1) {
       __pyx_v_y = __pyx_t_13;
 
-      /* "sort_cython.pyx":553
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":553
  *   for x in range (0, unique_labels_view.shape[0]):
  *     for y in range (x+1, unique_labels_view.shape[0]): # NOTE: Assumes unique labels are sorted
  *       if (min_distance_cluster_view[x] == y) and (min_distance_cluster_view[y] == x):             # <<<<<<<<<<<<<<
@@ -10056,7 +10056,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
       __pyx_L37_bool_binop_done:;
       if (__pyx_t_16) {
 
-        /* "sort_cython.pyx":554
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":554
  *     for y in range (x+1, unique_labels_view.shape[0]): # NOTE: Assumes unique labels are sorted
  *       if (min_distance_cluster_view[x] == y) and (min_distance_cluster_view[y] == x):
  *         minimum_distance_pairs.append([unique_labels_view[x], unique_labels_view[y]])             # <<<<<<<<<<<<<<
@@ -10080,7 +10080,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
         __pyx_t_27 = __Pyx_PyList_Append(__pyx_v_minimum_distance_pairs, __pyx_t_1); if (unlikely(__pyx_t_27 == ((int)-1))) __PYX_ERR(0, 554, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-        /* "sort_cython.pyx":553
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":553
  *   for x in range (0, unique_labels_view.shape[0]):
  *     for y in range (x+1, unique_labels_view.shape[0]): # NOTE: Assumes unique labels are sorted
  *       if (min_distance_cluster_view[x] == y) and (min_distance_cluster_view[y] == x):             # <<<<<<<<<<<<<<
@@ -10091,7 +10091,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
     }
   }
 
-  /* "sort_cython.pyx":555
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":555
  *       if (min_distance_cluster_view[x] == y) and (min_distance_cluster_view[y] == x):
  *         minimum_distance_pairs.append([unique_labels_view[x], unique_labels_view[y]])
  *   return minimum_distance_pairs             # <<<<<<<<<<<<<<
@@ -10103,7 +10103,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __pyx_r = __pyx_v_minimum_distance_pairs;
   goto __pyx_L0;
 
-  /* "sort_cython.pyx":479
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":479
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def identify_clusters_to_compare(double[:, ::1] scores, int64_t[::1] labels, list previously_compared_pairs):             # <<<<<<<<<<<<<<
@@ -10122,7 +10122,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   __PYX_XDEC_MEMVIEW(&__pyx_t_7, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_t_22, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_t_23, 1);
-  __Pyx_AddTraceback("sort_cython.identify_clusters_to_compare", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.identify_clusters_to_compare", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_unique_labels);
@@ -10141,7 +10141,7 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":558
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":558
  * 
  * 
  * cdef int64_t sign_fun(double x):             # <<<<<<<<<<<<<<
@@ -10149,12 +10149,12 @@ static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UN
  *   return <int64_t>(x > 0) - (x < 0)
  */
 
-static int64_t __pyx_f_11sort_cython_sign_fun(double __pyx_v_x) {
+static int64_t __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_sign_fun(double __pyx_v_x) {
   int64_t __pyx_r;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("sign_fun", 0);
 
-  /* "sort_cython.pyx":560
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":560
  * cdef int64_t sign_fun(double x):
  *   # Returns 1 if x > 0 , -1 if x < 0, and 0 if x == 0
  *   return <int64_t>(x > 0) - (x < 0)             # <<<<<<<<<<<<<<
@@ -10164,7 +10164,7 @@ static int64_t __pyx_f_11sort_cython_sign_fun(double __pyx_v_x) {
   __pyx_r = (((int64_t)(__pyx_v_x > 0.0)) - (__pyx_v_x < 0.0));
   goto __pyx_L0;
 
-  /* "sort_cython.pyx":558
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":558
  * 
  * 
  * cdef int64_t sign_fun(double x):             # <<<<<<<<<<<<<<
@@ -10178,7 +10178,7 @@ static int64_t __pyx_f_11sort_cython_sign_fun(double __pyx_v_x) {
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":566
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":566
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * cdef double fixed_point(double t, int64_t N, double[::1] I, double[::1] a2):             # <<<<<<<<<<<<<<
@@ -10186,7 +10186,7 @@ static int64_t __pyx_f_11sort_cython_sign_fun(double __pyx_v_x) {
  *   cdef int64_t s, K0_int, s2
  */
 
-static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_v_N, __Pyx_memviewslice __pyx_v_I, __Pyx_memviewslice __pyx_v_a2) {
+static double __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_v_N, __Pyx_memviewslice __pyx_v_I, __Pyx_memviewslice __pyx_v_a2) {
   int64_t __pyx_v_s;
   int64_t __pyx_v_K0_int;
   int64_t __pyx_v_s2;
@@ -10218,7 +10218,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("fixed_point", 0);
 
-  /* "sort_cython.pyx":569
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":569
  *   # this implements the function t-zeta*gamma^[l](t)
  *   cdef int64_t s, K0_int, s2
  *   cdef int64_t l = 7             # <<<<<<<<<<<<<<
@@ -10227,7 +10227,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
   __pyx_v_l = 7;
 
-  /* "sort_cython.pyx":572
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":572
  *   cdef double f_fac, f, K0, const, time
  *   cdef Py_ssize_t x
  *   cdef Py_ssize_t I_size = I.shape[0]             # <<<<<<<<<<<<<<
@@ -10236,7 +10236,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
   __pyx_v_I_size = (__pyx_v_I.shape[0]);
 
-  /* "sort_cython.pyx":574
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":574
  *   cdef Py_ssize_t I_size = I.shape[0]
  * 
  *   f_fac = 0.0             # <<<<<<<<<<<<<<
@@ -10245,7 +10245,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
   __pyx_v_f_fac = 0.0;
 
-  /* "sort_cython.pyx":575
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":575
  * 
  *   f_fac = 0.0
  *   for x in range(I_size):             # <<<<<<<<<<<<<<
@@ -10257,7 +10257,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
   for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_x = __pyx_t_3;
 
-    /* "sort_cython.pyx":577
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":577
  *   for x in range(I_size):
  *     # This line removes I ** l and keeps things in range of float64
  *     f_fac += exp(log(I[x]) * l + log(a2[x]) - I[x] * M_PI * M_PI * t)             # <<<<<<<<<<<<<<
@@ -10270,7 +10270,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
     __pyx_v_f_fac = (__pyx_v_f_fac + exp((((log((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_I.data) + __pyx_t_4)) )))) * __pyx_v_l) + log((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_a2.data) + __pyx_t_5)) ))))) - ((((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_I.data) + __pyx_t_6)) ))) * M_PI) * M_PI) * __pyx_v_t))));
   }
 
-  /* "sort_cython.pyx":579
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":579
  *     f_fac += exp(log(I[x]) * l + log(a2[x]) - I[x] * M_PI * M_PI * t)
  * 
  *   if f_fac < 1.0e-6 or N == 0:             # <<<<<<<<<<<<<<
@@ -10288,7 +10288,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
   __pyx_L6_bool_binop_done:;
   if (__pyx_t_7) {
 
-    /* "sort_cython.pyx":581
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":581
  *   if f_fac < 1.0e-6 or N == 0:
  *     # Prevent zero division, which converges to negative infinity
  *     return -INFINITY             # <<<<<<<<<<<<<<
@@ -10298,7 +10298,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
     __pyx_r = (-NPY_INFINITY);
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":579
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":579
  *     f_fac += exp(log(I[x]) * l + log(a2[x]) - I[x] * M_PI * M_PI * t)
  * 
  *   if f_fac < 1.0e-6 or N == 0:             # <<<<<<<<<<<<<<
@@ -10307,7 +10307,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
   }
 
-  /* "sort_cython.pyx":582
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":582
  *     # Prevent zero division, which converges to negative infinity
  *     return -INFINITY
  *   if not isfinite(f_fac) and f_fac > 0.0:             # <<<<<<<<<<<<<<
@@ -10325,7 +10325,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
   __pyx_L9_bool_binop_done:;
   if (__pyx_t_7) {
 
-    /* "sort_cython.pyx":583
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":583
  *     return -INFINITY
  *   if not isfinite(f_fac) and f_fac > 0.0:
  *     return t             # <<<<<<<<<<<<<<
@@ -10335,7 +10335,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
     __pyx_r = __pyx_v_t;
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":582
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":582
  *     # Prevent zero division, which converges to negative infinity
  *     return -INFINITY
  *   if not isfinite(f_fac) and f_fac > 0.0:             # <<<<<<<<<<<<<<
@@ -10344,7 +10344,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
   }
 
-  /* "sort_cython.pyx":584
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":584
  *   if not isfinite(f_fac) and f_fac > 0.0:
  *     return t
  *   elif not isfinite(f_fac):             # <<<<<<<<<<<<<<
@@ -10354,7 +10354,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
   __pyx_t_7 = ((!(isfinite(__pyx_v_f_fac) != 0)) != 0);
   if (unlikely(__pyx_t_7)) {
 
-    /* "sort_cython.pyx":586
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":586
  *   elif not isfinite(f_fac):
  *     # I think this is an error that probably shouldn't happen?
  *     raise RuntimeError('Something is wrong in KDE compuation...')             # <<<<<<<<<<<<<<
@@ -10367,7 +10367,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
     __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
     __PYX_ERR(0, 586, __pyx_L1_error)
 
-    /* "sort_cython.pyx":584
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":584
  *   if not isfinite(f_fac) and f_fac > 0.0:
  *     return t
  *   elif not isfinite(f_fac):             # <<<<<<<<<<<<<<
@@ -10376,7 +10376,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
   }
 
-  /* "sort_cython.pyx":587
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":587
  *     # I think this is an error that probably shouldn't happen?
  *     raise RuntimeError('Something is wrong in KDE compuation...')
  *   f = 2.0 * M_PI ** (2.0*l) * f_fac             # <<<<<<<<<<<<<<
@@ -10385,7 +10385,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
   __pyx_v_f = ((2.0 * pow(((double)M_PI), (2.0 * __pyx_v_l))) * __pyx_v_f_fac);
 
-  /* "sort_cython.pyx":589
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":589
  *   f = 2.0 * M_PI ** (2.0*l) * f_fac
  * 
  *   for s in range(l - 1, 1, -1):             # <<<<<<<<<<<<<<
@@ -10395,7 +10395,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
   for (__pyx_t_10 = (__pyx_v_l - 1); __pyx_t_10 > 1; __pyx_t_10-=1) {
     __pyx_v_s = __pyx_t_10;
 
-    /* "sort_cython.pyx":590
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":590
  * 
  *   for s in range(l - 1, 1, -1):
  *     K0_int = 1             # <<<<<<<<<<<<<<
@@ -10404,7 +10404,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
     __pyx_v_K0_int = 1;
 
-    /* "sort_cython.pyx":591
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":591
  *   for s in range(l - 1, 1, -1):
  *     K0_int = 1
  *     if s > 1:             # <<<<<<<<<<<<<<
@@ -10414,7 +10414,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
     __pyx_t_7 = ((__pyx_v_s > 1) != 0);
     if (__pyx_t_7) {
 
-      /* "sort_cython.pyx":592
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":592
  *     K0_int = 1
  *     if s > 1:
  *       for s2 in range(3, 2*s, 2):             # <<<<<<<<<<<<<<
@@ -10426,7 +10426,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
       for (__pyx_t_13 = 3; __pyx_t_13 < __pyx_t_12; __pyx_t_13+=2) {
         __pyx_v_s2 = __pyx_t_13;
 
-        /* "sort_cython.pyx":593
+        /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":593
  *     if s > 1:
  *       for s2 in range(3, 2*s, 2):
  *         K0_int *= s2             # <<<<<<<<<<<<<<
@@ -10436,7 +10436,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
         __pyx_v_K0_int = (__pyx_v_K0_int * __pyx_v_s2);
       }
 
-      /* "sort_cython.pyx":591
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":591
  *   for s in range(l - 1, 1, -1):
  *     K0_int = 1
  *     if s > 1:             # <<<<<<<<<<<<<<
@@ -10445,7 +10445,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
     }
 
-    /* "sort_cython.pyx":594
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":594
  *       for s2 in range(3, 2*s, 2):
  *         K0_int *= s2
  *     K0 = K0_int / (M_SQRT2 * sqrt(M_PI))             # <<<<<<<<<<<<<<
@@ -10454,7 +10454,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
     __pyx_v_K0 = (((double)__pyx_v_K0_int) / (M_SQRT2 * sqrt(M_PI)));
 
-    /* "sort_cython.pyx":595
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":595
  *         K0_int *= s2
  *     K0 = K0_int / (M_SQRT2 * sqrt(M_PI))
  *     const = (1.0 + (0.5) ** (s + 0.5)) / 3.0             # <<<<<<<<<<<<<<
@@ -10463,7 +10463,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
     __pyx_v_const = ((1.0 + pow(0.5, (__pyx_v_s + 0.5))) / 3.0);
 
-    /* "sort_cython.pyx":596
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":596
  *     K0 = K0_int / (M_SQRT2 * sqrt(M_PI))
  *     const = (1.0 + (0.5) ** (s + 0.5)) / 3.0
  *     time = (2.0 * const * K0 / N / f) ** (2.0 / (3.0 + 2.0*s))             # <<<<<<<<<<<<<<
@@ -10472,7 +10472,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
     __pyx_v_time = pow(((((2.0 * __pyx_v_const) * __pyx_v_K0) / ((double)__pyx_v_N)) / __pyx_v_f), (2.0 / (3.0 + (2.0 * __pyx_v_s))));
 
-    /* "sort_cython.pyx":597
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":597
  *     const = (1.0 + (0.5) ** (s + 0.5)) / 3.0
  *     time = (2.0 * const * K0 / N / f) ** (2.0 / (3.0 + 2.0*s))
  *     f_fac = 0.0             # <<<<<<<<<<<<<<
@@ -10481,7 +10481,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
     __pyx_v_f_fac = 0.0;
 
-    /* "sort_cython.pyx":598
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":598
  *     time = (2.0 * const * K0 / N / f) ** (2.0 / (3.0 + 2.0*s))
  *     f_fac = 0.0
  *     for x in range(I_size):             # <<<<<<<<<<<<<<
@@ -10493,7 +10493,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
     for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
       __pyx_v_x = __pyx_t_3;
 
-      /* "sort_cython.pyx":600
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":600
  *     for x in range(I_size):
  *       # This line removes I ** s and keeps things in range of float64
  *       f_fac += exp(log(I[x]) * s + log(a2[x]) - I[x] * M_PI * M_PI * time)             # <<<<<<<<<<<<<<
@@ -10506,7 +10506,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
       __pyx_v_f_fac = (__pyx_v_f_fac + exp((((log((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_I.data) + __pyx_t_6)) )))) * __pyx_v_s) + log((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_a2.data) + __pyx_t_5)) ))))) - ((((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_I.data) + __pyx_t_4)) ))) * M_PI) * M_PI) * __pyx_v_time))));
     }
 
-    /* "sort_cython.pyx":601
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":601
  *       # This line removes I ** s and keeps things in range of float64
  *       f_fac += exp(log(I[x]) * s + log(a2[x]) - I[x] * M_PI * M_PI * time)
  *     if f_fac < 1.0e-6:             # <<<<<<<<<<<<<<
@@ -10516,7 +10516,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
     __pyx_t_7 = ((__pyx_v_f_fac < 1.0e-6) != 0);
     if (__pyx_t_7) {
 
-      /* "sort_cython.pyx":603
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":603
  *     if f_fac < 1.0e-6:
  *       # Prevent zero division, which converges to negative infinity
  *       f = -1.0             # <<<<<<<<<<<<<<
@@ -10525,7 +10525,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
       __pyx_v_f = -1.0;
 
-      /* "sort_cython.pyx":604
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":604
  *       # Prevent zero division, which converges to negative infinity
  *       f = -1.0
  *       break             # <<<<<<<<<<<<<<
@@ -10534,7 +10534,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
       goto __pyx_L12_break;
 
-      /* "sort_cython.pyx":601
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":601
  *       # This line removes I ** s and keeps things in range of float64
  *       f_fac += exp(log(I[x]) * s + log(a2[x]) - I[x] * M_PI * M_PI * time)
  *     if f_fac < 1.0e-6:             # <<<<<<<<<<<<<<
@@ -10543,7 +10543,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
     }
 
-    /* "sort_cython.pyx":605
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":605
  *       f = -1.0
  *       break
  *     f = 2.0 * M_PI ** (2.0*s) * f_fac             # <<<<<<<<<<<<<<
@@ -10554,7 +10554,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
   }
   __pyx_L12_break:;
 
-  /* "sort_cython.pyx":607
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":607
  *     f = 2.0 * M_PI ** (2.0*s) * f_fac
  * 
  *   if f > 0.0:             # <<<<<<<<<<<<<<
@@ -10564,7 +10564,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
   __pyx_t_7 = ((__pyx_v_f > 0.0) != 0);
   if (__pyx_t_7) {
 
-    /* "sort_cython.pyx":608
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":608
  * 
  *   if f > 0.0:
  *     return t - (2.0 * N * sqrt(M_PI) * f) ** (-2.0/5.0)             # <<<<<<<<<<<<<<
@@ -10574,7 +10574,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
     __pyx_r = (__pyx_v_t - pow((((2.0 * __pyx_v_N) * sqrt(M_PI)) * __pyx_v_f), (-2.0 / 5.0)));
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":607
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":607
  *     f = 2.0 * M_PI ** (2.0*s) * f_fac
  * 
  *   if f > 0.0:             # <<<<<<<<<<<<<<
@@ -10583,7 +10583,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  */
   }
 
-  /* "sort_cython.pyx":610
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":610
  *     return t - (2.0 * N * sqrt(M_PI) * f) ** (-2.0/5.0)
  *   else:
  *     return -INFINITY             # <<<<<<<<<<<<<<
@@ -10595,7 +10595,7 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
     goto __pyx_L0;
   }
 
-  /* "sort_cython.pyx":566
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":566
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * cdef double fixed_point(double t, int64_t N, double[::1] I, double[::1] a2):             # <<<<<<<<<<<<<<
@@ -10606,14 +10606,14 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_9);
-  __Pyx_WriteUnraisable("sort_cython.fixed_point", __pyx_clineno, __pyx_lineno, __pyx_filename, 1, 0);
+  __Pyx_WriteUnraisable("spikesorting_fullpursuit.c_cython.sort_cython.fixed_point", __pyx_clineno, __pyx_lineno, __pyx_filename, 1, 0);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":613
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":613
  * 
  * 
  * cdef double fixed_point_abs(double t, int64_t N, double[::1] I, double[::1] a2):             # <<<<<<<<<<<<<<
@@ -10621,23 +10621,23 @@ static double __pyx_f_11sort_cython_fixed_point(double __pyx_v_t, int64_t __pyx_
  *   minimum absolute value in the main optimization while loop below.  It
  */
 
-static double __pyx_f_11sort_cython_fixed_point_abs(double __pyx_v_t, int64_t __pyx_v_N, __Pyx_memviewslice __pyx_v_I, __Pyx_memviewslice __pyx_v_a2) {
+static double __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point_abs(double __pyx_v_t, int64_t __pyx_v_N, __Pyx_memviewslice __pyx_v_I, __Pyx_memviewslice __pyx_v_a2) {
   double __pyx_v_f_t;
   double __pyx_r;
   __Pyx_RefNannyDeclarations
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("fixed_point_abs", 0);
 
-  /* "sort_cython.pyx":621
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":621
  *   cdef double f_t
  * 
  *   f_t = fixed_point(t, N, I, a2)             # <<<<<<<<<<<<<<
  *   # Get absolute value
  *   if f_t >= 0.0:
  */
-  __pyx_v_f_t = __pyx_f_11sort_cython_fixed_point(__pyx_v_t, __pyx_v_N, __pyx_v_I, __pyx_v_a2);
+  __pyx_v_f_t = __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point(__pyx_v_t, __pyx_v_N, __pyx_v_I, __pyx_v_a2);
 
-  /* "sort_cython.pyx":623
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":623
  *   f_t = fixed_point(t, N, I, a2)
  *   # Get absolute value
  *   if f_t >= 0.0:             # <<<<<<<<<<<<<<
@@ -10647,7 +10647,7 @@ static double __pyx_f_11sort_cython_fixed_point_abs(double __pyx_v_t, int64_t __
   __pyx_t_1 = ((__pyx_v_f_t >= 0.0) != 0);
   if (__pyx_t_1) {
 
-    /* "sort_cython.pyx":624
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":624
  *   # Get absolute value
  *   if f_t >= 0.0:
  *     return f_t             # <<<<<<<<<<<<<<
@@ -10657,7 +10657,7 @@ static double __pyx_f_11sort_cython_fixed_point_abs(double __pyx_v_t, int64_t __
     __pyx_r = __pyx_v_f_t;
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":623
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":623
  *   f_t = fixed_point(t, N, I, a2)
  *   # Get absolute value
  *   if f_t >= 0.0:             # <<<<<<<<<<<<<<
@@ -10666,7 +10666,7 @@ static double __pyx_f_11sort_cython_fixed_point_abs(double __pyx_v_t, int64_t __
  */
   }
 
-  /* "sort_cython.pyx":626
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":626
  *     return f_t
  *   else:
  *     return -1.0 * f_t             # <<<<<<<<<<<<<<
@@ -10678,7 +10678,7 @@ static double __pyx_f_11sort_cython_fixed_point_abs(double __pyx_v_t, int64_t __
     goto __pyx_L0;
   }
 
-  /* "sort_cython.pyx":613
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":613
  * 
  * 
  * cdef double fixed_point_abs(double t, int64_t N, double[::1] I, double[::1] a2):             # <<<<<<<<<<<<<<
@@ -10692,7 +10692,7 @@ static double __pyx_f_11sort_cython_fixed_point_abs(double __pyx_v_t, int64_t __
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":632
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":632
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * cdef double bound_grad_desc_fixed_point_abs(int64_t N, double[::1] I, double[::1] a2,             # <<<<<<<<<<<<<<
@@ -10700,7 +10700,7 @@ static double __pyx_f_11sort_cython_fixed_point_abs(double __pyx_v_t, int64_t __
  *   """ I added this for the case where no root is found and we seek the
  */
 
-static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __pyx_v_N, __Pyx_memviewslice __pyx_v_I, __Pyx_memviewslice __pyx_v_a2, double __pyx_v_lower, double __pyx_v_upper, double __pyx_v_xtol, double __pyx_v_ytol) {
+static double __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __pyx_v_N, __Pyx_memviewslice __pyx_v_I, __Pyx_memviewslice __pyx_v_a2, double __pyx_v_lower, double __pyx_v_upper, double __pyx_v_xtol, double __pyx_v_ytol) {
   double __pyx_v_f_t;
   double __pyx_v_f_dt_pl;
   double __pyx_v_f_dt_mn;
@@ -10721,7 +10721,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
   int __pyx_t_2;
   __Pyx_RefNannySetupContext("bound_grad_desc_fixed_point_abs", 0);
 
-  /* "sort_cython.pyx":639
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":639
  *   """
  *   cdef double f_t, f_dt_pl, f_dt_mn, d_f_t_dt, next_t, f_step, t_step
  *   cdef double alpha = 1.0e-4 # Choose learning rate             # <<<<<<<<<<<<<<
@@ -10730,7 +10730,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   __pyx_v_alpha = 1.0e-4;
 
-  /* "sort_cython.pyx":640
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":640
  *   cdef double f_t, f_dt_pl, f_dt_mn, d_f_t_dt, next_t, f_step, t_step
  *   cdef double alpha = 1.0e-4 # Choose learning rate
  *   cdef int64_t max_iter = 1000             # <<<<<<<<<<<<<<
@@ -10739,7 +10739,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   __pyx_v_max_iter = 0x3E8;
 
-  /* "sort_cython.pyx":641
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":641
  *   cdef double alpha = 1.0e-4 # Choose learning rate
  *   cdef int64_t max_iter = 1000
  *   cdef int64_t n_iters = 0             # <<<<<<<<<<<<<<
@@ -10748,7 +10748,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   __pyx_v_n_iters = 0;
 
-  /* "sort_cython.pyx":642
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":642
  *   cdef int64_t max_iter = 1000
  *   cdef int64_t n_iters = 0
  *   cdef double t_star = lower             # <<<<<<<<<<<<<<
@@ -10757,7 +10757,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   __pyx_v_t_star = __pyx_v_lower;
 
-  /* "sort_cython.pyx":643
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":643
  *   cdef int64_t n_iters = 0
  *   cdef double t_star = lower
  *   cdef double f_min = INFINITY             # <<<<<<<<<<<<<<
@@ -10766,7 +10766,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   __pyx_v_f_min = NPY_INFINITY;
 
-  /* "sort_cython.pyx":644
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":644
  *   cdef double t_star = lower
  *   cdef double f_min = INFINITY
  *   cdef double t = lower             # <<<<<<<<<<<<<<
@@ -10775,7 +10775,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   __pyx_v_t = __pyx_v_lower;
 
-  /* "sort_cython.pyx":645
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":645
  *   cdef double f_min = INFINITY
  *   cdef double t = lower
  *   cdef double dt = (upper - lower) / 10             # <<<<<<<<<<<<<<
@@ -10784,7 +10784,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   __pyx_v_dt = ((__pyx_v_upper - __pyx_v_lower) / 10.0);
 
-  /* "sort_cython.pyx":647
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":647
  *   cdef double dt = (upper - lower) / 10
  * 
  *   if dt < xtol:             # <<<<<<<<<<<<<<
@@ -10794,7 +10794,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
   __pyx_t_1 = ((__pyx_v_dt < __pyx_v_xtol) != 0);
   if (__pyx_t_1) {
 
-    /* "sort_cython.pyx":648
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":648
  * 
  *   if dt < xtol:
  *     dt = xtol             # <<<<<<<<<<<<<<
@@ -10803,7 +10803,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     __pyx_v_dt = __pyx_v_xtol;
 
-    /* "sort_cython.pyx":647
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":647
  *   cdef double dt = (upper - lower) / 10
  * 
  *   if dt < xtol:             # <<<<<<<<<<<<<<
@@ -10812,7 +10812,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   }
 
-  /* "sort_cython.pyx":650
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":650
  *     dt = xtol
  *   # Choose starting point as lowest over 10 intervals
  *   while t <= upper:             # <<<<<<<<<<<<<<
@@ -10823,16 +10823,16 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_t_1 = ((__pyx_v_t <= __pyx_v_upper) != 0);
     if (!__pyx_t_1) break;
 
-    /* "sort_cython.pyx":651
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":651
  *   # Choose starting point as lowest over 10 intervals
  *   while t <= upper:
  *     f_t = fixed_point_abs(t, N, I, a2)             # <<<<<<<<<<<<<<
  *     if f_t < f_min:
  *       t_star = t
  */
-    __pyx_v_f_t = __pyx_f_11sort_cython_fixed_point_abs(__pyx_v_t, __pyx_v_N, __pyx_v_I, __pyx_v_a2);
+    __pyx_v_f_t = __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point_abs(__pyx_v_t, __pyx_v_N, __pyx_v_I, __pyx_v_a2);
 
-    /* "sort_cython.pyx":652
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":652
  *   while t <= upper:
  *     f_t = fixed_point_abs(t, N, I, a2)
  *     if f_t < f_min:             # <<<<<<<<<<<<<<
@@ -10842,7 +10842,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_t_1 = ((__pyx_v_f_t < __pyx_v_f_min) != 0);
     if (__pyx_t_1) {
 
-      /* "sort_cython.pyx":653
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":653
  *     f_t = fixed_point_abs(t, N, I, a2)
  *     if f_t < f_min:
  *       t_star = t             # <<<<<<<<<<<<<<
@@ -10851,7 +10851,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       __pyx_v_t_star = __pyx_v_t;
 
-      /* "sort_cython.pyx":654
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":654
  *     if f_t < f_min:
  *       t_star = t
  *       f_min = f_t             # <<<<<<<<<<<<<<
@@ -10860,7 +10860,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       __pyx_v_f_min = __pyx_v_f_t;
 
-      /* "sort_cython.pyx":652
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":652
  *   while t <= upper:
  *     f_t = fixed_point_abs(t, N, I, a2)
  *     if f_t < f_min:             # <<<<<<<<<<<<<<
@@ -10869,7 +10869,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     }
 
-    /* "sort_cython.pyx":655
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":655
  *       t_star = t
  *       f_min = f_t
  *     t += dt             # <<<<<<<<<<<<<<
@@ -10879,7 +10879,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_v_t = (__pyx_v_t + __pyx_v_dt);
   }
 
-  /* "sort_cython.pyx":656
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":656
  *       f_min = f_t
  *     t += dt
  *   if isfinite(f_min) == 0:             # <<<<<<<<<<<<<<
@@ -10889,7 +10889,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
   __pyx_t_1 = ((isfinite(__pyx_v_f_min) == 0) != 0);
   if (__pyx_t_1) {
 
-    /* "sort_cython.pyx":657
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":657
  *     t += dt
  *   if isfinite(f_min) == 0:
  *     return 0.0             # <<<<<<<<<<<<<<
@@ -10899,7 +10899,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_r = 0.0;
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":656
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":656
  *       f_min = f_t
  *     t += dt
  *   if isfinite(f_min) == 0:             # <<<<<<<<<<<<<<
@@ -10908,7 +10908,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   }
 
-  /* "sort_cython.pyx":660
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":660
  * 
  *   # reset t and f_t to lowest point to start search
  *   t = t_star             # <<<<<<<<<<<<<<
@@ -10917,7 +10917,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   __pyx_v_t = __pyx_v_t_star;
 
-  /* "sort_cython.pyx":661
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":661
  *   # reset t and f_t to lowest point to start search
  *   t = t_star
  *   f_t = f_min             # <<<<<<<<<<<<<<
@@ -10926,7 +10926,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   __pyx_v_f_t = __pyx_v_f_min;
 
-  /* "sort_cython.pyx":662
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":662
  *   t = t_star
  *   f_t = f_min
  *   while 1:             # <<<<<<<<<<<<<<
@@ -10935,25 +10935,25 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
   while (1) {
 
-    /* "sort_cython.pyx":664
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":664
  *   while 1:
  *     # Compute derivative at t using +/- dt
  *     f_dt_pl = fixed_point_abs(t + dt, N, I, a2)             # <<<<<<<<<<<<<<
  *     f_dt_mn = fixed_point_abs(t - dt, N, I, a2)
  *     d_f_t_dt = (f_dt_pl - f_dt_mn) / (2*dt)
  */
-    __pyx_v_f_dt_pl = __pyx_f_11sort_cython_fixed_point_abs((__pyx_v_t + __pyx_v_dt), __pyx_v_N, __pyx_v_I, __pyx_v_a2);
+    __pyx_v_f_dt_pl = __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point_abs((__pyx_v_t + __pyx_v_dt), __pyx_v_N, __pyx_v_I, __pyx_v_a2);
 
-    /* "sort_cython.pyx":665
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":665
  *     # Compute derivative at t using +/- dt
  *     f_dt_pl = fixed_point_abs(t + dt, N, I, a2)
  *     f_dt_mn = fixed_point_abs(t - dt, N, I, a2)             # <<<<<<<<<<<<<<
  *     d_f_t_dt = (f_dt_pl - f_dt_mn) / (2*dt)
  *     if isfinite(d_f_t_dt) == 0:
  */
-    __pyx_v_f_dt_mn = __pyx_f_11sort_cython_fixed_point_abs((__pyx_v_t - __pyx_v_dt), __pyx_v_N, __pyx_v_I, __pyx_v_a2);
+    __pyx_v_f_dt_mn = __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point_abs((__pyx_v_t - __pyx_v_dt), __pyx_v_N, __pyx_v_I, __pyx_v_a2);
 
-    /* "sort_cython.pyx":666
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":666
  *     f_dt_pl = fixed_point_abs(t + dt, N, I, a2)
  *     f_dt_mn = fixed_point_abs(t - dt, N, I, a2)
  *     d_f_t_dt = (f_dt_pl - f_dt_mn) / (2*dt)             # <<<<<<<<<<<<<<
@@ -10962,7 +10962,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     __pyx_v_d_f_t_dt = ((__pyx_v_f_dt_pl - __pyx_v_f_dt_mn) / (2.0 * __pyx_v_dt));
 
-    /* "sort_cython.pyx":667
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":667
  *     f_dt_mn = fixed_point_abs(t - dt, N, I, a2)
  *     d_f_t_dt = (f_dt_pl - f_dt_mn) / (2*dt)
  *     if isfinite(d_f_t_dt) == 0:             # <<<<<<<<<<<<<<
@@ -10972,7 +10972,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_t_1 = ((isfinite(__pyx_v_d_f_t_dt) == 0) != 0);
     if (__pyx_t_1) {
 
-      /* "sort_cython.pyx":669
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":669
  *     if isfinite(d_f_t_dt) == 0:
  *       # This shouldn't happen, but if derivative is infinite return preceeding t
  *       t_star = t             # <<<<<<<<<<<<<<
@@ -10981,7 +10981,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       __pyx_v_t_star = __pyx_v_t;
 
-      /* "sort_cython.pyx":670
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":670
  *       # This shouldn't happen, but if derivative is infinite return preceeding t
  *       t_star = t
  *       break             # <<<<<<<<<<<<<<
@@ -10990,7 +10990,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       goto __pyx_L9_break;
 
-      /* "sort_cython.pyx":667
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":667
  *     f_dt_mn = fixed_point_abs(t - dt, N, I, a2)
  *     d_f_t_dt = (f_dt_pl - f_dt_mn) / (2*dt)
  *     if isfinite(d_f_t_dt) == 0:             # <<<<<<<<<<<<<<
@@ -10999,7 +10999,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     }
 
-    /* "sort_cython.pyx":673
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":673
  * 
  *     # Update t according to gradient d_f_t_dt
  *     next_t = t - alpha * d_f_t_dt             # <<<<<<<<<<<<<<
@@ -11008,7 +11008,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     __pyx_v_next_t = (__pyx_v_t - (__pyx_v_alpha * __pyx_v_d_f_t_dt));
 
-    /* "sort_cython.pyx":675
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":675
  *     next_t = t - alpha * d_f_t_dt
  *     # If next_t is beyond bounds, choose point halfway
  *     if next_t >= upper:             # <<<<<<<<<<<<<<
@@ -11018,7 +11018,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_t_1 = ((__pyx_v_next_t >= __pyx_v_upper) != 0);
     if (__pyx_t_1) {
 
-      /* "sort_cython.pyx":676
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":676
  *     # If next_t is beyond bounds, choose point halfway
  *     if next_t >= upper:
  *       next_t = (upper - t)/2 + t             # <<<<<<<<<<<<<<
@@ -11027,7 +11027,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       __pyx_v_next_t = (((__pyx_v_upper - __pyx_v_t) / 2.0) + __pyx_v_t);
 
-      /* "sort_cython.pyx":675
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":675
  *     next_t = t - alpha * d_f_t_dt
  *     # If next_t is beyond bounds, choose point halfway
  *     if next_t >= upper:             # <<<<<<<<<<<<<<
@@ -11036,7 +11036,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     }
 
-    /* "sort_cython.pyx":677
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":677
  *     if next_t >= upper:
  *       next_t = (upper - t)/2 + t
  *     if next_t <= lower:             # <<<<<<<<<<<<<<
@@ -11046,7 +11046,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_t_1 = ((__pyx_v_next_t <= __pyx_v_lower) != 0);
     if (__pyx_t_1) {
 
-      /* "sort_cython.pyx":678
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":678
  *       next_t = (upper - t)/2 + t
  *     if next_t <= lower:
  *       next_t = (t - lower)/2 + lower             # <<<<<<<<<<<<<<
@@ -11055,7 +11055,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       __pyx_v_next_t = (((__pyx_v_t - __pyx_v_lower) / 2.0) + __pyx_v_lower);
 
-      /* "sort_cython.pyx":677
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":677
  *     if next_t >= upper:
  *       next_t = (upper - t)/2 + t
  *     if next_t <= lower:             # <<<<<<<<<<<<<<
@@ -11064,16 +11064,16 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     }
 
-    /* "sort_cython.pyx":680
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":680
  *       next_t = (t - lower)/2 + lower
  * 
  *     f_t = fixed_point_abs(next_t, N, I, a2)             # <<<<<<<<<<<<<<
  *     # Get absolute value of change in f_t and t
  *     f_step = f_t - f_min
  */
-    __pyx_v_f_t = __pyx_f_11sort_cython_fixed_point_abs(__pyx_v_next_t, __pyx_v_N, __pyx_v_I, __pyx_v_a2);
+    __pyx_v_f_t = __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point_abs(__pyx_v_next_t, __pyx_v_N, __pyx_v_I, __pyx_v_a2);
 
-    /* "sort_cython.pyx":682
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":682
  *     f_t = fixed_point_abs(next_t, N, I, a2)
  *     # Get absolute value of change in f_t and t
  *     f_step = f_t - f_min             # <<<<<<<<<<<<<<
@@ -11082,7 +11082,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     __pyx_v_f_step = (__pyx_v_f_t - __pyx_v_f_min);
 
-    /* "sort_cython.pyx":683
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":683
  *     # Get absolute value of change in f_t and t
  *     f_step = f_t - f_min
  *     if f_step < 0.0:             # <<<<<<<<<<<<<<
@@ -11092,7 +11092,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_t_1 = ((__pyx_v_f_step < 0.0) != 0);
     if (__pyx_t_1) {
 
-      /* "sort_cython.pyx":684
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":684
  *     f_step = f_t - f_min
  *     if f_step < 0.0:
  *       f_step *= -1.0             # <<<<<<<<<<<<<<
@@ -11101,7 +11101,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       __pyx_v_f_step = (__pyx_v_f_step * -1.0);
 
-      /* "sort_cython.pyx":683
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":683
  *     # Get absolute value of change in f_t and t
  *     f_step = f_t - f_min
  *     if f_step < 0.0:             # <<<<<<<<<<<<<<
@@ -11110,7 +11110,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     }
 
-    /* "sort_cython.pyx":685
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":685
  *     if f_step < 0.0:
  *       f_step *= -1.0
  *     t_step = t - next_t             # <<<<<<<<<<<<<<
@@ -11119,7 +11119,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     __pyx_v_t_step = (__pyx_v_t - __pyx_v_next_t);
 
-    /* "sort_cython.pyx":686
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":686
  *       f_step *= -1.0
  *     t_step = t - next_t
  *     if t_step < 0.0:             # <<<<<<<<<<<<<<
@@ -11129,7 +11129,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_t_1 = ((__pyx_v_t_step < 0.0) != 0);
     if (__pyx_t_1) {
 
-      /* "sort_cython.pyx":687
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":687
  *     t_step = t - next_t
  *     if t_step < 0.0:
  *       t_step *= -1.0             # <<<<<<<<<<<<<<
@@ -11138,7 +11138,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       __pyx_v_t_step = (__pyx_v_t_step * -1.0);
 
-      /* "sort_cython.pyx":686
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":686
  *       f_step *= -1.0
  *     t_step = t - next_t
  *     if t_step < 0.0:             # <<<<<<<<<<<<<<
@@ -11147,7 +11147,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     }
 
-    /* "sort_cython.pyx":689
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":689
  *       t_step *= -1.0
  * 
  *     if (f_step < ytol) or (t_step < xtol):             # <<<<<<<<<<<<<<
@@ -11165,7 +11165,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_L16_bool_binop_done:;
     if (__pyx_t_1) {
 
-      /* "sort_cython.pyx":691
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":691
  *     if (f_step < ytol) or (t_step < xtol):
  *       # So little change we declare ourselves done
  *       t_star = t             # <<<<<<<<<<<<<<
@@ -11174,7 +11174,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       __pyx_v_t_star = __pyx_v_t;
 
-      /* "sort_cython.pyx":692
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":692
  *       # So little change we declare ourselves done
  *       t_star = t
  *       break             # <<<<<<<<<<<<<<
@@ -11183,7 +11183,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       goto __pyx_L9_break;
 
-      /* "sort_cython.pyx":689
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":689
  *       t_step *= -1.0
  * 
  *     if (f_step < ytol) or (t_step < xtol):             # <<<<<<<<<<<<<<
@@ -11192,7 +11192,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     }
 
-    /* "sort_cython.pyx":694
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":694
  *       break
  *     # Reassign and remember stuff for next iteration
  *     t = next_t             # <<<<<<<<<<<<<<
@@ -11201,7 +11201,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     __pyx_v_t = __pyx_v_next_t;
 
-    /* "sort_cython.pyx":695
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":695
  *     # Reassign and remember stuff for next iteration
  *     t = next_t
  *     dt = t_step             # <<<<<<<<<<<<<<
@@ -11210,7 +11210,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     __pyx_v_dt = __pyx_v_t_step;
 
-    /* "sort_cython.pyx":696
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":696
  *     t = next_t
  *     dt = t_step
  *     f_min = f_t             # <<<<<<<<<<<<<<
@@ -11219,7 +11219,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     __pyx_v_f_min = __pyx_v_f_t;
 
-    /* "sort_cython.pyx":697
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":697
  *     dt = t_step
  *     f_min = f_t
  *     n_iters += 1             # <<<<<<<<<<<<<<
@@ -11228,7 +11228,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
     __pyx_v_n_iters = (__pyx_v_n_iters + 1);
 
-    /* "sort_cython.pyx":698
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":698
  *     f_min = f_t
  *     n_iters += 1
  *     if n_iters > max_iter:             # <<<<<<<<<<<<<<
@@ -11238,7 +11238,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
     __pyx_t_1 = ((__pyx_v_n_iters > __pyx_v_max_iter) != 0);
     if (__pyx_t_1) {
 
-      /* "sort_cython.pyx":699
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":699
  *     n_iters += 1
  *     if n_iters > max_iter:
  *       t_star = t             # <<<<<<<<<<<<<<
@@ -11247,7 +11247,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       __pyx_v_t_star = __pyx_v_t;
 
-      /* "sort_cython.pyx":700
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":700
  *     if n_iters > max_iter:
  *       t_star = t
  *       break             # <<<<<<<<<<<<<<
@@ -11256,7 +11256,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
       goto __pyx_L9_break;
 
-      /* "sort_cython.pyx":698
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":698
  *     f_min = f_t
  *     n_iters += 1
  *     if n_iters > max_iter:             # <<<<<<<<<<<<<<
@@ -11267,7 +11267,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
   }
   __pyx_L9_break:;
 
-  /* "sort_cython.pyx":702
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":702
  *       break
  * 
  *   return t_star             # <<<<<<<<<<<<<<
@@ -11277,7 +11277,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
   __pyx_r = __pyx_v_t_star;
   goto __pyx_L0;
 
-  /* "sort_cython.pyx":632
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":632
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * cdef double bound_grad_desc_fixed_point_abs(int64_t N, double[::1] I, double[::1] a2,             # <<<<<<<<<<<<<<
@@ -11291,7 +11291,7 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
   return __pyx_r;
 }
 
-/* "sort_cython.pyx":708
+/* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":708
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def kde(double[::1] data, int64_t n_points):             # <<<<<<<<<<<<<<
@@ -11300,10 +11300,10 @@ static double __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(int64_t __py
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_11sort_cython_13kde(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_11sort_cython_12kde[] = "\n  Kernel density estimate (KDE) with automatic bandwidth selection.\n\n  Returns an array of the KDE and the bandwidth used to compute it.\n\n  This code was adapted to Python from the original MatLab script distributed\n  by Zdravko Botev (see Notes below).\n  \"Reliable and extremely fast kernel density estimator for one-dimensional\n  data. Gaussian kernel is assumed and the bandwidth is chosen automatically.\n  Unlike many other implementations, this one is immune to problems caused by\n  multimodal densities with widely separated modes (see example). The\n  estimation does not deteriorate for multimodal densities, because we never\n  assume a parametric model for the data.\"\n\n  Parameters\n  ----------\n  data : numpy ndarray double\n      a vector of data from which the density estimate is constructed\n  n : int64_t\n      the number of mesh points used in the uniform discretization of the\n      input data over the interval [MIN, MAX] (min and max is determined from\n      the range of values input in data). n has to be a power of two. if n is\n      not a power of two, then n is rounded up to the next power of two,\n      i.e., n is set to n = 2 ** np.ceil(np.log2(n)).\n\n  Returns\n  -------\n  density : numpy ndarray\n      Column vector of length 'n' with the values of the density estimate at\n      the xmesh grid points.\n  xmesh : numpy ndarray\n      The grid over which the density estimate was computed.\n  bandwidth : float\n      The optimal bandwidth (Gaussian kernel assumed).\n\n  Example\n  -------\n  import numpy as np\n  import matplotlib.pyplot as plt\n\n  data = np.hstack((np.random.randn(100), np.random.randn(100)*2+35,\n                  np.random.randn(100)+55))\n  density, xmesh, bandwidth = sort_cython.kde(data, 2**14)\n  counts, xvals = np.histogram(data, bins=100)\n  plt.bar(xvals[0:-1], counts, width=1, align='edge', color=[.5, .5, .5])\n  plt.plot(xmesh, density * (np.amax(counts) / np.amax(density)), color='r')\n  plt.xlim(-5, 65"")\n  plt.show()\n\n  Notes\n  -----\n  New comments for this Python translation are in triple quotes below.  The\n  original comments in the distributed MatLab implementation are indicated\n  with hashtag style.\n\n  MatLab code downloaded from:\n  https://www.mathworks.com/matlabcentral/fileexchange/\n                              14034-kernel-density-estimator\n  with references and author information here:\n  https://web.maths.unsw.edu.au/~zdravkobotev/\n  and here:\n  Kernel density estimation via diffusion\n  Z. I. Botev, J. F. Grotowski, and D. P. Kroese (2010)\n  Annals of Statistics, Volume 38, Number 5, pages 2916-2957.\n\n  I removed the original 'MIN' and 'MAX' inputs and instead always set them to\n  the default values.  Originally these inputs were optional, and defined as:\n  MIN, MAX  - defines the interval [MIN,MAX] on which the density estimate is\n              constructed the default values of MIN and MAX are:\n              MIN=min(data)-Range/10 and MAX=max(data)+Range/10, where\n              Range=max(data)-min(data)\n\n  I removed the original 'cdf' output and only output the 'density' pdf.\n  Original cdf output definition was:\n      cdf  - column vector of length 'n' with the values of the cdf\n\n  I removed all plotting functionality of the original function.\n  ";
-static PyMethodDef __pyx_mdef_11sort_cython_13kde = {"kde", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_13kde, METH_VARARGS|METH_KEYWORDS, __pyx_doc_11sort_cython_12kde};
-static PyObject *__pyx_pw_11sort_cython_13kde(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_13kde(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_12kde[] = "\n  Kernel density estimate (KDE) with automatic bandwidth selection.\n\n  Returns an array of the KDE and the bandwidth used to compute it.\n\n  This code was adapted to Python from the original MatLab script distributed\n  by Zdravko Botev (see Notes below).\n  \"Reliable and extremely fast kernel density estimator for one-dimensional\n  data. Gaussian kernel is assumed and the bandwidth is chosen automatically.\n  Unlike many other implementations, this one is immune to problems caused by\n  multimodal densities with widely separated modes (see example). The\n  estimation does not deteriorate for multimodal densities, because we never\n  assume a parametric model for the data.\"\n\n  Parameters\n  ----------\n  data : numpy ndarray double\n      a vector of data from which the density estimate is constructed\n  n : int64_t\n      the number of mesh points used in the uniform discretization of the\n      input data over the interval [MIN, MAX] (min and max is determined from\n      the range of values input in data). n has to be a power of two. if n is\n      not a power of two, then n is rounded up to the next power of two,\n      i.e., n is set to n = 2 ** np.ceil(np.log2(n)).\n\n  Returns\n  -------\n  density : numpy ndarray\n      Column vector of length 'n' with the values of the density estimate at\n      the xmesh grid points.\n  xmesh : numpy ndarray\n      The grid over which the density estimate was computed.\n  bandwidth : float\n      The optimal bandwidth (Gaussian kernel assumed).\n\n  Example\n  -------\n  import numpy as np\n  import matplotlib.pyplot as plt\n\n  data = np.hstack((np.random.randn(100), np.random.randn(100)*2+35,\n                  np.random.randn(100)+55))\n  density, xmesh, bandwidth = sort_cython.kde(data, 2**14)\n  counts, xvals = np.histogram(data, bins=100)\n  plt.bar(xvals[0:-1], counts, width=1, align='edge', color=[.5, .5, .5])\n  plt.plot(xmesh, density * (np.amax(counts) / np.amax(density)), color='r')\n  plt.xlim(-5, 65"")\n  plt.show()\n\n  Notes\n  -----\n  New comments for this Python translation are in triple quotes below.  The\n  original comments in the distributed MatLab implementation are indicated\n  with hashtag style.\n\n  MatLab code downloaded from:\n  https://www.mathworks.com/matlabcentral/fileexchange/\n                              14034-kernel-density-estimator\n  with references and author information here:\n  https://web.maths.unsw.edu.au/~zdravkobotev/\n  and here:\n  Kernel density estimation via diffusion\n  Z. I. Botev, J. F. Grotowski, and D. P. Kroese (2010)\n  Annals of Statistics, Volume 38, Number 5, pages 2916-2957.\n\n  I removed the original 'MIN' and 'MAX' inputs and instead always set them to\n  the default values.  Originally these inputs were optional, and defined as:\n  MIN, MAX  - defines the interval [MIN,MAX] on which the density estimate is\n              constructed the default values of MIN and MAX are:\n              MIN=min(data)-Range/10 and MAX=max(data)+Range/10, where\n              Range=max(data)-min(data)\n\n  I removed the original 'cdf' output and only output the 'density' pdf.\n  Original cdf output definition was:\n      cdf  - column vector of length 'n' with the values of the cdf\n\n  I removed all plotting functionality of the original function.\n  ";
+static PyMethodDef __pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_13kde = {"kde", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_13kde, METH_VARARGS|METH_KEYWORDS, __pyx_doc_24spikesorting_fullpursuit_8c_cython_11sort_cython_12kde};
+static PyObject *__pyx_pw_24spikesorting_fullpursuit_8c_cython_11sort_cython_13kde(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   __Pyx_memviewslice __pyx_v_data = { 0, 0, { 0 }, { 0 }, { 0 } };
   int64_t __pyx_v_n_points;
   int __pyx_lineno = 0;
@@ -11354,18 +11354,18 @@ static PyObject *__pyx_pw_11sort_cython_13kde(PyObject *__pyx_self, PyObject *__
   __pyx_L5_argtuple_error:;
   __Pyx_RaiseArgtupleInvalid("kde", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 708, __pyx_L3_error)
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sort_cython.kde", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.kde", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_11sort_cython_12kde(__pyx_self, __pyx_v_data, __pyx_v_n_points);
+  __pyx_r = __pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_12kde(__pyx_self, __pyx_v_data, __pyx_v_n_points);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_data, int64_t __pyx_v_n_points) {
+static PyObject *__pyx_pf_24spikesorting_fullpursuit_8c_cython_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_data, int64_t __pyx_v_n_points) {
   double __pyx_v_R;
   double __pyx_v_dx;
   double __pyx_v_tol;
@@ -11443,7 +11443,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_pybuffernd_density.data = NULL;
   __pyx_pybuffernd_density.rcbuffer = &__pyx_pybuffer_density;
 
-  /* "sort_cython.pyx":790
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":790
  *   cdef int64_t N, n
  *   cdef Py_ssize_t x
  *   cdef Py_ssize_t data_size = data.shape[0]             # <<<<<<<<<<<<<<
@@ -11452,7 +11452,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_data_size = (__pyx_v_data.shape[0]);
 
-  /* "sort_cython.pyx":791
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":791
  *   cdef Py_ssize_t x
  *   cdef Py_ssize_t data_size = data.shape[0]
  *   cdef double MIN = INFINITY, MAX = -INFINITY             # <<<<<<<<<<<<<<
@@ -11462,7 +11462,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_v_MIN = NPY_INFINITY;
   __pyx_v_MAX = (-NPY_INFINITY);
 
-  /* "sort_cython.pyx":793
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":793
  *   cdef double MIN = INFINITY, MAX = -INFINITY
  * 
  *   n = <int64_t>1 << <int64_t>(ceil(log2(n_points))) # round up n to the next power of 2             # <<<<<<<<<<<<<<
@@ -11471,7 +11471,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_n = (((int64_t)1) << ((int64_t)ceil(log2(__pyx_v_n_points))));
 
-  /* "sort_cython.pyx":795
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":795
  *   n = <int64_t>1 << <int64_t>(ceil(log2(n_points))) # round up n to the next power of 2
  *   # define the interval [MIN, MAX]
  *   for x in range(0, data_size):             # <<<<<<<<<<<<<<
@@ -11483,7 +11483,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_x = __pyx_t_3;
 
-    /* "sort_cython.pyx":796
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":796
  *   # define the interval [MIN, MAX]
  *   for x in range(0, data_size):
  *     if data[x] > MAX:             # <<<<<<<<<<<<<<
@@ -11494,7 +11494,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_t_5 = (((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_data.data) + __pyx_t_4)) ))) > __pyx_v_MAX) != 0);
     if (__pyx_t_5) {
 
-      /* "sort_cython.pyx":797
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":797
  *   for x in range(0, data_size):
  *     if data[x] > MAX:
  *       MAX = data[x]             # <<<<<<<<<<<<<<
@@ -11504,7 +11504,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
       __pyx_t_4 = __pyx_v_x;
       __pyx_v_MAX = (*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_data.data) + __pyx_t_4)) )));
 
-      /* "sort_cython.pyx":796
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":796
  *   # define the interval [MIN, MAX]
  *   for x in range(0, data_size):
  *     if data[x] > MAX:             # <<<<<<<<<<<<<<
@@ -11513,7 +11513,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
     }
 
-    /* "sort_cython.pyx":798
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":798
  *     if data[x] > MAX:
  *       MAX = data[x]
  *     if data[x] < MIN:             # <<<<<<<<<<<<<<
@@ -11524,7 +11524,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_t_5 = (((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_data.data) + __pyx_t_4)) ))) < __pyx_v_MIN) != 0);
     if (__pyx_t_5) {
 
-      /* "sort_cython.pyx":799
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":799
  *       MAX = data[x]
  *     if data[x] < MIN:
  *       MIN = data[x]             # <<<<<<<<<<<<<<
@@ -11534,7 +11534,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
       __pyx_t_4 = __pyx_v_x;
       __pyx_v_MIN = (*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_data.data) + __pyx_t_4)) )));
 
-      /* "sort_cython.pyx":798
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":798
  *     if data[x] > MAX:
  *       MAX = data[x]
  *     if data[x] < MIN:             # <<<<<<<<<<<<<<
@@ -11544,7 +11544,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     }
   }
 
-  /* "sort_cython.pyx":801
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":801
  *       MIN = data[x]
  * 
  *   if MIN == MAX:             # <<<<<<<<<<<<<<
@@ -11554,7 +11554,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_5 = ((__pyx_v_MIN == __pyx_v_MAX) != 0);
   if (__pyx_t_5) {
 
-    /* "sort_cython.pyx":802
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":802
  * 
  *   if MIN == MAX:
  *     early_density = np.ones((1, ), dtype=np.double)             # <<<<<<<<<<<<<<
@@ -11582,7 +11582,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_v_early_density = __pyx_t_9;
     __pyx_t_9 = 0;
 
-    /* "sort_cython.pyx":803
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":803
  *   if MIN == MAX:
  *     early_density = np.ones((1, ), dtype=np.double)
  *     xmesh = np.ones((1, ), dtype=np.double)             # <<<<<<<<<<<<<<
@@ -11610,7 +11610,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_v_xmesh = __pyx_t_8;
     __pyx_t_8 = 0;
 
-    /* "sort_cython.pyx":804
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":804
  *     early_density = np.ones((1, ), dtype=np.double)
  *     xmesh = np.ones((1, ), dtype=np.double)
  *     xmesh[0] = MAX             # <<<<<<<<<<<<<<
@@ -11622,7 +11622,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     if (unlikely(__Pyx_SetItemInt(__pyx_v_xmesh, 0, __pyx_t_8, long, 1, __Pyx_PyInt_From_long, 0, 0, 0) < 0)) __PYX_ERR(0, 804, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-    /* "sort_cython.pyx":805
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":805
  *     xmesh = np.ones((1, ), dtype=np.double)
  *     xmesh[0] = MAX
  *     bandwidth = 0.0             # <<<<<<<<<<<<<<
@@ -11631,7 +11631,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
     __pyx_v_bandwidth = 0.0;
 
-    /* "sort_cython.pyx":806
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":806
  *     xmesh[0] = MAX
  *     bandwidth = 0.0
  *     return early_density, xmesh, bandwidth             # <<<<<<<<<<<<<<
@@ -11656,7 +11656,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_t_9 = 0;
     goto __pyx_L0;
 
-    /* "sort_cython.pyx":801
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":801
  *       MIN = data[x]
  * 
  *   if MIN == MAX:             # <<<<<<<<<<<<<<
@@ -11665,7 +11665,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   }
 
-  /* "sort_cython.pyx":809
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":809
  * 
  *   # set up the grid over which the density estimate is computed
  *   R = MAX - MIN             # <<<<<<<<<<<<<<
@@ -11674,7 +11674,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_R = (__pyx_v_MAX - __pyx_v_MIN);
 
-  /* "sort_cython.pyx":810
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":810
  *   # set up the grid over which the density estimate is computed
  *   R = MAX - MIN
  *   dx = R / (n - 1.0)             # <<<<<<<<<<<<<<
@@ -11683,7 +11683,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_dx = (__pyx_v_R / (__pyx_v_n - 1.0));
 
-  /* "sort_cython.pyx":811
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":811
  *   R = MAX - MIN
  *   dx = R / (n - 1.0)
  *   cdef double val = MIN             # <<<<<<<<<<<<<<
@@ -11692,7 +11692,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_val = __pyx_v_MIN;
 
-  /* "sort_cython.pyx":812
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":812
  *   dx = R / (n - 1.0)
  *   cdef double val = MIN
  *   cdef int64_t xmesh_size = <int64_t>((R+dx)/dx)             # <<<<<<<<<<<<<<
@@ -11701,7 +11701,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_xmesh_size = ((int64_t)((__pyx_v_R + __pyx_v_dx) / __pyx_v_dx));
 
-  /* "sort_cython.pyx":813
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":813
  *   cdef double val = MIN
  *   cdef int64_t xmesh_size = <int64_t>((R+dx)/dx)
  *   xmesh = np.empty((xmesh_size, ), dtype=np.double)             # <<<<<<<<<<<<<<
@@ -11742,7 +11742,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_v_xmesh = __pyx_t_10;
   __pyx_t_10 = 0;
 
-  /* "sort_cython.pyx":814
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":814
  *   cdef int64_t xmesh_size = <int64_t>((R+dx)/dx)
  *   xmesh = np.empty((xmesh_size, ), dtype=np.double)
  *   cdef double[::1] xmesh_view = xmesh             # <<<<<<<<<<<<<<
@@ -11754,7 +11754,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_11.memview = NULL;
   __pyx_t_11.data = NULL;
 
-  /* "sort_cython.pyx":815
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":815
  *   xmesh = np.empty((xmesh_size, ), dtype=np.double)
  *   cdef double[::1] xmesh_view = xmesh
  *   for x in range(0, xmesh_size):             # <<<<<<<<<<<<<<
@@ -11766,7 +11766,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   for (__pyx_t_1 = 0; __pyx_t_1 < __pyx_t_13; __pyx_t_1+=1) {
     __pyx_v_x = __pyx_t_1;
 
-    /* "sort_cython.pyx":816
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":816
  *   cdef double[::1] xmesh_view = xmesh
  *   for x in range(0, xmesh_size):
  *     xmesh_view[x] = val             # <<<<<<<<<<<<<<
@@ -11776,7 +11776,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_t_4 = __pyx_v_x;
     *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_xmesh_view.data) + __pyx_t_4)) )) = __pyx_v_val;
 
-    /* "sort_cython.pyx":817
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":817
  *   for x in range(0, xmesh_size):
  *     xmesh_view[x] = val
  *     val += dx             # <<<<<<<<<<<<<<
@@ -11786,7 +11786,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_v_val = (__pyx_v_val + __pyx_v_dx);
   }
 
-  /* "sort_cython.pyx":820
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":820
  * 
  *   # bin the data uniformly using the grid defined above
  *   hist_bins = np.empty((xmesh_size + 1, ), dtype=np.double)             # <<<<<<<<<<<<<<
@@ -11827,7 +11827,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_v_hist_bins = __pyx_t_7;
   __pyx_t_7 = 0;
 
-  /* "sort_cython.pyx":821
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":821
  *   # bin the data uniformly using the grid defined above
  *   hist_bins = np.empty((xmesh_size + 1, ), dtype=np.double)
  *   cdef double[::1] hist_bins_view = hist_bins             # <<<<<<<<<<<<<<
@@ -11839,7 +11839,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_11.memview = NULL;
   __pyx_t_11.data = NULL;
 
-  /* "sort_cython.pyx":822
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":822
  *   hist_bins = np.empty((xmesh_size + 1, ), dtype=np.double)
  *   cdef double[::1] hist_bins_view = hist_bins
  *   for x in range(0, xmesh_size):             # <<<<<<<<<<<<<<
@@ -11851,7 +11851,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   for (__pyx_t_1 = 0; __pyx_t_1 < __pyx_t_13; __pyx_t_1+=1) {
     __pyx_v_x = __pyx_t_1;
 
-    /* "sort_cython.pyx":823
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":823
  *   cdef double[::1] hist_bins_view = hist_bins
  *   for x in range(0, xmesh_size):
  *     hist_bins_view[x] = xmesh_view[x]             # <<<<<<<<<<<<<<
@@ -11863,7 +11863,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_hist_bins_view.data) + __pyx_t_14)) )) = (*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_xmesh_view.data) + __pyx_t_4)) )));
   }
 
-  /* "sort_cython.pyx":825
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":825
  *     hist_bins_view[x] = xmesh_view[x]
  *   """ ADD np.inf as the final bin edge to get MatLab histc like behavior """
  *   hist_bins_view[x+1] = INFINITY             # <<<<<<<<<<<<<<
@@ -11873,7 +11873,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_4 = (__pyx_v_x + 1);
   *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_hist_bins_view.data) + __pyx_t_4)) )) = NPY_INFINITY;
 
-  /* "sort_cython.pyx":826
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":826
  *   """ ADD np.inf as the final bin edge to get MatLab histc like behavior """
  *   hist_bins_view[x+1] = INFINITY
  *   N = np.unique(data).shape[0]             # <<<<<<<<<<<<<<
@@ -11913,7 +11913,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
   __pyx_v_N = __pyx_t_12;
 
-  /* "sort_cython.pyx":827
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":827
  *   hist_bins_view[x+1] = INFINITY
  *   N = np.unique(data).shape[0]
  *   initial_data = np.histogram(data, bins=hist_bins)[0] / N             # <<<<<<<<<<<<<<
@@ -11952,7 +11952,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_v_initial_data = __pyx_t_9;
   __pyx_t_9 = 0;
 
-  /* "sort_cython.pyx":828
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":828
  *   N = np.unique(data).shape[0]
  *   initial_data = np.histogram(data, bins=hist_bins)[0] / N
  *   initial_data = initial_data / np.sum(initial_data)             # <<<<<<<<<<<<<<
@@ -11985,7 +11985,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __Pyx_DECREF_SET(__pyx_v_initial_data, __pyx_t_7);
   __pyx_t_7 = 0;
 
-  /* "sort_cython.pyx":829
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":829
  *   initial_data = np.histogram(data, bins=hist_bins)[0] / N
  *   initial_data = initial_data / np.sum(initial_data)
  *   a = dct(initial_data) # discrete cosine transform of initial data             # <<<<<<<<<<<<<<
@@ -12012,7 +12012,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_v_a = __pyx_t_7;
   __pyx_t_7 = 0;
 
-  /* "sort_cython.pyx":830
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":830
  *   initial_data = initial_data / np.sum(initial_data)
  *   a = dct(initial_data) # discrete cosine transform of initial data
  *   cdef double[::1] a_view = a             # <<<<<<<<<<<<<<
@@ -12024,7 +12024,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_11.memview = NULL;
   __pyx_t_11.data = NULL;
 
-  /* "sort_cython.pyx":833
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":833
  *   """ The original implementation below returns 1 for first element, so
  *   # enforce that here """
  *   a_view[0] = 1.0             # <<<<<<<<<<<<<<
@@ -12034,7 +12034,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_4 = 0;
   *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_a_view.data) + __pyx_t_4)) )) = 1.0;
 
-  /* "sort_cython.pyx":836
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":836
  * 
  *   # now compute the optimal bandwidth^2 using the referenced method
  *   I = np.empty((n - 1, ), dtype=np.float64) # Do I as float64 so it doesn't overflow in fixed_point             # <<<<<<<<<<<<<<
@@ -12075,7 +12075,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_v_I = __pyx_t_8;
   __pyx_t_8 = 0;
 
-  /* "sort_cython.pyx":837
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":837
  *   # now compute the optimal bandwidth^2 using the referenced method
  *   I = np.empty((n - 1, ), dtype=np.float64) # Do I as float64 so it doesn't overflow in fixed_point
  *   cdef double[::1] I_view = I             # <<<<<<<<<<<<<<
@@ -12087,7 +12087,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_11.memview = NULL;
   __pyx_t_11.data = NULL;
 
-  /* "sort_cython.pyx":838
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":838
  *   I = np.empty((n - 1, ), dtype=np.float64) # Do I as float64 so it doesn't overflow in fixed_point
  *   cdef double[::1] I_view = I
  *   cdef int64_t I_i = 1             # <<<<<<<<<<<<<<
@@ -12096,7 +12096,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_I_i = 1;
 
-  /* "sort_cython.pyx":839
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":839
  *   cdef double[::1] I_view = I
  *   cdef int64_t I_i = 1
  *   for x in range(0, n-1):             # <<<<<<<<<<<<<<
@@ -12108,7 +12108,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   for (__pyx_t_1 = 0; __pyx_t_1 < __pyx_t_13; __pyx_t_1+=1) {
     __pyx_v_x = __pyx_t_1;
 
-    /* "sort_cython.pyx":840
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":840
  *   cdef int64_t I_i = 1
  *   for x in range(0, n-1):
  *     I_view[x] = I_i ** 2             # <<<<<<<<<<<<<<
@@ -12118,7 +12118,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_t_4 = __pyx_v_x;
     *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_I_view.data) + __pyx_t_4)) )) = __Pyx_pow_int64_t(__pyx_v_I_i, 2);
 
-    /* "sort_cython.pyx":841
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":841
  *   for x in range(0, n-1):
  *     I_view[x] = I_i ** 2
  *     I_i += 1             # <<<<<<<<<<<<<<
@@ -12128,7 +12128,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_v_I_i = (__pyx_v_I_i + 1);
   }
 
-  /* "sort_cython.pyx":842
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":842
  *     I_view[x] = I_i ** 2
  *     I_i += 1
  *   a2 = np.empty((a_view.shape[0] - 1, ), dtype=np.double)             # <<<<<<<<<<<<<<
@@ -12169,7 +12169,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_v_a2 = __pyx_t_10;
   __pyx_t_10 = 0;
 
-  /* "sort_cython.pyx":843
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":843
  *     I_i += 1
  *   a2 = np.empty((a_view.shape[0] - 1, ), dtype=np.double)
  *   cdef double[::1] a2_view = a2             # <<<<<<<<<<<<<<
@@ -12181,7 +12181,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_11.memview = NULL;
   __pyx_t_11.data = NULL;
 
-  /* "sort_cython.pyx":844
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":844
  *   a2 = np.empty((a_view.shape[0] - 1, ), dtype=np.double)
  *   cdef double[::1] a2_view = a2
  *   for x in range(0, a_view.shape[0]-1):             # <<<<<<<<<<<<<<
@@ -12193,7 +12193,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_x = __pyx_t_3;
 
-    /* "sort_cython.pyx":845
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":845
  *   cdef double[::1] a2_view = a2
  *   for x in range(0, a_view.shape[0]-1):
  *     a2_view[x] = (a_view[x+1] / 2) ** 2             # <<<<<<<<<<<<<<
@@ -12205,7 +12205,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_a2_view.data) + __pyx_t_14)) )) = pow(((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_a_view.data) + __pyx_t_4)) ))) / 2.0), 2.0);
   }
 
-  /* "sort_cython.pyx":847
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":847
  *     a2_view[x] = (a_view[x+1] / 2) ** 2
  * 
  *   cdef int64_t N_tol = 50 * (N <= 50) + 1050 * (N >= 1050) + N * ((N < 1050) * (N > 50))             # <<<<<<<<<<<<<<
@@ -12214,7 +12214,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_N_tol = (((50 * (__pyx_v_N <= 50)) + (0x41A * (__pyx_v_N >= 0x41A))) + (__pyx_v_N * ((__pyx_v_N < 0x41A) * (__pyx_v_N > 50))));
 
-  /* "sort_cython.pyx":848
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":848
  * 
  *   cdef int64_t N_tol = 50 * (N <= 50) + 1050 * (N >= 1050) + N * ((N < 1050) * (N > 50))
  *   tol = 10.0 ** -12.0 + 0.01 * (N_tol - 50.0) / 1000.0             # <<<<<<<<<<<<<<
@@ -12223,7 +12223,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_tol = (pow(10.0, -12.0) + ((0.01 * (__pyx_v_N_tol - 50.0)) / 1000.0));
 
-  /* "sort_cython.pyx":849
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":849
  *   cdef int64_t N_tol = 50 * (N <= 50) + 1050 * (N >= 1050) + N * ((N < 1050) * (N > 50))
  *   tol = 10.0 ** -12.0 + 0.01 * (N_tol - 50.0) / 1000.0
  *   fixed_point_0 = fixed_point(0.0, N, I, a2)             # <<<<<<<<<<<<<<
@@ -12232,7 +12232,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_t_11 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_v_I, PyBUF_WRITABLE); if (unlikely(!__pyx_t_11.memview)) __PYX_ERR(0, 849, __pyx_L1_error)
   __pyx_t_15 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_v_a2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_15.memview)) __PYX_ERR(0, 849, __pyx_L1_error)
-  __pyx_v_fixed_point_0 = __pyx_f_11sort_cython_fixed_point(0.0, __pyx_v_N, __pyx_t_11, __pyx_t_15);
+  __pyx_v_fixed_point_0 = __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point(0.0, __pyx_v_N, __pyx_t_11, __pyx_t_15);
   __PYX_XDEC_MEMVIEW(&__pyx_t_11, 1);
   __pyx_t_11.memview = NULL;
   __pyx_t_11.data = NULL;
@@ -12240,7 +12240,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_15.memview = NULL;
   __pyx_t_15.data = NULL;
 
-  /* "sort_cython.pyx":850
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":850
  *   tol = 10.0 ** -12.0 + 0.01 * (N_tol - 50.0) / 1000.0
  *   fixed_point_0 = fixed_point(0.0, N, I, a2)
  *   f_0 = fixed_point_0             # <<<<<<<<<<<<<<
@@ -12249,7 +12249,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_f_0 = __pyx_v_fixed_point_0;
 
-  /* "sort_cython.pyx":851
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":851
  *   fixed_point_0 = fixed_point(0.0, N, I, a2)
  *   f_0 = fixed_point_0
  *   tol_0 = 0.0             # <<<<<<<<<<<<<<
@@ -12258,7 +12258,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_tol_0 = 0.0;
 
-  /* "sort_cython.pyx":853
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":853
  *   tol_0 = 0.0
  *   """ This is the main optimization loop to solve for t_star """
  *   while 1:             # <<<<<<<<<<<<<<
@@ -12267,7 +12267,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   while (1) {
 
-    /* "sort_cython.pyx":854
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":854
  *   """ This is the main optimization loop to solve for t_star """
  *   while 1:
  *     f_tol = fixed_point(tol, N, I, a2)             # <<<<<<<<<<<<<<
@@ -12276,7 +12276,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
     __pyx_t_15 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_v_I, PyBUF_WRITABLE); if (unlikely(!__pyx_t_15.memview)) __PYX_ERR(0, 854, __pyx_L1_error)
     __pyx_t_11 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_v_a2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_11.memview)) __PYX_ERR(0, 854, __pyx_L1_error)
-    __pyx_v_f_tol = __pyx_f_11sort_cython_fixed_point(__pyx_v_tol, __pyx_v_N, __pyx_t_15, __pyx_t_11);
+    __pyx_v_f_tol = __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_fixed_point(__pyx_v_tol, __pyx_v_N, __pyx_t_15, __pyx_t_11);
     __PYX_XDEC_MEMVIEW(&__pyx_t_15, 1);
     __pyx_t_15.memview = NULL;
     __pyx_t_15.data = NULL;
@@ -12284,17 +12284,17 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_t_11.memview = NULL;
     __pyx_t_11.data = NULL;
 
-    /* "sort_cython.pyx":857
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":857
  *     """ Attempt to find a zero crossing in the fixed_point function moving
  *     stepwise from fixed_point_0 """
  *     if sign_fun(f_0) != sign_fun(f_tol):             # <<<<<<<<<<<<<<
  *       # use fzero to solve the equation t=zeta*gamma^[5](t)
  *       """ I am using my own gradient descent with bounds made for this purpose
  */
-    __pyx_t_5 = ((__pyx_f_11sort_cython_sign_fun(__pyx_v_f_0) != __pyx_f_11sort_cython_sign_fun(__pyx_v_f_tol)) != 0);
+    __pyx_t_5 = ((__pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_sign_fun(__pyx_v_f_0) != __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_sign_fun(__pyx_v_f_tol)) != 0);
     if (__pyx_t_5) {
 
-      /* "sort_cython.pyx":861
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":861
  *       """ I am using my own gradient descent with bounds made for this purpose
  *           rather than MatLab 'fzero' """
  *       t_star = bound_grad_desc_fixed_point_abs(N, I, a2, tol_0, tol, 1.0e-6, 1.0e-6)             # <<<<<<<<<<<<<<
@@ -12303,7 +12303,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
       __pyx_t_11 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_v_I, PyBUF_WRITABLE); if (unlikely(!__pyx_t_11.memview)) __PYX_ERR(0, 861, __pyx_L1_error)
       __pyx_t_15 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_v_a2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_15.memview)) __PYX_ERR(0, 861, __pyx_L1_error)
-      __pyx_v_t_star = __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(__pyx_v_N, __pyx_t_11, __pyx_t_15, __pyx_v_tol_0, __pyx_v_tol, 1.0e-6, 1.0e-6);
+      __pyx_v_t_star = __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_bound_grad_desc_fixed_point_abs(__pyx_v_N, __pyx_t_11, __pyx_t_15, __pyx_v_tol_0, __pyx_v_tol, 1.0e-6, 1.0e-6);
       __PYX_XDEC_MEMVIEW(&__pyx_t_11, 1);
       __pyx_t_11.memview = NULL;
       __pyx_t_11.data = NULL;
@@ -12311,7 +12311,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
       __pyx_t_15.memview = NULL;
       __pyx_t_15.data = NULL;
 
-      /* "sort_cython.pyx":862
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":862
  *           rather than MatLab 'fzero' """
  *       t_star = bound_grad_desc_fixed_point_abs(N, I, a2, tol_0, tol, 1.0e-6, 1.0e-6)
  *       break             # <<<<<<<<<<<<<<
@@ -12320,7 +12320,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
       goto __pyx_L17_break;
 
-      /* "sort_cython.pyx":857
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":857
  *     """ Attempt to find a zero crossing in the fixed_point function moving
  *     stepwise from fixed_point_0 """
  *     if sign_fun(f_0) != sign_fun(f_tol):             # <<<<<<<<<<<<<<
@@ -12329,7 +12329,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
     }
 
-    /* "sort_cython.pyx":864
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":864
  *       break
  *     else:
  *       tol_0 = tol             # <<<<<<<<<<<<<<
@@ -12339,7 +12339,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     /*else*/ {
       __pyx_v_tol_0 = __pyx_v_tol;
 
-      /* "sort_cython.pyx":865
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":865
  *     else:
  *       tol_0 = tol
  *       tol = min(tol * 2.0, 1.0) # double search interval             # <<<<<<<<<<<<<<
@@ -12355,7 +12355,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
       }
       __pyx_v_tol = __pyx_t_18;
 
-      /* "sort_cython.pyx":866
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":866
  *       tol_0 = tol
  *       tol = min(tol * 2.0, 1.0) # double search interval
  *       f_0 = f_tol             # <<<<<<<<<<<<<<
@@ -12365,7 +12365,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
       __pyx_v_f_0 = __pyx_v_f_tol;
     }
 
-    /* "sort_cython.pyx":867
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":867
  *       tol = min(tol * 2.0, 1.0) # double search interval
  *       f_0 = f_tol
  *     if tol == 1.0: # if all else fails             # <<<<<<<<<<<<<<
@@ -12375,7 +12375,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __pyx_t_5 = ((__pyx_v_tol == 1.0) != 0);
     if (__pyx_t_5) {
 
-      /* "sort_cython.pyx":870
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":870
  *       """ Failed to find zero crossing so find absolute minimum value using
  *           the same bounded gradient descent algorithm as above"""
  *       t_star = bound_grad_desc_fixed_point_abs(N, I, a2, 0, 1.0, 1.0e-6, 1.0e-6)             # <<<<<<<<<<<<<<
@@ -12384,7 +12384,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
       __pyx_t_15 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_v_I, PyBUF_WRITABLE); if (unlikely(!__pyx_t_15.memview)) __PYX_ERR(0, 870, __pyx_L1_error)
       __pyx_t_11 = __Pyx_PyObject_to_MemoryviewSlice_dc_double(__pyx_v_a2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_11.memview)) __PYX_ERR(0, 870, __pyx_L1_error)
-      __pyx_v_t_star = __pyx_f_11sort_cython_bound_grad_desc_fixed_point_abs(__pyx_v_N, __pyx_t_15, __pyx_t_11, 0.0, 1.0, 1.0e-6, 1.0e-6);
+      __pyx_v_t_star = __pyx_f_24spikesorting_fullpursuit_8c_cython_11sort_cython_bound_grad_desc_fixed_point_abs(__pyx_v_N, __pyx_t_15, __pyx_t_11, 0.0, 1.0, 1.0e-6, 1.0e-6);
       __PYX_XDEC_MEMVIEW(&__pyx_t_15, 1);
       __pyx_t_15.memview = NULL;
       __pyx_t_15.data = NULL;
@@ -12392,7 +12392,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
       __pyx_t_11.memview = NULL;
       __pyx_t_11.data = NULL;
 
-      /* "sort_cython.pyx":871
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":871
  *           the same bounded gradient descent algorithm as above"""
  *       t_star = bound_grad_desc_fixed_point_abs(N, I, a2, 0, 1.0, 1.0e-6, 1.0e-6)
  *       break             # <<<<<<<<<<<<<<
@@ -12401,7 +12401,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
       goto __pyx_L17_break;
 
-      /* "sort_cython.pyx":867
+      /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":867
  *       tol = min(tol * 2.0, 1.0) # double search interval
  *       f_0 = f_tol
  *     if tol == 1.0: # if all else fails             # <<<<<<<<<<<<<<
@@ -12412,7 +12412,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   }
   __pyx_L17_break:;
 
-  /* "sort_cython.pyx":874
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":874
  * 
  *   # smooth the discrete cosine transform of initial data using t_star
  *   a_t = np.empty_like(a, dtype=np.double)             # <<<<<<<<<<<<<<
@@ -12446,7 +12446,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_v_a_t = __pyx_t_9;
   __pyx_t_9 = 0;
 
-  /* "sort_cython.pyx":875
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":875
  *   # smooth the discrete cosine transform of initial data using t_star
  *   a_t = np.empty_like(a, dtype=np.double)
  *   cdef double[::1] a_t_view = a_t             # <<<<<<<<<<<<<<
@@ -12458,7 +12458,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_11.memview = NULL;
   __pyx_t_11.data = NULL;
 
-  /* "sort_cython.pyx":876
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":876
  *   a_t = np.empty_like(a, dtype=np.double)
  *   cdef double[::1] a_t_view = a_t
  *   for x in range(0, a_t_view.shape[0]):             # <<<<<<<<<<<<<<
@@ -12470,7 +12470,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_x = __pyx_t_3;
 
-    /* "sort_cython.pyx":877
+    /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":877
  *   cdef double[::1] a_t_view = a_t
  *   for x in range(0, a_t_view.shape[0]):
  *     a_t_view[x] = a_view[x] * exp(-1.0 * x ** 2 * M_PI ** 2 * t_star / 2)             # <<<<<<<<<<<<<<
@@ -12482,7 +12482,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     *((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_a_t_view.data) + __pyx_t_14)) )) = ((*((double *) ( /* dim=0 */ ((char *) (((double *) __pyx_v_a_view.data) + __pyx_t_4)) ))) * exp(((((-1.0 * __Pyx_pow_Py_ssize_t(__pyx_v_x, 2)) * pow(((double)M_PI), 2.0)) * __pyx_v_t_star) / 2.0)));
   }
 
-  /* "sort_cython.pyx":884
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":884
  *   #      Processing", pp. 150-153.
  *   # Compute weights
  *   weights = a_t.size * np.exp(1j * np.arange(0, a_t.size) * np.pi / (2 * a_t.size))             # <<<<<<<<<<<<<<
@@ -12597,7 +12597,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_v_weights = __pyx_t_7;
   __pyx_t_7 = 0;
 
-  /* "sort_cython.pyx":886
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":886
  *   weights = a_t.size * np.exp(1j * np.arange(0, a_t.size) * np.pi / (2 * a_t.size))
  *   # Compute x tilde using equation (5.93) in Jain
  *   a_t = np.real(ifft(weights * a_t))             # <<<<<<<<<<<<<<
@@ -12648,7 +12648,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __Pyx_DECREF_SET(__pyx_v_a_t, __pyx_t_7);
   __pyx_t_7 = 0;
 
-  /* "sort_cython.pyx":889
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":889
  *   # Re-order elements of each column according to equations (5.93) and
  *   # (5.94) in Jain
  *   cdef np.ndarray[double, ndim=1, mode="c"] density = np.zeros(a_t.size)             # <<<<<<<<<<<<<<
@@ -12692,7 +12692,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_v_density = ((PyArrayObject *)__pyx_t_7);
   __pyx_t_7 = 0;
 
-  /* "sort_cython.pyx":890
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":890
  *   # (5.94) in Jain
  *   cdef np.ndarray[double, ndim=1, mode="c"] density = np.zeros(a_t.size)
  *   cdef double[::1] density_view = density             # <<<<<<<<<<<<<<
@@ -12704,7 +12704,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_11.memview = NULL;
   __pyx_t_11.data = NULL;
 
-  /* "sort_cython.pyx":892
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":892
  *   cdef double[::1] density_view = density
  *   cdef int64_t density_midslice
  *   density_midslice = <int64_t>(floor(a_t_view.shape[0] / 2))             # <<<<<<<<<<<<<<
@@ -12713,7 +12713,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_density_midslice = ((int64_t)floor(((__pyx_v_a_t_view.shape[0]) / 2)));
 
-  /* "sort_cython.pyx":893
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":893
  *   cdef int64_t density_midslice
  *   density_midslice = <int64_t>(floor(a_t_view.shape[0] / 2))
  *   density[0::2] = a_t[0:density_midslice]             # <<<<<<<<<<<<<<
@@ -12725,7 +12725,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   if (unlikely(PyObject_SetItem(((PyObject *)__pyx_v_density), __pyx_slice__11, __pyx_t_7) < 0)) __PYX_ERR(0, 893, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
-  /* "sort_cython.pyx":894
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":894
  *   density_midslice = <int64_t>(floor(a_t_view.shape[0] / 2))
  *   density[0::2] = a_t[0:density_midslice]
  *   density[1::2] = a_t[a_t_view.shape[0]:density_midslice-1:-1]             # <<<<<<<<<<<<<<
@@ -12746,7 +12746,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   if (unlikely(PyObject_SetItem(((PyObject *)__pyx_v_density), __pyx_slice__12, __pyx_t_8) < 0)) __PYX_ERR(0, 894, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
-  /* "sort_cython.pyx":895
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":895
  *   density[0::2] = a_t[0:density_midslice]
  *   density[1::2] = a_t[a_t_view.shape[0]:density_midslice-1:-1]
  *   density /= R             # <<<<<<<<<<<<<<
@@ -12781,7 +12781,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __Pyx_DECREF_SET(__pyx_v_density, ((PyArrayObject *)__pyx_t_9));
   __pyx_t_9 = 0;
 
-  /* "sort_cython.pyx":898
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":898
  * 
  *   # take the rescaling of the data into account
  *   bandwidth = sqrt(t_star) * R             # <<<<<<<<<<<<<<
@@ -12790,7 +12790,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
  */
   __pyx_v_bandwidth = (sqrt(__pyx_v_t_star) * __pyx_v_R);
 
-  /* "sort_cython.pyx":900
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":900
  *   bandwidth = sqrt(t_star) * R
  *   """ I set this to zero instead of a small epsilon value. """
  *   density[density < 0] = 0; # remove negatives due to round-off error             # <<<<<<<<<<<<<<
@@ -12801,7 +12801,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   if (unlikely(PyObject_SetItem(((PyObject *)__pyx_v_density), __pyx_t_9, __pyx_int_0) < 0)) __PYX_ERR(0, 900, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
 
-  /* "sort_cython.pyx":902
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":902
  *   density[density < 0] = 0; # remove negatives due to round-off error
  * 
  *   return density, xmesh, bandwidth             # <<<<<<<<<<<<<<
@@ -12824,7 +12824,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   __pyx_t_8 = 0;
   goto __pyx_L0;
 
-  /* "sort_cython.pyx":708
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":708
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def kde(double[::1] data, int64_t n_points):             # <<<<<<<<<<<<<<
@@ -12851,7 +12851,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
     __Pyx_ErrFetch(&__pyx_type, &__pyx_value, &__pyx_tb);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_density.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("sort_cython.kde", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("spikesorting_fullpursuit.c_cython.sort_cython.kde", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -12880,7 +12880,7 @@ static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":258
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":258
  *         # experimental exception made for __getbuffer__ and __releasebuffer__
  *         # -- the details of this may change.
  *         def __getbuffer__(ndarray self, Py_buffer* info, int flags):             # <<<<<<<<<<<<<<
@@ -12932,7 +12932,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   __pyx_v_info->obj = Py_None; __Pyx_INCREF(Py_None);
   __Pyx_GIVEREF(__pyx_v_info->obj);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":265
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":265
  * 
  *             cdef int i, ndim
  *             cdef int endian_detector = 1             # <<<<<<<<<<<<<<
@@ -12941,7 +12941,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   __pyx_v_endian_detector = 1;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":266
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":266
  *             cdef int i, ndim
  *             cdef int endian_detector = 1
  *             cdef bint little_endian = ((<char*>&endian_detector)[0] != 0)             # <<<<<<<<<<<<<<
@@ -12950,7 +12950,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   __pyx_v_little_endian = ((((char *)(&__pyx_v_endian_detector))[0]) != 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":268
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":268
  *             cdef bint little_endian = ((<char*>&endian_detector)[0] != 0)
  * 
  *             ndim = PyArray_NDIM(self)             # <<<<<<<<<<<<<<
@@ -12959,7 +12959,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   __pyx_v_ndim = PyArray_NDIM(__pyx_v_self);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":270
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":270
  *             ndim = PyArray_NDIM(self)
  * 
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)             # <<<<<<<<<<<<<<
@@ -12973,7 +12973,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     goto __pyx_L4_bool_binop_done;
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":271
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":271
  * 
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)
  *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_C_CONTIGUOUS)):             # <<<<<<<<<<<<<<
@@ -12984,7 +12984,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   __pyx_t_1 = __pyx_t_2;
   __pyx_L4_bool_binop_done:;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":270
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":270
  *             ndim = PyArray_NDIM(self)
  * 
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)             # <<<<<<<<<<<<<<
@@ -12993,7 +12993,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   if (unlikely(__pyx_t_1)) {
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":272
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":272
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)
  *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_C_CONTIGUOUS)):
  *                 raise ValueError(u"ndarray is not C contiguous")             # <<<<<<<<<<<<<<
@@ -13006,7 +13006,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __PYX_ERR(1, 272, __pyx_L1_error)
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":270
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":270
  *             ndim = PyArray_NDIM(self)
  * 
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)             # <<<<<<<<<<<<<<
@@ -13015,7 +13015,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":274
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":274
  *                 raise ValueError(u"ndarray is not C contiguous")
  * 
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)             # <<<<<<<<<<<<<<
@@ -13029,7 +13029,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     goto __pyx_L7_bool_binop_done;
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":275
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":275
  * 
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
  *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_F_CONTIGUOUS)):             # <<<<<<<<<<<<<<
@@ -13040,7 +13040,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   __pyx_t_1 = __pyx_t_2;
   __pyx_L7_bool_binop_done:;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":274
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":274
  *                 raise ValueError(u"ndarray is not C contiguous")
  * 
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)             # <<<<<<<<<<<<<<
@@ -13049,7 +13049,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   if (unlikely(__pyx_t_1)) {
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":276
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":276
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
  *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_F_CONTIGUOUS)):
  *                 raise ValueError(u"ndarray is not Fortran contiguous")             # <<<<<<<<<<<<<<
@@ -13062,7 +13062,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
     __PYX_ERR(1, 276, __pyx_L1_error)
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":274
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":274
  *                 raise ValueError(u"ndarray is not C contiguous")
  * 
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)             # <<<<<<<<<<<<<<
@@ -13071,7 +13071,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":278
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":278
  *                 raise ValueError(u"ndarray is not Fortran contiguous")
  * 
  *             info.buf = PyArray_DATA(self)             # <<<<<<<<<<<<<<
@@ -13080,7 +13080,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   __pyx_v_info->buf = PyArray_DATA(__pyx_v_self);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":279
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":279
  * 
  *             info.buf = PyArray_DATA(self)
  *             info.ndim = ndim             # <<<<<<<<<<<<<<
@@ -13089,7 +13089,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   __pyx_v_info->ndim = __pyx_v_ndim;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":280
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":280
  *             info.buf = PyArray_DATA(self)
  *             info.ndim = ndim
  *             if sizeof(npy_intp) != sizeof(Py_ssize_t):             # <<<<<<<<<<<<<<
@@ -13099,7 +13099,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   __pyx_t_1 = (((sizeof(npy_intp)) != (sizeof(Py_ssize_t))) != 0);
   if (__pyx_t_1) {
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":283
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":283
  *                 # Allocate new buffer for strides and shape info.
  *                 # This is allocated as one block, strides first.
  *                 info.strides = <Py_ssize_t*>PyObject_Malloc(sizeof(Py_ssize_t) * 2 * <size_t>ndim)             # <<<<<<<<<<<<<<
@@ -13108,7 +13108,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
     __pyx_v_info->strides = ((Py_ssize_t *)PyObject_Malloc((((sizeof(Py_ssize_t)) * 2) * ((size_t)__pyx_v_ndim))));
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":284
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":284
  *                 # This is allocated as one block, strides first.
  *                 info.strides = <Py_ssize_t*>PyObject_Malloc(sizeof(Py_ssize_t) * 2 * <size_t>ndim)
  *                 info.shape = info.strides + ndim             # <<<<<<<<<<<<<<
@@ -13117,7 +13117,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
     __pyx_v_info->shape = (__pyx_v_info->strides + __pyx_v_ndim);
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":285
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":285
  *                 info.strides = <Py_ssize_t*>PyObject_Malloc(sizeof(Py_ssize_t) * 2 * <size_t>ndim)
  *                 info.shape = info.strides + ndim
  *                 for i in range(ndim):             # <<<<<<<<<<<<<<
@@ -13129,7 +13129,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     for (__pyx_t_6 = 0; __pyx_t_6 < __pyx_t_5; __pyx_t_6+=1) {
       __pyx_v_i = __pyx_t_6;
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":286
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":286
  *                 info.shape = info.strides + ndim
  *                 for i in range(ndim):
  *                     info.strides[i] = PyArray_STRIDES(self)[i]             # <<<<<<<<<<<<<<
@@ -13138,7 +13138,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
       (__pyx_v_info->strides[__pyx_v_i]) = (PyArray_STRIDES(__pyx_v_self)[__pyx_v_i]);
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":287
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":287
  *                 for i in range(ndim):
  *                     info.strides[i] = PyArray_STRIDES(self)[i]
  *                     info.shape[i] = PyArray_DIMS(self)[i]             # <<<<<<<<<<<<<<
@@ -13148,7 +13148,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       (__pyx_v_info->shape[__pyx_v_i]) = (PyArray_DIMS(__pyx_v_self)[__pyx_v_i]);
     }
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":280
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":280
  *             info.buf = PyArray_DATA(self)
  *             info.ndim = ndim
  *             if sizeof(npy_intp) != sizeof(Py_ssize_t):             # <<<<<<<<<<<<<<
@@ -13158,7 +13158,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     goto __pyx_L9;
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":289
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":289
  *                     info.shape[i] = PyArray_DIMS(self)[i]
  *             else:
  *                 info.strides = <Py_ssize_t*>PyArray_STRIDES(self)             # <<<<<<<<<<<<<<
@@ -13168,7 +13168,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   /*else*/ {
     __pyx_v_info->strides = ((Py_ssize_t *)PyArray_STRIDES(__pyx_v_self));
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":290
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":290
  *             else:
  *                 info.strides = <Py_ssize_t*>PyArray_STRIDES(self)
  *                 info.shape = <Py_ssize_t*>PyArray_DIMS(self)             # <<<<<<<<<<<<<<
@@ -13179,7 +13179,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   }
   __pyx_L9:;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":291
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":291
  *                 info.strides = <Py_ssize_t*>PyArray_STRIDES(self)
  *                 info.shape = <Py_ssize_t*>PyArray_DIMS(self)
  *             info.suboffsets = NULL             # <<<<<<<<<<<<<<
@@ -13188,7 +13188,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   __pyx_v_info->suboffsets = NULL;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":292
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":292
  *                 info.shape = <Py_ssize_t*>PyArray_DIMS(self)
  *             info.suboffsets = NULL
  *             info.itemsize = PyArray_ITEMSIZE(self)             # <<<<<<<<<<<<<<
@@ -13197,7 +13197,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   __pyx_v_info->itemsize = PyArray_ITEMSIZE(__pyx_v_self);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":293
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":293
  *             info.suboffsets = NULL
  *             info.itemsize = PyArray_ITEMSIZE(self)
  *             info.readonly = not PyArray_ISWRITEABLE(self)             # <<<<<<<<<<<<<<
@@ -13206,7 +13206,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   __pyx_v_info->readonly = (!(PyArray_ISWRITEABLE(__pyx_v_self) != 0));
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":296
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":296
  * 
  *             cdef int t
  *             cdef char* f = NULL             # <<<<<<<<<<<<<<
@@ -13215,7 +13215,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   __pyx_v_f = NULL;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":297
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":297
  *             cdef int t
  *             cdef char* f = NULL
  *             cdef dtype descr = <dtype>PyArray_DESCR(self)             # <<<<<<<<<<<<<<
@@ -13228,7 +13228,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   __pyx_v_descr = ((PyArray_Descr *)__pyx_t_3);
   __pyx_t_3 = 0;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":300
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":300
  *             cdef int offset
  * 
  *             info.obj = self             # <<<<<<<<<<<<<<
@@ -13241,7 +13241,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   __Pyx_DECREF(__pyx_v_info->obj);
   __pyx_v_info->obj = ((PyObject *)__pyx_v_self);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":302
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":302
  *             info.obj = self
  * 
  *             if not PyDataType_HASFIELDS(descr):             # <<<<<<<<<<<<<<
@@ -13251,7 +13251,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   __pyx_t_1 = ((!(PyDataType_HASFIELDS(__pyx_v_descr) != 0)) != 0);
   if (__pyx_t_1) {
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":303
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":303
  * 
  *             if not PyDataType_HASFIELDS(descr):
  *                 t = descr.type_num             # <<<<<<<<<<<<<<
@@ -13261,7 +13261,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     __pyx_t_4 = __pyx_v_descr->type_num;
     __pyx_v_t = __pyx_t_4;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":304
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":304
  *             if not PyDataType_HASFIELDS(descr):
  *                 t = descr.type_num
  *                 if ((descr.byteorder == c'>' and little_endian) or             # <<<<<<<<<<<<<<
@@ -13281,7 +13281,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     }
     __pyx_L15_next_or:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":305
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":305
  *                 t = descr.type_num
  *                 if ((descr.byteorder == c'>' and little_endian) or
  *                     (descr.byteorder == c'<' and not little_endian)):             # <<<<<<<<<<<<<<
@@ -13298,7 +13298,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     __pyx_t_1 = __pyx_t_2;
     __pyx_L14_bool_binop_done:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":304
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":304
  *             if not PyDataType_HASFIELDS(descr):
  *                 t = descr.type_num
  *                 if ((descr.byteorder == c'>' and little_endian) or             # <<<<<<<<<<<<<<
@@ -13307,7 +13307,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
     if (unlikely(__pyx_t_1)) {
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":306
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":306
  *                 if ((descr.byteorder == c'>' and little_endian) or
  *                     (descr.byteorder == c'<' and not little_endian)):
  *                     raise ValueError(u"Non-native byte order not supported")             # <<<<<<<<<<<<<<
@@ -13320,7 +13320,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __PYX_ERR(1, 306, __pyx_L1_error)
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":304
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":304
  *             if not PyDataType_HASFIELDS(descr):
  *                 t = descr.type_num
  *                 if ((descr.byteorder == c'>' and little_endian) or             # <<<<<<<<<<<<<<
@@ -13329,7 +13329,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
     }
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":307
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":307
  *                     (descr.byteorder == c'<' and not little_endian)):
  *                     raise ValueError(u"Non-native byte order not supported")
  *                 if   t == NPY_BYTE:        f = "b"             # <<<<<<<<<<<<<<
@@ -13342,7 +13342,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_UBYTE:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":308
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":308
  *                     raise ValueError(u"Non-native byte order not supported")
  *                 if   t == NPY_BYTE:        f = "b"
  *                 elif t == NPY_UBYTE:       f = "B"             # <<<<<<<<<<<<<<
@@ -13353,7 +13353,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_SHORT:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":309
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":309
  *                 if   t == NPY_BYTE:        f = "b"
  *                 elif t == NPY_UBYTE:       f = "B"
  *                 elif t == NPY_SHORT:       f = "h"             # <<<<<<<<<<<<<<
@@ -13364,7 +13364,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_USHORT:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":310
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":310
  *                 elif t == NPY_UBYTE:       f = "B"
  *                 elif t == NPY_SHORT:       f = "h"
  *                 elif t == NPY_USHORT:      f = "H"             # <<<<<<<<<<<<<<
@@ -13375,7 +13375,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_INT:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":311
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":311
  *                 elif t == NPY_SHORT:       f = "h"
  *                 elif t == NPY_USHORT:      f = "H"
  *                 elif t == NPY_INT:         f = "i"             # <<<<<<<<<<<<<<
@@ -13386,7 +13386,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_UINT:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":312
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":312
  *                 elif t == NPY_USHORT:      f = "H"
  *                 elif t == NPY_INT:         f = "i"
  *                 elif t == NPY_UINT:        f = "I"             # <<<<<<<<<<<<<<
@@ -13397,7 +13397,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_LONG:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":313
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":313
  *                 elif t == NPY_INT:         f = "i"
  *                 elif t == NPY_UINT:        f = "I"
  *                 elif t == NPY_LONG:        f = "l"             # <<<<<<<<<<<<<<
@@ -13408,7 +13408,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_ULONG:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":314
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":314
  *                 elif t == NPY_UINT:        f = "I"
  *                 elif t == NPY_LONG:        f = "l"
  *                 elif t == NPY_ULONG:       f = "L"             # <<<<<<<<<<<<<<
@@ -13419,7 +13419,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_LONGLONG:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":315
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":315
  *                 elif t == NPY_LONG:        f = "l"
  *                 elif t == NPY_ULONG:       f = "L"
  *                 elif t == NPY_LONGLONG:    f = "q"             # <<<<<<<<<<<<<<
@@ -13430,7 +13430,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_ULONGLONG:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":316
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":316
  *                 elif t == NPY_ULONG:       f = "L"
  *                 elif t == NPY_LONGLONG:    f = "q"
  *                 elif t == NPY_ULONGLONG:   f = "Q"             # <<<<<<<<<<<<<<
@@ -13441,7 +13441,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_FLOAT:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":317
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":317
  *                 elif t == NPY_LONGLONG:    f = "q"
  *                 elif t == NPY_ULONGLONG:   f = "Q"
  *                 elif t == NPY_FLOAT:       f = "f"             # <<<<<<<<<<<<<<
@@ -13452,7 +13452,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_DOUBLE:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":318
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":318
  *                 elif t == NPY_ULONGLONG:   f = "Q"
  *                 elif t == NPY_FLOAT:       f = "f"
  *                 elif t == NPY_DOUBLE:      f = "d"             # <<<<<<<<<<<<<<
@@ -13463,7 +13463,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_LONGDOUBLE:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":319
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":319
  *                 elif t == NPY_FLOAT:       f = "f"
  *                 elif t == NPY_DOUBLE:      f = "d"
  *                 elif t == NPY_LONGDOUBLE:  f = "g"             # <<<<<<<<<<<<<<
@@ -13474,7 +13474,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_CFLOAT:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":320
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":320
  *                 elif t == NPY_DOUBLE:      f = "d"
  *                 elif t == NPY_LONGDOUBLE:  f = "g"
  *                 elif t == NPY_CFLOAT:      f = "Zf"             # <<<<<<<<<<<<<<
@@ -13485,7 +13485,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_CDOUBLE:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":321
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":321
  *                 elif t == NPY_LONGDOUBLE:  f = "g"
  *                 elif t == NPY_CFLOAT:      f = "Zf"
  *                 elif t == NPY_CDOUBLE:     f = "Zd"             # <<<<<<<<<<<<<<
@@ -13496,7 +13496,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_CLONGDOUBLE:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":322
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":322
  *                 elif t == NPY_CFLOAT:      f = "Zf"
  *                 elif t == NPY_CDOUBLE:     f = "Zd"
  *                 elif t == NPY_CLONGDOUBLE: f = "Zg"             # <<<<<<<<<<<<<<
@@ -13507,7 +13507,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       case NPY_OBJECT:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":323
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":323
  *                 elif t == NPY_CDOUBLE:     f = "Zd"
  *                 elif t == NPY_CLONGDOUBLE: f = "Zg"
  *                 elif t == NPY_OBJECT:      f = "O"             # <<<<<<<<<<<<<<
@@ -13518,7 +13518,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
       default:
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":325
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":325
  *                 elif t == NPY_OBJECT:      f = "O"
  *                 else:
  *                     raise ValueError(u"unknown dtype code in numpy.pxd (%d)" % t)             # <<<<<<<<<<<<<<
@@ -13539,7 +13539,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
       break;
     }
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":326
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":326
  *                 else:
  *                     raise ValueError(u"unknown dtype code in numpy.pxd (%d)" % t)
  *                 info.format = f             # <<<<<<<<<<<<<<
@@ -13548,7 +13548,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
     __pyx_v_info->format = __pyx_v_f;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":327
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":327
  *                     raise ValueError(u"unknown dtype code in numpy.pxd (%d)" % t)
  *                 info.format = f
  *                 return             # <<<<<<<<<<<<<<
@@ -13558,7 +13558,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     __pyx_r = 0;
     goto __pyx_L0;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":302
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":302
  *             info.obj = self
  * 
  *             if not PyDataType_HASFIELDS(descr):             # <<<<<<<<<<<<<<
@@ -13567,7 +13567,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":329
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":329
  *                 return
  *             else:
  *                 info.format = <char*>PyObject_Malloc(_buffer_format_string_len)             # <<<<<<<<<<<<<<
@@ -13577,7 +13577,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   /*else*/ {
     __pyx_v_info->format = ((char *)PyObject_Malloc(0xFF));
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":330
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":330
  *             else:
  *                 info.format = <char*>PyObject_Malloc(_buffer_format_string_len)
  *                 info.format[0] = c'^' # Native data types, manual alignment             # <<<<<<<<<<<<<<
@@ -13586,7 +13586,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
     (__pyx_v_info->format[0]) = '^';
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":331
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":331
  *                 info.format = <char*>PyObject_Malloc(_buffer_format_string_len)
  *                 info.format[0] = c'^' # Native data types, manual alignment
  *                 offset = 0             # <<<<<<<<<<<<<<
@@ -13595,7 +13595,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
  */
     __pyx_v_offset = 0;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":332
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":332
  *                 info.format[0] = c'^' # Native data types, manual alignment
  *                 offset = 0
  *                 f = _util_dtypestring(descr, info.format + 1,             # <<<<<<<<<<<<<<
@@ -13605,7 +13605,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     __pyx_t_9 = __pyx_f_5numpy__util_dtypestring(__pyx_v_descr, (__pyx_v_info->format + 1), (__pyx_v_info->format + 0xFF), (&__pyx_v_offset)); if (unlikely(__pyx_t_9 == ((char *)NULL))) __PYX_ERR(1, 332, __pyx_L1_error)
     __pyx_v_f = __pyx_t_9;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":335
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":335
  *                                       info.format + _buffer_format_string_len,
  *                                       &offset)
  *                 f[0] = c'\0' # Terminate format string             # <<<<<<<<<<<<<<
@@ -13615,7 +13615,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
     (__pyx_v_f[0]) = '\x00';
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":258
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":258
  *         # experimental exception made for __getbuffer__ and __releasebuffer__
  *         # -- the details of this may change.
  *         def __getbuffer__(ndarray self, Py_buffer* info, int flags):             # <<<<<<<<<<<<<<
@@ -13647,7 +13647,7 @@ static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, P
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":337
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":337
  *                 f[0] = c'\0' # Terminate format string
  * 
  *         def __releasebuffer__(ndarray self, Py_buffer* info):             # <<<<<<<<<<<<<<
@@ -13671,7 +13671,7 @@ static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_s
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("__releasebuffer__", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":338
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":338
  * 
  *         def __releasebuffer__(ndarray self, Py_buffer* info):
  *             if PyArray_HASFIELDS(self):             # <<<<<<<<<<<<<<
@@ -13681,7 +13681,7 @@ static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_s
   __pyx_t_1 = (PyArray_HASFIELDS(__pyx_v_self) != 0);
   if (__pyx_t_1) {
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":339
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":339
  *         def __releasebuffer__(ndarray self, Py_buffer* info):
  *             if PyArray_HASFIELDS(self):
  *                 PyObject_Free(info.format)             # <<<<<<<<<<<<<<
@@ -13690,7 +13690,7 @@ static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_s
  */
     PyObject_Free(__pyx_v_info->format);
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":338
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":338
  * 
  *         def __releasebuffer__(ndarray self, Py_buffer* info):
  *             if PyArray_HASFIELDS(self):             # <<<<<<<<<<<<<<
@@ -13699,7 +13699,7 @@ static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_s
  */
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":340
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":340
  *             if PyArray_HASFIELDS(self):
  *                 PyObject_Free(info.format)
  *             if sizeof(npy_intp) != sizeof(Py_ssize_t):             # <<<<<<<<<<<<<<
@@ -13709,7 +13709,7 @@ static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_s
   __pyx_t_1 = (((sizeof(npy_intp)) != (sizeof(Py_ssize_t))) != 0);
   if (__pyx_t_1) {
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":341
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":341
  *                 PyObject_Free(info.format)
  *             if sizeof(npy_intp) != sizeof(Py_ssize_t):
  *                 PyObject_Free(info.strides)             # <<<<<<<<<<<<<<
@@ -13718,7 +13718,7 @@ static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_s
  */
     PyObject_Free(__pyx_v_info->strides);
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":340
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":340
  *             if PyArray_HASFIELDS(self):
  *                 PyObject_Free(info.format)
  *             if sizeof(npy_intp) != sizeof(Py_ssize_t):             # <<<<<<<<<<<<<<
@@ -13727,7 +13727,7 @@ static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_s
  */
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":337
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":337
  *                 f[0] = c'\0' # Terminate format string
  * 
  *         def __releasebuffer__(ndarray self, Py_buffer* info):             # <<<<<<<<<<<<<<
@@ -13739,7 +13739,7 @@ static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_s
   __Pyx_RefNannyFinishContext();
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":820
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":820
  * ctypedef npy_cdouble     complex_t
  * 
  * cdef inline object PyArray_MultiIterNew1(a):             # <<<<<<<<<<<<<<
@@ -13756,7 +13756,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew1(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew1", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":821
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":821
  * 
  * cdef inline object PyArray_MultiIterNew1(a):
  *     return PyArray_MultiIterNew(1, <void*>a)             # <<<<<<<<<<<<<<
@@ -13770,7 +13770,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew1(PyObject *__
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":820
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":820
  * ctypedef npy_cdouble     complex_t
  * 
  * cdef inline object PyArray_MultiIterNew1(a):             # <<<<<<<<<<<<<<
@@ -13789,7 +13789,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew1(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":823
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":823
  *     return PyArray_MultiIterNew(1, <void*>a)
  * 
  * cdef inline object PyArray_MultiIterNew2(a, b):             # <<<<<<<<<<<<<<
@@ -13806,7 +13806,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew2(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew2", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":824
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":824
  * 
  * cdef inline object PyArray_MultiIterNew2(a, b):
  *     return PyArray_MultiIterNew(2, <void*>a, <void*>b)             # <<<<<<<<<<<<<<
@@ -13820,7 +13820,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew2(PyObject *__
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":823
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":823
  *     return PyArray_MultiIterNew(1, <void*>a)
  * 
  * cdef inline object PyArray_MultiIterNew2(a, b):             # <<<<<<<<<<<<<<
@@ -13839,7 +13839,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew2(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":826
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":826
  *     return PyArray_MultiIterNew(2, <void*>a, <void*>b)
  * 
  * cdef inline object PyArray_MultiIterNew3(a, b, c):             # <<<<<<<<<<<<<<
@@ -13856,7 +13856,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew3(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew3", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":827
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":827
  * 
  * cdef inline object PyArray_MultiIterNew3(a, b, c):
  *     return PyArray_MultiIterNew(3, <void*>a, <void*>b, <void*> c)             # <<<<<<<<<<<<<<
@@ -13870,7 +13870,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew3(PyObject *__
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":826
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":826
  *     return PyArray_MultiIterNew(2, <void*>a, <void*>b)
  * 
  * cdef inline object PyArray_MultiIterNew3(a, b, c):             # <<<<<<<<<<<<<<
@@ -13889,7 +13889,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew3(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":829
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":829
  *     return PyArray_MultiIterNew(3, <void*>a, <void*>b, <void*> c)
  * 
  * cdef inline object PyArray_MultiIterNew4(a, b, c, d):             # <<<<<<<<<<<<<<
@@ -13906,7 +13906,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew4(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew4", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":830
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":830
  * 
  * cdef inline object PyArray_MultiIterNew4(a, b, c, d):
  *     return PyArray_MultiIterNew(4, <void*>a, <void*>b, <void*>c, <void*> d)             # <<<<<<<<<<<<<<
@@ -13920,7 +13920,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew4(PyObject *__
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":829
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":829
  *     return PyArray_MultiIterNew(3, <void*>a, <void*>b, <void*> c)
  * 
  * cdef inline object PyArray_MultiIterNew4(a, b, c, d):             # <<<<<<<<<<<<<<
@@ -13939,7 +13939,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew4(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":832
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":832
  *     return PyArray_MultiIterNew(4, <void*>a, <void*>b, <void*>c, <void*> d)
  * 
  * cdef inline object PyArray_MultiIterNew5(a, b, c, d, e):             # <<<<<<<<<<<<<<
@@ -13956,7 +13956,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew5(PyObject *__
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("PyArray_MultiIterNew5", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":833
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":833
  * 
  * cdef inline object PyArray_MultiIterNew5(a, b, c, d, e):
  *     return PyArray_MultiIterNew(5, <void*>a, <void*>b, <void*>c, <void*> d, <void*> e)             # <<<<<<<<<<<<<<
@@ -13970,7 +13970,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew5(PyObject *__
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":832
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":832
  *     return PyArray_MultiIterNew(4, <void*>a, <void*>b, <void*>c, <void*> d)
  * 
  * cdef inline object PyArray_MultiIterNew5(a, b, c, d, e):             # <<<<<<<<<<<<<<
@@ -13989,7 +13989,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyArray_MultiIterNew5(PyObject *__
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":835
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":835
  *     return PyArray_MultiIterNew(5, <void*>a, <void*>b, <void*>c, <void*> d, <void*> e)
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):             # <<<<<<<<<<<<<<
@@ -14003,7 +14003,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("PyDataType_SHAPE", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":836
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":836
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):
  *     if PyDataType_HASSUBARRAY(d):             # <<<<<<<<<<<<<<
@@ -14013,7 +14013,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
   __pyx_t_1 = (PyDataType_HASSUBARRAY(__pyx_v_d) != 0);
   if (__pyx_t_1) {
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":837
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":837
  * cdef inline tuple PyDataType_SHAPE(dtype d):
  *     if PyDataType_HASSUBARRAY(d):
  *         return <tuple>d.subarray.shape             # <<<<<<<<<<<<<<
@@ -14025,7 +14025,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
     __pyx_r = ((PyObject*)__pyx_v_d->subarray->shape);
     goto __pyx_L0;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":836
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":836
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):
  *     if PyDataType_HASSUBARRAY(d):             # <<<<<<<<<<<<<<
@@ -14034,7 +14034,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
  */
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":839
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":839
  *         return <tuple>d.subarray.shape
  *     else:
  *         return ()             # <<<<<<<<<<<<<<
@@ -14048,7 +14048,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
     goto __pyx_L0;
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":835
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":835
  *     return PyArray_MultiIterNew(5, <void*>a, <void*>b, <void*>c, <void*> d, <void*> e)
  * 
  * cdef inline tuple PyDataType_SHAPE(dtype d):             # <<<<<<<<<<<<<<
@@ -14063,7 +14063,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_PyDataType_SHAPE(PyArray_Descr *__
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":841
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":841
  *         return ()
  * 
  * cdef inline char* _util_dtypestring(dtype descr, char* f, char* end, int* offset) except NULL:             # <<<<<<<<<<<<<<
@@ -14095,7 +14095,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_util_dtypestring", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":846
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":846
  * 
  *     cdef dtype child
  *     cdef int endian_detector = 1             # <<<<<<<<<<<<<<
@@ -14104,7 +14104,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  */
   __pyx_v_endian_detector = 1;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":847
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":847
  *     cdef dtype child
  *     cdef int endian_detector = 1
  *     cdef bint little_endian = ((<char*>&endian_detector)[0] != 0)             # <<<<<<<<<<<<<<
@@ -14113,7 +14113,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  */
   __pyx_v_little_endian = ((((char *)(&__pyx_v_endian_detector))[0]) != 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":850
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":850
  *     cdef tuple fields
  * 
  *     for childname in descr.names:             # <<<<<<<<<<<<<<
@@ -14136,7 +14136,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
     __Pyx_XDECREF_SET(__pyx_v_childname, __pyx_t_3);
     __pyx_t_3 = 0;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":851
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":851
  * 
  *     for childname in descr.names:
  *         fields = descr.fields[childname]             # <<<<<<<<<<<<<<
@@ -14153,7 +14153,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
     __Pyx_XDECREF_SET(__pyx_v_fields, ((PyObject*)__pyx_t_3));
     __pyx_t_3 = 0;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":852
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":852
  *     for childname in descr.names:
  *         fields = descr.fields[childname]
  *         child, new_offset = fields             # <<<<<<<<<<<<<<
@@ -14188,7 +14188,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
     __Pyx_XDECREF_SET(__pyx_v_new_offset, __pyx_t_4);
     __pyx_t_4 = 0;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":854
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":854
  *         child, new_offset = fields
  * 
  *         if (end - f) - <int>(new_offset - offset[0]) < 15:             # <<<<<<<<<<<<<<
@@ -14205,7 +14205,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
     __pyx_t_6 = ((((__pyx_v_end - __pyx_v_f) - ((int)__pyx_t_5)) < 15) != 0);
     if (unlikely(__pyx_t_6)) {
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":855
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":855
  * 
  *         if (end - f) - <int>(new_offset - offset[0]) < 15:
  *             raise RuntimeError(u"Format string allocated too short, see comment in numpy.pxd")             # <<<<<<<<<<<<<<
@@ -14218,7 +14218,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __PYX_ERR(1, 855, __pyx_L1_error)
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":854
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":854
  *         child, new_offset = fields
  * 
  *         if (end - f) - <int>(new_offset - offset[0]) < 15:             # <<<<<<<<<<<<<<
@@ -14227,7 +14227,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  */
     }
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":857
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":857
  *             raise RuntimeError(u"Format string allocated too short, see comment in numpy.pxd")
  * 
  *         if ((child.byteorder == c'>' and little_endian) or             # <<<<<<<<<<<<<<
@@ -14247,7 +14247,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
     }
     __pyx_L8_next_or:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":858
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":858
  * 
  *         if ((child.byteorder == c'>' and little_endian) or
  *             (child.byteorder == c'<' and not little_endian)):             # <<<<<<<<<<<<<<
@@ -14264,7 +14264,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
     __pyx_t_6 = __pyx_t_7;
     __pyx_L7_bool_binop_done:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":857
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":857
  *             raise RuntimeError(u"Format string allocated too short, see comment in numpy.pxd")
  * 
  *         if ((child.byteorder == c'>' and little_endian) or             # <<<<<<<<<<<<<<
@@ -14273,7 +14273,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  */
     if (unlikely(__pyx_t_6)) {
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":859
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":859
  *         if ((child.byteorder == c'>' and little_endian) or
  *             (child.byteorder == c'<' and not little_endian)):
  *             raise ValueError(u"Non-native byte order not supported")             # <<<<<<<<<<<<<<
@@ -14286,7 +14286,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
       __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
       __PYX_ERR(1, 859, __pyx_L1_error)
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":857
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":857
  *             raise RuntimeError(u"Format string allocated too short, see comment in numpy.pxd")
  * 
  *         if ((child.byteorder == c'>' and little_endian) or             # <<<<<<<<<<<<<<
@@ -14295,7 +14295,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  */
     }
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":869
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":869
  * 
  *         # Output padding bytes
  *         while offset[0] < new_offset:             # <<<<<<<<<<<<<<
@@ -14311,7 +14311,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
       __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
       if (!__pyx_t_6) break;
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":870
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":870
  *         # Output padding bytes
  *         while offset[0] < new_offset:
  *             f[0] = 120 # "x"; pad byte             # <<<<<<<<<<<<<<
@@ -14320,7 +14320,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  */
       (__pyx_v_f[0]) = 0x78;
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":871
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":871
  *         while offset[0] < new_offset:
  *             f[0] = 120 # "x"; pad byte
  *             f += 1             # <<<<<<<<<<<<<<
@@ -14329,7 +14329,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  */
       __pyx_v_f = (__pyx_v_f + 1);
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":872
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":872
  *             f[0] = 120 # "x"; pad byte
  *             f += 1
  *             offset[0] += 1             # <<<<<<<<<<<<<<
@@ -14340,7 +14340,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
       (__pyx_v_offset[__pyx_t_8]) = ((__pyx_v_offset[__pyx_t_8]) + 1);
     }
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":874
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":874
  *             offset[0] += 1
  * 
  *         offset[0] += child.itemsize             # <<<<<<<<<<<<<<
@@ -14350,7 +14350,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
     __pyx_t_8 = 0;
     (__pyx_v_offset[__pyx_t_8]) = ((__pyx_v_offset[__pyx_t_8]) + __pyx_v_child->elsize);
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":876
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":876
  *         offset[0] += child.itemsize
  * 
  *         if not PyDataType_HASFIELDS(child):             # <<<<<<<<<<<<<<
@@ -14360,7 +14360,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
     __pyx_t_6 = ((!(PyDataType_HASFIELDS(__pyx_v_child) != 0)) != 0);
     if (__pyx_t_6) {
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":877
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":877
  * 
  *         if not PyDataType_HASFIELDS(child):
  *             t = child.type_num             # <<<<<<<<<<<<<<
@@ -14372,7 +14372,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
       __Pyx_XDECREF_SET(__pyx_v_t, __pyx_t_4);
       __pyx_t_4 = 0;
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":878
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":878
  *         if not PyDataType_HASFIELDS(child):
  *             t = child.type_num
  *             if end - f < 5:             # <<<<<<<<<<<<<<
@@ -14382,7 +14382,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
       __pyx_t_6 = (((__pyx_v_end - __pyx_v_f) < 5) != 0);
       if (unlikely(__pyx_t_6)) {
 
-        /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":879
+        /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":879
  *             t = child.type_num
  *             if end - f < 5:
  *                 raise RuntimeError(u"Format string allocated too short.")             # <<<<<<<<<<<<<<
@@ -14395,7 +14395,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         __PYX_ERR(1, 879, __pyx_L1_error)
 
-        /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":878
+        /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":878
  *         if not PyDataType_HASFIELDS(child):
  *             t = child.type_num
  *             if end - f < 5:             # <<<<<<<<<<<<<<
@@ -14404,7 +14404,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  */
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":882
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":882
  * 
  *             # Until ticket #99 is fixed, use integers to avoid warnings
  *             if   t == NPY_BYTE:        f[0] =  98 #"b"             # <<<<<<<<<<<<<<
@@ -14422,7 +14422,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":883
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":883
  *             # Until ticket #99 is fixed, use integers to avoid warnings
  *             if   t == NPY_BYTE:        f[0] =  98 #"b"
  *             elif t == NPY_UBYTE:       f[0] =  66 #"B"             # <<<<<<<<<<<<<<
@@ -14440,7 +14440,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":884
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":884
  *             if   t == NPY_BYTE:        f[0] =  98 #"b"
  *             elif t == NPY_UBYTE:       f[0] =  66 #"B"
  *             elif t == NPY_SHORT:       f[0] = 104 #"h"             # <<<<<<<<<<<<<<
@@ -14458,7 +14458,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":885
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":885
  *             elif t == NPY_UBYTE:       f[0] =  66 #"B"
  *             elif t == NPY_SHORT:       f[0] = 104 #"h"
  *             elif t == NPY_USHORT:      f[0] =  72 #"H"             # <<<<<<<<<<<<<<
@@ -14476,7 +14476,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":886
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":886
  *             elif t == NPY_SHORT:       f[0] = 104 #"h"
  *             elif t == NPY_USHORT:      f[0] =  72 #"H"
  *             elif t == NPY_INT:         f[0] = 105 #"i"             # <<<<<<<<<<<<<<
@@ -14494,7 +14494,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":887
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":887
  *             elif t == NPY_USHORT:      f[0] =  72 #"H"
  *             elif t == NPY_INT:         f[0] = 105 #"i"
  *             elif t == NPY_UINT:        f[0] =  73 #"I"             # <<<<<<<<<<<<<<
@@ -14512,7 +14512,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":888
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":888
  *             elif t == NPY_INT:         f[0] = 105 #"i"
  *             elif t == NPY_UINT:        f[0] =  73 #"I"
  *             elif t == NPY_LONG:        f[0] = 108 #"l"             # <<<<<<<<<<<<<<
@@ -14530,7 +14530,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":889
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":889
  *             elif t == NPY_UINT:        f[0] =  73 #"I"
  *             elif t == NPY_LONG:        f[0] = 108 #"l"
  *             elif t == NPY_ULONG:       f[0] = 76  #"L"             # <<<<<<<<<<<<<<
@@ -14548,7 +14548,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":890
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":890
  *             elif t == NPY_LONG:        f[0] = 108 #"l"
  *             elif t == NPY_ULONG:       f[0] = 76  #"L"
  *             elif t == NPY_LONGLONG:    f[0] = 113 #"q"             # <<<<<<<<<<<<<<
@@ -14566,7 +14566,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":891
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":891
  *             elif t == NPY_ULONG:       f[0] = 76  #"L"
  *             elif t == NPY_LONGLONG:    f[0] = 113 #"q"
  *             elif t == NPY_ULONGLONG:   f[0] = 81  #"Q"             # <<<<<<<<<<<<<<
@@ -14584,7 +14584,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":892
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":892
  *             elif t == NPY_LONGLONG:    f[0] = 113 #"q"
  *             elif t == NPY_ULONGLONG:   f[0] = 81  #"Q"
  *             elif t == NPY_FLOAT:       f[0] = 102 #"f"             # <<<<<<<<<<<<<<
@@ -14602,7 +14602,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":893
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":893
  *             elif t == NPY_ULONGLONG:   f[0] = 81  #"Q"
  *             elif t == NPY_FLOAT:       f[0] = 102 #"f"
  *             elif t == NPY_DOUBLE:      f[0] = 100 #"d"             # <<<<<<<<<<<<<<
@@ -14620,7 +14620,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":894
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":894
  *             elif t == NPY_FLOAT:       f[0] = 102 #"f"
  *             elif t == NPY_DOUBLE:      f[0] = 100 #"d"
  *             elif t == NPY_LONGDOUBLE:  f[0] = 103 #"g"             # <<<<<<<<<<<<<<
@@ -14638,7 +14638,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":895
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":895
  *             elif t == NPY_DOUBLE:      f[0] = 100 #"d"
  *             elif t == NPY_LONGDOUBLE:  f[0] = 103 #"g"
  *             elif t == NPY_CFLOAT:      f[0] = 90; f[1] = 102; f += 1 # Zf             # <<<<<<<<<<<<<<
@@ -14658,7 +14658,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":896
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":896
  *             elif t == NPY_LONGDOUBLE:  f[0] = 103 #"g"
  *             elif t == NPY_CFLOAT:      f[0] = 90; f[1] = 102; f += 1 # Zf
  *             elif t == NPY_CDOUBLE:     f[0] = 90; f[1] = 100; f += 1 # Zd             # <<<<<<<<<<<<<<
@@ -14678,7 +14678,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":897
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":897
  *             elif t == NPY_CFLOAT:      f[0] = 90; f[1] = 102; f += 1 # Zf
  *             elif t == NPY_CDOUBLE:     f[0] = 90; f[1] = 100; f += 1 # Zd
  *             elif t == NPY_CLONGDOUBLE: f[0] = 90; f[1] = 103; f += 1 # Zg             # <<<<<<<<<<<<<<
@@ -14698,7 +14698,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":898
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":898
  *             elif t == NPY_CDOUBLE:     f[0] = 90; f[1] = 100; f += 1 # Zd
  *             elif t == NPY_CLONGDOUBLE: f[0] = 90; f[1] = 103; f += 1 # Zg
  *             elif t == NPY_OBJECT:      f[0] = 79 #"O"             # <<<<<<<<<<<<<<
@@ -14716,7 +14716,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
         goto __pyx_L15;
       }
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":900
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":900
  *             elif t == NPY_OBJECT:      f[0] = 79 #"O"
  *             else:
  *                 raise ValueError(u"unknown dtype code in numpy.pxd (%d)" % t)             # <<<<<<<<<<<<<<
@@ -14735,7 +14735,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
       }
       __pyx_L15:;
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":901
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":901
  *             else:
  *                 raise ValueError(u"unknown dtype code in numpy.pxd (%d)" % t)
  *             f += 1             # <<<<<<<<<<<<<<
@@ -14744,7 +14744,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
  */
       __pyx_v_f = (__pyx_v_f + 1);
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":876
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":876
  *         offset[0] += child.itemsize
  * 
  *         if not PyDataType_HASFIELDS(child):             # <<<<<<<<<<<<<<
@@ -14754,7 +14754,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
       goto __pyx_L13;
     }
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":905
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":905
  *             # Cython ignores struct boundary information ("T{...}"),
  *             # so don't output it
  *             f = _util_dtypestring(child, f, end, offset)             # <<<<<<<<<<<<<<
@@ -14767,7 +14767,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
     }
     __pyx_L13:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":850
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":850
  *     cdef tuple fields
  * 
  *     for childname in descr.names:             # <<<<<<<<<<<<<<
@@ -14777,7 +14777,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":906
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":906
  *             # so don't output it
  *             f = _util_dtypestring(child, f, end, offset)
  *     return f             # <<<<<<<<<<<<<<
@@ -14787,7 +14787,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
   __pyx_r = __pyx_v_f;
   goto __pyx_L0;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":841
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":841
  *         return ()
  * 
  * cdef inline char* _util_dtypestring(dtype descr, char* f, char* end, int* offset) except NULL:             # <<<<<<<<<<<<<<
@@ -14812,7 +14812,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *__pyx
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1021
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1021
  *     int _import_umath() except -1
  * 
  * cdef inline void set_array_base(ndarray arr, object base):             # <<<<<<<<<<<<<<
@@ -14824,7 +14824,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("set_array_base", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1022
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1022
  * 
  * cdef inline void set_array_base(ndarray arr, object base):
  *     Py_INCREF(base) # important to do this before stealing the reference below!             # <<<<<<<<<<<<<<
@@ -14833,7 +14833,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
  */
   Py_INCREF(__pyx_v_base);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1023
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1023
  * cdef inline void set_array_base(ndarray arr, object base):
  *     Py_INCREF(base) # important to do this before stealing the reference below!
  *     PyArray_SetBaseObject(arr, base)             # <<<<<<<<<<<<<<
@@ -14842,7 +14842,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
  */
   (void)(PyArray_SetBaseObject(__pyx_v_arr, __pyx_v_base));
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1021
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1021
  *     int _import_umath() except -1
  * 
  * cdef inline void set_array_base(ndarray arr, object base):             # <<<<<<<<<<<<<<
@@ -14854,7 +14854,7 @@ static CYTHON_INLINE void __pyx_f_5numpy_set_array_base(PyArrayObject *__pyx_v_a
   __Pyx_RefNannyFinishContext();
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1025
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1025
  *     PyArray_SetBaseObject(arr, base)
  * 
  * cdef inline object get_array_base(ndarray arr):             # <<<<<<<<<<<<<<
@@ -14869,7 +14869,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("get_array_base", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1026
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1026
  * 
  * cdef inline object get_array_base(ndarray arr):
  *     base = PyArray_BASE(arr)             # <<<<<<<<<<<<<<
@@ -14878,7 +14878,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
  */
   __pyx_v_base = PyArray_BASE(__pyx_v_arr);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1027
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1027
  * cdef inline object get_array_base(ndarray arr):
  *     base = PyArray_BASE(arr)
  *     if base is NULL:             # <<<<<<<<<<<<<<
@@ -14888,7 +14888,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   __pyx_t_1 = ((__pyx_v_base == NULL) != 0);
   if (__pyx_t_1) {
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1028
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1028
  *     base = PyArray_BASE(arr)
  *     if base is NULL:
  *         return None             # <<<<<<<<<<<<<<
@@ -14899,7 +14899,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
     __pyx_r = Py_None; __Pyx_INCREF(Py_None);
     goto __pyx_L0;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1027
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1027
  * cdef inline object get_array_base(ndarray arr):
  *     base = PyArray_BASE(arr)
  *     if base is NULL:             # <<<<<<<<<<<<<<
@@ -14908,7 +14908,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
  */
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1029
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1029
  *     if base is NULL:
  *         return None
  *     return <object>base             # <<<<<<<<<<<<<<
@@ -14920,7 +14920,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   __pyx_r = ((PyObject *)__pyx_v_base);
   goto __pyx_L0;
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1025
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1025
  *     PyArray_SetBaseObject(arr, base)
  * 
  * cdef inline object get_array_base(ndarray arr):             # <<<<<<<<<<<<<<
@@ -14935,7 +14935,7 @@ static CYTHON_INLINE PyObject *__pyx_f_5numpy_get_array_base(PyArrayObject *__py
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1033
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1033
  * # Versions of the import_* functions which are more suitable for
  * # Cython code.
  * cdef inline int import_array() except -1:             # <<<<<<<<<<<<<<
@@ -14959,7 +14959,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("import_array", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1034
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1034
  * # Cython code.
  * cdef inline int import_array() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -14975,7 +14975,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     __Pyx_XGOTREF(__pyx_t_3);
     /*try:*/ {
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1035
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1035
  * cdef inline int import_array() except -1:
  *     try:
  *         _import_array()             # <<<<<<<<<<<<<<
@@ -14984,7 +14984,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
  */
       __pyx_t_4 = _import_array(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(1, 1035, __pyx_L3_error)
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1034
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1034
  * # Cython code.
  * cdef inline int import_array() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -14998,7 +14998,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     goto __pyx_L8_try_end;
     __pyx_L3_error:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1036
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1036
  *     try:
  *         _import_array()
  *     except Exception:             # <<<<<<<<<<<<<<
@@ -15013,7 +15013,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_GOTREF(__pyx_t_7);
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1037
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1037
  *         _import_array()
  *     except Exception:
  *         raise ImportError("numpy.core.multiarray failed to import")             # <<<<<<<<<<<<<<
@@ -15029,7 +15029,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     goto __pyx_L5_except_error;
     __pyx_L5_except_error:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1034
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1034
  * # Cython code.
  * cdef inline int import_array() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -15044,7 +15044,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
     __pyx_L8_try_end:;
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1033
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1033
  * # Versions of the import_* functions which are more suitable for
  * # Cython code.
  * cdef inline int import_array() except -1:             # <<<<<<<<<<<<<<
@@ -15067,7 +15067,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_array(void) {
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1039
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1039
  *         raise ImportError("numpy.core.multiarray failed to import")
  * 
  * cdef inline int import_umath() except -1:             # <<<<<<<<<<<<<<
@@ -15091,7 +15091,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("import_umath", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1040
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1040
  * 
  * cdef inline int import_umath() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -15107,7 +15107,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     __Pyx_XGOTREF(__pyx_t_3);
     /*try:*/ {
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1041
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1041
  * cdef inline int import_umath() except -1:
  *     try:
  *         _import_umath()             # <<<<<<<<<<<<<<
@@ -15116,7 +15116,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
  */
       __pyx_t_4 = _import_umath(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(1, 1041, __pyx_L3_error)
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1040
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1040
  * 
  * cdef inline int import_umath() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -15130,7 +15130,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     goto __pyx_L8_try_end;
     __pyx_L3_error:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1042
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1042
  *     try:
  *         _import_umath()
  *     except Exception:             # <<<<<<<<<<<<<<
@@ -15145,7 +15145,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_GOTREF(__pyx_t_7);
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1043
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1043
  *         _import_umath()
  *     except Exception:
  *         raise ImportError("numpy.core.umath failed to import")             # <<<<<<<<<<<<<<
@@ -15161,7 +15161,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     goto __pyx_L5_except_error;
     __pyx_L5_except_error:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1040
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1040
  * 
  * cdef inline int import_umath() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -15176,7 +15176,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
     __pyx_L8_try_end:;
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1039
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1039
  *         raise ImportError("numpy.core.multiarray failed to import")
  * 
  * cdef inline int import_umath() except -1:             # <<<<<<<<<<<<<<
@@ -15199,7 +15199,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_umath(void) {
   return __pyx_r;
 }
 
-/* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1045
+/* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1045
  *         raise ImportError("numpy.core.umath failed to import")
  * 
  * cdef inline int import_ufunc() except -1:             # <<<<<<<<<<<<<<
@@ -15223,7 +15223,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("import_ufunc", 0);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1046
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1046
  * 
  * cdef inline int import_ufunc() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -15239,7 +15239,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     __Pyx_XGOTREF(__pyx_t_3);
     /*try:*/ {
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1047
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1047
  * cdef inline int import_ufunc() except -1:
  *     try:
  *         _import_umath()             # <<<<<<<<<<<<<<
@@ -15248,7 +15248,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
  */
       __pyx_t_4 = _import_umath(); if (unlikely(__pyx_t_4 == ((int)-1))) __PYX_ERR(1, 1047, __pyx_L3_error)
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1046
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1046
  * 
  * cdef inline int import_ufunc() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -15262,7 +15262,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     goto __pyx_L8_try_end;
     __pyx_L3_error:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1048
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1048
  *     try:
  *         _import_umath()
  *     except Exception:             # <<<<<<<<<<<<<<
@@ -15276,7 +15276,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
       __Pyx_GOTREF(__pyx_t_6);
       __Pyx_GOTREF(__pyx_t_7);
 
-      /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1049
+      /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1049
  *         _import_umath()
  *     except Exception:
  *         raise ImportError("numpy.core.umath failed to import")             # <<<<<<<<<<<<<<
@@ -15290,7 +15290,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     goto __pyx_L5_except_error;
     __pyx_L5_except_error:;
 
-    /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1046
+    /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1046
  * 
  * cdef inline int import_ufunc() except -1:
  *     try:             # <<<<<<<<<<<<<<
@@ -15305,7 +15305,7 @@ static CYTHON_INLINE int __pyx_f_5numpy_import_ufunc(void) {
     __pyx_L8_try_end:;
   }
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1045
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1045
  *         raise ImportError("numpy.core.umath failed to import")
  * 
  * cdef inline int import_ufunc() except -1:             # <<<<<<<<<<<<<<
@@ -28346,14 +28346,14 @@ static PyObject *__pyx_unpickle_Enum__set_state(struct __pyx_MemviewEnum_obj *__
   return __pyx_r;
 }
 
-static struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_freelist_11sort_cython___pyx_scope_struct__remove_overlap_templates[8];
-static int __pyx_freecount_11sort_cython___pyx_scope_struct__remove_overlap_templates = 0;
+static struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_freelist_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates[8];
+static int __pyx_freecount_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates = 0;
 
-static PyObject *__pyx_tp_new_11sort_cython___pyx_scope_struct__remove_overlap_templates(PyTypeObject *t, CYTHON_UNUSED PyObject *a, CYTHON_UNUSED PyObject *k) {
+static PyObject *__pyx_tp_new_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates(PyTypeObject *t, CYTHON_UNUSED PyObject *a, CYTHON_UNUSED PyObject *k) {
   PyObject *o;
-  if (CYTHON_COMPILING_IN_CPYTHON && likely((__pyx_freecount_11sort_cython___pyx_scope_struct__remove_overlap_templates > 0) & (t->tp_basicsize == sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates)))) {
-    o = (PyObject*)__pyx_freelist_11sort_cython___pyx_scope_struct__remove_overlap_templates[--__pyx_freecount_11sort_cython___pyx_scope_struct__remove_overlap_templates];
-    memset(o, 0, sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates));
+  if (CYTHON_COMPILING_IN_CPYTHON && likely((__pyx_freecount_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates > 0) & (t->tp_basicsize == sizeof(struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates)))) {
+    o = (PyObject*)__pyx_freelist_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates[--__pyx_freecount_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates];
+    memset(o, 0, sizeof(struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates));
     (void) PyObject_INIT(o, t);
   } else {
     o = (*t->tp_alloc)(t, 0);
@@ -28362,20 +28362,20 @@ static PyObject *__pyx_tp_new_11sort_cython___pyx_scope_struct__remove_overlap_t
   return o;
 }
 
-static void __pyx_tp_dealloc_11sort_cython___pyx_scope_struct__remove_overlap_templates(PyObject *o) {
-  if (CYTHON_COMPILING_IN_CPYTHON && ((__pyx_freecount_11sort_cython___pyx_scope_struct__remove_overlap_templates < 8) & (Py_TYPE(o)->tp_basicsize == sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates)))) {
-    __pyx_freelist_11sort_cython___pyx_scope_struct__remove_overlap_templates[__pyx_freecount_11sort_cython___pyx_scope_struct__remove_overlap_templates++] = ((struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *)o);
+static void __pyx_tp_dealloc_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates(PyObject *o) {
+  if (CYTHON_COMPILING_IN_CPYTHON && ((__pyx_freecount_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates < 8) & (Py_TYPE(o)->tp_basicsize == sizeof(struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates)))) {
+    __pyx_freelist_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates[__pyx_freecount_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates++] = ((struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates *)o);
   } else {
     (*Py_TYPE(o)->tp_free)(o);
   }
 }
 
-static PyTypeObject __pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates = {
+static PyTypeObject __pyx_type_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates = {
   PyVarObject_HEAD_INIT(0, 0)
-  "sort_cython.__pyx_scope_struct__remove_overlap_templates", /*tp_name*/
-  sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates), /*tp_basicsize*/
+  "spikesorting_fullpursuit.c_cython.sort_cython.__pyx_scope_struct__remove_overlap_templates", /*tp_name*/
+  sizeof(struct __pyx_obj_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates), /*tp_basicsize*/
   0, /*tp_itemsize*/
-  __pyx_tp_dealloc_11sort_cython___pyx_scope_struct__remove_overlap_templates, /*tp_dealloc*/
+  __pyx_tp_dealloc_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates, /*tp_dealloc*/
   #if PY_VERSION_HEX < 0x030800b4
   0, /*tp_print*/
   #endif
@@ -28418,7 +28418,7 @@ static PyTypeObject __pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_
   0, /*tp_dictoffset*/
   0, /*tp_init*/
   0, /*tp_alloc*/
-  __pyx_tp_new_11sort_cython___pyx_scope_struct__remove_overlap_templates, /*tp_new*/
+  __pyx_tp_new_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates, /*tp_new*/
   0, /*tp_free*/
   0, /*tp_is_gc*/
   0, /*tp_bases*/
@@ -28561,7 +28561,7 @@ static PyBufferProcs __pyx_tp_as_buffer_array = {
 
 static PyTypeObject __pyx_type___pyx_array = {
   PyVarObject_HEAD_INIT(0, 0)
-  "sort_cython.array", /*tp_name*/
+  "spikesorting_fullpursuit.c_cython.sort_cython.array", /*tp_name*/
   sizeof(struct __pyx_array_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc_array, /*tp_dealloc*/
@@ -28680,7 +28680,7 @@ static PyMethodDef __pyx_methods_Enum[] = {
 
 static PyTypeObject __pyx_type___pyx_MemviewEnum = {
   PyVarObject_HEAD_INIT(0, 0)
-  "sort_cython.Enum", /*tp_name*/
+  "spikesorting_fullpursuit.c_cython.sort_cython.Enum", /*tp_name*/
   sizeof(struct __pyx_MemviewEnum_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc_Enum, /*tp_dealloc*/
@@ -28941,7 +28941,7 @@ static PyBufferProcs __pyx_tp_as_buffer_memoryview = {
 
 static PyTypeObject __pyx_type___pyx_memoryview = {
   PyVarObject_HEAD_INIT(0, 0)
-  "sort_cython.memoryview", /*tp_name*/
+  "spikesorting_fullpursuit.c_cython.sort_cython.memoryview", /*tp_name*/
   sizeof(struct __pyx_memoryview_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc_memoryview, /*tp_dealloc*/
@@ -29079,7 +29079,7 @@ static struct PyGetSetDef __pyx_getsets__memoryviewslice[] = {
 
 static PyTypeObject __pyx_type___pyx_memoryviewslice = {
   PyVarObject_HEAD_INIT(0, 0)
-  "sort_cython._memoryviewslice", /*tp_name*/
+  "spikesorting_fullpursuit.c_cython.sort_cython._memoryviewslice", /*tp_name*/
   sizeof(struct __pyx_memoryviewslice_obj), /*tp_basicsize*/
   0, /*tp_itemsize*/
   __pyx_tp_dealloc__memoryviewslice, /*tp_dealloc*/
@@ -29435,14 +29435,14 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_shifted_t2, __pyx_k_shifted_t2, sizeof(__pyx_k_shifted_t2), 0, 0, 1, 1},
   {&__pyx_n_s_shifted_template, __pyx_k_shifted_template, sizeof(__pyx_k_shifted_template), 0, 0, 1, 1},
   {&__pyx_n_s_size, __pyx_k_size, sizeof(__pyx_k_size), 0, 0, 1, 1},
-  {&__pyx_n_s_sort_cython, __pyx_k_sort_cython, sizeof(__pyx_k_sort_cython), 0, 0, 1, 1},
-  {&__pyx_kp_s_sort_cython_pyx, __pyx_k_sort_cython_pyx, sizeof(__pyx_k_sort_cython_pyx), 0, 0, 1, 0},
   {&__pyx_n_s_spike_copy, __pyx_k_spike_copy, sizeof(__pyx_k_spike_copy), 0, 0, 1, 1},
   {&__pyx_n_s_spike_std, __pyx_k_spike_std, sizeof(__pyx_k_spike_std), 0, 0, 1, 1},
   {&__pyx_n_s_spikes, __pyx_k_spikes, sizeof(__pyx_k_spikes), 0, 0, 1, 1},
   {&__pyx_n_s_spikes_ptr, __pyx_k_spikes_ptr, sizeof(__pyx_k_spikes_ptr), 0, 0, 1, 1},
   {&__pyx_n_s_spikes_x, __pyx_k_spikes_x, sizeof(__pyx_k_spikes_x), 0, 0, 1, 1},
   {&__pyx_n_s_spikes_y, __pyx_k_spikes_y, sizeof(__pyx_k_spikes_y), 0, 0, 1, 1},
+  {&__pyx_kp_s_spikesorting_fullpursuit_c_cytho, __pyx_k_spikesorting_fullpursuit_c_cytho, sizeof(__pyx_k_spikesorting_fullpursuit_c_cytho), 0, 0, 1, 0},
+  {&__pyx_n_s_spikesorting_fullpursuit_c_cytho_2, __pyx_k_spikesorting_fullpursuit_c_cytho_2, sizeof(__pyx_k_spikesorting_fullpursuit_c_cytho_2), 0, 0, 1, 1},
   {&__pyx_n_s_start, __pyx_k_start, sizeof(__pyx_k_start), 0, 0, 1, 1},
   {&__pyx_n_s_std, __pyx_k_std, sizeof(__pyx_k_std), 0, 0, 1, 1},
   {&__pyx_n_s_step, __pyx_k_step, sizeof(__pyx_k_step), 0, 0, 1, 1},
@@ -29511,7 +29511,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
-  /* "sort_cython.pyx":29
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":29
  *   """
  *   if spikes.ndim != 2:
  *       raise ValueError("Input 'spikes' must be a 2 dimensional array to compute PCA")             # <<<<<<<<<<<<<<
@@ -29522,7 +29522,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple_);
   __Pyx_GIVEREF(__pyx_tuple_);
 
-  /* "sort_cython.pyx":31
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":31
  *       raise ValueError("Input 'spikes' must be a 2 dimensional array to compute PCA")
  *   if spikes.shape[0] <= 1:
  *       raise ValueError("Must input more than 1 spike to compute PCA")             # <<<<<<<<<<<<<<
@@ -29533,7 +29533,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__2);
   __Pyx_GIVEREF(__pyx_tuple__2);
 
-  /* "sort_cython.pyx":46
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":46
  *       # else compute_pcs must be a scalar and we index from 0:compute_pcs
  *       if pcs_as_index:
  *           key = np.argsort(E)[::-1][compute_pcs]             # <<<<<<<<<<<<<<
@@ -29544,7 +29544,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_slice__3);
   __Pyx_GIVEREF(__pyx_slice__3);
 
-  /* "sort_cython.pyx":50
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":50
  *           key = np.argsort(E)[::-1][:compute_pcs]
  * 
  *       E, V = E[key], V[:, key]             # <<<<<<<<<<<<<<
@@ -29555,7 +29555,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_slice__4);
   __Pyx_GIVEREF(__pyx_slice__4);
 
-  /* "sort_cython.pyx":105
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":105
  *   if components is None:
  *     # Couldn't compute PCs
  *     return np.zeros(1, dtype=np.int64), True             # <<<<<<<<<<<<<<
@@ -29566,7 +29566,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__5);
   __Pyx_GIVEREF(__pyx_tuple__5);
 
-  /* "sort_cython.pyx":338
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":338
  * 
  *     cdef Py_ssize_t chan, shift
  *     def get_shifted_template(template, shift):             # <<<<<<<<<<<<<<
@@ -29576,9 +29576,9 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__6 = PyTuple_Pack(5, __pyx_n_s_template, __pyx_n_s_shift, __pyx_n_s_shifted_template, __pyx_n_s_chan, __pyx_n_s_chan_temp); if (unlikely(!__pyx_tuple__6)) __PYX_ERR(0, 338, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__6);
   __Pyx_GIVEREF(__pyx_tuple__6);
-  __pyx_codeobj__7 = (PyObject*)__Pyx_PyCode_New(2, 0, 5, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__6, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sort_cython_pyx, __pyx_n_s_get_shifted_template, 338, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__7)) __PYX_ERR(0, 338, __pyx_L1_error)
+  __pyx_codeobj__7 = (PyObject*)__Pyx_PyCode_New(2, 0, 5, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__6, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_spikesorting_fullpursuit_c_cytho, __pyx_n_s_get_shifted_template, 338, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__7)) __PYX_ERR(0, 338, __pyx_L1_error)
 
-  /* "sort_cython.pyx":372
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":372
  * 
  *     # Check in order of descending template sum squared
  *     template_SS_order = np.argsort(templates_SS)[-1::-1]             # <<<<<<<<<<<<<<
@@ -29589,7 +29589,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_slice__8);
   __Pyx_GIVEREF(__pyx_slice__8);
 
-  /* "sort_cython.pyx":586
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":586
  *   elif not isfinite(f_fac):
  *     # I think this is an error that probably shouldn't happen?
  *     raise RuntimeError('Something is wrong in KDE compuation...')             # <<<<<<<<<<<<<<
@@ -29600,7 +29600,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__9);
   __Pyx_GIVEREF(__pyx_tuple__9);
 
-  /* "sort_cython.pyx":802
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":802
  * 
  *   if MIN == MAX:
  *     early_density = np.ones((1, ), dtype=np.double)             # <<<<<<<<<<<<<<
@@ -29611,7 +29611,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__10);
   __Pyx_GIVEREF(__pyx_tuple__10);
 
-  /* "sort_cython.pyx":893
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":893
  *   cdef int64_t density_midslice
  *   density_midslice = <int64_t>(floor(a_t_view.shape[0] / 2))
  *   density[0::2] = a_t[0:density_midslice]             # <<<<<<<<<<<<<<
@@ -29622,7 +29622,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_slice__11);
   __Pyx_GIVEREF(__pyx_slice__11);
 
-  /* "sort_cython.pyx":894
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":894
  *   density_midslice = <int64_t>(floor(a_t_view.shape[0] / 2))
  *   density[0::2] = a_t[0:density_midslice]
  *   density[1::2] = a_t[a_t_view.shape[0]:density_midslice-1:-1]             # <<<<<<<<<<<<<<
@@ -29633,7 +29633,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_slice__12);
   __Pyx_GIVEREF(__pyx_slice__12);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":272
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":272
  *             if ((flags & pybuf.PyBUF_C_CONTIGUOUS == pybuf.PyBUF_C_CONTIGUOUS)
  *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_C_CONTIGUOUS)):
  *                 raise ValueError(u"ndarray is not C contiguous")             # <<<<<<<<<<<<<<
@@ -29644,7 +29644,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__13);
   __Pyx_GIVEREF(__pyx_tuple__13);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":276
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":276
  *             if ((flags & pybuf.PyBUF_F_CONTIGUOUS == pybuf.PyBUF_F_CONTIGUOUS)
  *                 and not PyArray_CHKFLAGS(self, NPY_ARRAY_F_CONTIGUOUS)):
  *                 raise ValueError(u"ndarray is not Fortran contiguous")             # <<<<<<<<<<<<<<
@@ -29655,7 +29655,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__14);
   __Pyx_GIVEREF(__pyx_tuple__14);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":306
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":306
  *                 if ((descr.byteorder == c'>' and little_endian) or
  *                     (descr.byteorder == c'<' and not little_endian)):
  *                     raise ValueError(u"Non-native byte order not supported")             # <<<<<<<<<<<<<<
@@ -29666,7 +29666,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__15);
   __Pyx_GIVEREF(__pyx_tuple__15);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":855
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":855
  * 
  *         if (end - f) - <int>(new_offset - offset[0]) < 15:
  *             raise RuntimeError(u"Format string allocated too short, see comment in numpy.pxd")             # <<<<<<<<<<<<<<
@@ -29677,7 +29677,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__16);
   __Pyx_GIVEREF(__pyx_tuple__16);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":879
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":879
  *             t = child.type_num
  *             if end - f < 5:
  *                 raise RuntimeError(u"Format string allocated too short.")             # <<<<<<<<<<<<<<
@@ -29688,7 +29688,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__17);
   __Pyx_GIVEREF(__pyx_tuple__17);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1037
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1037
  *         _import_array()
  *     except Exception:
  *         raise ImportError("numpy.core.multiarray failed to import")             # <<<<<<<<<<<<<<
@@ -29699,7 +29699,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__18);
   __Pyx_GIVEREF(__pyx_tuple__18);
 
-  /* "../../../../../../../anaconda3/lib/python3.7/site-packages/Cython/Includes/numpy/__init__.pxd":1043
+  /* "../../opt/anaconda3/lib/python3.8/site-packages/Cython/Includes/numpy/__init__.pxd":1043
  *         _import_umath()
  *     except Exception:
  *         raise ImportError("numpy.core.umath failed to import")             # <<<<<<<<<<<<<<
@@ -29891,7 +29891,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__36);
   __Pyx_GIVEREF(__pyx_tuple__36);
 
-  /* "sort_cython.pyx":13
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":13
  * 
  * 
  * def pca_scores(spikes, compute_pcs=None, pcs_as_index=True, return_V=False, return_E=False):             # <<<<<<<<<<<<<<
@@ -29901,9 +29901,9 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__37 = PyTuple_Pack(12, __pyx_n_s_spikes, __pyx_n_s_compute_pcs, __pyx_n_s_pcs_as_index, __pyx_n_s_return_V, __pyx_n_s_return_E, __pyx_n_s_spike_std, __pyx_n_s_spike_copy, __pyx_n_s_C, __pyx_n_s_E, __pyx_n_s_V, __pyx_n_s_key, __pyx_n_s_U); if (unlikely(!__pyx_tuple__37)) __PYX_ERR(0, 13, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__37);
   __Pyx_GIVEREF(__pyx_tuple__37);
-  __pyx_codeobj__38 = (PyObject*)__Pyx_PyCode_New(5, 0, 12, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__37, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sort_cython_pyx, __pyx_n_s_pca_scores, 13, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__38)) __PYX_ERR(0, 13, __pyx_L1_error)
+  __pyx_codeobj__38 = (PyObject*)__Pyx_PyCode_New(5, 0, 12, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__37, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_spikesorting_fullpursuit_c_cytho, __pyx_n_s_pca_scores, 13, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__38)) __PYX_ERR(0, 13, __pyx_L1_error)
 
-  /* "sort_cython.pyx":71
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":71
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes not None,             # <<<<<<<<<<<<<<
@@ -29913,9 +29913,9 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__40 = PyTuple_Pack(31, __pyx_n_s_spikes, __pyx_n_s_check_components, __pyx_n_s_max_components, __pyx_n_s_min_components, __pyx_n_s_comp, __pyx_n_s_x, __pyx_n_s_y, __pyx_n_s_c_ord, __pyx_n_s_check_comp_ssize_t, __pyx_n_s_nv, __pyx_n_s_curr_answer, __pyx_n_s_spikes_ptr, __pyx_n_s_spikes_x, __pyx_n_s_spikes_y, __pyx_n_s_resid_error, __pyx_n_s_resid_error_ptr, __pyx_n_s_components, __pyx_n_s__39, __pyx_n_s_components_ptr, __pyx_n_s_reconstruction_ptr, __pyx_n_s_RESS, __pyx_n_s_idx_sp, __pyx_n_s_idx_rec, __pyx_n_s_comp_order, __pyx_n_s_vaf, __pyx_n_s_vaf_ptr, __pyx_n_s_PRESS, __pyx_n_s_max_vaf_components, __pyx_n_s_reconstruction, __pyx_n_s_is_worse_than_mean, __pyx_n_s_iwtm_ptr); if (unlikely(!__pyx_tuple__40)) __PYX_ERR(0, 71, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__40);
   __Pyx_GIVEREF(__pyx_tuple__40);
-  __pyx_codeobj__41 = (PyObject*)__Pyx_PyCode_New(4, 0, 31, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__40, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sort_cython_pyx, __pyx_n_s_optimal_reconstruction_pca_order, 71, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__41)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_codeobj__41 = (PyObject*)__Pyx_PyCode_New(4, 0, 31, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__40, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_spikesorting_fullpursuit_c_cytho, __pyx_n_s_optimal_reconstruction_pca_order, 71, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__41)) __PYX_ERR(0, 71, __pyx_L1_error)
 
-  /* "sort_cython.pyx":201
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":201
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"] spikes not None,             # <<<<<<<<<<<<<<
@@ -29925,9 +29925,9 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__42 = PyTuple_Pack(31, __pyx_n_s_spikes, __pyx_n_s_check_components, __pyx_n_s_max_components, __pyx_n_s_min_components, __pyx_n_s_comp, __pyx_n_s_x, __pyx_n_s_y, __pyx_n_s_c_ord, __pyx_n_s_check_comp_ssize_t, __pyx_n_s_nv, __pyx_n_s_curr_answer, __pyx_n_s_spikes_ptr, __pyx_n_s_spikes_x, __pyx_n_s_spikes_y, __pyx_n_s_resid_error, __pyx_n_s_resid_error_ptr, __pyx_n_s_components, __pyx_n_s__39, __pyx_n_s_components_ptr, __pyx_n_s_reconstruction_ptr, __pyx_n_s_RESS, __pyx_n_s_idx_sp, __pyx_n_s_idx_rec, __pyx_n_s_comp_order, __pyx_n_s_vaf, __pyx_n_s_vaf_ptr, __pyx_n_s_PRESS, __pyx_n_s_max_vaf_components, __pyx_n_s_reconstruction, __pyx_n_s_is_worse_than_mean, __pyx_n_s_iwtm_ptr); if (unlikely(!__pyx_tuple__42)) __PYX_ERR(0, 201, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__42);
   __Pyx_GIVEREF(__pyx_tuple__42);
-  __pyx_codeobj__43 = (PyObject*)__Pyx_PyCode_New(4, 0, 31, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__42, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sort_cython_pyx, __pyx_n_s_optimal_reconstruction_pca_order_2, 201, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__43)) __PYX_ERR(0, 201, __pyx_L1_error)
+  __pyx_codeobj__43 = (PyObject*)__Pyx_PyCode_New(4, 0, 31, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__42, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_spikesorting_fullpursuit_c_cytho, __pyx_n_s_optimal_reconstruction_pca_order_2, 201, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__43)) __PYX_ERR(0, 201, __pyx_L1_error)
 
-  /* "sort_cython.pyx":333
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
@@ -29937,9 +29937,9 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__44 = PyTuple_Pack(36, __pyx_n_s_templates, __pyx_n_s_n_samples_per_chan, __pyx_n_s_n_chans, __pyx_n_s_n_pre_inds, __pyx_n_s_n_post_inds, __pyx_n_s_n_template_spikes, __pyx_n_s_chan, __pyx_n_s_shift, __pyx_n_s_get_shifted_template, __pyx_n_s_get_shifted_template, __pyx_n_s_templates_to_delete, __pyx_n_s_templates_SS, __pyx_n_s_sum_n1_n2_template, __pyx_n_s_all_template_shifts, __pyx_n_s_t, __pyx_n_s_as_ind, __pyx_n_s_all_shifts, __pyx_n_s_s, __pyx_n_s_template_SS_order, __pyx_n_s_test_unit, __pyx_n_s_n1, __pyx_n_s_n2, __pyx_n_s_s1_ind, __pyx_n_s_s2_ind, __pyx_n_s_test_template, __pyx_n_s_min_residual_SS, __pyx_n_s_best_pair, __pyx_n_s_best_shifts, __pyx_n_s_best_inds, __pyx_n_s_template_1, __pyx_n_s_template_2, __pyx_n_s_shift1, __pyx_n_s_shifted_t1, __pyx_n_s_shift2, __pyx_n_s_shifted_t2, __pyx_n_s_residual_SS); if (unlikely(!__pyx_tuple__44)) __PYX_ERR(0, 333, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__44);
   __Pyx_GIVEREF(__pyx_tuple__44);
-  __pyx_codeobj__45 = (PyObject*)__Pyx_PyCode_New(6, 0, 36, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__44, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sort_cython_pyx, __pyx_n_s_remove_overlap_templates, 333, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__45)) __PYX_ERR(0, 333, __pyx_L1_error)
+  __pyx_codeobj__45 = (PyObject*)__Pyx_PyCode_New(6, 0, 36, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__44, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_spikesorting_fullpursuit_c_cytho, __pyx_n_s_remove_overlap_templates, 333, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__45)) __PYX_ERR(0, 333, __pyx_L1_error)
 
-  /* "sort_cython.pyx":424
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":424
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def compute_cluster_centroid(double[:, ::1] scores not None,             # <<<<<<<<<<<<<<
@@ -29949,9 +29949,9 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__46 = PyTuple_Pack(8, __pyx_n_s_scores, __pyx_n_s_labels, __pyx_n_s_label, __pyx_n_s_x, __pyx_n_s_y, __pyx_n_s_n_points, __pyx_n_s_centroid, __pyx_n_s_centroid_ptr); if (unlikely(!__pyx_tuple__46)) __PYX_ERR(0, 424, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__46);
   __Pyx_GIVEREF(__pyx_tuple__46);
-  __pyx_codeobj__47 = (PyObject*)__Pyx_PyCode_New(3, 0, 8, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__46, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sort_cython_pyx, __pyx_n_s_compute_cluster_centroid, 424, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__47)) __PYX_ERR(0, 424, __pyx_L1_error)
+  __pyx_codeobj__47 = (PyObject*)__Pyx_PyCode_New(3, 0, 8, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__46, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_spikesorting_fullpursuit_c_cytho, __pyx_n_s_compute_cluster_centroid, 424, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__47)) __PYX_ERR(0, 424, __pyx_L1_error)
 
-  /* "sort_cython.pyx":479
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":479
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def identify_clusters_to_compare(double[:, ::1] scores, int64_t[::1] labels, list previously_compared_pairs):             # <<<<<<<<<<<<<<
@@ -29961,9 +29961,9 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__48 = PyTuple_Pack(19, __pyx_n_s_scores, __pyx_n_s_labels, __pyx_n_s_previously_compared_pairs, __pyx_n_s_i, __pyx_n_s_x, __pyx_n_s_y, __pyx_n_s_n_points, __pyx_n_s_c1, __pyx_n_s_c2, __pyx_n_s_dist_min, __pyx_n_s_unique_labels, __pyx_n_s_unique_labels_view, __pyx_n_s_centroids, __pyx_n_s_centroids_view, __pyx_n_s_min_distance_cluster, __pyx_n_s_min_distance_cluster_view, __pyx_n_s_this_distance, __pyx_n_s_this_distance_view, __pyx_n_s_minimum_distance_pairs); if (unlikely(!__pyx_tuple__48)) __PYX_ERR(0, 479, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__48);
   __Pyx_GIVEREF(__pyx_tuple__48);
-  __pyx_codeobj__49 = (PyObject*)__Pyx_PyCode_New(3, 0, 19, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__48, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sort_cython_pyx, __pyx_n_s_identify_clusters_to_compare, 479, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__49)) __PYX_ERR(0, 479, __pyx_L1_error)
+  __pyx_codeobj__49 = (PyObject*)__Pyx_PyCode_New(3, 0, 19, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__48, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_spikesorting_fullpursuit_c_cytho, __pyx_n_s_identify_clusters_to_compare, 479, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__49)) __PYX_ERR(0, 479, __pyx_L1_error)
 
-  /* "sort_cython.pyx":708
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":708
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def kde(double[::1] data, int64_t n_points):             # <<<<<<<<<<<<<<
@@ -29973,7 +29973,7 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __pyx_tuple__50 = PyTuple_Pack(39, __pyx_n_s_data, __pyx_n_s_n_points, __pyx_n_s_R, __pyx_n_s_dx, __pyx_n_s_tol, __pyx_n_s_fixed_point_0, __pyx_n_s_f_0, __pyx_n_s_tol_0, __pyx_n_s_f_tol, __pyx_n_s_t_star, __pyx_n_s_N, __pyx_n_s_n, __pyx_n_s_x, __pyx_n_s_data_size, __pyx_n_s_MIN, __pyx_n_s_MAX, __pyx_n_s_early_density, __pyx_n_s_xmesh, __pyx_n_s_bandwidth, __pyx_n_s_val, __pyx_n_s_xmesh_size, __pyx_n_s_xmesh_view, __pyx_n_s_hist_bins, __pyx_n_s_hist_bins_view, __pyx_n_s_initial_data, __pyx_n_s_a, __pyx_n_s_a_view, __pyx_n_s_I, __pyx_n_s_I_view, __pyx_n_s_I_i, __pyx_n_s_a2, __pyx_n_s_a2_view, __pyx_n_s_N_tol, __pyx_n_s_a_t, __pyx_n_s_a_t_view, __pyx_n_s_weights, __pyx_n_s_density, __pyx_n_s_density_view, __pyx_n_s_density_midslice); if (unlikely(!__pyx_tuple__50)) __PYX_ERR(0, 708, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__50);
   __Pyx_GIVEREF(__pyx_tuple__50);
-  __pyx_codeobj__51 = (PyObject*)__Pyx_PyCode_New(2, 0, 39, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__50, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sort_cython_pyx, __pyx_n_s_kde, 708, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__51)) __PYX_ERR(0, 708, __pyx_L1_error)
+  __pyx_codeobj__51 = (PyObject*)__Pyx_PyCode_New(2, 0, 39, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__50, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_spikesorting_fullpursuit_c_cytho, __pyx_n_s_kde, 708, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__51)) __PYX_ERR(0, 708, __pyx_L1_error)
 
   /* "View.MemoryView":286
  *         return self.name
@@ -30103,14 +30103,14 @@ static int __Pyx_modinit_type_init_code(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__Pyx_modinit_type_init_code", 0);
   /*--- Type init code ---*/
-  if (PyType_Ready(&__pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates) < 0) __PYX_ERR(0, 333, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates) < 0) __PYX_ERR(0, 333, __pyx_L1_error)
   #if PY_VERSION_HEX < 0x030800B1
-  __pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_print = 0;
+  __pyx_type_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_print = 0;
   #endif
-  if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_dictoffset && __pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_getattro == PyObject_GenericGetAttr)) {
-    __pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_getattro = __Pyx_PyObject_GenericGetAttrNoDict;
+  if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_dictoffset && __pyx_type_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_getattro == PyObject_GenericGetAttr)) {
+    __pyx_type_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_getattro = __Pyx_PyObject_GenericGetAttrNoDict;
   }
-  __pyx_ptype_11sort_cython___pyx_scope_struct__remove_overlap_templates = &__pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates;
+  __pyx_ptype_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates = &__pyx_type_24spikesorting_fullpursuit_8c_cython_11sort_cython___pyx_scope_struct__remove_overlap_templates;
   __pyx_vtabptr_array = &__pyx_vtable_array;
   __pyx_vtable_array.get_memview = (PyObject *(*)(struct __pyx_array_obj *))__pyx_array_get_memview;
   if (PyType_Ready(&__pyx_type___pyx_array) < 0) __PYX_ERR(2, 105, __pyx_L1_error)
@@ -30401,14 +30401,14 @@ if (!__Pyx_RefNanny) {
   #if PY_MAJOR_VERSION < 3 && (__PYX_DEFAULT_STRING_ENCODING_IS_ASCII || __PYX_DEFAULT_STRING_ENCODING_IS_DEFAULT)
   if (__Pyx_init_sys_getdefaultencoding_params() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
-  if (__pyx_module_is_main_sort_cython) {
+  if (__pyx_module_is_main_spikesorting_fullpursuit__c_cython__sort_cython) {
     if (PyObject_SetAttr(__pyx_m, __pyx_n_s_name_2, __pyx_n_s_main) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   }
   #if PY_MAJOR_VERSION >= 3
   {
     PyObject *modules = PyImport_GetModuleDict(); if (unlikely(!modules)) __PYX_ERR(0, 1, __pyx_L1_error)
-    if (!PyDict_GetItemString(modules, "sort_cython")) {
-      if (unlikely(PyDict_SetItemString(modules, "sort_cython", __pyx_m) < 0)) __PYX_ERR(0, 1, __pyx_L1_error)
+    if (!PyDict_GetItemString(modules, "spikesorting_fullpursuit.c_cython.sort_cython")) {
+      if (unlikely(PyDict_SetItemString(modules, "spikesorting_fullpursuit.c_cython.sort_cython", __pyx_m) < 0)) __PYX_ERR(0, 1, __pyx_L1_error)
     }
   }
   #endif
@@ -30429,7 +30429,7 @@ if (!__Pyx_RefNanny) {
   if (__Pyx_patch_abc() < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   #endif
 
-  /* "sort_cython.pyx":2
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":2
  * cimport numpy as np
  * import numpy as np             # <<<<<<<<<<<<<<
  * from libc.stdint cimport int64_t, int32_t, uint8_t
@@ -30440,7 +30440,7 @@ if (!__Pyx_RefNanny) {
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_np, __pyx_t_1) < 0) __PYX_ERR(0, 2, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":5
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":5
  * from libc.stdint cimport int64_t, int32_t, uint8_t
  * from numpy.math cimport INFINITY, NAN
  * from numpy import linalg as la             # <<<<<<<<<<<<<<
@@ -30461,7 +30461,7 @@ if (!__Pyx_RefNanny) {
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "sort_cython.pyx":9
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":9
  * from libc.math cimport exp, sqrt, M_PI, M_SQRT2, log, log2, ceil, floor, isfinite
  * from libc.stdlib cimport calloc, free
  * from scipy.fftpack import dct, ifft             # <<<<<<<<<<<<<<
@@ -30489,91 +30489,91 @@ if (!__Pyx_RefNanny) {
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":13
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":13
  * 
  * 
  * def pca_scores(spikes, compute_pcs=None, pcs_as_index=True, return_V=False, return_E=False):             # <<<<<<<<<<<<<<
  *   """
  *       pca(spikes)
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11sort_cython_1pca_scores, NULL, __pyx_n_s_sort_cython); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 13, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_1pca_scores, NULL, __pyx_n_s_spikesorting_fullpursuit_c_cytho_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 13, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_pca_scores, __pyx_t_1) < 0) __PYX_ERR(0, 13, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":71
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":71
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes not None,             # <<<<<<<<<<<<<<
  *         check_components=None, max_components=None, int64_t min_components=0):
  *   """
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11sort_cython_3optimal_reconstruction_pca_order, NULL, __pyx_n_s_sort_cython); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_3optimal_reconstruction_pca_order, NULL, __pyx_n_s_spikesorting_fullpursuit_c_cytho_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 71, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_optimal_reconstruction_pca_order, __pyx_t_1) < 0) __PYX_ERR(0, 71, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":201
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":201
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"] spikes not None,             # <<<<<<<<<<<<<<
  *         check_components=None, max_components=None, int64_t min_components=0):
  *   """
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11sort_cython_5optimal_reconstruction_pca_order_F, NULL, __pyx_n_s_sort_cython); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 201, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_5optimal_reconstruction_pca_order_F, NULL, __pyx_n_s_spikesorting_fullpursuit_c_cytho_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 201, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_optimal_reconstruction_pca_order_2, __pyx_t_1) < 0) __PYX_ERR(0, 201, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":333
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
  *         Py_ssize_t n_samples_per_chan, Py_ssize_t n_chans, int64_t n_pre_inds,
  *         int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11sort_cython_7remove_overlap_templates, NULL, __pyx_n_s_sort_cython); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 333, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_7remove_overlap_templates, NULL, __pyx_n_s_spikesorting_fullpursuit_c_cytho_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 333, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_remove_overlap_templates, __pyx_t_1) < 0) __PYX_ERR(0, 333, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":424
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":424
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def compute_cluster_centroid(double[:, ::1] scores not None,             # <<<<<<<<<<<<<<
  *       int64_t[::1] labels not None, int64_t label):
  *   """np.ndarray[np.double_t, ndim=1]
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11sort_cython_9compute_cluster_centroid, NULL, __pyx_n_s_sort_cython); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 424, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_9compute_cluster_centroid, NULL, __pyx_n_s_spikesorting_fullpursuit_c_cytho_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 424, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_compute_cluster_centroid, __pyx_t_1) < 0) __PYX_ERR(0, 424, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":479
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":479
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def identify_clusters_to_compare(double[:, ::1] scores, int64_t[::1] labels, list previously_compared_pairs):             # <<<<<<<<<<<<<<
  *   """ This helper function identifies clusters to compare. It does this by
  *   determining mutually close clusters (as defined by the L2 norm). That is,
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11sort_cython_11identify_clusters_to_compare, NULL, __pyx_n_s_sort_cython); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 479, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_11identify_clusters_to_compare, NULL, __pyx_n_s_spikesorting_fullpursuit_c_cytho_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 479, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_identify_clusters_to_compare, __pyx_t_1) < 0) __PYX_ERR(0, 479, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":708
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":708
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
  * def kde(double[::1] data, int64_t n_points):             # <<<<<<<<<<<<<<
  *   """
  *   Kernel density estimate (KDE) with automatic bandwidth selection.
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11sort_cython_13kde, NULL, __pyx_n_s_sort_cython); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 708, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_24spikesorting_fullpursuit_8c_cython_11sort_cython_13kde, NULL, __pyx_n_s_spikesorting_fullpursuit_c_cytho_2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 708, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_kde, __pyx_t_1) < 0) __PYX_ERR(0, 708, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "sort_cython.pyx":1
+  /* "spikesorting_fullpursuit/c_cython/sort_cython.pyx":1
  * cimport numpy as np             # <<<<<<<<<<<<<<
  * import numpy as np
  * from libc.stdint cimport int64_t, int32_t, uint8_t
@@ -30744,11 +30744,11 @@ if (!__Pyx_RefNanny) {
   __Pyx_XDECREF(__pyx_t_2);
   if (__pyx_m) {
     if (__pyx_d) {
-      __Pyx_AddTraceback("init sort_cython", __pyx_clineno, __pyx_lineno, __pyx_filename);
+      __Pyx_AddTraceback("init spikesorting_fullpursuit.c_cython.sort_cython", __pyx_clineno, __pyx_lineno, __pyx_filename);
     }
     Py_CLEAR(__pyx_m);
   } else if (!PyErr_Occurred()) {
-    PyErr_SetString(PyExc_ImportError, "init sort_cython");
+    PyErr_SetString(PyExc_ImportError, "init spikesorting_fullpursuit.c_cython.sort_cython");
   }
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();

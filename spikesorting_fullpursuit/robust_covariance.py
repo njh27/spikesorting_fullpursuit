@@ -6,16 +6,99 @@ Here are implemented estimators that are resistant to outliers.
 #
 # License: BSD 3 clause
 
+""" The contents of this module were taken from the original scikit-learn
+software package to eliminate dependencies on scikit-learn. The minimal required
+number of functions were placed here to allow the main class "MinCovDet" to fit
+a robust covariance matrix using the fast MCD algorithm. Checks for the
+appropriateness of the input data samples have been removed. For clarity of
+these modifications, the original checks are left in place and commented out."""
+
+
 import warnings
 import numbers
 import numpy as np
 from scipy import linalg
 from scipy.stats import chi2
 
-from . import empirical_covariance, EmpiricalCovariance
-from ..utils.extmath import fast_logdet
-from ..utils import check_random_state, check_array
-from ..utils.validation import _deprecate_positional_args
+
+
+def empirical_covariance(X, *, assume_centered=False):
+    """Computes the Maximum likelihood covariance estimator
+    Parameters
+    ----------
+    X : ndarray of shape (n_samples, n_features)
+        Data from which to compute the covariance estimate
+    assume_centered : bool, default=False
+        If True, data will not be centered before computation.
+        Useful when working with data whose mean is almost, but not exactly
+        zero.
+        If False, data will be centered before computation.
+    Returns
+    -------
+    covariance : ndarray of shape (n_features, n_features)
+        Empirical covariance (Maximum Likelihood Estimator).
+    Examples
+    --------
+    >>> from sklearn.covariance import empirical_covariance
+    >>> X = [[1,1,1],[1,1,1],[1,1,1],
+    ...      [0,0,0],[0,0,0],[0,0,0]]
+    >>> empirical_covariance(X)
+    array([[0.25, 0.25, 0.25],
+           [0.25, 0.25, 0.25],
+           [0.25, 0.25, 0.25]])
+    """
+    X = np.asarray(X)
+
+    if X.ndim == 1:
+        X = np.reshape(X, (1, -1))
+
+    if X.shape[0] == 1:
+        warnings.warn("Only one sample available. "
+                      "You may want to reshape your data array")
+
+    if assume_centered:
+        covariance = np.dot(X.T, X) / X.shape[0]
+    else:
+        covariance = np.cov(X.T, bias=1)
+
+    if covariance.ndim == 0:
+        covariance = np.array([[covariance]])
+    return covariance
+
+
+def check_random_state(seed):
+    """Turn seed into a np.random.RandomState instance
+    Parameters
+    ----------
+    seed : None, int or instance of RandomState
+        If seed is None, return the RandomState singleton used by np.random.
+        If seed is an int, return a new RandomState instance seeded with seed.
+        If seed is already a RandomState instance, return it.
+        Otherwise raise ValueError.
+    """
+    if seed is None or seed is np.random:
+        return np.random.mtrand._rand
+    if isinstance(seed, numbers.Integral):
+        return np.random.RandomState(seed)
+    if isinstance(seed, np.random.RandomState):
+        return seed
+    raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
+                     ' instance' % seed)
+
+
+def fast_logdet(A):
+    """Compute log(det(A)) for A symmetric.
+    Equivalent to : np.log(nl.det(A)) but more robust.
+    It returns -Inf if det(A) is non positive or is not defined.
+    Parameters
+    ----------
+    A : array-like
+        The matrix.
+    """
+    sign, ld = np.linalg.slogdet(A)
+    if not sign > 0:
+        return -np.inf
+    return ld
 
 
 # Minimum Covariance Determinant
@@ -575,8 +658,8 @@ class MinCovDet(object):
         self : object
         """
         # X = self._validate_data(X, ensure_min_samples=2, estimator='MinCovDet')
-        # random_state = check_random_state(self.random_state)
-        # n_samples, n_features = X.shape
+        random_state = check_random_state(self.random_state)
+        n_samples, n_features = X.shape
         # # check that the empirical covariance is full rank
         # if (linalg.svdvals(np.dot(X.T, X)) > 1e-8).sum() != n_features:
         #     warnings.warn("The covariance matrix associated to your dataset "
@@ -584,12 +667,12 @@ class MinCovDet(object):
         # compute and store raw estimates
         raw_location, raw_covariance, raw_support, raw_dist = fast_mcd(
             X, support_fraction=self.support_fraction,
-            cov_computation_method=self._nonrobust_covariance,
+            cov_computation_method=empirical_covariance,
             random_state=random_state)
 
         if self.assume_centered:
             raw_location = np.zeros(n_features)
-            raw_covariance = self._nonrobust_covariance(X[raw_support],
+            raw_covariance = empirical_covariance(X[raw_support],
                                                         assume_centered=True)
             # get precision matrix in an optimized way
             precision = linalg.pinvh(raw_covariance)
@@ -673,7 +756,7 @@ class MinCovDet(object):
             location_reweighted = np.zeros(n_features)
         else:
             location_reweighted = data[mask].mean(0)
-        covariance_reweighted = self._nonrobust_covariance(
+        covariance_reweighted = empirical_covariance(
             data[mask], assume_centered=self.assume_centered)
         support_reweighted = np.zeros(n_samples, dtype=bool)
         support_reweighted[mask] = True
@@ -684,3 +767,35 @@ class MinCovDet(object):
         self.dist_ = np.sum(
             np.dot(X_centered, self.get_precision()) * X_centered, 1)
         return location_reweighted, covariance_reweighted, support_reweighted
+
+    def _set_covariance(self, covariance):
+        """Saves the covariance and precision estimates
+        Storage is done accordingly to `self.store_precision`.
+        Precision stored only if invertible.
+        Parameters
+        ----------
+        covariance : array-like of shape (n_features, n_features)
+            Estimated covariance matrix to be stored, and from which precision
+            is computed.
+        """
+        # covariance = check_array(covariance)
+        # set covariance
+        self.covariance_ = covariance
+        # set precision
+        if self.store_precision:
+            self.precision_ = linalg.pinvh(covariance, check_finite=False)
+        else:
+            self.precision_ = None
+
+    def get_precision(self):
+        """Getter for the precision matrix.
+        Returns
+        -------
+        precision_ : array-like of shape (n_features, n_features)
+            The precision matrix associated to the current covariance object.
+        """
+        if self.store_precision:
+            precision = self.precision_
+        else:
+            precision = linalg.pinvh(self.covariance_, check_finite=False)
+        return precision

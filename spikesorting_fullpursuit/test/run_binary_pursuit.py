@@ -2,14 +2,13 @@ import numpy as np
 from scipy import signal
 from scipy import stats
 from spikesorting_fullpursuit import neuron_separability
+from spikesorting_fullpursuit.robust_covariance import MinCovDet
 from spikesorting_fullpursuit.segment import median_threshold
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
 from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 import matplotlib.pyplot as plt
 
-
-from sklearn.covariance import EmpiricalCovariance, MinCovDet
 
 
 dict_other_templates = {'upsidedown_47a': np.array(
@@ -258,11 +257,10 @@ class RunBinaryPursuit(object):
     def sort_test_dataset(self, kwargs):
 
         self.sort_info = {'sigma_noise_penalty': 1.645,
-                    'get_adjusted_clips': False,
-                    'max_gpu_memory': None,
-                    'max_shift_inds': None,
-                    'sigma': 4.}
-
+                        'get_adjusted_clips': False,
+                        'max_gpu_memory': None,
+                        'max_shift_inds': None,
+                        'sigma': 4.}
         for key in kwargs:
             self.sort_info[key] = kwargs[key]
 
@@ -326,47 +324,18 @@ class RunBinaryPursuit(object):
         # Need to get sum squares and noise covariance separate for each channel and template
         separability_metrics['channel_covariance_mats'] = []
 
-        mcd_cov = []
-        emp_noise_bias = [0 for n in range(0, n_templates)]
         for chan in range(0, n_chans):
-            n_noise_clips_found = 0
-            noise_clips_found = []
-            while n_noise_clips_found < n_noise_samples:
-                rand_inds = np.random.randint(max_clip_samples, voltage.shape[1] - max_clip_samples, n_noise_samples-n_noise_clips_found)
-
-                # rand_inds.sort()
-                # bad_inds = np.zeros(rand_inds.shape[0], dtype=np.bool)
-                # for n_spikes in actual_spike_times:
-                #     overlap_bool = find_overlapping_spike_bool(rand_inds, n_spikes, 50)
-                #     bad_inds = np.logical_or(bad_inds, overlap_bool)
-                # rand_inds = rand_inds[~bad_inds]
-
-                noise_clips, _ = get_singlechannel_clips(voltage, chan, rand_inds, window)
-
-                noise_clips = noise_clips[np.all(noise_clips < thresholds[chan], axis=1), :]
-
-                n_noise_clips_found += noise_clips.shape[0]
-                noise_clips_found.append(noise_clips)
-            noise_clips_found = np.vstack(noise_clips_found)
-            chan_cov = np.cov(noise_clips_found, rowvar=False)
-            # separability_metrics['channel_covariance_mats'].append(chan_cov)
-
+            rand_inds = np.random.randint(max_clip_samples, voltage.shape[1] - max_clip_samples, n_noise_samples)
+            noise_clips, _ = get_singlechannel_clips(voltage, chan, rand_inds, window)
+            # Get robust covariance to avoid outliers
             rob_cov = MinCovDet(store_precision=False, assume_centered=True,
-                 support_fraction=1., random_state=None)
-            rob_cov.fit(noise_clips_found)
-            mcd_cov.append(rob_cov.raw_covariance_)
-            separability_metrics['channel_covariance_mats'].append(rob_cov.raw_covariance_)
-            print(noise_clips_found.shape, mcd_cov[0].shape, chan_cov.shape)
-            # print(mcd_cov[0])
-            # print(separability_metrics['channel_covariance_mats'])
+                                 support_fraction=1., random_state=None)
+            rob_cov.fit(noise_clips)
+            separability_metrics['channel_covariance_mats'].append(rob_cov.covariance_)
 
-            t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
-            for n in range(0, n_templates):
-                emp_noise_bias[n] += np.var(noise_clips_found @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
-                # print("neuron chan mean", np.mean(noise_clips_found @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None]))
-        print("Empirical noise bias", emp_noise_bias)
-
+        # Compute bias for each neuron from its per channel variance
         separability_metrics['neuron_biases'] = np.zeros(n_templates)
+        double_bias = np.zeros(n_templates)
         for n in range(0, n_templates):
             for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
@@ -376,13 +345,10 @@ class RunBinaryPursuit(object):
                 separability_metrics['neuron_biases'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
                                                 @ separability_metrics['channel_covariance_mats'][chan]
                                                 @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
-            print("Theoretical noise bias", separability_metrics['neuron_biases'][n])
-
-            # Convert bias from variance to standard deviations
+            # Convert bias from variance to threshold standard deviations
             separability_metrics['neuron_biases'][n] = sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_biases'][n])
 
         separability_metrics['gamma_noise'] = np.zeros(n_chans)
-
         separability_metrics['std_noise'] = np.zeros(n_chans)
         # Compute bias separately for each neuron, on each channel
         for chan in range(0, n_chans):

@@ -577,9 +577,7 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
                 queue.finish() # Needs to finish copy before deciding indices
                 # Use overlap_recheck_window data to determine window indices for overlap recheck
                 overlap_window_indices = np.uint32(np.nonzero(overlap_recheck_window)[0])
-                do_overlap_recheck = False
-                print("!!! SKIPPING OVERLAP RECHECK AT LINE 581 IN BINARY PURSUIT")
-                if overlap_window_indices.shape[0] > 0 and do_overlap_recheck:
+                if overlap_window_indices.shape[0] > 0 and sort_info['do_overlap_recheck']:
                     # Still more flagged spikes to check
                     # print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")
                     # Copy the overlap window indices to the overlap indices buffer
@@ -776,7 +774,7 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
             overlap_window_indices_buffer.release()
             overlap_best_spike_indices_buffer.release()
             overlap_best_spike_labels_buffer.release()
-            if do_overlap_recheck:
+            if sort_info['do_overlap_recheck']:
                 overlap_group_best_likelihood_buffer.release()
                 overlap_group_best_work_id_buffer.release()
             full_likelihood_function_buffer.release()

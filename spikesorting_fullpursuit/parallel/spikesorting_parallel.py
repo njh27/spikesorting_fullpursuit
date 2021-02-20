@@ -40,6 +40,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['absolute_refractory_period'] = 15e-4
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
+    settings['do_overlap_recheck'] = True
     settings['verbose'] = False
     settings['test_flag'] = False # Indicates a test run of parallel code that does NOT spawn multiple processes
     settings['log_dir'] = None # Directory where output logs will be saved as text files

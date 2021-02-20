@@ -3,10 +3,12 @@ from scipy.stats import norm
 from spikesorting_fullpursuit.consolidate import optimal_align_templates
 from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
+from spikesorting_fullpursuit.robust_covariance import MinCovDet
 
 
 
-def compute_metrics(templates, voltage, n_noise_samples, sort_info, thresholds):
+def compute_metrics(templates, voltage, n_noise_samples, sort_info,
+                    thresholds):
     """ Calculate variance and template sum squared metrics needed to compute
     separability_metrics between units and the delta likelihood function for binary
     pursuit. """
@@ -26,27 +28,18 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info, thresholds):
     # Need to get sum squares and noise covariance separate for each channel and template
     separability_metrics['channel_covariance_mats'] = []
 
-    emp_noise_bias = [0 for n in range(0, n_templates)]
     for chan in range(0, n_chans):
-        n_noise_clips_found = 0
-        noise_clips_found = []
-        while n_noise_clips_found < n_noise_samples:
-            rand_inds = np.random.randint(max_clip_samples, voltage.shape[1] - max_clip_samples, n_noise_samples-n_noise_clips_found)
-            noise_clips, _ = get_singlechannel_clips(voltage, chan, rand_inds, window)
-            noise_clips = noise_clips[np.all(noise_clips < thresholds[chan], axis=1), :]
-            n_noise_clips_found += noise_clips.shape[0]
-            noise_clips_found.append(noise_clips)
-        noise_clips_found = np.vstack(noise_clips_found)
-        chan_cov = np.cov(noise_clips_found, rowvar=False)
-        separability_metrics['channel_covariance_mats'].append(chan_cov)
+        rand_inds = np.random.randint(max_clip_samples, voltage.shape[1] - max_clip_samples, n_noise_samples)
+        noise_clips, _ = get_singlechannel_clips(voltage, chan, rand_inds, window)
+        # Get robust covariance to avoid outliers
+        rob_cov = MinCovDet(store_precision=False, assume_centered=True,
+                             support_fraction=1., random_state=None)
+        rob_cov.fit(noise_clips)
+        separability_metrics['channel_covariance_mats'].append(rob_cov.covariance_)
 
-        t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
-        for n in range(0, n_templates):
-            emp_noise_bias[n] += np.var(noise_clips_found @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
-            # print("neuron chan mean", np.mean(noise_clips_found @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None]))
-    print("Empirical noise bias", emp_noise_bias)
-
+    # Compute bias for each neuron from its per channel variance
     separability_metrics['neuron_biases'] = np.zeros(n_templates)
+    double_bias = np.zeros(n_templates)
     for n in range(0, n_templates):
         for chan in range(0, n_chans):
             t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
@@ -56,13 +49,10 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info, thresholds):
             separability_metrics['neuron_biases'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
                                             @ separability_metrics['channel_covariance_mats'][chan]
                                             @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
-        print("Theoretical noise bias", separability_metrics['neuron_biases'][n])
-
-        # Convert bias from variance to standard deviations
+        # Convert bias from variance to threshold standard deviations
         separability_metrics['neuron_biases'][n] = sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_biases'][n])
 
     separability_metrics['gamma_noise'] = np.zeros(n_chans)
-
     separability_metrics['std_noise'] = np.zeros(n_chans)
     # Compute bias separately for each neuron, on each channel
     for chan in range(0, n_chans):
@@ -70,10 +60,6 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info, thresholds):
         separability_metrics['std_noise'][chan] = thresholds[chan] / sort_info['sigma']
         # gamma_noise is used only for overlap recheck indices noise term for sum of 2 templates
         separability_metrics['gamma_noise'][chan] = sort_info['sigma_noise_penalty'] * separability_metrics['std_noise'][chan]
-    #     for n in range(0, n_templates):
-    #         separability_metrics['neuron_biases'][n] += np.sqrt(separability_metrics['template_SS_by_chan'][n, chan]) * separability_metrics['gamma_noise'][chan]
-    #
-    # print("OLD noise bias", separability_metrics['neuron_biases'])
     return separability_metrics
 
 

@@ -393,6 +393,19 @@ def calc_spike_half_width(clips):
     return spike_width
 
 
+def calc_template_half_width(template):
+    """ Computes half width of spike as number of indices between peak and valley. """
+    peak_ind = np.argmax(template)
+    valley_ind = np.argmin(template)
+    if peak_ind >= valley_ind:
+        # peak is after valley
+        spike_width = peak_ind - valley_ind
+    else:
+        spike_width = valley_ind - peak_ind
+
+    return spike_width
+
+
 def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
                          absolute_refractory_period, check_window=0.5):
     """ Estimates the fraction of multiunit activity/noise contained in the

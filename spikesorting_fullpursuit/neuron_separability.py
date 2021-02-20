@@ -102,8 +102,8 @@ def pairwise_separability(separability_metrics, sort_info):
                          @ separability_metrics['templates'][n1, t_win[0]:t_win[1]][:, None])
 
         neuron_noise_separability[n1] = norm.cdf(0, E_L_n1, np.sqrt(Var_L_n1))
-        ll_threshold = 0.5 * separability_metrics['template_SS'][n1] + separability_metrics['neuron_biases'][n1]
-        neuron_noise_false_positives[n1] = norm.sf(ll_threshold, 0, np.sqrt(Var_L_n1))
+        E_L_n1_noise = -0.5 * separability_metrics['template_SS'][n1] - separability_metrics['neuron_biases'][n1]
+        neuron_noise_false_positives[n1] = norm.sf(0, E_L_n1_noise, np.sqrt(Var_L_n1))
 
         for n2 in range(0, separability_metrics['templates'].shape[0]):
             # Need to optimally align n2 template with n1 template for computing

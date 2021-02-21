@@ -17,7 +17,7 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
     n_chans = sort_info['n_channels']
     n_templates = len(templates)
     template_samples_per_chan = sort_info['n_samples_per_chan']
-    window, clip_width = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
+    window, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
     max_clip_samples = np.amax(np.abs(window)) + 1
 
     separability_metrics = {}

@@ -416,7 +416,7 @@ def fast_mcd(X, support_fraction=None,
         Asymptotics For The Minimum Covariance Determinant Estimator,
         The Annals of Statistics, 1993, Vol. 21, No. 3, 1385-1400
     """
-    # random_state = check_random_state(random_state)
+    random_state = check_random_state(random_state)
 
     # X = check_array(X, ensure_min_samples=2, estimator='fast_mcd')
     n_samples, n_features = X.shape

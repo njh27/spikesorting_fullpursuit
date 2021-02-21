@@ -1,14 +1,13 @@
 import numpy as np
 from scipy.stats import norm
 from spikesorting_fullpursuit.consolidate import optimal_align_templates
-from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
-from spikesorting_fullpursuit.robust_covariance import MinCovDet
+from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parallel
 
 
 
 def compute_metrics(templates, voltage, n_noise_samples, sort_info,
-                    thresholds):
+                    thresholds, rand_state=None):
     """ Calculate variance and template sum squared metrics needed to compute
     separability_metrics between units and the delta likelihood function for binary
     pursuit. """
@@ -17,8 +16,6 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
     n_chans = sort_info['n_channels']
     n_templates = len(templates)
     template_samples_per_chan = sort_info['n_samples_per_chan']
-    window, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
-    max_clip_samples = np.amax(np.abs(window)) + 1
 
     separability_metrics = {}
     separability_metrics['templates'] = np.vstack(templates)
@@ -26,16 +23,10 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
     separability_metrics['template_SS'] = np.sum(separability_metrics['templates'] ** 2, axis=1)
     separability_metrics['template_SS_by_chan'] = np.zeros((n_templates, n_chans))
     # Need to get sum squares and noise covariance separate for each channel and template
-    separability_metrics['channel_covariance_mats'] = []
-
-    for chan in range(0, n_chans):
-        rand_inds = np.random.randint(max_clip_samples, voltage.shape[1] - max_clip_samples, n_noise_samples)
-        noise_clips, _ = get_singlechannel_clips(voltage, chan, rand_inds, window)
-        # Get robust covariance to avoid outliers
-        rob_cov = MinCovDet(store_precision=False, assume_centered=True,
-                             support_fraction=1., random_state=None)
-        rob_cov.fit(noise_clips)
-        separability_metrics['channel_covariance_mats'].append(rob_cov.covariance_)
+    separability_metrics['channel_covariance_mats'] = noise_covariance_parallel(
+                        voltage, sort_info['clip_width'],
+                        sort_info['sampling_rate'], n_noise_samples,
+                        rand_state=rand_state)
 
     # Compute bias for each neuron from its per channel variance
     separability_metrics['neuron_biases'] = np.zeros(n_templates)

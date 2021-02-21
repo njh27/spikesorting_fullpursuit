@@ -2,6 +2,8 @@ import numpy as np
 from scipy.signal import filtfilt, butter
 import multiprocessing as mp
 import psutil
+import mkl
+from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 from spikesorting_fullpursuit.robust_covariance import MinCovDet
 
 
@@ -85,51 +87,68 @@ def get_singlechannel_clips(voltage, channel, spike_times, window):
     return spike_clips, valid_event_indices
 
 
-def init_covar_pool_dict(volt_array, volt_shape):
+def init_covar_pool_dict(volt_array, volt_shape, volt_dtype, window,
+                            max_clip_samples, n_samples, rand_state):
     global pool_dict
     pool_dict = {}
     pool_dict['share_voltage'] = volt_array
     pool_dict['share_voltage_shape'] = volt_shape
+    pool_dict['share_voltage_dtype'] = volt_dtype
+    pool_dict['window'] = window
+    pool_dict['max_clip_samples'] = max_clip_samples
+    pool_dict['n_samples'] = n_samples
+    pool_dict['rand_state'] = rand_state
     return
 
 
-def covar_one_chan(chan, b_filt, a_filt, voltage_type):
+def covar_one_chan(chan):
 
+    if pool_dict['rand_state'] is not None:
+        np.random.set_state(pool_dict['rand_state'])
+    # Limit threads within each process
     mkl.set_num_threads(2)
-    voltage = np.frombuffer(pool_dict['share_voltage'], dtype=voltage_type).reshape(pool_dict['share_voltage_shape'])
-    filt_voltage = filtfilt(b_filt, a_filt, voltage[chan, :], padlen=None).astype(voltage_type)
-    return filt_voltage
+    voltage = np.frombuffer(pool_dict['share_voltage'],
+                dtype=pool_dict['share_voltage_dtype']).reshape(pool_dict['share_voltage_shape'])
 
-    rand_inds = np.random.randint(max_clip_samples, voltage.shape[1] - max_clip_samples, n_noise_samples)
-    noise_clips, _ = get_singlechannel_clips(voltage, chan, rand_inds, window)
+    rand_inds = np.random.randint(pool_dict['max_clip_samples'],
+                            voltage.shape[1] - pool_dict['max_clip_samples'],
+                            pool_dict['n_samples'])
+    noise_clips, _ = get_singlechannel_clips(voltage, chan, rand_inds, pool_dict['window'])
     # Get robust covariance to avoid outliers
+    # Random state doesn't matter with support_fraction=1.
     rob_cov = MinCovDet(store_precision=False, assume_centered=True,
                          support_fraction=1., random_state=None)
     rob_cov.fit(noise_clips)
-    separability_metrics['channel_covariance_mats'].append(rob_cov.covariance_)
+
+    return rob_cov.covariance_
 
 
-def noise_covariance_parallel(voltage_array, clip_width, sampling_rate, n_samples=100000):
+def noise_covariance_parallel(voltage_array, clip_width, sampling_rate,
+                                n_samples=100000, rand_state=None):
+    """ Computes the covariance of the noise over time within the clip_width.
+    """
+    if voltage_array.ndim == 1:
+        voltage_array = voltage_array.reshape(1, -1)
+    # Allocate shared array across processes for voltage
+    shared_v_array = mp.RawArray(np.ctypeslib.as_ctypes_type(voltage_array.dtype), voltage_array.size)
+    # Create a numpy view of shared array and copy data
+    shared_v_array_np = np.frombuffer(shared_v_array, dtype=voltage_array.dtype).reshape(voltage_array.shape)
+    np.copyto(shared_v_array_np, voltage_array)
 
-    print("Allocating filter array and copying voltage")
-    filt_X = mp.RawArray(np.ctypeslib.as_ctypes_type(Probe.v_dtype), Probe.voltage.size)
-    filt_X_np = np.frombuffer(filt_X, dtype=Probe.v_dtype).reshape(Probe.voltage.shape)
-    np.copyto(filt_X_np, Probe.voltage)
-
-    window, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
+    window, _ = time_window_to_samples(clip_width, sampling_rate)
     max_clip_samples = np.amax(np.abs(window)) + 1
-
-    print("Performing voltage filtering")
-    filt_results = []
-    # Number of processes was giving me out of memory error on Windows 10 until
-    # I dropped it to half number of cores.
-    with mp.Pool(processes=psutil.cpu_count(logical=False)//2, initializer=init_pool_dict, initargs=(filt_X, Probe.voltage.shape)) as pool:
+    chan_covar_mats = []
+    with mp.Pool(processes=psutil.cpu_count(logical=False)//2,
+                 initializer=init_covar_pool_dict, initargs=(shared_v_array,
+                 voltage_array.shape, voltage_array.dtype, window,
+                 max_clip_samples, n_samples, rand_state)) as pool:
         try:
-            for chan in range(0, Probe.num_channels):
-                filt_results.append(pool.apply_async(filter_one_chan, args=(chan, b_filt, a_filt,  Probe.v_dtype)))
+            for chan in range(0, voltage_array.shape[0]):
+                chan_covar_mats.append(pool.apply_async(covar_one_chan, args=(chan, )))
         finally:
             pool.close()
             pool.join()
-    filt_voltage = np.vstack([x.get() for x in filt_results])
+    # Return the outputs in channel order
+    chan_covar_mats = [x.get() for x in chan_covar_mats]
 
-    return filt_voltage
+    return chan_covar_mats

@@ -5,7 +5,7 @@ from Cython.Build import cythonize
 import numpy as np
 
 ext  =  [Extension( "sort_cython", sources=['sort_cython.pyx'] )]
-# compile as: $ python3.7 recompile.py build_ext --inplace
+# compile as: $ python recompile.py build_ext --inplace
 # compile as: > python.exe recompile.py build_ext --inplace
 setup(
     ext_modules = cythonize(ext, annotate=False, language_level=3),

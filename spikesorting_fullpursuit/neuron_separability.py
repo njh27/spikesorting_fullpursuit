@@ -6,6 +6,55 @@ from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parall
 
 
 
+def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info):
+    """
+    Intended for testing whether a sum of templates is equal to a given template.
+    Templates are assumed to be aligned with one another as no shifting is performed.
+    """
+    n_chans = sort_info['n_channels']
+    template_samples_per_chan = sort_info['n_samples_per_chan']
+
+    # Compute separability given V = template_1. Since we are not using the
+    # noise bias term here, this is equal to V = template_2
+    E_L_t1 = 0.5 * np.dot(template_1, template_1)
+    E_L_t2 = np.dot(template_1, template_2) - 0.5 * np.dot(template_2, template_2)
+    Var_L_t1 = 0
+    Var_L_t2 = 0
+    var_diff = 0
+    for chan in range(0, n_chans):
+        t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
+        Var_L_t1 += (template_1[t_win[0]:t_win[1]][None, :]
+                     @ chan_covariance_mats[chan]
+                     @ template_1[t_win[0]:t_win[1]][:, None])
+        Var_L_t2 += (template_2[t_win[0]:t_win[1]][None, :]
+                     @ chan_covariance_mats[chan]
+                     @ template_2[t_win[0]:t_win[1]][:, None])
+
+        diff_template = template_1[t_win[0]:t_win[1]] - template_2[t_win[0]:t_win[1]]
+        var_diff += (diff_template[None, :]
+                     @ chan_covariance_mats[chan]
+                     @ diff_template[:, None])
+
+    # Expected difference between t1 and t2 likelihood functions
+    E_diff_t1_t2 = E_L_t1 - E_L_t2
+    if var_diff > 0:
+        # Probability likelihood n1 - n2 < 0
+        p_diff = norm.cdf(0, E_diff_t1_t2, np.sqrt(var_diff))
+        # Probability both likelihoods are less than zero and neither assigned
+        p_L_n1_lt0 = norm.cdf(0, E_L_t1, np.sqrt(Var_L_t1))
+        p_L_n2_lt0 = norm.cdf(0, E_L_t2, np.sqrt(Var_L_t2))
+        p_both_lt0 = p_L_n1_lt0*p_L_n2_lt0
+        # Probability n2 is less than zero, so isn't incorrectly assigned
+        p_L_n2_gt0 = norm.sf(0, E_L_t2, np.sqrt(Var_L_t2))
+        # Probability a spike from unit n1 will be assigned to unit n2,
+        # assuming independence of the probability n1/n2 are less than 0
+        p_confusion = p_diff * p_L_n2_gt0 * (1 - p_both_lt0)
+    else:
+        p_confusion = 1.
+
+    return p_confusion
+
+
 def compute_metrics(templates, voltage, n_noise_samples, sort_info,
                     thresholds, rand_state=None):
     """ Calculate variance and template sum squared metrics needed to compute
@@ -144,42 +193,6 @@ def pairwise_separability(separability_metrics, sort_info):
                 pair_separability_matrix[n1, n2] = 0
 
     return pair_separability_matrix, neuron_noise_separability, neuron_noise_false_positives
-
-
-def get_singlechannel_clips(voltage, channel, spike_times, window):
-
-    if spike_times.ndim > 1:
-        raise ValueError("Event_indices must be one dimensional array of indices")
-
-    # Ignore spikes whose clips extend beyond the data and create mask for removing them
-    valid_event_indices = np.ones(spike_times.shape[0], dtype=np.bool)
-    start_ind = 0
-    n = spike_times[start_ind]
-
-    while (n + window[0]) < 0:
-        valid_event_indices[start_ind] = False
-        start_ind += 1
-        if start_ind == spike_times.size:
-            # There are no valid indices
-            valid_event_indices[:] = False
-            return None, valid_event_indices
-        n = spike_times[start_ind]
-    stop_ind = spike_times.shape[0] - 1
-    n = spike_times[stop_ind]
-    while (n + window[1]) >= voltage.shape[1]:
-        valid_event_indices[stop_ind] = False
-        stop_ind -= 1
-        if stop_ind < 0:
-            # There are no valid indices
-            valid_event_indices[:] = False
-            return None, valid_event_indices
-        n = spike_times[stop_ind]
-
-    spike_clips = np.empty((np.count_nonzero(valid_event_indices), window[1] - window[0]))
-    for out_ind, spk in enumerate(range(start_ind, stop_ind+1)): # Add 1 to index through last valid index
-        spike_clips[out_ind, :] = voltage[channel, spike_times[spk]+window[0]:spike_times[spk]+window[1]]
-
-    return spike_clips, valid_event_indices
 
 
 def empirical_separability(voltage, spike_times, templates, window_samples, separability_metrics, add_spikes=False):

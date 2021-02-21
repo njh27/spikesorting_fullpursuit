@@ -349,10 +349,12 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
         return shifted_template
 
 
-    templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    # templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    templates_to_check = []
     if templates.shape[0] < 3:
         # Need at least 3 templates for one to be sum of two others
-        return templates_to_delete
+        # return templates_to_delete
+        return templates_to_check
     templates_SS = np.sum(templates ** 2, axis=1)
     sum_n1_n2_template = np.zeros(templates.shape[1])
 
@@ -378,19 +380,20 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
         best_pair = None
         best_shifts = None
         best_inds = None
+        best_shifted_template = None
 
         for n1 in range(0, templates.shape[0]):
-            if (n_template_spikes[n1] < 5*n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
+            if (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
                 continue
-            if templates_to_delete[n1]:
-              continue
+            # if templates_to_delete[n1]:
+            #   continue
             template_1 = templates[n1, :]
 
             for n2 in range(n1+1, templates.shape[0]):
-                if (n_template_spikes[n2] < 5*n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
+                if (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
                     continue
-                if templates_to_delete[n2]:
-                  continue
+                # if templates_to_delete[n2]:
+                #   continue
                 template_2 = templates[n2, :]
 
                 s1_ind = 0
@@ -409,13 +412,16 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
                             best_pair = [n1, n2]
                             best_shifts = [shift1, shift2]
                             best_inds = [s1_ind, s2_ind]
+                            best_shifted_template = np.copy(sum_n1_n2_template)
 
                         s2_ind += 1
                     s1_ind += 1
-        if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:
-            templates_to_delete[test_unit] = True
+        # if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:
+        #     templates_to_delete[test_unit] = True
+        if best_shifted_template is not None:
+          templates_to_check.append([test_unit, best_shifted_template, best_pair])
 
-    return templates_to_delete
+    return templates_to_check #templates_to_delete
 
 @cython.boundscheck(False)
 @cython.wraparound(False)

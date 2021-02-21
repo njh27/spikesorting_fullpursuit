@@ -7,8 +7,9 @@ from spikesorting_fullpursuit.consolidate import SegSummary
 from spikesorting_fullpursuit.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.c_cython import sort_cython
+from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parallel
 
-
+import matplotlib.pyplot as plt
 
 def remove_overlap_templates(templates, n_samples_per_chan, n_chans,
                             n_pre_inds, n_post_inds, n_template_spikes):
@@ -236,14 +237,39 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         templates.append(n['pursuit_template'])
         n_template_spikes.append(n['spike_indices'].shape[0])
 
+    chan_covariance_mats = noise_covariance_parallel(
+                        voltage, sort_info['clip_width'],
+                        sort_info['sampling_rate'], 10000,
+                        rand_state=None)
+
     chan_win, clip_width = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
     templates = np.float32(np.vstack(templates))
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
-    templates_to_delete = sort_cython.remove_overlap_templates(templates, int(sort_info['n_samples_per_chan']),
+    templates_to_check = sort_cython.remove_overlap_templates(templates, int(sort_info['n_samples_per_chan']),
                                 int(sort_info['n_channels']),
-                                np.int64(np.abs(chan_win[0])), np.int64(np.abs(chan_win[1])),
+                                np.int64(np.abs(chan_win[0])//2), np.int64(np.abs(chan_win[1])//2),
                                 n_template_spikes)
 
+
+    for t_info in templates_to_check:
+        t_ind = t_info[0]
+        shift_temp = t_info[1]
+        sum_ind_1, sum_ind_2 = t_info[2]
+        print("Neuron number: ", t_ind)
+        plt.plot(templates[t_ind, :])
+        plt.plot(shift_temp)
+        plt.show()
+
+        print("As a sum of neurons numbers: ", sum_ind_1, sum_ind_2)
+        plt.plot(templates[sum_ind_1, :])
+        plt.plot(templates[sum_ind_2, :])
+        plt.show()
+
+        p_confusion = neuron_separability.check_template_pair(
+                templates[t_ind, :], shift_temp, chan_covariance_mats, sort_info)
+        print("Prob confusion", p_confusion)
+
+    raise ValueError("stopping here")
     # Remove these redundant templates from summary before sharpening
     for x in reversed(range(0, len(seg_summary.summaries))):
         if templates_to_delete[x]:

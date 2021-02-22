@@ -383,14 +383,14 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
         best_shifted_template = None
 
         for n1 in range(0, templates.shape[0]):
-            if (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
+            if (n_template_spikes[n1] < n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
                 continue
             # if templates_to_delete[n1]:
             #   continue
             template_1 = templates[n1, :]
 
             for n2 in range(n1+1, templates.shape[0]):
-                if (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
+                if (n_template_spikes[n2] < n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
                     continue
                 # if templates_to_delete[n2]:
                 #   continue
@@ -419,7 +419,7 @@ def remove_overlap_templates(np.ndarray[float, ndim=2] templates,
         # if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:
         #     templates_to_delete[test_unit] = True
         if best_shifted_template is not None:
-          templates_to_check.append([test_unit, best_shifted_template, best_pair])
+          templates_to_check.append([test_unit, best_shifted_template, best_inds])
 
     return templates_to_check #templates_to_delete
 

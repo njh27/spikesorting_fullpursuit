@@ -2961,7 +2961,7 @@ static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx
 static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components); /* proto */
 static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components); /* proto */
 static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_v_template, PyObject *__pyx_v_shift); /* proto */
-static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, CYTHON_UNUSED PyArrayObject *__pyx_v_n_template_spikes); /* proto */
+static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, PyArrayObject *__pyx_v_n_template_spikes); /* proto */
 static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, int64_t __pyx_v_label); /* proto */
 static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, PyObject *__pyx_v_previously_compared_pairs); /* proto */
 static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_data, int64_t __pyx_v_n_points); /* proto */
@@ -7175,7 +7175,7 @@ static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__py
   Py_ssize_t __pyx_v_n_chans;
   int64_t __pyx_v_n_pre_inds;
   int64_t __pyx_v_n_post_inds;
-  CYTHON_UNUSED PyArrayObject *__pyx_v_n_template_spikes = 0;
+  PyArrayObject *__pyx_v_n_template_spikes = 0;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -7663,7 +7663,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
  *         int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
  */
 
-static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, CYTHON_UNUSED PyArrayObject *__pyx_v_n_template_spikes) {
+static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, PyArrayObject *__pyx_v_n_template_spikes) {
   struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_cur_scope;
   PyObject *__pyx_v_get_shifted_template = 0;
   PyObject *__pyx_v_templates_to_check = NULL;
@@ -7682,9 +7682,9 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   Py_ssize_t __pyx_v_s2_ind;
   PyObject *__pyx_v_test_template = NULL;
   PyObject *__pyx_v_min_residual_SS = NULL;
-  PyObject *__pyx_v_best_pair = NULL;
+  CYTHON_UNUSED PyObject *__pyx_v_best_pair = NULL;
   CYTHON_UNUSED PyObject *__pyx_v_best_shifts = NULL;
-  CYTHON_UNUSED PyObject *__pyx_v_best_inds = NULL;
+  PyObject *__pyx_v_best_inds = NULL;
   PyObject *__pyx_v_best_shifted_template = NULL;
   CYTHON_UNUSED PyObject *__pyx_v_template_1 = NULL;
   CYTHON_UNUSED PyObject *__pyx_v_template_2 = NULL;
@@ -7714,13 +7714,15 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   int __pyx_t_13;
   PyObject *(*__pyx_t_14)(PyObject *);
   Py_ssize_t __pyx_t_15;
-  npy_intp __pyx_t_16;
-  npy_intp __pyx_t_17;
-  Py_ssize_t __pyx_t_18;
-  int64_t __pyx_t_19;
-  int64_t __pyx_t_20;
-  int64_t __pyx_t_21;
-  int __pyx_t_22;
+  Py_ssize_t __pyx_t_16;
+  Py_ssize_t __pyx_t_17;
+  int __pyx_t_18;
+  npy_intp __pyx_t_19;
+  npy_intp __pyx_t_20;
+  Py_ssize_t __pyx_t_21;
+  int64_t __pyx_t_22;
+  int64_t __pyx_t_23;
+  int64_t __pyx_t_24;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -8185,7 +8187,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *         best_shifted_template = None
  * 
  *         for n1 in range(0, templates.shape[0]):             # <<<<<<<<<<<<<<
- *             if (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
+ *             if (n_template_spikes[n1] < n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
  *                 continue
  */
     __pyx_t_6 = (__pyx_v_templates->dimensions[0]);
@@ -8196,16 +8198,26 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       /* "sort_cython.pyx":386
  * 
  *         for n1 in range(0, templates.shape[0]):
- *             if (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
+ *             if (n_template_spikes[n1] < n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
  *                 continue
  *             # if templates_to_delete[n1]:
  */
-      __pyx_t_2 = ((__pyx_v_n1 == __pyx_v_test_unit) != 0);
+      __pyx_t_16 = __pyx_v_n1;
+      __pyx_t_17 = __pyx_v_test_unit;
+      __pyx_t_18 = (((*__Pyx_BufPtrStrided1d(int64_t *, __pyx_pybuffernd_n_template_spikes.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_n_template_spikes.diminfo[0].strides)) < (*__Pyx_BufPtrStrided1d(int64_t *, __pyx_pybuffernd_n_template_spikes.rcbuffer->pybuffer.buf, __pyx_t_17, __pyx_pybuffernd_n_template_spikes.diminfo[0].strides))) != 0);
+      if (!__pyx_t_18) {
+      } else {
+        __pyx_t_2 = __pyx_t_18;
+        goto __pyx_L13_bool_binop_done;
+      }
+      __pyx_t_18 = ((__pyx_v_n1 == __pyx_v_test_unit) != 0);
+      __pyx_t_2 = __pyx_t_18;
+      __pyx_L13_bool_binop_done:;
       if (__pyx_t_2) {
 
         /* "sort_cython.pyx":387
  *         for n1 in range(0, templates.shape[0]):
- *             if (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
+ *             if (n_template_spikes[n1] < n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
  *                 continue             # <<<<<<<<<<<<<<
  *             # if templates_to_delete[n1]:
  *             #   continue
@@ -8215,7 +8227,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
         /* "sort_cython.pyx":386
  * 
  *         for n1 in range(0, templates.shape[0]):
- *             if (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
+ *             if (n_template_spikes[n1] < n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
  *                 continue
  *             # if templates_to_delete[n1]:
  */
@@ -8248,37 +8260,47 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *             template_1 = templates[n1, :]
  * 
  *             for n2 in range(n1+1, templates.shape[0]):             # <<<<<<<<<<<<<<
- *                 if (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
+ *                 if (n_template_spikes[n2] < n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
  *                     continue
  */
-      __pyx_t_16 = (__pyx_v_templates->dimensions[0]);
-      __pyx_t_17 = __pyx_t_16;
-      for (__pyx_t_18 = (__pyx_v_n1 + 1); __pyx_t_18 < __pyx_t_17; __pyx_t_18+=1) {
-        __pyx_v_n2 = __pyx_t_18;
+      __pyx_t_19 = (__pyx_v_templates->dimensions[0]);
+      __pyx_t_20 = __pyx_t_19;
+      for (__pyx_t_21 = (__pyx_v_n1 + 1); __pyx_t_21 < __pyx_t_20; __pyx_t_21+=1) {
+        __pyx_v_n2 = __pyx_t_21;
 
         /* "sort_cython.pyx":393
  * 
  *             for n2 in range(n1+1, templates.shape[0]):
- *                 if (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
+ *                 if (n_template_spikes[n2] < n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
  *                     continue
  *                 # if templates_to_delete[n2]:
  */
-        __pyx_t_2 = ((__pyx_v_n2 == __pyx_v_test_unit) != 0);
+        __pyx_t_17 = __pyx_v_n2;
+        __pyx_t_16 = __pyx_v_test_unit;
+        __pyx_t_18 = (((*__Pyx_BufPtrStrided1d(int64_t *, __pyx_pybuffernd_n_template_spikes.rcbuffer->pybuffer.buf, __pyx_t_17, __pyx_pybuffernd_n_template_spikes.diminfo[0].strides)) < (*__Pyx_BufPtrStrided1d(int64_t *, __pyx_pybuffernd_n_template_spikes.rcbuffer->pybuffer.buf, __pyx_t_16, __pyx_pybuffernd_n_template_spikes.diminfo[0].strides))) != 0);
+        if (!__pyx_t_18) {
+        } else {
+          __pyx_t_2 = __pyx_t_18;
+          goto __pyx_L18_bool_binop_done;
+        }
+        __pyx_t_18 = ((__pyx_v_n2 == __pyx_v_test_unit) != 0);
+        __pyx_t_2 = __pyx_t_18;
+        __pyx_L18_bool_binop_done:;
         if (__pyx_t_2) {
 
           /* "sort_cython.pyx":394
  *             for n2 in range(n1+1, templates.shape[0]):
- *                 if (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
+ *                 if (n_template_spikes[n2] < n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
  *                     continue             # <<<<<<<<<<<<<<
  *                 # if templates_to_delete[n2]:
  *                 #   continue
  */
-          goto __pyx_L13_continue;
+          goto __pyx_L15_continue;
 
           /* "sort_cython.pyx":393
  * 
  *             for n2 in range(n1+1, templates.shape[0]):
- *                 if (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
+ *                 if (n_template_spikes[n2] < n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):             # <<<<<<<<<<<<<<
  *                     continue
  *                 # if templates_to_delete[n2]:
  */
@@ -8367,10 +8389,10 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *                         # Copy data from t1 shift into sum
  *                         sum_n1_n2_template[:] = shifted_t1[:]
  */
-          __pyx_t_19 = (__pyx_v_n_post_inds + 1);
-          __pyx_t_20 = __pyx_t_19;
-          for (__pyx_t_21 = (-__pyx_v_n_pre_inds); __pyx_t_21 < __pyx_t_20; __pyx_t_21+=1) {
-            __pyx_v_shift2 = __pyx_t_21;
+          __pyx_t_22 = (__pyx_v_n_post_inds + 1);
+          __pyx_t_23 = __pyx_t_22;
+          for (__pyx_t_24 = (-__pyx_v_n_pre_inds); __pyx_t_24 < __pyx_t_23; __pyx_t_24+=1) {
+            __pyx_v_shift2 = __pyx_t_24;
 
             /* "sort_cython.pyx":405
  *                     for shift2 in range(-n_pre_inds, n_post_inds+1):
@@ -8601,7 +8623,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  */
           __pyx_v_s1_ind = (__pyx_v_s1_ind + 1);
         }
-        __pyx_L13_continue:;
+        __pyx_L15_continue:;
       }
       __pyx_L10_continue:;
     }
@@ -8610,17 +8632,17 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *         # if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:
  *         #     templates_to_delete[test_unit] = True
  *         if best_shifted_template is not None:             # <<<<<<<<<<<<<<
- *           templates_to_check.append([test_unit, best_shifted_template, best_pair])
+ *           templates_to_check.append([test_unit, best_shifted_template, best_inds])
  * 
  */
     __pyx_t_2 = (__pyx_v_best_shifted_template != Py_None);
-    __pyx_t_22 = (__pyx_t_2 != 0);
-    if (__pyx_t_22) {
+    __pyx_t_18 = (__pyx_t_2 != 0);
+    if (__pyx_t_18) {
 
       /* "sort_cython.pyx":422
  *         #     templates_to_delete[test_unit] = True
  *         if best_shifted_template is not None:
- *           templates_to_check.append([test_unit, best_shifted_template, best_pair])             # <<<<<<<<<<<<<<
+ *           templates_to_check.append([test_unit, best_shifted_template, best_inds])             # <<<<<<<<<<<<<<
  * 
  *     return templates_to_check #templates_to_delete
  */
@@ -8633,9 +8655,9 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __Pyx_INCREF(__pyx_v_best_shifted_template);
       __Pyx_GIVEREF(__pyx_v_best_shifted_template);
       PyList_SET_ITEM(__pyx_t_5, 1, __pyx_v_best_shifted_template);
-      __Pyx_INCREF(__pyx_v_best_pair);
-      __Pyx_GIVEREF(__pyx_v_best_pair);
-      PyList_SET_ITEM(__pyx_t_5, 2, __pyx_v_best_pair);
+      __Pyx_INCREF(__pyx_v_best_inds);
+      __Pyx_GIVEREF(__pyx_v_best_inds);
+      PyList_SET_ITEM(__pyx_t_5, 2, __pyx_v_best_inds);
       __pyx_t_4 = 0;
       __pyx_t_13 = __Pyx_PyList_Append(__pyx_v_templates_to_check, __pyx_t_5); if (unlikely(__pyx_t_13 == ((int)-1))) __PYX_ERR(0, 422, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -8644,7 +8666,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *         # if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:
  *         #     templates_to_delete[test_unit] = True
  *         if best_shifted_template is not None:             # <<<<<<<<<<<<<<
- *           templates_to_check.append([test_unit, best_shifted_template, best_pair])
+ *           templates_to_check.append([test_unit, best_shifted_template, best_inds])
  * 
  */
     }
@@ -8660,7 +8682,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "sort_cython.pyx":424
- *           templates_to_check.append([test_unit, best_shifted_template, best_pair])
+ *           templates_to_check.append([test_unit, best_shifted_template, best_inds])
  * 
  *     return templates_to_check #templates_to_delete             # <<<<<<<<<<<<<<
  * 

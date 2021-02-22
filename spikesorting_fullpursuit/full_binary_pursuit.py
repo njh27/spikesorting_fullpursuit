@@ -237,10 +237,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         templates.append(n['pursuit_template'])
         n_template_spikes.append(n['spike_indices'].shape[0])
 
-    chan_covariance_mats = noise_covariance_parallel(
-                        voltage, sort_info['clip_width'],
-                        sort_info['sampling_rate'], 10000,
-                        rand_state=None)
+
 
     chan_win, clip_width = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
     templates = np.float32(np.vstack(templates))
@@ -250,6 +247,24 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                                 np.int64(np.abs(chan_win[0])//2), np.int64(np.abs(chan_win[1])//2),
                                 n_template_spikes)
 
+
+    """
+    I should first get the binary pursuit clip width, and the full covariance
+    matrix for this clip width + shifts.
+    Next need to get the sub-sampled covariance matrix for just the binary pursuit
+    clip width.
+    Make a function that asks whether a template is 50/50 detected above noise. I should
+    then delete such templates BEFORE doing the remove overlap templates. Even
+    if these are ultimately kept to stop noise from getting added to possibly good
+    units, it could be good to exclude them from the overlap templates? You don't
+    want to be calling a unit a sum of a neuron and noise...Or do you?
+    Then do remove overlap templates and check/delete inseparable ones.
+    """
+
+    chan_covariance_mats = noise_covariance_parallel(
+                        voltage, sort_info['clip_width'],
+                        sort_info['sampling_rate'], 10000,
+                        rand_state=None)
 
     for t_info in templates_to_check:
         t_ind = t_info[0]

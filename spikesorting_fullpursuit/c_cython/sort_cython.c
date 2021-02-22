@@ -1186,7 +1186,7 @@ static CYTHON_INLINE __pyx_t_float_complex __pyx_t_float_complex_from_parts(floa
 
 
 /*--- Type declarations ---*/
-struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates;
+struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates;
 struct __pyx_array_obj;
 struct __pyx_MemviewEnum_obj;
 struct __pyx_memoryview_obj;
@@ -1231,11 +1231,11 @@ typedef npy_cdouble __pyx_t_5numpy_complex_t;
 /* "sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
- * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
+ * def find_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
  *         Py_ssize_t n_samples_per_chan, Py_ssize_t n_chans, int64_t n_pre_inds,
  *         int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
  */
-struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates {
+struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates {
   PyObject_HEAD
   Py_ssize_t __pyx_v_n_chans;
   Py_ssize_t __pyx_v_n_samples_per_chan;
@@ -2310,7 +2310,7 @@ static CYTHON_INLINE char *__pyx_f_5numpy__util_dtypestring(PyArray_Descr *, cha
 /* Module declarations from 'libc.stdlib' */
 
 /* Module declarations from 'sort_cython' */
-static PyTypeObject *__pyx_ptype_11sort_cython___pyx_scope_struct__remove_overlap_templates = 0;
+static PyTypeObject *__pyx_ptype_11sort_cython___pyx_scope_struct__find_overlap_templates = 0;
 static PyTypeObject *__pyx_array_type = 0;
 static PyTypeObject *__pyx_MemviewEnum_type = 0;
 static PyTypeObject *__pyx_memoryview_type = 0;
@@ -2627,12 +2627,12 @@ static const char __pyx_k_strided_and_indirect[] = "<strided and indirect>";
 static const char __pyx_k_best_shifted_template[] = "best_shifted_template";
 static const char __pyx_k_contiguous_and_direct[] = "<contiguous and direct>";
 static const char __pyx_k_MemoryView_of_r_object[] = "<MemoryView of %r object>";
+static const char __pyx_k_find_overlap_templates[] = "find_overlap_templates";
 static const char __pyx_k_minimum_distance_pairs[] = "minimum_distance_pairs";
 static const char __pyx_k_MemoryView_of_r_at_0x_x[] = "<MemoryView of %r at 0x%x>";
 static const char __pyx_k_contiguous_and_indirect[] = "<contiguous and indirect>";
 static const char __pyx_k_Cannot_index_with_type_s[] = "Cannot index with type '%s'";
 static const char __pyx_k_compute_cluster_centroid[] = "compute_cluster_centroid";
-static const char __pyx_k_remove_overlap_templates[] = "remove_overlap_templates";
 static const char __pyx_k_Invalid_shape_in_axis_d_d[] = "Invalid shape in axis %d: %d.";
 static const char __pyx_k_min_distance_cluster_view[] = "min_distance_cluster_view";
 static const char __pyx_k_previously_compared_pairs[] = "previously_compared_pairs";
@@ -2643,7 +2643,6 @@ static const char __pyx_k_unable_to_allocate_array_data[] = "unable to allocate 
 static const char __pyx_k_strided_and_direct_or_indirect[] = "<strided and direct or indirect>";
 static const char __pyx_k_Must_input_more_than_1_spike_to[] = "Must input more than 1 spike to compute PCA";
 static const char __pyx_k_numpy_core_multiarray_failed_to[] = "numpy.core.multiarray failed to import";
-static const char __pyx_k_remove_overlap_templates_locals[] = "remove_overlap_templates.<locals>.get_shifted_template";
 static const char __pyx_k_unknown_dtype_code_in_numpy_pxd[] = "unknown dtype code in numpy.pxd (%d)";
 static const char __pyx_k_Buffer_view_does_not_expose_stri[] = "Buffer view does not expose strides";
 static const char __pyx_k_Can_only_create_a_buffer_that_is[] = "Can only create a buffer that is contiguous in memory.";
@@ -2659,6 +2658,7 @@ static const char __pyx_k_Non_native_byte_order_not_suppor[] = "Non-native byte 
 static const char __pyx_k_Out_of_bounds_on_buffer_access_a[] = "Out of bounds on buffer access (axis %d)";
 static const char __pyx_k_Something_is_wrong_in_KDE_compua[] = "Something is wrong in KDE compuation...";
 static const char __pyx_k_Unable_to_convert_item_to_object[] = "Unable to convert item to object";
+static const char __pyx_k_find_overlap_templates_locals_ge[] = "find_overlap_templates.<locals>.get_shifted_template";
 static const char __pyx_k_got_differing_extents_in_dimensi[] = "got differing extents in dimension %d (got %d and %d)";
 static const char __pyx_k_ndarray_is_not_Fortran_contiguou[] = "ndarray is not Fortran contiguous";
 static const char __pyx_k_no_default___reduce___due_to_non[] = "no default __reduce__ due to non-trivial __cinit__";
@@ -2786,6 +2786,8 @@ static PyObject *__pyx_n_s_error;
 static PyObject *__pyx_n_s_exp;
 static PyObject *__pyx_n_s_f_0;
 static PyObject *__pyx_n_s_f_tol;
+static PyObject *__pyx_n_s_find_overlap_templates;
+static PyObject *__pyx_n_s_find_overlap_templates_locals_ge;
 static PyObject *__pyx_n_s_fixed_point_0;
 static PyObject *__pyx_n_s_flags;
 static PyObject *__pyx_n_s_float64;
@@ -2879,8 +2881,6 @@ static PyObject *__pyx_n_s_reconstruction_ptr;
 static PyObject *__pyx_n_s_reduce;
 static PyObject *__pyx_n_s_reduce_cython;
 static PyObject *__pyx_n_s_reduce_ex;
-static PyObject *__pyx_n_s_remove_overlap_templates;
-static PyObject *__pyx_n_s_remove_overlap_templates_locals;
 static PyObject *__pyx_n_s_resid_error;
 static PyObject *__pyx_n_s_resid_error_ptr;
 static PyObject *__pyx_n_s_residual_SS;
@@ -2960,8 +2960,8 @@ static PyObject *__pyx_n_s_zeros_like;
 static PyObject *__pyx_pf_11sort_cython_pca_scores(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_spikes, PyObject *__pyx_v_compute_pcs, PyObject *__pyx_v_pcs_as_index, PyObject *__pyx_v_return_V, PyObject *__pyx_v_return_E); /* proto */
 static PyObject *__pyx_pf_11sort_cython_2optimal_reconstruction_pca_order(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components); /* proto */
 static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_spikes, PyObject *__pyx_v_check_components, PyObject *__pyx_v_max_components, int64_t __pyx_v_min_components); /* proto */
-static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_v_template, PyObject *__pyx_v_shift); /* proto */
-static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, PyArrayObject *__pyx_v_n_template_spikes); /* proto */
+static PyObject *__pyx_pf_11sort_cython_22find_overlap_templates_get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_v_template, PyObject *__pyx_v_shift); /* proto */
+static PyObject *__pyx_pf_11sort_cython_6find_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, PyArrayObject *__pyx_v_n_template_spikes); /* proto */
 static PyObject *__pyx_pf_11sort_cython_8compute_cluster_centroid(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, int64_t __pyx_v_label); /* proto */
 static PyObject *__pyx_pf_11sort_cython_10identify_clusters_to_compare(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_scores, __Pyx_memviewslice __pyx_v_labels, PyObject *__pyx_v_previously_compared_pairs); /* proto */
 static PyObject *__pyx_pf_11sort_cython_12kde(CYTHON_UNUSED PyObject *__pyx_self, __Pyx_memviewslice __pyx_v_data, int64_t __pyx_v_n_points); /* proto */
@@ -3009,7 +3009,7 @@ static PyObject *__pyx_pf_15View_dot_MemoryView_16_memoryviewslice_4base___get__
 static PyObject *__pyx_pf___pyx_memoryviewslice___reduce_cython__(CYTHON_UNUSED struct __pyx_memoryviewslice_obj *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf___pyx_memoryviewslice_2__setstate_cython__(CYTHON_UNUSED struct __pyx_memoryviewslice_obj *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_15View_dot_MemoryView___pyx_unpickle_Enum(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
-static PyObject *__pyx_tp_new_11sort_cython___pyx_scope_struct__remove_overlap_templates(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
+static PyObject *__pyx_tp_new_11sort_cython___pyx_scope_struct__find_overlap_templates(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_array(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_Enum(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
 static PyObject *__pyx_tp_new_memoryview(PyTypeObject *t, PyObject *a, PyObject *k); /*proto*/
@@ -7161,15 +7161,15 @@ static PyObject *__pyx_pf_11sort_cython_4optimal_reconstruction_pca_order_F(CYTH
 /* "sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
- * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
+ * def find_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
  *         Py_ssize_t n_samples_per_chan, Py_ssize_t n_chans, int64_t n_pre_inds,
  *         int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static PyMethodDef __pyx_mdef_11sort_cython_7remove_overlap_templates = {"remove_overlap_templates", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_7remove_overlap_templates, METH_VARARGS|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_11sort_cython_7find_overlap_templates(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static PyMethodDef __pyx_mdef_11sort_cython_7find_overlap_templates = {"find_overlap_templates", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_7find_overlap_templates, METH_VARARGS|METH_KEYWORDS, 0};
+static PyObject *__pyx_pw_11sort_cython_7find_overlap_templates(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyArrayObject *__pyx_v_templates = 0;
   Py_ssize_t __pyx_v_n_samples_per_chan;
   Py_ssize_t __pyx_v_n_chans;
@@ -7181,7 +7181,7 @@ static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__py
   int __pyx_clineno = 0;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
-  __Pyx_RefNannySetupContext("remove_overlap_templates (wrapper)", 0);
+  __Pyx_RefNannySetupContext("find_overlap_templates (wrapper)", 0);
   {
     static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_templates,&__pyx_n_s_n_samples_per_chan,&__pyx_n_s_n_chans,&__pyx_n_s_n_pre_inds,&__pyx_n_s_n_post_inds,&__pyx_n_s_n_template_spikes,0};
     PyObject* values[6] = {0,0,0,0,0,0};
@@ -7213,35 +7213,35 @@ static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__py
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_n_samples_per_chan)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("remove_overlap_templates", 1, 6, 6, 1); __PYX_ERR(0, 333, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("find_overlap_templates", 1, 6, 6, 1); __PYX_ERR(0, 333, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  2:
         if (likely((values[2] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_n_chans)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("remove_overlap_templates", 1, 6, 6, 2); __PYX_ERR(0, 333, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("find_overlap_templates", 1, 6, 6, 2); __PYX_ERR(0, 333, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  3:
         if (likely((values[3] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_n_pre_inds)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("remove_overlap_templates", 1, 6, 6, 3); __PYX_ERR(0, 333, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("find_overlap_templates", 1, 6, 6, 3); __PYX_ERR(0, 333, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  4:
         if (likely((values[4] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_n_post_inds)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("remove_overlap_templates", 1, 6, 6, 4); __PYX_ERR(0, 333, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("find_overlap_templates", 1, 6, 6, 4); __PYX_ERR(0, 333, __pyx_L3_error)
         }
         CYTHON_FALLTHROUGH;
         case  5:
         if (likely((values[5] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_n_template_spikes)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("remove_overlap_templates", 1, 6, 6, 5); __PYX_ERR(0, 333, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("find_overlap_templates", 1, 6, 6, 5); __PYX_ERR(0, 333, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "remove_overlap_templates") < 0)) __PYX_ERR(0, 333, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "find_overlap_templates") < 0)) __PYX_ERR(0, 333, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 6) {
       goto __pyx_L5_argtuple_error;
@@ -7262,15 +7262,15 @@ static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__py
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("remove_overlap_templates", 1, 6, 6, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 333, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("find_overlap_templates", 1, 6, 6, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 333, __pyx_L3_error)
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sort_cython.remove_overlap_templates", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("sort_cython.find_overlap_templates", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_templates), __pyx_ptype_5numpy_ndarray, 1, "templates", 0))) __PYX_ERR(0, 333, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_n_template_spikes), __pyx_ptype_5numpy_ndarray, 1, "n_template_spikes", 0))) __PYX_ERR(0, 335, __pyx_L1_error)
-  __pyx_r = __pyx_pf_11sort_cython_6remove_overlap_templates(__pyx_self, __pyx_v_templates, __pyx_v_n_samples_per_chan, __pyx_v_n_chans, __pyx_v_n_pre_inds, __pyx_v_n_post_inds, __pyx_v_n_template_spikes);
+  __pyx_r = __pyx_pf_11sort_cython_6find_overlap_templates(__pyx_self, __pyx_v_templates, __pyx_v_n_samples_per_chan, __pyx_v_n_chans, __pyx_v_n_pre_inds, __pyx_v_n_post_inds, __pyx_v_n_template_spikes);
 
   /* function exit code */
   goto __pyx_L0;
@@ -7290,10 +7290,10 @@ static PyObject *__pyx_pw_11sort_cython_7remove_overlap_templates(PyObject *__py
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_11sort_cython_24remove_overlap_templates_1get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_11sort_cython_24remove_overlap_templates_get_shifted_template[] = " ";
-static PyMethodDef __pyx_mdef_11sort_cython_24remove_overlap_templates_1get_shifted_template = {"get_shifted_template", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_24remove_overlap_templates_1get_shifted_template, METH_VARARGS|METH_KEYWORDS, __pyx_doc_11sort_cython_24remove_overlap_templates_get_shifted_template};
-static PyObject *__pyx_pw_11sort_cython_24remove_overlap_templates_1get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
+static PyObject *__pyx_pw_11sort_cython_22find_overlap_templates_1get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
+static char __pyx_doc_11sort_cython_22find_overlap_templates_get_shifted_template[] = " ";
+static PyMethodDef __pyx_mdef_11sort_cython_22find_overlap_templates_1get_shifted_template = {"get_shifted_template", (PyCFunction)(void*)(PyCFunctionWithKeywords)__pyx_pw_11sort_cython_22find_overlap_templates_1get_shifted_template, METH_VARARGS|METH_KEYWORDS, __pyx_doc_11sort_cython_22find_overlap_templates_get_shifted_template};
+static PyObject *__pyx_pw_11sort_cython_22find_overlap_templates_1get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   PyObject *__pyx_v_template = 0;
   PyObject *__pyx_v_shift = 0;
   int __pyx_lineno = 0;
@@ -7344,20 +7344,20 @@ static PyObject *__pyx_pw_11sort_cython_24remove_overlap_templates_1get_shifted_
   __pyx_L5_argtuple_error:;
   __Pyx_RaiseArgtupleInvalid("get_shifted_template", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 338, __pyx_L3_error)
   __pyx_L3_error:;
-  __Pyx_AddTraceback("sort_cython.remove_overlap_templates.get_shifted_template", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("sort_cython.find_overlap_templates.get_shifted_template", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  __pyx_r = __pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_template(__pyx_self, __pyx_v_template, __pyx_v_shift);
+  __pyx_r = __pyx_pf_11sort_cython_22find_overlap_templates_get_shifted_template(__pyx_self, __pyx_v_template, __pyx_v_shift);
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_v_template, PyObject *__pyx_v_shift) {
-  struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_cur_scope;
-  struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_outer_scope;
+static PyObject *__pyx_pf_11sort_cython_22find_overlap_templates_get_shifted_template(PyObject *__pyx_self, PyObject *__pyx_v_template, PyObject *__pyx_v_shift) {
+  struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates *__pyx_cur_scope;
+  struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates *__pyx_outer_scope;
   PyObject *__pyx_v_shifted_template = NULL;
   PyObject *__pyx_v_chan = NULL;
   PyObject *__pyx_v_chan_temp = NULL;
@@ -7376,7 +7376,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("get_shifted_template", 0);
-  __pyx_outer_scope = (struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *) __Pyx_CyFunction_GetClosure(__pyx_self);
+  __pyx_outer_scope = (struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates *) __Pyx_CyFunction_GetClosure(__pyx_self);
   __pyx_cur_scope = __pyx_outer_scope;
 
   /* "sort_cython.pyx":340
@@ -7644,7 +7644,7 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
   __Pyx_XDECREF(__pyx_t_6);
   __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_9);
-  __Pyx_AddTraceback("sort_cython.remove_overlap_templates.get_shifted_template", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("sort_cython.find_overlap_templates.get_shifted_template", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_shifted_template);
@@ -7658,13 +7658,13 @@ static PyObject *__pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_t
 /* "sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
- * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
+ * def find_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
  *         Py_ssize_t n_samples_per_chan, Py_ssize_t n_chans, int64_t n_pre_inds,
  *         int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
  */
 
-static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, PyArrayObject *__pyx_v_n_template_spikes) {
-  struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_cur_scope;
+static PyObject *__pyx_pf_11sort_cython_6find_overlap_templates(CYTHON_UNUSED PyObject *__pyx_self, PyArrayObject *__pyx_v_templates, Py_ssize_t __pyx_v_n_samples_per_chan, Py_ssize_t __pyx_v_n_chans, int64_t __pyx_v_n_pre_inds, int64_t __pyx_v_n_post_inds, PyArrayObject *__pyx_v_n_template_spikes) {
+  struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates *__pyx_cur_scope;
   PyObject *__pyx_v_get_shifted_template = 0;
   PyObject *__pyx_v_templates_to_check = NULL;
   PyObject *__pyx_v_templates_SS = NULL;
@@ -7682,9 +7682,9 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   Py_ssize_t __pyx_v_s2_ind;
   PyObject *__pyx_v_test_template = NULL;
   PyObject *__pyx_v_min_residual_SS = NULL;
-  CYTHON_UNUSED PyObject *__pyx_v_best_pair = NULL;
+  PyObject *__pyx_v_best_pair = NULL;
   CYTHON_UNUSED PyObject *__pyx_v_best_shifts = NULL;
-  PyObject *__pyx_v_best_inds = NULL;
+  CYTHON_UNUSED PyObject *__pyx_v_best_inds = NULL;
   PyObject *__pyx_v_best_shifted_template = NULL;
   CYTHON_UNUSED PyObject *__pyx_v_template_1 = NULL;
   CYTHON_UNUSED PyObject *__pyx_v_template_2 = NULL;
@@ -7726,10 +7726,10 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("remove_overlap_templates", 0);
-  __pyx_cur_scope = (struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *)__pyx_tp_new_11sort_cython___pyx_scope_struct__remove_overlap_templates(__pyx_ptype_11sort_cython___pyx_scope_struct__remove_overlap_templates, __pyx_empty_tuple, NULL);
+  __Pyx_RefNannySetupContext("find_overlap_templates", 0);
+  __pyx_cur_scope = (struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates *)__pyx_tp_new_11sort_cython___pyx_scope_struct__find_overlap_templates(__pyx_ptype_11sort_cython___pyx_scope_struct__find_overlap_templates, __pyx_empty_tuple, NULL);
   if (unlikely(!__pyx_cur_scope)) {
-    __pyx_cur_scope = ((struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *)Py_None);
+    __pyx_cur_scope = ((struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates *)Py_None);
     __Pyx_INCREF(Py_None);
     __PYX_ERR(0, 333, __pyx_L1_error)
   } else {
@@ -7763,7 +7763,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *         """ """
  *         shifted_template = np.zeros_like(template)
  */
-  __pyx_t_1 = __Pyx_CyFunction_New(&__pyx_mdef_11sort_cython_24remove_overlap_templates_1get_shifted_template, 0, __pyx_n_s_remove_overlap_templates_locals, ((PyObject*)__pyx_cur_scope), __pyx_n_s_sort_cython, __pyx_d, ((PyObject *)__pyx_codeobj__7)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 338, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_CyFunction_New(&__pyx_mdef_11sort_cython_22find_overlap_templates_1get_shifted_template, 0, __pyx_n_s_find_overlap_templates_locals_ge, ((PyObject*)__pyx_cur_scope), __pyx_n_s_sort_cython, __pyx_d, ((PyObject *)__pyx_codeobj__7)); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 338, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_get_shifted_template = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -7984,7 +7984,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
       __pyx_t_1 = __Pyx_PyInt_From_int64_t(__pyx_v_s); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 369, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
-      __pyx_t_9 = __pyx_pf_11sort_cython_24remove_overlap_templates_get_shifted_template(__pyx_v_get_shifted_template, __pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 369, __pyx_L1_error)
+      __pyx_t_9 = __pyx_pf_11sort_cython_22find_overlap_templates_get_shifted_template(__pyx_v_get_shifted_template, __pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 369, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_9);
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -8632,7 +8632,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *         # if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:
  *         #     templates_to_delete[test_unit] = True
  *         if best_shifted_template is not None:             # <<<<<<<<<<<<<<
- *           templates_to_check.append([test_unit, best_shifted_template, best_inds])
+ *           templates_to_check.append([test_unit, best_shifted_template, best_pair])
  * 
  */
     __pyx_t_2 = (__pyx_v_best_shifted_template != Py_None);
@@ -8642,7 +8642,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       /* "sort_cython.pyx":422
  *         #     templates_to_delete[test_unit] = True
  *         if best_shifted_template is not None:
- *           templates_to_check.append([test_unit, best_shifted_template, best_inds])             # <<<<<<<<<<<<<<
+ *           templates_to_check.append([test_unit, best_shifted_template, best_pair])             # <<<<<<<<<<<<<<
  * 
  *     return templates_to_check #templates_to_delete
  */
@@ -8655,9 +8655,9 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
       __Pyx_INCREF(__pyx_v_best_shifted_template);
       __Pyx_GIVEREF(__pyx_v_best_shifted_template);
       PyList_SET_ITEM(__pyx_t_5, 1, __pyx_v_best_shifted_template);
-      __Pyx_INCREF(__pyx_v_best_inds);
-      __Pyx_GIVEREF(__pyx_v_best_inds);
-      PyList_SET_ITEM(__pyx_t_5, 2, __pyx_v_best_inds);
+      __Pyx_INCREF(__pyx_v_best_pair);
+      __Pyx_GIVEREF(__pyx_v_best_pair);
+      PyList_SET_ITEM(__pyx_t_5, 2, __pyx_v_best_pair);
       __pyx_t_4 = 0;
       __pyx_t_13 = __Pyx_PyList_Append(__pyx_v_templates_to_check, __pyx_t_5); if (unlikely(__pyx_t_13 == ((int)-1))) __PYX_ERR(0, 422, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
@@ -8666,7 +8666,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
  *         # if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:
  *         #     templates_to_delete[test_unit] = True
  *         if best_shifted_template is not None:             # <<<<<<<<<<<<<<
- *           templates_to_check.append([test_unit, best_shifted_template, best_inds])
+ *           templates_to_check.append([test_unit, best_shifted_template, best_pair])
  * 
  */
     }
@@ -8682,7 +8682,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "sort_cython.pyx":424
- *           templates_to_check.append([test_unit, best_shifted_template, best_inds])
+ *           templates_to_check.append([test_unit, best_shifted_template, best_pair])
  * 
  *     return templates_to_check #templates_to_delete             # <<<<<<<<<<<<<<
  * 
@@ -8696,7 +8696,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
   /* "sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
- * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
+ * def find_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
  *         Py_ssize_t n_samples_per_chan, Py_ssize_t n_chans, int64_t n_pre_inds,
  *         int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
  */
@@ -8715,7 +8715,7 @@ static PyObject *__pyx_pf_11sort_cython_6remove_overlap_templates(CYTHON_UNUSED 
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_n_template_spikes.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_templates.rcbuffer->pybuffer);
   __Pyx_ErrRestore(__pyx_type, __pyx_value, __pyx_tb);}
-  __Pyx_AddTraceback("sort_cython.remove_overlap_templates", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("sort_cython.find_overlap_templates", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   goto __pyx_L2;
   __pyx_L0:;
@@ -28299,14 +28299,14 @@ static PyObject *__pyx_unpickle_Enum__set_state(struct __pyx_MemviewEnum_obj *__
   return __pyx_r;
 }
 
-static struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *__pyx_freelist_11sort_cython___pyx_scope_struct__remove_overlap_templates[8];
-static int __pyx_freecount_11sort_cython___pyx_scope_struct__remove_overlap_templates = 0;
+static struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates *__pyx_freelist_11sort_cython___pyx_scope_struct__find_overlap_templates[8];
+static int __pyx_freecount_11sort_cython___pyx_scope_struct__find_overlap_templates = 0;
 
-static PyObject *__pyx_tp_new_11sort_cython___pyx_scope_struct__remove_overlap_templates(PyTypeObject *t, CYTHON_UNUSED PyObject *a, CYTHON_UNUSED PyObject *k) {
+static PyObject *__pyx_tp_new_11sort_cython___pyx_scope_struct__find_overlap_templates(PyTypeObject *t, CYTHON_UNUSED PyObject *a, CYTHON_UNUSED PyObject *k) {
   PyObject *o;
-  if (CYTHON_COMPILING_IN_CPYTHON && likely((__pyx_freecount_11sort_cython___pyx_scope_struct__remove_overlap_templates > 0) & (t->tp_basicsize == sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates)))) {
-    o = (PyObject*)__pyx_freelist_11sort_cython___pyx_scope_struct__remove_overlap_templates[--__pyx_freecount_11sort_cython___pyx_scope_struct__remove_overlap_templates];
-    memset(o, 0, sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates));
+  if (CYTHON_COMPILING_IN_CPYTHON && likely((__pyx_freecount_11sort_cython___pyx_scope_struct__find_overlap_templates > 0) & (t->tp_basicsize == sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates)))) {
+    o = (PyObject*)__pyx_freelist_11sort_cython___pyx_scope_struct__find_overlap_templates[--__pyx_freecount_11sort_cython___pyx_scope_struct__find_overlap_templates];
+    memset(o, 0, sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates));
     (void) PyObject_INIT(o, t);
   } else {
     o = (*t->tp_alloc)(t, 0);
@@ -28315,20 +28315,20 @@ static PyObject *__pyx_tp_new_11sort_cython___pyx_scope_struct__remove_overlap_t
   return o;
 }
 
-static void __pyx_tp_dealloc_11sort_cython___pyx_scope_struct__remove_overlap_templates(PyObject *o) {
-  if (CYTHON_COMPILING_IN_CPYTHON && ((__pyx_freecount_11sort_cython___pyx_scope_struct__remove_overlap_templates < 8) & (Py_TYPE(o)->tp_basicsize == sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates)))) {
-    __pyx_freelist_11sort_cython___pyx_scope_struct__remove_overlap_templates[__pyx_freecount_11sort_cython___pyx_scope_struct__remove_overlap_templates++] = ((struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates *)o);
+static void __pyx_tp_dealloc_11sort_cython___pyx_scope_struct__find_overlap_templates(PyObject *o) {
+  if (CYTHON_COMPILING_IN_CPYTHON && ((__pyx_freecount_11sort_cython___pyx_scope_struct__find_overlap_templates < 8) & (Py_TYPE(o)->tp_basicsize == sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates)))) {
+    __pyx_freelist_11sort_cython___pyx_scope_struct__find_overlap_templates[__pyx_freecount_11sort_cython___pyx_scope_struct__find_overlap_templates++] = ((struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates *)o);
   } else {
     (*Py_TYPE(o)->tp_free)(o);
   }
 }
 
-static PyTypeObject __pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates = {
+static PyTypeObject __pyx_type_11sort_cython___pyx_scope_struct__find_overlap_templates = {
   PyVarObject_HEAD_INIT(0, 0)
-  "sort_cython.__pyx_scope_struct__remove_overlap_templates", /*tp_name*/
-  sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__remove_overlap_templates), /*tp_basicsize*/
+  "sort_cython.__pyx_scope_struct__find_overlap_templates", /*tp_name*/
+  sizeof(struct __pyx_obj_11sort_cython___pyx_scope_struct__find_overlap_templates), /*tp_basicsize*/
   0, /*tp_itemsize*/
-  __pyx_tp_dealloc_11sort_cython___pyx_scope_struct__remove_overlap_templates, /*tp_dealloc*/
+  __pyx_tp_dealloc_11sort_cython___pyx_scope_struct__find_overlap_templates, /*tp_dealloc*/
   #if PY_VERSION_HEX < 0x030800b4
   0, /*tp_print*/
   #endif
@@ -28371,7 +28371,7 @@ static PyTypeObject __pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_
   0, /*tp_dictoffset*/
   0, /*tp_init*/
   0, /*tp_alloc*/
-  __pyx_tp_new_11sort_cython___pyx_scope_struct__remove_overlap_templates, /*tp_new*/
+  __pyx_tp_new_11sort_cython___pyx_scope_struct__find_overlap_templates, /*tp_new*/
   0, /*tp_free*/
   0, /*tp_is_gc*/
   0, /*tp_bases*/
@@ -29272,6 +29272,8 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_exp, __pyx_k_exp, sizeof(__pyx_k_exp), 0, 0, 1, 1},
   {&__pyx_n_s_f_0, __pyx_k_f_0, sizeof(__pyx_k_f_0), 0, 0, 1, 1},
   {&__pyx_n_s_f_tol, __pyx_k_f_tol, sizeof(__pyx_k_f_tol), 0, 0, 1, 1},
+  {&__pyx_n_s_find_overlap_templates, __pyx_k_find_overlap_templates, sizeof(__pyx_k_find_overlap_templates), 0, 0, 1, 1},
+  {&__pyx_n_s_find_overlap_templates_locals_ge, __pyx_k_find_overlap_templates_locals_ge, sizeof(__pyx_k_find_overlap_templates_locals_ge), 0, 0, 1, 1},
   {&__pyx_n_s_fixed_point_0, __pyx_k_fixed_point_0, sizeof(__pyx_k_fixed_point_0), 0, 0, 1, 1},
   {&__pyx_n_s_flags, __pyx_k_flags, sizeof(__pyx_k_flags), 0, 0, 1, 1},
   {&__pyx_n_s_float64, __pyx_k_float64, sizeof(__pyx_k_float64), 0, 0, 1, 1},
@@ -29365,8 +29367,6 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_reduce, __pyx_k_reduce, sizeof(__pyx_k_reduce), 0, 0, 1, 1},
   {&__pyx_n_s_reduce_cython, __pyx_k_reduce_cython, sizeof(__pyx_k_reduce_cython), 0, 0, 1, 1},
   {&__pyx_n_s_reduce_ex, __pyx_k_reduce_ex, sizeof(__pyx_k_reduce_ex), 0, 0, 1, 1},
-  {&__pyx_n_s_remove_overlap_templates, __pyx_k_remove_overlap_templates, sizeof(__pyx_k_remove_overlap_templates), 0, 0, 1, 1},
-  {&__pyx_n_s_remove_overlap_templates_locals, __pyx_k_remove_overlap_templates_locals, sizeof(__pyx_k_remove_overlap_templates_locals), 0, 0, 1, 1},
   {&__pyx_n_s_resid_error, __pyx_k_resid_error, sizeof(__pyx_k_resid_error), 0, 0, 1, 1},
   {&__pyx_n_s_resid_error_ptr, __pyx_k_resid_error_ptr, sizeof(__pyx_k_resid_error_ptr), 0, 0, 1, 1},
   {&__pyx_n_s_residual_SS, __pyx_k_residual_SS, sizeof(__pyx_k_residual_SS), 0, 0, 1, 1},
@@ -29884,14 +29884,14 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   /* "sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
- * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
+ * def find_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
  *         Py_ssize_t n_samples_per_chan, Py_ssize_t n_chans, int64_t n_pre_inds,
  *         int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
  */
   __pyx_tuple__44 = PyTuple_Pack(37, __pyx_n_s_templates, __pyx_n_s_n_samples_per_chan, __pyx_n_s_n_chans, __pyx_n_s_n_pre_inds, __pyx_n_s_n_post_inds, __pyx_n_s_n_template_spikes, __pyx_n_s_chan, __pyx_n_s_shift, __pyx_n_s_get_shifted_template, __pyx_n_s_get_shifted_template, __pyx_n_s_templates_to_check, __pyx_n_s_templates_SS, __pyx_n_s_sum_n1_n2_template, __pyx_n_s_all_template_shifts, __pyx_n_s_t, __pyx_n_s_as_ind, __pyx_n_s_all_shifts, __pyx_n_s_s, __pyx_n_s_template_SS_order, __pyx_n_s_test_unit, __pyx_n_s_n1, __pyx_n_s_n2, __pyx_n_s_s1_ind, __pyx_n_s_s2_ind, __pyx_n_s_test_template, __pyx_n_s_min_residual_SS, __pyx_n_s_best_pair, __pyx_n_s_best_shifts, __pyx_n_s_best_inds, __pyx_n_s_best_shifted_template, __pyx_n_s_template_1, __pyx_n_s_template_2, __pyx_n_s_shift1, __pyx_n_s_shifted_t1, __pyx_n_s_shift2, __pyx_n_s_shifted_t2, __pyx_n_s_residual_SS); if (unlikely(!__pyx_tuple__44)) __PYX_ERR(0, 333, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__44);
   __Pyx_GIVEREF(__pyx_tuple__44);
-  __pyx_codeobj__45 = (PyObject*)__Pyx_PyCode_New(6, 0, 37, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__44, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sort_cython_pyx, __pyx_n_s_remove_overlap_templates, 333, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__45)) __PYX_ERR(0, 333, __pyx_L1_error)
+  __pyx_codeobj__45 = (PyObject*)__Pyx_PyCode_New(6, 0, 37, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__44, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_sort_cython_pyx, __pyx_n_s_find_overlap_templates, 333, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__45)) __PYX_ERR(0, 333, __pyx_L1_error)
 
   /* "sort_cython.pyx":429
  * @cython.wraparound(False)
@@ -30056,14 +30056,14 @@ static int __Pyx_modinit_type_init_code(void) {
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__Pyx_modinit_type_init_code", 0);
   /*--- Type init code ---*/
-  if (PyType_Ready(&__pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates) < 0) __PYX_ERR(0, 333, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_11sort_cython___pyx_scope_struct__find_overlap_templates) < 0) __PYX_ERR(0, 333, __pyx_L1_error)
   #if PY_VERSION_HEX < 0x030800B1
-  __pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_print = 0;
+  __pyx_type_11sort_cython___pyx_scope_struct__find_overlap_templates.tp_print = 0;
   #endif
-  if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_dictoffset && __pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_getattro == PyObject_GenericGetAttr)) {
-    __pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates.tp_getattro = __Pyx_PyObject_GenericGetAttrNoDict;
+  if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_11sort_cython___pyx_scope_struct__find_overlap_templates.tp_dictoffset && __pyx_type_11sort_cython___pyx_scope_struct__find_overlap_templates.tp_getattro == PyObject_GenericGetAttr)) {
+    __pyx_type_11sort_cython___pyx_scope_struct__find_overlap_templates.tp_getattro = __Pyx_PyObject_GenericGetAttrNoDict;
   }
-  __pyx_ptype_11sort_cython___pyx_scope_struct__remove_overlap_templates = &__pyx_type_11sort_cython___pyx_scope_struct__remove_overlap_templates;
+  __pyx_ptype_11sort_cython___pyx_scope_struct__find_overlap_templates = &__pyx_type_11sort_cython___pyx_scope_struct__find_overlap_templates;
   __pyx_vtabptr_array = &__pyx_vtable_array;
   __pyx_vtable_array.get_memview = (PyObject *(*)(struct __pyx_array_obj *))__pyx_array_get_memview;
   if (PyType_Ready(&__pyx_type___pyx_array) < 0) __PYX_ERR(2, 105, __pyx_L1_error)
@@ -30481,13 +30481,13 @@ if (!__Pyx_RefNanny) {
   /* "sort_cython.pyx":333
  * @cython.wraparound(False)
  * @cython.cdivision(True)    # turn division by zero checking off
- * def remove_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
+ * def find_overlap_templates(np.ndarray[float, ndim=2] templates,             # <<<<<<<<<<<<<<
  *         Py_ssize_t n_samples_per_chan, Py_ssize_t n_chans, int64_t n_pre_inds,
  *         int64_t n_post_inds, np.ndarray[int64_t, ndim=1] n_template_spikes):
  */
-  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11sort_cython_7remove_overlap_templates, NULL, __pyx_n_s_sort_cython); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 333, __pyx_L1_error)
+  __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11sort_cython_7find_overlap_templates, NULL, __pyx_n_s_sort_cython); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 333, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_remove_overlap_templates, __pyx_t_1) < 0) __PYX_ERR(0, 333, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_find_overlap_templates, __pyx_t_1) < 0) __PYX_ERR(0, 333, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
   /* "sort_cython.pyx":429

@@ -88,14 +88,13 @@ def get_singlechannel_clips(voltage, channel, spike_times, window):
 
 
 def init_covar_pool_dict(volt_array, volt_shape, volt_dtype, window,
-                            max_clip_samples, n_samples, rand_state):
+                         n_samples, rand_state):
     global pool_dict
     pool_dict = {}
     pool_dict['share_voltage'] = volt_array
     pool_dict['share_voltage_shape'] = volt_shape
     pool_dict['share_voltage_dtype'] = volt_dtype
     pool_dict['window'] = window
-    pool_dict['max_clip_samples'] = max_clip_samples
     pool_dict['n_samples'] = n_samples
     pool_dict['rand_state'] = rand_state
     return
@@ -110,8 +109,8 @@ def covar_one_chan(chan):
     voltage = np.frombuffer(pool_dict['share_voltage'],
                 dtype=pool_dict['share_voltage_dtype']).reshape(pool_dict['share_voltage_shape'])
 
-    rand_inds = np.random.randint(pool_dict['max_clip_samples'],
-                            voltage.shape[1] - pool_dict['max_clip_samples'],
+    rand_inds = np.random.randint(-1*pool_dict['window'][0],
+                            voltage.shape[1] - (pool_dict['window'][1] + 1),
                             pool_dict['n_samples'])
     noise_clips, _ = get_singlechannel_clips(voltage, chan, rand_inds, pool_dict['window'])
     # Get robust covariance to avoid outliers
@@ -123,10 +122,13 @@ def covar_one_chan(chan):
     return rob_cov.covariance_
 
 
-def noise_covariance_parallel(voltage_array, clip_width, sampling_rate,
-                                n_samples=100000, rand_state=None):
+def noise_covariance_parallel(voltage_array, window, n_samples=100000,
+                              rand_state=None):
     """ Computes the covariance of the noise over time within the clip_width.
     """
+    if window[0] > 0:
+        # First element of window must be <= 0
+        window[0] *= -1
     if voltage_array.ndim == 1:
         voltage_array = voltage_array.reshape(1, -1)
     # Allocate shared array across processes for voltage
@@ -135,13 +137,11 @@ def noise_covariance_parallel(voltage_array, clip_width, sampling_rate,
     shared_v_array_np = np.frombuffer(shared_v_array, dtype=voltage_array.dtype).reshape(voltage_array.shape)
     np.copyto(shared_v_array_np, voltage_array)
 
-    window, _ = time_window_to_samples(clip_width, sampling_rate)
-    max_clip_samples = np.amax(np.abs(window)) + 1
     chan_covar_mats = []
     with mp.Pool(processes=psutil.cpu_count(logical=False)//2,
                  initializer=init_covar_pool_dict, initargs=(shared_v_array,
                  voltage_array.shape, voltage_array.dtype, window,
-                 max_clip_samples, n_samples, rand_state)) as pool:
+                 n_samples, rand_state)) as pool:
         try:
             for chan in range(0, voltage_array.shape[0]):
                 chan_covar_mats.append(pool.apply_async(covar_one_chan, args=(chan, )))

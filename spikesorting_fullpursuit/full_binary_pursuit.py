@@ -11,7 +11,7 @@ from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parall
 
 import matplotlib.pyplot as plt
 
-def remove_overlap_templates(templates, n_samples_per_chan, n_chans,
+def find_overlap_templates(templates, n_samples_per_chan, n_chans,
                             n_pre_inds, n_post_inds, n_template_spikes):
     """ Use this for testing. There is a corresponding cython verison that should
         be much faster. """
@@ -179,6 +179,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     voltage = np.frombuffer(seg_volts_buffer, dtype=v_dtype).reshape(seg_volts_shape)
     original_clip_width = [s for s in sort_info['clip_width']]
     original_n_samples_per_chan = copy(sort_info['n_samples_per_chan'])
+    # Max shift indices to check for binary pursuit overlaps
+    n_max_shift_inds = original_n_samples_per_chan-1
 
     # Determine the set of work items for this segment
     seg_w_items = [w for w in work_items if w['seg_number'] == seg_number]
@@ -238,13 +240,45 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         n_template_spikes.append(n['spike_indices'].shape[0])
 
 
-
+    # Need this chan_win before assigning binary pursuit clip width. Used for
+    # find_overlap_templates
     chan_win, clip_width = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
+
+    # Reassign binary pursuit clip width to clip width
+    # (This is slightly confusing but keeps certain code compatability.
+    # We will reset it to original value at the end.)
+    sort_info['clip_width'], original_clip_starts, original_clip_stops = \
+                get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info)
+    # Store newly assigned binary pursuit clip width for final output
+    if 'binary_pursuit_clip_width' not in sort_info:
+        sort_info['binary_pursuit_clip_width'] = [0, 0]
+    sort_info['binary_pursuit_clip_width'][0] = min(sort_info['clip_width'][0], sort_info['binary_pursuit_clip_width'][0])
+    sort_info['binary_pursuit_clip_width'][1] = max(sort_info['clip_width'][1], sort_info['binary_pursuit_clip_width'][1])
+    bp_chan_win, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
+    sort_info['n_samples_per_chan'] = bp_chan_win[1] - bp_chan_win[0]
+    # This should be same as input samples per chan but could probably
+    # be off by one due to rounding error of the clip width so
+    # need to recompute
+    bp_reduction_samples_per_chan = original_clip_stops[0] - original_clip_starts[0]
+    if bp_reduction_samples_per_chan != original_n_samples_per_chan:
+        # This should be coded so this never happens, but if it does it could be a difficult to notice disaster during consolidate
+        raise RuntimeError("Template reduction from binary pursuit does not have the same number of samples as original!")
+    print("Binary pursuit clip width is", sort_info['clip_width'], "from", original_clip_width)
+    print("Binary pursuit samples per chan", sort_info['n_samples_per_chan'], "from", original_n_samples_per_chan)
+
+    # Get the noise covariance over time within the binary pursuit clip width
+    # + the maximum number of overlap check window indices.
+    print("!!! ONLY USING 10K NOISE SAMPLES FOR COVARIANCE !!!")
+    full_chan_covariance_mats = noise_covariance_parallel(
+                        voltage, [bp_chan_win[0], bp_chan_win[1] + n_max_shift_inds],
+                        10000, rand_state=None)
+
     templates = np.float32(np.vstack(templates))
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
-    templates_to_check = sort_cython.remove_overlap_templates(templates, int(sort_info['n_samples_per_chan']),
-                                int(sort_info['n_channels']),
-                                np.int64(np.abs(chan_win[0])//2), np.int64(np.abs(chan_win[1])//2),
+    templates_to_check = sort_cython.find_overlap_templates(templates,
+                                original_n_samples_per_chan, sort_info['n_channels'],
+                                np.int64(np.abs(chan_win[0])//2),
+                                np.int64(np.abs(chan_win[1])//2),
                                 n_template_spikes)
 
 
@@ -261,11 +295,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     Then do remove overlap templates and check/delete inseparable ones.
     """
 
-    chan_covariance_mats = noise_covariance_parallel(
-                        voltage, sort_info['clip_width'],
-                        sort_info['sampling_rate'], 10000,
-                        rand_state=None)
-
+    # Sub index full covariance matrix to match original clip size
+    chan_covariance_mats = [x[0:original_n_samples_per_chan, 0:original_n_samples_per_chan] for x in full_chan_covariance_mats]
     for t_info in templates_to_check:
         t_ind = t_info[0]
         shift_temp = t_info[1]
@@ -319,28 +350,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
 
-    # Reassign binary pursuit clip width to clip width
-    # (This is slightly confusing but keeps certain code compatability.
-    # We will reset it to original value at the end.)
-    sort_info['clip_width'], original_clip_starts, original_clip_stops = \
-                get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info)
-    # Store newly assigned binary pursuit clip width for final output
-    if 'binary_pursuit_clip_width' not in sort_info:
-        sort_info['binary_pursuit_clip_width'] = [0, 0]
-    sort_info['binary_pursuit_clip_width'][0] = min(sort_info['clip_width'][0], sort_info['binary_pursuit_clip_width'][0])
-    sort_info['binary_pursuit_clip_width'][1] = max(sort_info['clip_width'][1], sort_info['binary_pursuit_clip_width'][1])
-    bp_chan_win, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
-    sort_info['n_samples_per_chan'] = bp_chan_win[1] - bp_chan_win[0]
-    # This should be same as input samples per chan but could probably
-    # be off by one due to rounding error of the clip width so
-    # need to recompute
-    bp_reduction_samples_per_chan = original_clip_stops[0] - original_clip_starts[0]
-    if bp_reduction_samples_per_chan != original_n_samples_per_chan:
-        # This should be coded so this never happens, but if it does it could be a difficult to notice disaster during consolidate
-        raise RuntimeError("Template reduction from binary pursuit does not have the same number of samples as original!")
-    print("Binary pursuit clip width is", sort_info['clip_width'], "from", original_clip_width)
-    print("Binary pursuit samples per chan", sort_info['n_samples_per_chan'], "from", original_n_samples_per_chan)
-
     templates = []
     neuron_clips = []
     next_label = 0
@@ -349,17 +358,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             clips, _ = get_multichannel_clips(clips_dict, voltage,
                                     n['spike_indices'],
                                     clip_width=sort_info['clip_width'])
-            # for chan in range(0, sort_info['n_channels']):
-            #     if chan not in n['neighbors']:
-            #         clips[:, chan*sort_info['n_samples_per_chan']:(chan+1)*sort_info['n_samples_per_chan']] = 0.0
             templates.append(np.mean(clips, axis=0))
-
-            # rand_inds = np.random.randint(500, voltage.shape[1] - 500, 10000)
-            # clips, _ = get_multichannel_clips(clips_dict, voltage,
-            #                         rand_inds,
-            #                         clip_width=sort_info['clip_width'])
-            # neuron_clips.append(clips)
-
             next_label += 1
 
     del seg_summary
@@ -373,7 +372,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     templates, voltage, v_dtype, sort_info,
                     separability_metrics,
-                    n_max_shift_inds=original_n_samples_per_chan-1,
+                    n_max_shift_inds=n_max_shift_inds,
                     kernels_path=None, max_gpu_memory=max_gpu_memory)
 
     if not sort_info['get_adjusted_clips']:

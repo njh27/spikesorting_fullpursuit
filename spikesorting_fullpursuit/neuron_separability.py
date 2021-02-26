@@ -80,8 +80,8 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
 
     # Compute bias for each neuron from its per channel variance
     separability_metrics['neuron_variances'] = np.zeros(n_templates)
-    separability_metrics['neuron_lower_threshold'] = np.zeros(n_templates)
-    separability_metrics['neuron_upper_threshold'] = np.zeros(n_templates)
+    separability_metrics['neuron_lower_thresholds'] = np.zeros(n_templates)
+    separability_metrics['neuron_upper_thresholds'] = np.zeros(n_templates)
     for n in range(0, n_templates):
         expectation = 0.5 * separability_metrics['template_SS'][n]
         variance = 0
@@ -94,22 +94,12 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
             separability_metrics['neuron_variances'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
                         @ separability_metrics['channel_covariance_mats'][chan]
                         @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
-                        
-        separability_metrics['neuron_lower_threshold'][n] = max(
+
+        separability_metrics['neuron_lower_thresholds'][n] = max(
                 expectation - sort_info['sigma_template_ci'] * np.sqrt(separability_metrics['neuron_variances'][n]),
                 sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_variances'][n]))
-        separability_metrics['neuron_upper_threshold'][n] = expectation + sort_info['sigma_template_ci'] * np.sqrt(separability_metrics['neuron_variances'][n])
+        separability_metrics['neuron_upper_thresholds'][n] = expectation + sort_info['sigma_template_ci'] * np.sqrt(separability_metrics['neuron_variances'][n])
 
-    separability_metrics['gamma_noise'] = np.zeros(n_chans)
-    separability_metrics['std_noise'] = np.zeros(n_chans)
-    # Compute bias separately for each neuron, on each channel
-    for chan in range(0, n_chans):
-        # Convert channel threshold to normal standard deviation
-        separability_metrics['std_noise'][chan] = thresholds[chan] / sort_info['sigma']
-        # gamma_noise is used only for overlap recheck indices noise term for sum of 2 templates
-        separability_metrics['gamma_noise'][chan] = sort_info['sigma_noise_penalty'] * separability_metrics['std_noise'][chan]
-        print("Noise STD", separability_metrics['std_noise'][chan] )
-        print("covar diag", np.diag(separability_metrics['channel_covariance_mats'][chan]))
     return separability_metrics
 
 
@@ -129,7 +119,7 @@ def pairwise_separability(separability_metrics, sort_info):
     # Compute separability measure for all pairs of neurons
     pair_separability_matrix = np.zeros((n_neurons, n_neurons))
     for n1 in range(0, n_neurons):
-        E_L_n1 = 0.5 * separability_metrics['template_SS'][n1] - separability_metrics['neuron_biases'][n1]
+        E_L_n1 = 0.5 * separability_metrics['template_SS'][n1]
         Var_L_n1 = 0
         for chan in range(0, n_chans):
             t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
@@ -138,7 +128,7 @@ def pairwise_separability(separability_metrics, sort_info):
                          @ separability_metrics['templates'][n1, t_win[0]:t_win[1]][:, None])
 
         neuron_noise_separability[n1] = norm.cdf(0, E_L_n1, np.sqrt(Var_L_n1))
-        E_L_n1_noise = -0.5 * separability_metrics['template_SS'][n1] - separability_metrics['neuron_biases'][n1]
+        E_L_n1_noise = -0.5 * separability_metrics['template_SS'][n1]
         neuron_noise_false_positives[n1] = norm.sf(0, E_L_n1_noise, np.sqrt(Var_L_n1))
 
         for n2 in range(0, separability_metrics['templates'].shape[0]):
@@ -181,8 +171,7 @@ def pairwise_separability(separability_metrics, sort_info):
             n_1_n2_SS = np.dot(shift_temp1, shift_temp2)
             # Assuming full template 2 data here as this will be counted in
             # computation of likelihood function
-            E_L_n2 = (n_1_n2_SS - 0.5 * separability_metrics['template_SS'][n2]
-                        - separability_metrics['neuron_biases'][n2])
+            E_L_n2 = n_1_n2_SS - 0.5 * separability_metrics['template_SS'][n2]
 
             # Expected difference between n1 and n2 likelihood functions
             E_diff_n1_n2 = E_L_n1 - E_L_n2
@@ -231,7 +220,7 @@ def empirical_separability(voltage, spike_times, templates, window_samples, sepa
         LL = []
         for n2 in range(0, len(spike_times)):
 
-            LL.append(spike_clips @ templates[n2, :][:, None] - 0.5*np.sum(templates[n2, :] ** 2) - separability_metrics['neuron_biases'][n2])
+            LL.append(spike_clips @ templates[n2, :][:, None] - 0.5*np.sum(templates[n2, :] ** 2))
 
             var_L_n1 = 0
             template_samples_per_chan = templates.shape[1] // voltage.shape[0]
@@ -249,9 +238,9 @@ def empirical_separability(voltage, spike_times, templates, window_samples, sepa
 
             print("Empirical EXP of DIFFERENCE", LL_E_diff_mat[n1, n2])
 
-            E_L_n1 = 0.5 * np.sum(templates[n1, :] ** 2) - separability_metrics['neuron_biases'][n1]
+            E_L_n1 = 0.5 * np.sum(templates[n1, :] ** 2)
             E_L_n2 = (np.dot(templates[n1, :], templates[n2, :])
-                      -0.5 * np.sum(templates[n2, :] ** 2) - separability_metrics['neuron_biases'][n2])
+                      -0.5 * np.sum(templates[n2, :] ** 2))
             print("Calculated EXP of DIFFERENCE", E_L_n1 - E_L_n2)
 
             var_diff = 0

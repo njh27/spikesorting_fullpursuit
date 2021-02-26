@@ -421,14 +421,17 @@ __kernel void compute_template_maximum_likelihood(
     {
         current_maximum_likelihood = full_likelihood_function[full_likelihood_function_offset + i];
         if ( (current_maximum_likelihood > best_spike_likelihood_private)
-            && (current_maximum_likelihood > likelihood_lower_thresholds[template_number]) )
-            // && (current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
+            && (current_maximum_likelihood > likelihood_lower_thresholds[template_number])
+            && (current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
         {
             best_spike_likelihood_private = current_maximum_likelihood;
             best_spike_label_private = template_number;
             best_spike_index_private = start + i;
         }
-        if ((current_maximum_likelihood > 0.0) && (start + i >= start_of_my_window) && (start + i < end_of_my_window))
+        if ((current_maximum_likelihood > 0.0)
+            && (start + i >= start_of_my_window) && (start + i < end_of_my_window)
+            && (current_maximum_likelihood > likelihood_lower_thresholds[template_number])
+            && (current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
         {
             /* Track windows that need checked next pass regardless of whether */
             /* they end up having a spike added */

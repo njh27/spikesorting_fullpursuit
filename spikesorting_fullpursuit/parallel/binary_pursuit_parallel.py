@@ -494,6 +494,8 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
             parse_overlap_recheck_indices_kernel.set_arg(9, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
             parse_overlap_recheck_indices_kernel.set_arg(10, full_likelihood_function_buffer)
             parse_overlap_recheck_indices_kernel.set_arg(11, n_max_shift_inds)
+            parse_overlap_recheck_indices_kernel.set_arg(14, lower_thresholds_buffer)
+            parse_overlap_recheck_indices_kernel.set_arg(15, upper_thresholds_buffer)
 
             check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
             check_overlap_reassignments_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template

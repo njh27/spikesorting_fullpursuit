@@ -429,9 +429,9 @@ __kernel void compute_template_maximum_likelihood(
             best_spike_index_private = start + i;
         }
         if ((current_maximum_likelihood > 0.0)
-            && (start + i >= start_of_my_window) && (start + i < end_of_my_window)
-            && (current_maximum_likelihood > likelihood_lower_thresholds[template_number])
-            && (current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
+            && (start + i >= start_of_my_window) && (start + i < end_of_my_window) )
+            // && (current_maximum_likelihood > likelihood_lower_thresholds[template_number])
+            // && (current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
         {
             /* Track windows that need checked next pass regardless of whether */
             /* they end up having a spike added */
@@ -651,7 +651,6 @@ __kernel void overlap_recheck_indices(
             /* multiply by this channel's bias and add to bias term */
             if (summed_chan_ss > 0.0)
             {
-                current_maximum_likelihood -= (float) sqrt(summed_chan_ss) * gamma_noise[current_channel];
                 current_maximum_likelihood -= 0.5 * summed_chan_ss;
             }
         }
@@ -693,7 +692,9 @@ __kernel void parse_overlap_recheck_indices(
     __global float * restrict full_likelihood_function,
     const unsigned int n_max_shift_inds,
     __global float * restrict overlap_group_best_likelihood,
-    __global unsigned int * restrict overlap_group_best_work_id)
+    __global unsigned int * restrict overlap_group_best_work_id,
+    __global const float * restrict likelihood_lower_thresholds,
+    __global const float * restrict likelihood_upper_thresholds)
 {
 
     __private const size_t num_shifts = (size_t) (2 * n_max_shift_inds + 1);
@@ -752,20 +753,29 @@ __kernel void parse_overlap_recheck_indices(
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];
 
     /* Reset the likelihood and best index and label to maximum */
-    if ((actual_template_likelihood_at_index + gamma[best_spike_label_private]) >= (actual_current_maximum_likelihood + gamma[template_number]))
-    // if ((actual_template_likelihood_at_index) >= (actual_current_maximum_likelihood))
+    if ( actual_template_likelihood_at_index >= actual_current_maximum_likelihood
+        && actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private]
+        && actual_template_likelihood_at_index < likelihood_upper_thresholds[best_spike_label_private])
     {
         /* The main label has better likelihood than best shifted match */
         best_spike_likelihoods[id] = best_group_likelihood;
         overlap_best_spike_labels[id] = best_spike_label_private;
         overlap_best_spike_indices[id] = absolute_fixed_index;
     }
-    else
+    else if ( actual_template_likelihood_at_index < actual_current_maximum_likelihood
+            && actual_current_maximum_likelihood > likelihood_lower_thresholds[template_number]
+            && actual_current_maximum_likelihood < likelihood_upper_thresholds[template_number])
     {
         /* The best shifted match unit has better likelihood than the main label */
         best_spike_likelihoods[id] = best_group_likelihood;
         overlap_best_spike_labels[id] = template_number;
         overlap_best_spike_indices[id] = absolute_shift_index;
+    }
+    else
+    {
+        /* Neither of the best matching shifted spikes is within its thresholds
+          so stick with the original label and index */
+        return;
     }
 }
 

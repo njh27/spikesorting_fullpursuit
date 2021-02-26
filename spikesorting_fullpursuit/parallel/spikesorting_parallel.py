@@ -18,7 +18,7 @@ from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 def spike_sorting_settings_parallel(**kwargs):
     settings = {}
 
-    settings['sigma'] = 4.0 # Threshold based on  noise level
+    settings['sigma'] = 4.0 # Threshold based on noise level
     settings['clip_width'] = [-6e-4, 10e-4]# Width of clip in seconds
     settings['do_branch_PCA'] = True # Use branch pca method to split clusters
     settings['do_branch_PCA_by_chan'] = False
@@ -36,7 +36,8 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
     # sigma_noise_penalty = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
-    settings['sigma_noise_penalty'] = 1.645 # Number of noise standard deviations to penalize binary pursuit by. Higher numbers reduce false positives, increase false negatives
+    settings['sigma_noise_penalty'] = 1.645 # Number of noise standard deviations a template match must exceed for a unit to be added. Higher numbers reduce noise induced false discoveries at the cost of true positives.
+    settings['sigma_template_ci'] = 4.0 # Standard deviations used to determine a confidence bound around a unit's template for spike assignment
     settings['absolute_refractory_period'] = 15e-4
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.

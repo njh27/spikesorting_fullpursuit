@@ -454,6 +454,8 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
             compute_template_maximum_likelihood_kernel.set_arg(10, overlap_best_spike_indices_buffer) # Storage for new best overlap indices
             compute_template_maximum_likelihood_kernel.set_arg(11, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
             compute_template_maximum_likelihood_kernel.set_arg(12, full_likelihood_function_buffer)
+            compute_template_maximum_likelihood_kernel.set_arg(13, spike_biases_buffer)
+            compute_template_maximum_likelihood_kernel.set_arg(14, spike_biases_buffer)
 
             # Set input arguments for overlap recheck kernel
             overlap_recheck_indices_kernel.set_arg(0, voltage_buffer) # Voltage buffer created previously

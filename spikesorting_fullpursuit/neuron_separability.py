@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import norm
 from spikesorting_fullpursuit.consolidate import optimal_align_templates
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
+from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parallel
 
 
@@ -65,6 +66,7 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
     n_chans = sort_info['n_channels']
     n_templates = len(templates)
     template_samples_per_chan = sort_info['n_samples_per_chan']
+    chan_win, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
 
     separability_metrics = {}
     separability_metrics['templates'] = np.vstack(templates)
@@ -73,24 +75,30 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
     separability_metrics['template_SS_by_chan'] = np.zeros((n_templates, n_chans))
     # Need to get sum squares and noise covariance separate for each channel and template
     separability_metrics['channel_covariance_mats'] = noise_covariance_parallel(
-                        voltage, sort_info['clip_width'],
-                        sort_info['sampling_rate'], n_noise_samples,
+                        voltage, chan_win, n_noise_samples,
                         rand_state=rand_state)
 
     # Compute bias for each neuron from its per channel variance
-    separability_metrics['neuron_biases'] = np.zeros(n_templates)
+    separability_metrics['neuron_variances'] = np.zeros(n_templates)
+    separability_metrics['neuron_lower_threshold'] = np.zeros(n_templates)
+    separability_metrics['neuron_upper_threshold'] = np.zeros(n_templates)
     for n in range(0, n_templates):
+        expectation = 0.5 * separability_metrics['template_SS'][n]
+        variance = 0
+        noise_only = 0
         for chan in range(0, n_chans):
             t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
             separability_metrics['template_SS_by_chan'][n, chan] = np.sum(
                     separability_metrics['templates'][n, t_win[0]:t_win[1]] ** 2)
 
-            separability_metrics['neuron_biases'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
-                                            @ separability_metrics['channel_covariance_mats'][chan]
-                                            @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
-
-        # Convert bias from variance to threshold standard deviations
-        separability_metrics['neuron_biases'][n] = sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_biases'][n])
+            separability_metrics['neuron_variances'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
+                        @ separability_metrics['channel_covariance_mats'][chan]
+                        @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
+                        
+        separability_metrics['neuron_lower_threshold'][n] = max(
+                expectation - sort_info['sigma_template_ci'] * np.sqrt(separability_metrics['neuron_variances'][n]),
+                sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_variances'][n]))
+        separability_metrics['neuron_upper_threshold'][n] = expectation + sort_info['sigma_template_ci'] * np.sqrt(separability_metrics['neuron_variances'][n])
 
     separability_metrics['gamma_noise'] = np.zeros(n_chans)
     separability_metrics['std_noise'] = np.zeros(n_chans)
@@ -100,6 +108,8 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
         separability_metrics['std_noise'][chan] = thresholds[chan] / sort_info['sigma']
         # gamma_noise is used only for overlap recheck indices noise term for sum of 2 templates
         separability_metrics['gamma_noise'][chan] = sort_info['sigma_noise_penalty'] * separability_metrics['std_noise'][chan]
+        print("Noise STD", separability_metrics['std_noise'][chan] )
+        print("covar diag", np.diag(separability_metrics['channel_covariance_mats'][chan]))
     return separability_metrics
 
 

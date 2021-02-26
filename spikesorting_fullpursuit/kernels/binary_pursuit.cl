@@ -255,7 +255,7 @@ static float compute_maximum_likelihood(
     {
         return maximum_likelihood; /* Invalid template number, return 0.0 */
     }
-    maximum_likelihood = template_sum_squared[template_number] - gamma[template_number];
+    maximum_likelihood = template_sum_squared[template_number]; // - gamma[template_number];
 
     /* The master channel exceeded threshold, check all of our neighbors */
     for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
@@ -380,7 +380,9 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned char * restrict overlap_recheck,
     __global unsigned int * restrict overlap_best_spike_indices,
     __global unsigned int * restrict overlap_best_spike_labels,
-    __global float * restrict full_likelihood_function)
+    __global float * restrict full_likelihood_function,
+    __global const float * restrict likelihood_lower_thresholds,
+    __global const float * restrict likelihood_upper_thresholds)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -418,7 +420,9 @@ __kernel void compute_template_maximum_likelihood(
     for (i = 0; i < (unsigned) stop - start; i++)
     {
         current_maximum_likelihood = full_likelihood_function[full_likelihood_function_offset + i];
-        if (current_maximum_likelihood > best_spike_likelihood_private)
+        if ( (current_maximum_likelihood > best_spike_likelihood_private)
+            && (current_maximum_likelihood > likelihood_lower_thresholds[template_number]) )
+            // && (current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
         {
             best_spike_likelihood_private = current_maximum_likelihood;
             best_spike_label_private = template_number;

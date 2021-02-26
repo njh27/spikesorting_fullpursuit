@@ -253,9 +253,10 @@ class RunBinaryPursuit(object):
                     continue
                 self.voltage_array[chan, :] += (signal.fftconvolve(spiketrain[neuron], convolve_kernel, mode='same')).astype(self.voltage_dtype)
 
-    def sort_test_dataset(self, kwargs):
+    def sort_test_dataset(self, add_templates=None, sort_templates=None, kwargs={}):
 
         self.sort_info = {'sigma_noise_penalty': 1.645,
+                        'sigma_template_ci': 4.0,
                         'get_adjusted_clips': False,
                         'max_gpu_memory': None,
                         'max_shift_inds': None,
@@ -279,9 +280,13 @@ class RunBinaryPursuit(object):
         thresholds = median_threshold(self.voltage_array, self.sort_info['sigma'])
 
         bp_templates = np.vstack(self.actual_templates)
-        self.separability_metrics = neuron_separability.compute_metrics(bp_templates,
-                                self.voltage_array, 100000, self.sort_info, thresholds)
+        if sort_templates is not None:
+            bp_templates = bp_templates[sort_templates, :]
+            if bp_templates.ndim == 1:
+                bp_templates = bp_templates.reshape(1, -1)
 
+        self.separability_metrics = neuron_separability.compute_metrics(bp_templates,
+                                self.voltage_array, 10000, self.sort_info, thresholds)
 
         crossings, neuron_labels, bp_bool, _ = binary_pursuit_parallel.binary_pursuit(
                         bp_templates, self.voltage_array, self.voltage_dtype,

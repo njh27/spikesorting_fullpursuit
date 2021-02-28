@@ -6,6 +6,9 @@ from spikesorting_fullpursuit.segment import median_threshold
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
 from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
+from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parallel
+
+
 import matplotlib.pyplot as plt
 
 
@@ -253,7 +256,7 @@ class RunBinaryPursuit(object):
                     continue
                 self.voltage_array[chan, :] += (signal.fftconvolve(spiketrain[neuron], convolve_kernel, mode='same')).astype(self.voltage_dtype)
 
-    def sort_test_dataset(self, add_templates=None, sort_templates=None, kwargs={}):
+    def sort_test_dataset(self, add_templates=None, sort_templates=None, rand_state=None, kwargs={}):
 
         self.sort_info = {'sigma_noise_penalty': 1.645,
                         'sigma_template_ci': 4.0,
@@ -274,10 +277,9 @@ class RunBinaryPursuit(object):
                      'clip_width': [pre_time, post_time],
                      'sampling_rate': self.samples_per_second,
                      })
+        bp_chan_win, _ = time_window_to_samples(self.sort_info['clip_width'], self.sort_info['sampling_rate'])
         if self.sort_info['max_shift_inds'] is None:
             self.sort_info['max_shift_inds'] = self.sort_info['n_samples_per_chan'] - 1
-
-        thresholds = median_threshold(self.voltage_array, self.sort_info['sigma'])
 
         bp_templates = np.vstack(self.actual_templates)
         if sort_templates is not None:
@@ -285,8 +287,18 @@ class RunBinaryPursuit(object):
             if bp_templates.ndim == 1:
                 bp_templates = bp_templates.reshape(1, -1)
 
+        self.full_chan_covariance_mats = noise_covariance_parallel(
+                            self.voltage_array, [bp_chan_win[0], bp_chan_win[1] + self.sort_info['max_shift_inds'] + 1],
+                            10000, rand_state=rand_state)
+
+        shifted_sum_variances = neuron_separability.shifted_template_sum_variance(bp_templates,
+                            self.sort_info['n_channels'], self.sort_info['n_samples_per_chan'],
+                            self.sort_info['max_shift_inds'], self.full_chan_covariance_mats)
+
         self.separability_metrics = neuron_separability.compute_metrics(bp_templates,
-                                self.voltage_array, 10000, self.sort_info, thresholds)
+                                self.full_chan_covariance_mats,
+                                shifted_sum_variances,
+                                10000, self.sort_info)
 
         crossings, neuron_labels, bp_bool, _ = binary_pursuit_parallel.binary_pursuit(
                         bp_templates, self.voltage_array, self.voltage_dtype,

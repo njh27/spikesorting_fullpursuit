@@ -3,9 +3,8 @@ from scipy.stats import norm
 from spikesorting_fullpursuit.consolidate import optimal_align_templates
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
 from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
-from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parallel
 
-
+import matplotlib.pyplot as plt
 
 def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info):
     """
@@ -56,8 +55,8 @@ def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info)
     return p_confusion
 
 
-def compute_metrics(templates, voltage, n_noise_samples, sort_info,
-                    thresholds, rand_state=None):
+def compute_metrics(templates, channel_covariance_mats, shifted_sum_variances,
+                    n_noise_samples, sort_info, rand_state=None):
     """ Calculate variance and template sum squared metrics needed to compute
     separability_metrics between units and the delta likelihood function for binary
     pursuit. """
@@ -73,10 +72,9 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
     # Compute our template sum squared error (see note below).
     separability_metrics['template_SS'] = np.sum(separability_metrics['templates'] ** 2, axis=1)
     separability_metrics['template_SS_by_chan'] = np.zeros((n_templates, n_chans))
-    # Need to get sum squares and noise covariance separate for each channel and template
-    separability_metrics['channel_covariance_mats'] = noise_covariance_parallel(
-                        voltage, chan_win, n_noise_samples,
-                        rand_state=rand_state)
+    # Get channel covariance of appropriate size from the extra large covariance matrices
+    separability_metrics['channel_covariance_mats'] = [x[0:template_samples_per_chan, 0:template_samples_per_chan] for x in channel_covariance_mats]
+    separability_metrics['template_shifted_sum_lower_thresholds'] = sort_info['sigma_noise_penalty'] * np.sqrt(shifted_sum_variances)
 
     # Compute bias for each neuron from its per channel variance
     separability_metrics['neuron_variances'] = np.zeros(n_templates)
@@ -95,18 +93,54 @@ def compute_metrics(templates, voltage, n_noise_samples, sort_info,
                         @ separability_metrics['channel_covariance_mats'][chan]
                         @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
 
-        separability_metrics['neuron_lower_thresholds'][n] = max(
-                expectation - sort_info['sigma_template_ci'] * np.sqrt(separability_metrics['neuron_variances'][n]),
-                sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_variances'][n]))
+        separability_metrics['neuron_lower_thresholds'][n] = sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_variances'][n])
+        # separability_metrics['neuron_lower_thresholds'][n] = max(
+        #         expectation - sort_info['sigma_template_ci'] * np.sqrt(separability_metrics['neuron_variances'][n]),
+        #         sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_variances'][n]))
         separability_metrics['neuron_upper_thresholds'][n] = expectation + sort_info['sigma_template_ci'] * np.sqrt(separability_metrics['neuron_variances'][n])
 
     return separability_metrics
 
 
+def shifted_template_sum_variance(templates, n_chans, n_samples_per_chan,
+                                    n_max_shift_inds, channel_covariance_mats):
+    """
+    Note that for symmetry in matrix storage, t1 t2 at zero shift will be
+    repeated for each pair.
+    """
+    n_templates = templates.shape[0]
+    # Add 1 to max shift inds to include shift = 0
+    n_shifts = n_max_shift_inds + 1
+    shifted_sum_variances = np.zeros((n_templates * n_templates, n_shifts))
+    chan_shifted_sum_templates = np.zeros((n_shifts, n_samples_per_chan + n_shifts))
+    for t1_ind in range(0, n_templates):
+        for t2_ind in range(0, n_templates):
+            # Row where shifted t1 and t2 variances stored for output
+            shift_sum_row = t1_ind * n_templates + t2_ind
+            for chan in range(0, n_chans):
+                t_win = [chan*n_samples_per_chan, (chan+1)*n_samples_per_chan]
+                # t1 is fixed at beginning of summed template
+                chan_shifted_sum_templates[:, 0:n_samples_per_chan] = templates[t1_ind, t_win[0]:t_win[1]]
+                # Add in t2 at each shifted lag relative to t1
+                for shift_ind in range(0, n_shifts):
+                    chan_shifted_sum_templates[shift_ind, shift_ind:(shift_ind+n_samples_per_chan)] += templates[t2_ind, t_win[0]:t_win[1]]
+                # Add variance for each channel
+                # Use matrix multiplication as loop shortcut for first step
+                # then sum because result is not true matrix multiplication
+                shifted_sum_variances[shift_sum_row, :] += np.sum(
+                            (chan_shifted_sum_templates @ channel_covariance_mats[chan])
+                            * chan_shifted_sum_templates, axis=1)
+                # Reset these templates to 0 for next channel
+                chan_shifted_sum_templates[:] = 0.0
+
+    return shifted_sum_variances
+
+
 def pairwise_separability(separability_metrics, sort_info):
     """
     Note that output matrix of separabilty errors is not necessarily symmetric
-    due to the shifting alignment of templates and noise bias terms.
+    due to the multiplication of the probability both units' likelihoods are
+    less than zero.
     """
     n_chans = sort_info['n_channels']
     template_samples_per_chan = sort_info['n_samples_per_chan']

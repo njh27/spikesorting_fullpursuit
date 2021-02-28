@@ -420,9 +420,9 @@ __kernel void compute_template_maximum_likelihood(
     for (i = 0; i < (unsigned) stop - start; i++)
     {
         current_maximum_likelihood = full_likelihood_function[full_likelihood_function_offset + i];
-        if ( (current_maximum_likelihood > best_spike_likelihood_private)
-            && (current_maximum_likelihood > likelihood_lower_thresholds[template_number])
-            && (current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
+        if ( (current_maximum_likelihood > best_spike_likelihood_private) )
+            // && (current_maximum_likelihood > likelihood_lower_thresholds[template_number]) )
+            // && (current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
         {
             best_spike_likelihood_private = current_maximum_likelihood;
             best_spike_label_private = template_number;
@@ -445,7 +445,7 @@ __kernel void compute_template_maximum_likelihood(
     overlap_recheck[id] = 0;
     /* Must set overlap_recheck to 1 ONLY IF a spike will be added in this */
     /* window by binary pursuit. */
-    if ((best_spike_likelihood_private > 0.0) && (best_spike_index_private >= start_of_my_window) && (best_spike_index_private < end_of_my_window))
+    if ((best_spike_likelihood_private > likelihood_lower_thresholds[best_spike_label_private]) && (best_spike_index_private >= start_of_my_window) && (best_spike_index_private < end_of_my_window))
     {
         overlap_recheck[id] = 1;
     }
@@ -496,7 +496,7 @@ __kernel void overlap_recheck_indices(
     }
 
     const size_t global_id = get_global_id(0);
-    /* Can't do this stuff without num_shifts > 0 */
+    /* Can't do this stuff without num_shifts > 0. Add 1 to include shift 0 */
     __private size_t num_shifts = (size_t) (2 * n_max_shift_inds + 1);
     /* Need basic info about crazy indexing for each worker */
     __private size_t items_per_index = num_shifts * num_shifts * (size_t) num_templates;
@@ -566,18 +566,6 @@ __kernel void overlap_recheck_indices(
             }
         }
     }
-
-    // if (best_spike_label_private == template_number)
-    // {
-    //     skip_curr_id = 1;
-    // }
-
-    // __private const float raw_best_spike_likelihood_private = full_likelihood_function[best_spike_label_private * voltage_length + best_spike_index_private] + gamma[best_spike_label_private];
-    // if ((raw_best_spike_likelihood_private > -1.0*template_sum_squared[best_spike_label_private] - gamma[best_spike_label_private])
-    //     && (raw_best_spike_likelihood_private < -1.0*template_sum_squared[best_spike_label_private] + gamma[best_spike_label_private]))
-    // {
-    //     skip_curr_id = 1;
-    // }
 
     /* Compiler demands these outside of skip check */
     __private unsigned int absolute_fixed_index = 0;
@@ -694,7 +682,8 @@ __kernel void parse_overlap_recheck_indices(
     __global float * restrict overlap_group_best_likelihood,
     __global unsigned int * restrict overlap_group_best_work_id,
     __global const float * restrict likelihood_lower_thresholds,
-    __global const float * restrict likelihood_upper_thresholds)
+    __global const float * restrict likelihood_upper_thresholds,
+    __global const float * restrict likelihood_lower_shift_sum_thresholds)
 {
 
     __private const size_t num_shifts = (size_t) (2 * n_max_shift_inds + 1);
@@ -733,6 +722,7 @@ __kernel void parse_overlap_recheck_indices(
     {
         return; /* Shifts didn't improve so just return the previous values */
     }
+
     /* Shifts improved likelihood, so we need to use best shifts ID and crazy indices to find answer */
     if ((best_template_shifts_id % (n_local_ID * local_size)) >= items_per_index)
     {
@@ -749,23 +739,63 @@ __kernel void parse_overlap_recheck_indices(
     __private const unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_ref_ind - n_max_shift_inds;
     __private const unsigned int absolute_shift_index = best_spike_index_private + template_shift_ref_ind - n_max_shift_inds;
 
+    /* Determine whether the best shifted overlap sum exceeds its threshold */
+    __private unsigned int shift_thresholds_index;
+    __private unsigned int delta_shift_inds;
+    if (template_shift_ref_ind - fixed_shift_ref_ind < 0.0)
+    {
+        delta_shift_inds = fixed_shift_ref_ind - template_shift_ref_ind;
+        /* Second template falls after the fixed template. Get corresponding
+        threshold. Add 1 to max shift inds to adjust for shift = 0 */
+        shift_thresholds_index = best_spike_label_private * num_templates * (n_max_shift_inds+1) + (template_number * (n_max_shift_inds+1)) + delta_shift_inds;
+        if (best_group_likelihood <= likelihood_lower_shift_sum_thresholds[shift_thresholds_index])
+        {
+            return;
+        }
+    }
+    else
+    {
+        delta_shift_inds = template_shift_ref_ind - fixed_shift_ref_ind;
+        /* Fixed template falls after or on the second template. Get corresponding
+        threshold. Add 1 to max shift inds to adjust for shift = 0 */
+        shift_thresholds_index = template_number * num_templates * (n_max_shift_inds+1) + (best_spike_label_private * (n_max_shift_inds+1)) + delta_shift_inds;
+        if (best_group_likelihood <= likelihood_lower_shift_sum_thresholds[shift_thresholds_index])
+        {
+            return;
+        }
+    }
+
     float actual_template_likelihood_at_index = full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index];
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];
 
+    // if ( (actual_template_likelihood_at_index <= likelihood_lower_thresholds[best_spike_label_private])
+    //     || (actual_current_maximum_likelihood <= likelihood_lower_thresholds[template_number]) )
+    // {
+    //     return;
+    // }
+
     /* Reset the likelihood and best index and label to maximum */
-    if ( actual_template_likelihood_at_index >= actual_current_maximum_likelihood
-        && actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private]
-        && actual_template_likelihood_at_index < likelihood_upper_thresholds[best_spike_label_private])
+    if ( (actual_template_likelihood_at_index >= actual_current_maximum_likelihood) )
+        // && (actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private]) )
+        // && (actual_template_likelihood_at_index < likelihood_upper_thresholds[best_spike_label_private]) )
     {
+        // if (actual_template_likelihood_at_index <= likelihood_lower_thresholds[best_spike_label_private])
+        // {
+        //     return;
+        // }
         /* The main label has better likelihood than best shifted match */
         best_spike_likelihoods[id] = best_group_likelihood;
         overlap_best_spike_labels[id] = best_spike_label_private;
         overlap_best_spike_indices[id] = absolute_fixed_index;
     }
-    else if ( actual_template_likelihood_at_index < actual_current_maximum_likelihood
-            && actual_current_maximum_likelihood > likelihood_lower_thresholds[template_number]
-            && actual_current_maximum_likelihood < likelihood_upper_thresholds[template_number])
+    else if ( (actual_template_likelihood_at_index < actual_current_maximum_likelihood) )
+            // && (actual_current_maximum_likelihood > likelihood_lower_thresholds[template_number]) )
+            // && (actual_current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
     {
+        // if (actual_current_maximum_likelihood <= likelihood_lower_thresholds[template_number])
+        // {
+        //     return;
+        // }
         /* The best shifted match unit has better likelihood than the main label */
         best_spike_likelihoods[id] = best_group_likelihood;
         overlap_best_spike_labels[id] = template_number;
@@ -883,7 +913,7 @@ __kernel void binary_pursuit(
     const unsigned int num_templates,
     const unsigned int template_length,
     __global const float * restrict template_sum_squared,
-    __global const float * restrict gamma,
+    __global const float * restrict likelihood_lower_thresholds,
     __global unsigned int * restrict window_indices,
     const unsigned int num_window_indices,
     __global const unsigned int * restrict best_spike_indices,
@@ -935,7 +965,7 @@ __kernel void binary_pursuit(
     if (end_of_my_window < voltage_length - template_length && num_neighbor_channels > 0)
     {
         maximum_likelihood = best_spike_likelihoods[id];
-        if (maximum_likelihood > 0.0)
+        if (maximum_likelihood > likelihood_lower_thresholds[best_spike_labels[id]])
         {
             maximum_likelihood_neuron = best_spike_labels[id];
             maximum_likelihood_index = best_spike_indices[id];
@@ -946,7 +976,7 @@ __kernel void binary_pursuit(
     /* or was an overlap recheck) add the spike to the output */
     local_scratch[local_id] = 0;
     has_spike = 0;
-    if (maximum_likelihood > 0.0)
+    if (maximum_likelihood > likelihood_lower_thresholds[best_spike_labels[id]])
     {
         if (((maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)) || (overlap_recheck[id] == 1))
         {

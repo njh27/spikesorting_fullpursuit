@@ -270,8 +270,13 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # + the maximum number of overlap check window indices.
     print("!!! ONLY USING 10K NOISE SAMPLES FOR COVARIANCE !!!")
     full_chan_covariance_mats = noise_covariance_parallel(
-                        voltage, [bp_chan_win[0], bp_chan_win[1] + n_max_shift_inds],
+                        voltage, [bp_chan_win[0], bp_chan_win[1] + n_max_shift_inds + 1],
                         10000, rand_state=None)
+
+
+    # shifted_sum_variances = neuron_separability.shifted_template_sum_variance(bp_templates,
+    #                     self.sort_info['n_channels'], self.sort_info['n_samples_per_chan'],
+    #                     self.sort_info['max_shift_inds'], full_chan_covariance_mats)
 
     templates = np.float32(np.vstack(templates))
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
@@ -283,6 +288,13 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
 
 
     """
+    I WILL NEED FULL COVARIANCE MATRIX FOR BINARY PURSUIT BASED CLIP WIDTH AND
+    SHIFTS. I SHOULD FIND THE OVERLAPPING TEMPLATES BASED ON BINARY PURSUIT CLIP
+    WIDTH INSTEAD OF ORIGINAL CLIP WIDTH. I CAN THEN USE THE VARIANCE OF THE SHIFTS
+    TO DETERMINE WHETHER A TEMPLATE IS A SUM THAT NEEDS REMOVED BECAUSE IT WILL
+    MOST ACCURATELY REFLECT THE VARIANCE OF THE SUM OF THE OPTIMAL TEMPALTATES
+    AND I'M ALREADY COMPUTING IT ANYWAYS. MAKE SURE TO GO BACK AND DELETE THE
+    VARIANCES FROM THE CORRESPONDING TEMPLATES AS WELL.
     I should first get the binary pursuit clip width, and the full covariance
     matrix for this clip width + shifts.
     Next need to get the sub-sampled covariance matrix for just the binary pursuit
@@ -350,6 +362,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
 
+    # Get templates based on new binary pursuit clip width
     templates = []
     neuron_clips = []
     next_label = 0

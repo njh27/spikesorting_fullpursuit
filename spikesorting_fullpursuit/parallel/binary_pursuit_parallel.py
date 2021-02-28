@@ -185,7 +185,6 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
     # Reshape our templates so that instead of being an MxN array, this
     # becomes a 1x(M*N) vector. The first template should be in the first N points
     templates_vector = templates.reshape(templates.size).astype(np.float32)
-
     # Make template labels, numbered from 0-n
     template_labels = [x for x in range(0, templates.shape[0])]
 
@@ -193,6 +192,17 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
     # subtracted.
     clip_init_samples = int(np.abs(chan_win[0]))
     template_labels = np.uint32(template_labels)
+
+    # Get info needed for binary pursuit (see note below). Do this up here so it
+    # is available for estimating GPU memory usage.
+    # Multiply by -0.5 to accomodate simplified delta likelihood function
+    template_sum_squared = np.float32(-0.5 * separability_metrics['template_SS'])
+    template_sum_squared_by_channel = np.float32(separability_metrics['template_SS_by_chan'].flatten(order='C'))
+    neuron_lower_thresholds = np.float32(separability_metrics['neuron_lower_thresholds'])
+    neuron_upper_thresholds = np.float32(separability_metrics['neuron_upper_thresholds'])
+    # Shape shifted sum thresholds to flat 1D vector and float32
+    neuron_shifted_sum_lower_thresholds = separability_metrics['template_shifted_sum_lower_thresholds'].reshape(
+                separability_metrics['template_shifted_sum_lower_thresholds'].size).astype(np.float32)
 
     # Load OpenCL code from a file (stored as a string)
     if kernels_path is None:
@@ -299,7 +309,7 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
 
         # Estimate the number of bytes that 1 second of data take up
         # This is skipping the bias and template squared error buffers which are small
-        constant_memory_usage = templates_vector.nbytes + template_labels.nbytes
+        constant_memory_usage = templates_vector.nbytes + template_labels.nbytes + neuron_shifted_sum_lower_thresholds.nbytes
         # Usage for voltage
         memory_usage_per_second = (n_chans * sampling_rate * np.dtype(np.float32).itemsize)
         # Add usage for likelihood functions
@@ -345,13 +355,6 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
         secret_spike_labels = []
         secret_spike_bool = []
         adjusted_spike_clips = []
-
-        # Compute info needed for binary pursuit (see note below).
-        # Multiply by -0.5 to accomodate simplified delta likelihood function
-        template_sum_squared = np.float32(-0.5 * separability_metrics['template_SS'])
-        template_sum_squared_by_channel = np.float32(separability_metrics['template_SS_by_chan'].flatten(order='C'))
-        neuron_lower_thresholds = np.float32(separability_metrics['neuron_lower_thresholds'])
-        neuron_upper_thresholds = np.float32(separability_metrics['neuron_upper_thresholds'])
 
         template_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=templates_vector)
         template_sum_squared_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=template_sum_squared)
@@ -410,6 +413,7 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
             # Construct our buffers
             lower_thresholds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=neuron_lower_thresholds)
             upper_thresholds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=neuron_upper_thresholds)
+            neuron_shifted_sum_lower_thresholds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=neuron_shifted_sum_lower_thresholds)
             num_additional_spikes_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(1, dtype=np.uint32)) # NOTE: Must be :rw for atomic to work
             additional_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
             additional_spike_labels_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
@@ -496,6 +500,7 @@ def binary_pursuit(templates, voltage, v_dtype, sort_info,
             parse_overlap_recheck_indices_kernel.set_arg(11, n_max_shift_inds)
             parse_overlap_recheck_indices_kernel.set_arg(14, lower_thresholds_buffer)
             parse_overlap_recheck_indices_kernel.set_arg(15, upper_thresholds_buffer)
+            parse_overlap_recheck_indices_kernel.set_arg(16, neuron_shifted_sum_lower_thresholds_buffer)
 
             check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
             check_overlap_reassignments_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template

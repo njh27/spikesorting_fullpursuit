@@ -479,8 +479,7 @@ __kernel void overlap_recheck_indices(
     __local float * restrict local_likelihoods,
     __local unsigned int * restrict local_ids,
     __global float * restrict overlap_group_best_likelihood,
-    __global unsigned int * restrict overlap_group_best_work_id,
-    __global const float * restrict likelihood_lower_shift_sum_thresholds)
+    __global unsigned int * restrict overlap_group_best_work_id)
 {
     const size_t local_id = get_local_id(0);
     const size_t local_size = get_local_size(0);
@@ -650,30 +649,6 @@ __kernel void overlap_recheck_indices(
                 current_maximum_likelihood -= 0.5 * summed_chan_ss;
             }
         }
-        // __private unsigned int shift_thresholds_index;
-        // __private unsigned int delta_shift_inds;
-        // if (template_shift_ref_ind - fixed_shift_ref_ind < 0.0)
-        // {
-        //     delta_shift_inds = fixed_shift_ref_ind - template_shift_ref_ind;
-        //     /* Second template falls after the fixed template. Get corresponding
-        //     threshold. Add 1 to max shift inds to adjust for shift = 0 */
-        //     shift_thresholds_index = best_spike_label_private * num_templates * (n_max_shift_inds+1) + (template_number * (n_max_shift_inds+1)) + delta_shift_inds;
-        //     if (current_maximum_likelihood <= likelihood_lower_shift_sum_thresholds[shift_thresholds_index])
-        //     {
-        //         current_maximum_likelihood = 0.0;
-        //     }
-        // }
-        // else
-        // {
-        //     delta_shift_inds = template_shift_ref_ind - fixed_shift_ref_ind;
-        //     /* Fixed template falls after or on the second template. Get corresponding
-        //     threshold. Add 1 to max shift inds to adjust for shift = 0 */
-        //     shift_thresholds_index = template_number * num_templates * (n_max_shift_inds+1) + (best_spike_label_private * (n_max_shift_inds+1)) + delta_shift_inds;
-        //     if (current_maximum_likelihood <= likelihood_lower_shift_sum_thresholds[shift_thresholds_index])
-        //     {
-        //         current_maximum_likelihood = 0.0;
-        //     }
-        // }
     }
 
     local_likelihoods[local_id] = current_maximum_likelihood;
@@ -715,8 +690,7 @@ __kernel void parse_overlap_recheck_indices(
     __global float * restrict overlap_group_best_likelihood,
     __global unsigned int * restrict overlap_group_best_work_id,
     __global const float * restrict likelihood_lower_thresholds,
-    __global const float * restrict likelihood_upper_thresholds,
-    __global const float * restrict likelihood_lower_shift_sum_thresholds)
+    __global const float * restrict likelihood_upper_thresholds)
 {
 
     __private const size_t num_shifts = (size_t) (2 * n_max_shift_inds + 1);
@@ -771,32 +745,6 @@ __kernel void parse_overlap_recheck_indices(
     /* likelihood > 0 */
     __private const unsigned int absolute_fixed_index = best_spike_index_private + fixed_shift_ref_ind - n_max_shift_inds;
     __private const unsigned int absolute_shift_index = best_spike_index_private + template_shift_ref_ind - n_max_shift_inds;
-
-    /* Determine whether the best shifted overlap sum exceeds its threshold */
-    // __private unsigned int shift_thresholds_index;
-    // __private unsigned int delta_shift_inds;
-    // if (template_shift_ref_ind - fixed_shift_ref_ind < 0.0)
-    // {
-    //     delta_shift_inds = fixed_shift_ref_ind - template_shift_ref_ind;
-    //     /* Second template falls after the fixed template. Get corresponding
-    //     threshold. Add 1 to max shift inds to adjust for shift = 0 */
-    //     shift_thresholds_index = best_spike_label_private * num_templates * (n_max_shift_inds+1) + (template_number * (n_max_shift_inds+1)) + delta_shift_inds;
-    //     if (best_group_likelihood <= likelihood_lower_shift_sum_thresholds[shift_thresholds_index])
-    //     {
-    //         return;
-    //     }
-    // }
-    // else
-    // {
-    //     delta_shift_inds = template_shift_ref_ind - fixed_shift_ref_ind;
-    //     /* Fixed template falls after or on the second template. Get corresponding
-    //     threshold. Add 1 to max shift inds to adjust for shift = 0 */
-    //     shift_thresholds_index = template_number * num_templates * (n_max_shift_inds+1) + (best_spike_label_private * (n_max_shift_inds+1)) + delta_shift_inds;
-    //     if (best_group_likelihood <= likelihood_lower_shift_sum_thresholds[shift_thresholds_index])
-    //     {
-    //         return;
-    //     }
-    // }
 
     float actual_template_likelihood_at_index = full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index];
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];

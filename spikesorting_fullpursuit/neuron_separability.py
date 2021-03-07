@@ -23,7 +23,7 @@ def compute_template_likelihood_variance(template, chan_covariance_mats,
                     @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
 
 
-def decision_boundary_equal_var(mu_1, mu_2, var, p_1):
+def find_decision_boundary_equal_var(mu_1, mu_2, var, p_1):
     """ Helper function to return the decision boundary between two 1D
     Gaussians with equal variance and Gaussian with mean=mu_1 has prior
     probability of p_1.
@@ -45,7 +45,7 @@ def decision_boundary_equal_var(mu_1, mu_2, var, p_1):
     return decision_boundary
 
 
-def decision_boundary(mu_1, mu_2, var_1, var_2):
+def find_decision_boundary(mu_1, mu_2, var_1, var_2):
     """ Helper function to return the decision boundary between 1D Gaussians with
     unequal variance but equal prior probabilities.
     This is the solution to:
@@ -119,8 +119,8 @@ def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info)
     return p_confusion
 
 
-def compute_metrics(templates, channel_covariance_mats, shifted_sum_variances,
-                    n_noise_samples, sort_info, rand_state=None):
+def compute_separability_metrics(templates, channel_covariance_mats,
+                                 n_noise_samples, sort_info, rand_state=None):
     """ Calculate variance and template sum squared metrics needed to compute
     separability_metrics between units and the delta likelihood function for binary
     pursuit. """
@@ -138,16 +138,14 @@ def compute_metrics(templates, channel_covariance_mats, shifted_sum_variances,
     separability_metrics['template_SS_by_chan'] = np.zeros((n_templates, n_chans))
     # Get channel covariance of appropriate size from the extra large covariance matrices
     separability_metrics['channel_covariance_mats'] = [x[0:template_samples_per_chan, 0:template_samples_per_chan] for x in channel_covariance_mats]
-    separability_metrics['template_shifted_sum_lower_thresholds'] = sort_info['sigma_noise_penalty'] * np.sqrt(shifted_sum_variances)
 
-    # Compute bias for each neuron from its per channel variance
+    # Compute variance for each neuron and the boundaries on its expected
+    # likelihood function distribution given this variance
     separability_metrics['neuron_variances'] = np.zeros(n_templates)
     separability_metrics['neuron_lower_thresholds'] = np.zeros(n_templates)
     separability_metrics['neuron_upper_thresholds'] = np.zeros(n_templates)
     for n in range(0, n_templates):
         expectation = 0.5 * separability_metrics['template_SS'][n]
-        variance = 0
-        noise_only = 0
         for chan in range(0, n_chans):
             t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
             separability_metrics['template_SS_by_chan'][n, chan] = np.sum(
@@ -157,83 +155,84 @@ def compute_metrics(templates, channel_covariance_mats, shifted_sum_variances,
                         @ separability_metrics['channel_covariance_mats'][chan]
                         @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
 
-        separability_metrics['neuron_lower_thresholds'][n] = max(sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_variances'][n]), 0)
-
-        print("OLD threshold:", separability_metrics['neuron_lower_thresholds'][n])
-
-        new_threshold = decision_boundary_equal_var(-expectation, expectation,
-                            separability_metrics['neuron_variances'][n],
-                            sort_info['p_noise'])
-
-        print("NEW threshold:", new_threshold)
-        # separability_metrics['neuron_lower_thresholds'][n] = new_threshold
-
-        separability_metrics['neuron_upper_thresholds'][n] = expectation + sort_info['sigma_template_ci'] * np.sqrt(separability_metrics['neuron_variances'][n])
+        # Expected number of threshold crossings due to noise given sigma
+        noise_crossings = 2 * norm.cdf(-sort_info['sigma'], 0, 1) * sort_info['n_samples']
+        # Determine peak channel for this unit
+        template_chan = np.argmax(np.abs(templates[n, :])) // template_samples_per_chan
+        # Use noise probability for this unit's peak channel
+        non_noise_crossings = sort_info['n_threshold_crossings'][template_chan] - noise_crossings
+        # p(noise) = 1 - p(not noise)
+        p_noise = 1.0 - (non_noise_crossings / sort_info['n_samples'])
+        # Decision boundary between this unit and noise
+        separability_metrics['neuron_lower_thresholds'][n] = find_decision_boundary_equal_var(
+                                    -expectation, expectation,
+                                    separability_metrics['neuron_variances'][n],
+                                    p_noise)
 
     return separability_metrics
 
 
-def shifted_template_sum_variance(templates, n_chans, n_samples_per_chan,
-                                    n_max_shift_inds, channel_covariance_mats):
-    """
-    Note that for symmetry in matrix storage, t1 t2 at zero shift will be
-    repeated for each pair.
-    """
-    n_templates = templates.shape[0]
-    # Add 1 to max shift inds to include shift = 0
-    n_shifts = n_max_shift_inds + 1
-    shifted_sum_variances = np.zeros((n_templates * n_templates, n_shifts))
-    shifted_sum_variances_single = np.zeros((n_templates * n_templates, n_shifts))
-    chan_shifted_sum_templates = np.zeros((n_shifts, n_samples_per_chan + n_shifts))
-    chan_shifted_sum_templates_single = np.zeros((n_samples_per_chan + n_shifts))
-    for t1_ind in range(0, n_templates):
-        for t2_ind in range(0, n_templates):
-            # Row where shifted t1 and t2 variances stored for output
-            shift_sum_row = t1_ind * n_templates + t2_ind
-            for chan in range(0, n_chans):
-                t_win = [chan*n_samples_per_chan, (chan+1)*n_samples_per_chan]
-                # t1 is fixed at beginning of summed template
-                chan_shifted_sum_templates[:, 0:n_samples_per_chan] = templates[t1_ind, t_win[0]:t_win[1]]
-                # Add in t2 at each shifted lag relative to t1
-                for shift_ind in range(0, n_shifts):
-                    chan_shifted_sum_templates_single[0:n_samples_per_chan] = templates[t1_ind, t_win[0]:t_win[1]]
-                    chan_shifted_sum_templates_single[shift_ind:(shift_ind+n_samples_per_chan)] += templates[t2_ind, t_win[0]:t_win[1]]
-
-                    shifted_sum_variances_single[shift_sum_row, shift_ind] += (chan_shifted_sum_templates_single[None, :]
-                                 @ channel_covariance_mats[chan]
-                                 @ chan_shifted_sum_templates_single[:, None])
-
-                    chan_shifted_sum_templates[shift_ind, shift_ind:(shift_ind+n_samples_per_chan)] += templates[t2_ind, t_win[0]:t_win[1]]
-                # Add variance for each channel
-                # Use matrix multiplication as loop shortcut for first step
-                # then sum because result is not true matrix multiplication
-                shifted_sum_variances[shift_sum_row, :] += np.sum(
-                            (chan_shifted_sum_templates @ channel_covariance_mats[chan])
-                            * chan_shifted_sum_templates, axis=1)
-                # Reset these templates to 0 for next channel
-                chan_shifted_sum_templates[:] = 0.0
-                chan_shifted_sum_templates_single[:] = 0.0
-
-    print("max var diffs", np.amax(np.amax(np.abs(shifted_sum_variances_single - shifted_sum_variances))))
-
-    return shifted_sum_variances_single
-
-
-def noise_threshold_templates(separability_metrics, sort_info):
-    """ Identify templates below noise threshold for deletion and reset the
-    lower threshold for remaining templates that might be affected. """
+def find_noisy_templates(separability_metrics, sort_info):
+    """ Identify templates as noisy if their lower confidene bound is less than
+    their lower threshold. In separability metrics are originally computed
+    with the lower threshold equal to the noise decision boundary. """
 
     n_chans = sort_info['n_channels']
     template_samples_per_chan = sort_info['n_samples_per_chan']
     max_shift = (template_samples_per_chan // 4) - 1
     n_neurons = separability_metrics['templates'].shape[0]
 
-    noisy_units = np.zeros(n_neurons, dtype=np.bool)
+    noisy_templates = np.zeros(n_neurons, dtype=np.bool)
     # Find neurons that are too close to noise and need to be deleted
     for neuron in range(0, n_neurons):
-        neuron_threshold = 2 * sort_info['sigma_noise_penalty'] * np.sqrt(separability_metrics['neuron_variances'][neuron])
-        if separability_metrics['template_SS'][neuron] < neuron_threshold:
-            noisy_units[neuron] = True
+        expectation = 0.5 * separability_metrics['template_SS'][neuron]
+        lower_confidence_bound = expectation - sort_info['sigma_noise_penalty'] \
+                        * np.sqrt(separability_metrics['neuron_variances'][neuron])
+        if separability_metrics['neuron_lower_thresholds'][neuron] > lower_confidence_bound:
+            noisy_templates[neuron] = True
+
+    return noisy_templates
+
+
+def del_noise_templates_and_threshold(separability_metrics, noisy_templates):
+
+    n_neurons = separability_metrics['templates'].shape[0]
+
+    for noise_n in range(0, n_neurons):
+        # Find each noisy template that will be deleted
+        if not noisy_templates[noise_n]:
+            continue
+        expectation_noise_n = 0.5 * separability_metrics['template_SS'][noise_n]
+        for n in range(0, n_neurons):
+            # For each template that will NOT be deleted
+            if noisy_templates[n]:
+                continue
+            print("Comparing noise unit", noise_n, "with good unit", n)
+            # Reset the noise boundary for this template to be the maximum value
+            # of its current boundary and all noise template boundaries
+            expectation_n = 0.5 * separability_metrics['template_SS'][n]
+            decision_boundary = find_decision_boundary(expectation_noise_n,
+                                    expectation_n,
+                                    separability_metrics['neuron_variances'][noise_n],
+                                    separability_metrics['neuron_variances'][n])
+            print("Good unit current lower bound is", separability_metrics['neuron_lower_thresholds'][n])
+            print("Decision boundary with noise unit is", decision_boundary)
+            if separability_metrics['neuron_lower_thresholds'][n] < decision_boundary:
+                print("REASSIGNIN LOWER THRESHOLD")
+                separability_metrics['neuron_lower_thresholds'][n] = decision_boundary
+
+    # Remove data associated with noise templates from separability_metrics
+    for key in separability_metrics.keys():
+        if key in ['channel_covariance_mats']:
+            continue
+        elif key in ['templates', 'template_SS_by_chan']:
+            separability_metrics[key] = separability_metrics[key][~noisy_templates, :]
+        elif key in ['template_SS', 'neuron_variances', 'neuron_lower_thresholds', 'neuron_upper_thresholds']:
+            separability_metrics[key] = separability_metrics[key][~noisy_templates]
+        else:
+            print("!!! Could not find a condition for metrics key !!!", key)
+
+    return separability_metrics
 
 def pairwise_separability(separability_metrics, sort_info):
     """
@@ -339,6 +338,52 @@ def pairwise_separability(separability_metrics, sort_info):
                 pair_separability_matrix[n1, n2] = 0
 
     return pair_separability_matrix, neuron_noise_separability, pair_decision_matrix
+
+
+# def shifted_template_sum_variance(templates, n_chans, n_samples_per_chan,
+#                                     n_max_shift_inds, channel_covariance_mats):
+#     """
+#     Note that for symmetry in matrix storage, t1 t2 at zero shift will be
+#     repeated for each pair.
+#     """
+#     n_templates = templates.shape[0]
+#     # Add 1 to max shift inds to include shift = 0
+#     n_shifts = n_max_shift_inds + 1
+#     shifted_sum_variances = np.zeros((n_templates * n_templates, n_shifts))
+#     shifted_sum_variances_single = np.zeros((n_templates * n_templates, n_shifts))
+#     chan_shifted_sum_templates = np.zeros((n_shifts, n_samples_per_chan + n_shifts))
+#     chan_shifted_sum_templates_single = np.zeros((n_samples_per_chan + n_shifts))
+#     for t1_ind in range(0, n_templates):
+#         for t2_ind in range(0, n_templates):
+#             # Row where shifted t1 and t2 variances stored for output
+#             shift_sum_row = t1_ind * n_templates + t2_ind
+#             for chan in range(0, n_chans):
+#                 t_win = [chan*n_samples_per_chan, (chan+1)*n_samples_per_chan]
+#                 # t1 is fixed at beginning of summed template
+#                 chan_shifted_sum_templates[:, 0:n_samples_per_chan] = templates[t1_ind, t_win[0]:t_win[1]]
+#                 # Add in t2 at each shifted lag relative to t1
+#                 for shift_ind in range(0, n_shifts):
+#                     chan_shifted_sum_templates_single[0:n_samples_per_chan] = templates[t1_ind, t_win[0]:t_win[1]]
+#                     chan_shifted_sum_templates_single[shift_ind:(shift_ind+n_samples_per_chan)] += templates[t2_ind, t_win[0]:t_win[1]]
+#
+#                     shifted_sum_variances_single[shift_sum_row, shift_ind] += (chan_shifted_sum_templates_single[None, :]
+#                                  @ channel_covariance_mats[chan]
+#                                  @ chan_shifted_sum_templates_single[:, None])
+#
+#                     chan_shifted_sum_templates[shift_ind, shift_ind:(shift_ind+n_samples_per_chan)] += templates[t2_ind, t_win[0]:t_win[1]]
+#                 # Add variance for each channel
+#                 # Use matrix multiplication as loop shortcut for first step
+#                 # then sum because result is not true matrix multiplication
+#                 shifted_sum_variances[shift_sum_row, :] += np.sum(
+#                             (chan_shifted_sum_templates @ channel_covariance_mats[chan])
+#                             * chan_shifted_sum_templates, axis=1)
+#                 # Reset these templates to 0 for next channel
+#                 chan_shifted_sum_templates[:] = 0.0
+#                 chan_shifted_sum_templates_single[:] = 0.0
+#
+#     print("max var diffs", np.amax(np.amax(np.abs(shifted_sum_variances_single - shifted_sum_variances))))
+#
+#     return shifted_sum_variances_single
 
 
 def empirical_separability(voltage, spike_times, templates, window_samples, separability_metrics, add_spikes=False):

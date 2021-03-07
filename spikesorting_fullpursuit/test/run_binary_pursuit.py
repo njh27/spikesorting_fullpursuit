@@ -2,13 +2,12 @@ import numpy as np
 from scipy import signal
 from scipy import stats
 from spikesorting_fullpursuit import neuron_separability
-from spikesorting_fullpursuit.segment import median_threshold
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
-from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
+from spikesorting_fullpursuit.parallel.segment_parallel import identify_threshold_crossings, time_window_to_samples, median_threshold
 from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parallel
 
-
+from scipy.stats import norm
 import matplotlib.pyplot as plt
 
 
@@ -276,6 +275,7 @@ class RunBinaryPursuit(object):
                      'n_samples_per_chan': self.neuron_templates.shape[1],
                      'clip_width': [pre_time, post_time],
                      'sampling_rate': self.samples_per_second,
+                     'n_samples': self.voltage_array.shape[1]
                      })
         bp_chan_win, _ = time_window_to_samples(self.sort_info['clip_width'], self.sort_info['sampling_rate'])
         if self.sort_info['max_shift_inds'] is None:
@@ -295,10 +295,35 @@ class RunBinaryPursuit(object):
                             self.sort_info['n_channels'], self.sort_info['n_samples_per_chan'],
                             self.sort_info['max_shift_inds'], self.full_chan_covariance_mats)
 
+        """ EXPERIMENTAL FINDING PROB NOISE """
+        self.sort_info['n_threshold_crossings'] = np.zeros(self.voltage_array.shape[0])
+        chan_thresholds = median_threshold(self.voltage_array, self.sort_info['sigma'])
+        for chan in range(0, self.voltage_array.shape[0]):
+            _, self.sort_info['n_threshold_crossings'][chan] = identify_threshold_crossings(
+                            self.voltage_array[chan, :], self.sort_info, chan_thresholds[chan])
+
+        print("N under threshold", np.count_nonzero(np.abs(self.voltage_array) <= chan_thresholds[0]))
+        print("N threshold crossings", self.sort_info['n_threshold_crossings'][0])
+        print("N threshold crossings from under",  self.voltage_array.shape[1]-np.count_nonzero(np.abs(self.voltage_array) <= chan_thresholds[0]))
+
+        self.sort_info['p_noise'] = np.count_nonzero(np.abs(self.voltage_array) <= chan_thresholds[0]) / self.voltage_array.shape[1]
+        print("OLD Noise probability is", self.sort_info['p_noise'])
+
+        print("updated this SHIT!!!!!")
+        noise_crossings = 2 * norm.cdf(-self.sort_info['sigma'], 0, 1) * self.voltage_array.shape[1]
+        non_noise_crossings = self.sort_info['n_threshold_crossings'][0] - noise_crossings
+        self.sort_info['p_noise'] = 1.0 - (non_noise_crossings / (self.voltage_array.shape[1]))
+        print("NEW Noise probability is", self.sort_info['p_noise'])
+
+        actual_noise_prob = (self.voltage_array.shape[1] - (self.actual_IDs[0].shape[0] + self.actual_IDs[1].shape[0])) / self.voltage_array.shape[1]
+        print("ACTUAL noise probability is", actual_noise_prob)
+
         self.separability_metrics = neuron_separability.compute_metrics(bp_templates,
                                 self.full_chan_covariance_mats,
                                 shifted_sum_variances,
                                 10000, self.sort_info)
+
+        separability, noise, decision = neuron_separability.pairwise_separability(self.separability_metrics, self.sort_info)
 
         crossings, neuron_labels, bp_bool, _ = binary_pursuit_parallel.binary_pursuit(
                         bp_templates, self.voltage_array, self.voltage_dtype,

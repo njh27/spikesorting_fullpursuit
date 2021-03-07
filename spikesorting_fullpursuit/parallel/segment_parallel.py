@@ -5,6 +5,26 @@ from spikesorting_fullpursuit import sort
 
 
 
+"""
+    threshold(probe)
+
+Determines the per-channel threshold necessary for the detection of spikes.
+This function returns a vector of thresholds (one for each channel). These
+represent the absolute value of the threshold.
+"""
+def median_threshold(voltage, sigma):
+    if voltage.ndim == 1:
+        voltage = np.expand_dims(voltage, 0)
+    num_channels = voltage.shape[0]
+    thresholds = np.empty((num_channels, ))
+    for chan in range(0, num_channels):
+        abs_voltage = np.abs(voltage[chan, :])
+        thresholds[chan] = np.nanmedian(abs_voltage) / 0.6745
+    thresholds *= sigma
+
+    return thresholds
+
+
 def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0., align_window=[-5e-4, 5e-4]):
 
     skip_indices = max(int(round(skip * probe_dict['sampling_rate'])), 1) - 1
@@ -14,6 +34,8 @@ def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0., a
     # Find points above threshold where preceeding sample was below threshold (excludes first point)
     first_thresh_index[1:] = np.logical_and(voltage[1:] > threshold, voltage[0:-1] <= threshold)
     events = np.nonzero(first_thresh_index)[0]
+    # This is the raw total number of threshold crossings
+    n_crossings = events.shape[0]
 
     # Realign event times on min or max in align_window
     window = time_window_to_samples(align_window, probe_dict['sampling_rate'])[0]
@@ -45,7 +67,7 @@ def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0., a
             last_n = n
     events = events[~bad_index]
 
-    return events
+    return events, n_crossings
 
 
 def keep_valid_inds(keep_data_list, valid_inds):

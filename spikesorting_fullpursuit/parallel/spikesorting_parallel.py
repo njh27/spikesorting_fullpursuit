@@ -399,12 +399,16 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         skip = np.amax(np.abs(settings['clip_width'])) / 2
         align_window = [skip, skip]
         if settings['verbose']: print("Identifying threshold crossings", flush=True)
-        crossings = segment_parallel.identify_threshold_crossings(voltage[chan, :], item_dict, item_dict['thresholds'][chan], skip=skip, align_window=align_window)
+        # Note that n_crossings is NOT just len(crossings)! It is the raw number
+        # of threshold crossings. Values of crossings obey skip and align window.
+        crossings, n_crossings = segment_parallel.identify_threshold_crossings(voltage[chan, :], item_dict, item_dict['thresholds'][chan], skip=skip, align_window=align_window)
         if crossings.size == 0:
             exit_type = "No crossings over threshold."
             # Raise error to force exit and wrap_up()
             crossings, neuron_labels = [], []
             raise NoSpikesError
+        # Save this number for later
+        settings['n_threshold_crossings'][chan] = n_crossings
         min_cluster_size = (np.floor(settings['min_firing_rate'] * item_dict['n_samples'] / item_dict['sampling_rate'])).astype(np.int64)
         if min_cluster_size < 1:
             min_cluster_size = 1
@@ -701,6 +705,7 @@ def spike_sort_parallel(Probe, **kwargs):
         settings['segment_duration'] = int(np.ceil((Probe.n_samples
                         + n_segs * settings['segment_overlap']) / (n_segs + 1)))
         print("Input segment duration was rounded from", input_duration_seconds, "up to", settings['segment_duration']/Probe.sampling_rate, "seconds to make segments equal length.")
+    settings['n_threshold_crossings'] = np.zeros(Probe.num_channels)
 
     segment_onsets = []
     segment_offsets = []

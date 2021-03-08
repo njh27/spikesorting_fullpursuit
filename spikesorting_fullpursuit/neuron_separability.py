@@ -106,6 +106,7 @@ def compute_separability_metrics(templates, channel_covariance_mats,
     separability_metrics['template_SS_by_chan'] = np.zeros((n_templates, n_chans))
     # Get channel covariance of appropriate size from the extra large covariance matrices
     separability_metrics['channel_covariance_mats'] = channel_covariance_mats
+    separability_metrics['contamination'] = np.zeros(n_templates)
 
     # Compute variance for each neuron and the boundaries with noise for expected
     # likelihood function distribution given this variance
@@ -135,6 +136,12 @@ def compute_separability_metrics(templates, channel_covariance_mats,
                                     -expectation, expectation,
                                     separability_metrics['neuron_variances'][n],
                                     p_noise)
+        # Expected proportion of true noise events that exceed lower threshold
+        # and could be added to neuron n
+        separability_metrics['contamination'][n] = norm.sf(
+                            separability_metrics['neuron_lower_thresholds'][n],
+                            -expectation,
+                            np.sqrt(separability_metrics['neuron_variances'][n]))
 
     return separability_metrics
 
@@ -176,6 +183,7 @@ def del_noise_templates_and_threshold(separability_metrics, sort_info,
             continue
         reset_boundaries = False
         max_boundaries = np.copy(separability_metrics['neuron_lower_thresholds'])
+        max_contamination = np.copy(separability_metrics['contamination'])
         for n in range(0, n_neurons):
             # For each template that will NOT be deleted
             if noisy_templates[n]:
@@ -210,8 +218,16 @@ def del_noise_templates_and_threshold(separability_metrics, sort_info,
                     # sure the current noise neuron will be deleted
                     reset_boundaries = True
                     max_boundaries[n] = decision_boundary
+                    # Calculate proportion of deleted noise unit spikes expected
+                    # to be added to unit n given this boundary
+                    p_contamination = norm.sf(decision_boundary,
+                                expectation_n_noise_n,
+                                np.sqrt(separability_metrics['neuron_variances'][n]))
+                    max_contamination[n] = p_contamination
+
         if reset_boundaries:
             separability_metrics['neuron_lower_thresholds'] = max_boundaries
+            separability_metrics['contamination'] = max_contamination
 
     # Remove data associated with noise templates from separability_metrics
     for key in separability_metrics.keys():
@@ -219,7 +235,7 @@ def del_noise_templates_and_threshold(separability_metrics, sort_info,
             continue
         elif key in ['templates', 'template_SS_by_chan']:
             separability_metrics[key] = separability_metrics[key][~noisy_templates, :]
-        elif key in ['template_SS', 'neuron_variances', 'neuron_lower_thresholds', 'neuron_upper_thresholds']:
+        elif key in ['template_SS', 'neuron_variances', 'neuron_lower_thresholds', 'contamination']:
             separability_metrics[key] = separability_metrics[key][~noisy_templates]
         else:
             print("!!! Could not find a condition for metrics key !!!", key)

@@ -240,8 +240,7 @@ static float compute_maximum_likelihood(
     const unsigned int num_templates,
     const unsigned int template_length,
     const unsigned int template_number,
-    __global const float * restrict template_sum_squared,
-    __global const float * restrict gamma)
+    __global const float * restrict template_sum_squared)
 {
     unsigned int i;
     unsigned int current_channel;
@@ -255,7 +254,7 @@ static float compute_maximum_likelihood(
     {
         return maximum_likelihood; /* Invalid template number, return 0.0 */
     }
-    maximum_likelihood = template_sum_squared[template_number]; // - gamma[template_number];
+    maximum_likelihood = template_sum_squared[template_number];
 
     /* The master channel exceeded threshold, check all of our neighbors */
     for (current_channel = 0; current_channel < num_neighbor_channels; current_channel++)
@@ -279,7 +278,6 @@ __kernel void compute_full_likelihood(
     const unsigned int num_templates,
     const unsigned int template_length,
     __global const float * restrict template_sum_squared,
-    __global const float * restrict gamma,
     __global const unsigned int * restrict window_indices,
     const unsigned int num_window_indices,
     __global float * restrict full_likelihood_function)
@@ -313,7 +311,7 @@ __kernel void compute_full_likelihood(
     {
         float current_maximum_likelihood = compute_maximum_likelihood(voltage, voltage_length, num_neighbor_channels,
             i + start_of_my_window, templates, num_templates, template_length, template_number,
-            template_sum_squared, gamma);
+            template_sum_squared);
         full_likelihood_function[full_likelihood_function_offset + i] = current_maximum_likelihood;
     }
     return;
@@ -381,8 +379,7 @@ __kernel void compute_template_maximum_likelihood(
     __global unsigned int * restrict overlap_best_spike_indices,
     __global unsigned int * restrict overlap_best_spike_labels,
     __global float * restrict full_likelihood_function,
-    __global const float * restrict likelihood_lower_thresholds,
-    __global const float * restrict likelihood_upper_thresholds)
+    __global const float * restrict likelihood_lower_thresholds)
 {
     const size_t global_id = get_global_id(0);
     if (num_window_indices > 0 && window_indices != NULL && global_id >= num_window_indices)
@@ -421,8 +418,6 @@ __kernel void compute_template_maximum_likelihood(
     {
         current_maximum_likelihood = full_likelihood_function[full_likelihood_function_offset + i];
         if ( (current_maximum_likelihood > best_spike_likelihood_private) )
-            // && (current_maximum_likelihood > likelihood_lower_thresholds[template_number]) )
-            // && (current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
         {
             best_spike_likelihood_private = current_maximum_likelihood;
             best_spike_label_private = template_number;
@@ -430,8 +425,6 @@ __kernel void compute_template_maximum_likelihood(
         }
         if ((current_maximum_likelihood > 0.0)
             && (start + i >= start_of_my_window) && (start + i < end_of_my_window) )
-            // && (current_maximum_likelihood > likelihood_lower_thresholds[template_number])
-            // && (current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
         {
             /* Track windows that need checked next pass regardless of whether */
             /* they end up having a spike added */
@@ -466,14 +459,10 @@ __kernel void overlap_recheck_indices(
     __global const voltage_type * restrict templates,
     const unsigned int num_templates,
     const unsigned int template_length,
-    __global const float * restrict template_sum_squared,
-    __global const float * restrict likelihood_lower_thresholds,
     __global const unsigned int * restrict overlap_window_indices,
     const unsigned int num_overlap_window_indices,
     __global unsigned int * restrict best_spike_indices,
     __global unsigned int * restrict best_spike_labels,
-    __global const float * restrict gamma_noise,
-    __global const float * restrict template_sum_squared_by_channel,
     __global float * restrict full_likelihood_function,
     const unsigned int n_max_shift_inds,
     __local float * restrict local_likelihoods,
@@ -567,11 +556,6 @@ __kernel void overlap_recheck_indices(
         }
     }
 
-    // if (full_likelihood_function[best_spike_label_private * voltage_length + best_spike_index_private] <= likelihood_lower_thresholds[best_spike_label_private])
-    // {
-    //     skip_curr_id = 1;
-    // }
-
     /* Compiler demands these outside of skip check */
     __private unsigned int absolute_fixed_index = 0;
     __private unsigned int absolute_shift_index = 0;
@@ -585,12 +569,8 @@ __kernel void overlap_recheck_indices(
 
         /* Do not do this if subtracting either unit at its current index does */
         /* not improve the likelihood */
-        // if ((best_spike_likelihood + gamma[best_spike_label_private] <= 0) &&
-        //       (template_spike_likelihood + gamma[template_number] <= 0))
         if ((best_spike_likelihood <= 0) &&
               (template_spike_likelihood <= 0))
-        // if ((full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index] <= 0) ||
-        //       (full_likelihood_function[template_number * voltage_length + absolute_shift_index] <= 0))
         {
             skip_curr_id = 1;
         }
@@ -677,7 +657,6 @@ __kernel void overlap_recheck_indices(
 __kernel void parse_overlap_recheck_indices(
     const unsigned int voltage_length,
     const unsigned int num_templates,
-    __global const float * restrict gamma,
     __global const unsigned int * restrict overlap_window_indices,
     const unsigned int num_overlap_window_indices,
     __global unsigned int * restrict best_spike_indices,
@@ -688,9 +667,7 @@ __kernel void parse_overlap_recheck_indices(
     __global float * restrict full_likelihood_function,
     const unsigned int n_max_shift_inds,
     __global float * restrict overlap_group_best_likelihood,
-    __global unsigned int * restrict overlap_group_best_work_id,
-    __global const float * restrict likelihood_lower_thresholds,
-    __global const float * restrict likelihood_upper_thresholds)
+    __global unsigned int * restrict overlap_group_best_work_id)
 {
 
     __private const size_t num_shifts = (size_t) (2 * n_max_shift_inds + 1);
@@ -749,44 +726,20 @@ __kernel void parse_overlap_recheck_indices(
     float actual_template_likelihood_at_index = full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index];
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];
 
-    // if ( (actual_template_likelihood_at_index <= likelihood_lower_thresholds[best_spike_label_private])
-    //     || (actual_current_maximum_likelihood <= likelihood_lower_thresholds[template_number]) )
-    // {
-    //     return;
-    // }
-
     /* Reset the likelihood and best index and label to maximum */
-    if ( (actual_template_likelihood_at_index >= actual_current_maximum_likelihood) )
-        // && (actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private]) )
-        // && (actual_template_likelihood_at_index < likelihood_upper_thresholds[best_spike_label_private]) )
+    if (actual_template_likelihood_at_index >= actual_current_maximum_likelihood)
     {
-        // if (actual_template_likelihood_at_index <= likelihood_lower_thresholds[best_spike_label_private])
-        // {
-        //     return;
-        // }
         /* The main label has better likelihood than best shifted match */
         best_spike_likelihoods[id] = best_group_likelihood;
         overlap_best_spike_labels[id] = best_spike_label_private;
         overlap_best_spike_indices[id] = absolute_fixed_index;
     }
-    else if ( (actual_template_likelihood_at_index < actual_current_maximum_likelihood) )
-            // && (actual_current_maximum_likelihood > likelihood_lower_thresholds[template_number]) )
-            // && (actual_current_maximum_likelihood < likelihood_upper_thresholds[template_number]) )
+    else
     {
-        // if (actual_current_maximum_likelihood <= likelihood_lower_thresholds[template_number])
-        // {
-        //     return;
-        // }
         /* The best shifted match unit has better likelihood than the main label */
         best_spike_likelihoods[id] = best_group_likelihood;
         overlap_best_spike_labels[id] = template_number;
         overlap_best_spike_indices[id] = absolute_shift_index;
-    }
-    else
-    {
-        /* Neither of the best matching shifted spikes is within its thresholds
-          so stick with the original label and index */
-        return;
     }
 }
 
@@ -887,13 +840,9 @@ __kernel void check_overlap_reassignments(
  *   restrictions as additional_spike_indices.
  */
 __kernel void binary_pursuit(
-    __global voltage_type * restrict voltage,
     const unsigned int voltage_length,
     const unsigned int num_neighbor_channels,
-    __global const voltage_type * restrict templates,
-    const unsigned int num_templates,
     const unsigned int template_length,
-    __global const float * restrict template_sum_squared,
     __global const float * restrict likelihood_lower_thresholds,
     __global unsigned int * restrict window_indices,
     const unsigned int num_window_indices,
@@ -953,13 +902,13 @@ __kernel void binary_pursuit(
         }
     }
 
-    /* If the best maximum likelihood is greater than zero and (within our window */
+    /* If the best maximum likelihood is greater than threshold and within our window */
     /* or was an overlap recheck) add the spike to the output */
     local_scratch[local_id] = 0;
     has_spike = 0;
     if (maximum_likelihood > likelihood_lower_thresholds[best_spike_labels[id]])
     {
-        if (((maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)) ) // || (overlap_recheck[id] == 1))
+        if (((maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)) ) || (overlap_recheck[id] == 1))
         {
             local_scratch[local_id] = 1;
             has_spike = 1;

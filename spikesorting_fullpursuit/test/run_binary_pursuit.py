@@ -257,7 +257,7 @@ class RunBinaryPursuit(object):
 
     def sort_test_dataset(self, add_templates=None, sort_templates=None, rand_state=None, kwargs={}):
 
-        self.sort_info = {'sigma_noise_penalty': 1.645,
+        self.sort_info = {'sigma_lower_bound': 2.0,
                         'sigma_template_ci': 4.0,
                         'get_adjusted_clips': False,
                         'max_gpu_memory': None,
@@ -302,12 +302,18 @@ class RunBinaryPursuit(object):
         self.separability_metrics = neuron_separability.compute_separability_metrics(
                                                 bp_templates,
                                                 self.full_chan_covariance_mats,
-                                                10000, self.sort_info)
+                                                self.sort_info)
         noisy_templates = neuron_separability.find_noisy_templates(
                                         self.separability_metrics, self.sort_info)
-        self.separability_metrics = neuron_separability.del_noise_templates_and_threshold(
-                                        self.separability_metrics, noisy_templates)
-
+        self.separability_metrics, noisy_templates = neuron_separability.del_noise_templates_and_threshold(
+                                        self.separability_metrics,
+                                        self.sort_info,
+                                        noisy_templates)
+        if self.separability_metrics['templates'].size == 0:
+            print("All templates were removed")
+            self.binary_pursuit_results = {'spike_indices': [],
+                                           'neuron_labels': []}
+            return
         crossings, neuron_labels, bp_bool, _ = binary_pursuit_parallel.binary_pursuit(
                         self.voltage_array, self.voltage_dtype,
                         self.sort_info, self.separability_metrics,

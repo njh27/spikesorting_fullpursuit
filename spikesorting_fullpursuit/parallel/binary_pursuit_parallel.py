@@ -201,9 +201,6 @@ def binary_pursuit(voltage, v_dtype, sort_info,
     template_sum_squared_by_channel = np.float32(separability_metrics['template_SS_by_chan'].flatten(order='C'))
     neuron_lower_thresholds = np.float32(separability_metrics['neuron_lower_thresholds'])
     neuron_upper_thresholds = np.float32(separability_metrics['neuron_upper_thresholds'])
-    # # Shape shifted sum thresholds to flat 1D vector and float32
-    # neuron_shifted_sum_lower_thresholds = separability_metrics['template_shifted_sum_lower_thresholds'].reshape(
-    #             separability_metrics['template_shifted_sum_lower_thresholds'].size).astype(np.float32)
 
     # Load OpenCL code from a file (stored as a string)
     if kernels_path is None:
@@ -310,7 +307,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
 
         # Estimate the number of bytes that 1 second of data take up
         # This is skipping the bias and template squared error buffers which are small
-        constant_memory_usage = templates_vector.nbytes + template_labels.nbytes #+ neuron_shifted_sum_lower_thresholds.nbytes
+        constant_memory_usage = templates_vector.nbytes + template_labels.nbytes
         # Usage for voltage
         memory_usage_per_second = (n_chans * sampling_rate * np.dtype(np.float32).itemsize)
         # Add usage for likelihood functions
@@ -414,7 +411,6 @@ def binary_pursuit(voltage, v_dtype, sort_info,
             # Construct our buffers
             lower_thresholds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=neuron_lower_thresholds)
             upper_thresholds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=neuron_upper_thresholds)
-            # neuron_shifted_sum_lower_thresholds_buffer = cl.Buffer(ctx, mf.READ_ONLY | mf.COPY_HOST_PTR, hostbuf=neuron_shifted_sum_lower_thresholds)
             num_additional_spikes_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(1, dtype=np.uint32)) # NOTE: Must be :rw for atomic to work
             additional_spike_indices_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))
             additional_spike_labels_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_template_widths, dtype=np.uint32))

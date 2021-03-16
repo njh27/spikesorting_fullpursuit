@@ -35,7 +35,7 @@ def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0., a
     first_thresh_index[1:] = np.logical_and(voltage[1:] > threshold, voltage[0:-1] <= threshold)
     events = np.nonzero(first_thresh_index)[0]
     # This is the raw total number of threshold crossings
-    n_crossings = events.shape[0]
+    n_crossings = events.shape[0] #np.count_nonzero(voltage > threshold)
 
     # Realign event times on min or max in align_window
     window = time_window_to_samples(align_window, probe_dict['sampling_rate'])[0]

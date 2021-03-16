@@ -4,7 +4,7 @@ import platform as sys_platform
 import re
 import time
 from spikesorting_fullpursuit.sort import reorder_labels
-from spikesorting_fullpursuit import segment
+from spikesorting_fullpursuit import segment, neuron_separability
 from spikesorting_fullpursuit.parallel import segment_parallel
 from scipy.signal import fftconvolve
 
@@ -857,5 +857,8 @@ def binary_pursuit(voltage, v_dtype, sort_info,
         # No spikes found and findall == True
         event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips = [], [], [], []
         print("Found a total of ZERO secret spikes", flush=True)
+
+    # Separability metrics uses number of spikes assigned to each unit
+    neuron_separability.add_n_spikes(separability_metrics, neuron_labels)
 
     return event_indices, neuron_labels, binary_pursuit_spike_bool, adjusted_clips

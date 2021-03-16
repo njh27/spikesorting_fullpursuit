@@ -9,6 +9,7 @@ from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parall
 
 from scipy.stats import norm
 import matplotlib.pyplot as plt
+import spikesorting_fullpursuit.parallel.segment_parallel
 
 
 
@@ -296,7 +297,7 @@ class RunBinaryPursuit(object):
         self.sort_info['n_threshold_crossings'] = np.zeros(self.voltage_array.shape[0])
         chan_thresholds = median_threshold(self.voltage_array, self.sort_info['sigma'])
         for chan in range(0, self.voltage_array.shape[0]):
-            _, self.sort_info['n_threshold_crossings'][chan] = identify_threshold_crossings(
+            _, self.sort_info['n_threshold_crossings'][chan] = spikesorting_fullpursuit.parallel.segment_parallel.identify_threshold_crossings(
                             self.voltage_array[chan, :], self.sort_info, chan_thresholds[chan])
 
         self.separability_metrics = neuron_separability.compute_separability_metrics(
@@ -321,11 +322,11 @@ class RunBinaryPursuit(object):
                         kernels_path=None, max_gpu_memory=self.sort_info['max_gpu_memory'])
 
         self.binary_pursuit_results = {'spike_indices': [],
-                                       'neuron_labels': []}
+                                       'label': []}
         # Map the binary pursuit spike times to neuron labels that should match actual_IDs
-        for n_num in np.unique(neuron_labels):
+        for n_num in range(0, self.separability_metrics['templates'].shape[0]):
             n_num_spike_indices = crossings[neuron_labels == n_num]
             index_order = np.argsort(n_num_spike_indices)
             n_num_spike_indices = n_num_spike_indices[index_order]
-            self.binary_pursuit_results['neuron_labels'].append(n_num)
+            self.binary_pursuit_results['label'].append(n_num)
             self.binary_pursuit_results['spike_indices'].append(n_num_spike_indices)

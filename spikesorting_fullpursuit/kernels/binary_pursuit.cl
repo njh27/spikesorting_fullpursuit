@@ -908,7 +908,8 @@ __kernel void binary_pursuit(
     has_spike = 0;
     if (maximum_likelihood > likelihood_lower_thresholds[best_spike_labels[id]])
     {
-        if (((maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)) ) || (overlap_recheck[id] == 1))
+        if ( ((maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window))
+            || (overlap_recheck[id] == 1) )
         {
             local_scratch[local_id] = 1;
             has_spike = 1;

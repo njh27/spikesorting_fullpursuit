@@ -289,7 +289,7 @@ class RunBinaryPursuit(object):
                 bp_templates = bp_templates.reshape(1, -1)
 
         self.full_chan_covariance_mats = noise_covariance_parallel(
-                            self.voltage_array, [bp_chan_win[0], bp_chan_win[1]],
+                            self.voltage_array, bp_chan_win,
                             10000, rand_state=rand_state)
 
         # Need to find threshold crossings here since we are not running

@@ -213,8 +213,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                               clips,
                               np.zeros(len(data_dict['results_dict'][w_item['ID']][0]), dtype=np.bool),
                               w_item['ID']])
-            # I am not sure why, but this has to be added here. It does not work
-            # when done above directly on the global data_dict elements
             if type(seg_data[-1][0][0]) == np.ndarray:
                 if seg_data[-1][0][0].size > 0:
                     # Adjust crossings for segment start time
@@ -238,7 +236,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     for n in seg_summary.summaries:
         templates.append(n['pursuit_template'])
         n_template_spikes.append(n['spike_indices'].shape[0])
-
 
     # Need this chan_win before assigning binary pursuit clip width. Used for
     # find_overlap_templates
@@ -269,14 +266,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Get the noise covariance over time within the binary pursuit clip width
     # + the maximum number of overlap check window indices.
     print("!!! ONLY USING 10K NOISE SAMPLES FOR COVARIANCE !!!")
-    full_chan_covariance_mats = noise_covariance_parallel(
-                        voltage, [bp_chan_win[0], bp_chan_win[1] + n_max_shift_inds + 1],
-                        10000, rand_state=None)
-
-
-    # shifted_sum_variances = neuron_separability.shifted_template_sum_variance(bp_templates,
-    #                     self.sort_info['n_channels'], self.sort_info['n_samples_per_chan'],
-    #                     self.sort_info['max_shift_inds'], full_chan_covariance_mats)
+    print("Computing clip noise covariance for each channel")
+    chan_covariance_mats = noise_covariance_parallel(voltage, bp_chan_win,
+                                                        10000, rand_state=None)
 
     templates = np.float32(np.vstack(templates))
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
@@ -308,11 +300,12 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     """
 
     # Sub index full covariance matrix to match original clip size
-    chan_covariance_mats = [x[0:original_n_samples_per_chan, 0:original_n_samples_per_chan] for x in full_chan_covariance_mats]
+    templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
     for t_info in templates_to_check:
         t_ind = t_info[0]
         shift_temp = t_info[1]
         sum_ind_1, sum_ind_2 = t_info[2]
+
         print("Neuron number: ", t_ind)
         plt.plot(templates[t_ind, :])
         plt.plot(shift_temp)
@@ -325,6 +318,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
 
         p_confusion = neuron_separability.check_template_pair(
                 templates[t_ind, :], shift_temp, chan_covariance_mats, sort_info)
+        if p_confusion > :
+            templates_to_delete[t_ind] = True
         print("Prob confusion", p_confusion)
 
     raise ValueError("stopping here")
@@ -332,8 +327,10 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     for x in reversed(range(0, len(seg_summary.summaries))):
         if templates_to_delete[x]:
             del seg_summary.summaries[x]
-    # print("TEMPLATE REDUCTION IS OFF !!!!!")
     print("Removing sums reduced number of templates to", len(seg_summary.summaries))
+
+    SHOULD I NEXT REMOVE ONE UNIT OF A PAIR WITH REALLY HIGH CONFUSION UNDER
+    THE ASSUMPTION THAT IT IS A REDUNDANT COPY?
 
     # print("SHARPEN IS OFF!!!!")
     seg_summary.sharpen_across_chans()

@@ -230,13 +230,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
 
     print("Entered with", len(seg_summary.summaries), "templates in segment", seg_number)
 
-    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
-    templates = []
-    n_template_spikes = []
-    for n in seg_summary.summaries:
-        templates.append(n['pursuit_template'])
-        n_template_spikes.append(n['spike_indices'].shape[0])
-
     # Need this chan_win before assigning binary pursuit clip width. Used for
     # find_overlap_templates
     chan_win, clip_width = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
@@ -264,16 +257,31 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     print("Binary pursuit samples per chan", sort_info['n_samples_per_chan'], "from", original_n_samples_per_chan)
 
     # Get the noise covariance over time within the binary pursuit clip width
-    # + the maximum number of overlap check window indices.
     print("!!! ONLY USING 10K NOISE SAMPLES FOR COVARIANCE !!!")
     print("Computing clip noise covariance for each channel")
     chan_covariance_mats = noise_covariance_parallel(voltage, bp_chan_win,
                                                         10000, rand_state=None)
 
+
+print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+templates = []
+n_template_spikes = []
+for n in seg_summary.summaries:
+    templates.append(n['full_template'])
+    n_template_spikes.append(n['spike_indices'].shape[0])
+
+    for n in neurons:
+        if not n['deleted_as_redundant']:
+            clips, _ = get_multichannel_clips(clips_dict, voltage,
+                                    n['spike_indices'],
+                                    clip_width=sort_info['clip_width'])
+            templates.append(np.mean(clips, axis=0))
+
+
     templates = np.float32(np.vstack(templates))
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
     templates_to_check = sort_cython.find_overlap_templates(templates,
-                                original_n_samples_per_chan, sort_info['n_channels'],
+                                sort_info['n_samples_per_chan'], sort_info['n_channels'],
                                 np.int64(np.abs(chan_win[0])//2),
                                 np.int64(np.abs(chan_win[1])//2),
                                 n_template_spikes)
@@ -361,15 +369,12 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
 
     # Get templates based on new binary pursuit clip width
     templates = []
-    neuron_clips = []
-    next_label = 0
     for n in neurons:
         if not n['deleted_as_redundant']:
             clips, _ = get_multichannel_clips(clips_dict, voltage,
                                     n['spike_indices'],
                                     clip_width=sort_info['clip_width'])
             templates.append(np.mean(clips, axis=0))
-            next_label += 1
 
     del seg_summary
     separability_metrics = neuron_separability.compute_separability_metrics(templates,

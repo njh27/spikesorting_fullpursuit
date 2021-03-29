@@ -184,8 +184,8 @@ class SegSummary(object):
                 #     continue
 
 
-                # Preserve full template for binary pursuit
-                neuron['pursuit_template'] = np.copy(neuron['template'])
+                # Preserve template over full neighborhood for certain comparisons
+                neuron['full_template'] = np.copy(neuron['template'])
                 # Set new neighborhood of all channels with SNR over SNR threshold.
                 # This will be used for align shifting and merge testing
                 # NOTE: This new neighborhood only applies for use internally
@@ -222,8 +222,8 @@ class SegSummary(object):
                     continue
                 # NOTE: This is a 'lazy' shift because it does not shift within
                 # each channel window separately
-                cross_corr = np.correlate(n1['pursuit_template'],
-                                          n2['pursuit_template'],
+                cross_corr = np.correlate(n1['full_template'],
+                                          n2['full_template'],
                                           mode='full')
                 max_corr_ind = np.argmax(cross_corr)
                 curr_shift = max_corr_ind - cross_corr.shape[0]//2
@@ -232,14 +232,14 @@ class SegSummary(object):
                     continue
                 # Align and truncate template and compute distance
                 if curr_shift > 0:
-                    shiftn1 = n1['pursuit_template'][curr_shift:]
-                    shiftn2 = n2['pursuit_template'][:-1*curr_shift]
+                    shiftn1 = n1['full_template'][curr_shift:]
+                    shiftn2 = n2['full_template'][:-1*curr_shift]
                 elif curr_shift < 0:
-                    shiftn1 = n1['pursuit_template'][:curr_shift]
-                    shiftn2 = n2['pursuit_template'][-1*curr_shift:]
+                    shiftn1 = n1['full_template'][:curr_shift]
+                    shiftn2 = n2['full_template'][-1*curr_shift:]
                 else:
-                    shiftn1 = n1['pursuit_template']
-                    shiftn2 = n2['pursuit_template']
+                    shiftn1 = n1['full_template']
+                    shiftn2 = n2['full_template']
                 # Must normalize distance per data point else reward big shifts
                 curr_distance = np.sum((shiftn1 - shiftn2) ** 2) / shiftn1.shape[0]
                 if curr_distance < best_distance:
@@ -291,9 +291,9 @@ class SegSummary(object):
         chans_used_for_clips = np.int64(np.hstack(chans_used_for_clips))
 
         # Compare best distance to size of the template SSE to see if its reasonable
-        min_template_SSE = min(np.sum(self.summaries[best_pair[0]]['pursuit_template'] ** 2),
-                                np.sum(self.summaries[best_pair[1]]['pursuit_template'] ** 2))
-        min_template_SSE /= (self.summaries[best_pair[0]]['pursuit_template'].shape[0] - np.abs(best_shift))
+        min_template_SSE = min(np.sum(self.summaries[best_pair[0]]['full_template'] ** 2),
+                                np.sum(self.summaries[best_pair[1]]['full_template'] ** 2))
+        min_template_SSE /= (self.summaries[best_pair[0]]['full_template'].shape[0] - np.abs(best_shift))
         if np.any(sample_select) and (best_distance < 0.5 * min_template_SSE):
             clips_1 = clips_1[:, sample_select]
             clips_2 = clips_2[:, sample_select]
@@ -410,11 +410,11 @@ class SegSummary(object):
         find_nearest_shifted_pair such that neuron2 is shifted in the same way. """
         n1 = self.summaries[neuron1_ind]
         n2 = self.summaries[neuron2_ind]
-        merged_template = np.zeros(n1['pursuit_template'].shape[0])
+        merged_template = np.zeros(n1['full_template'].shape[0])
         if shift != 0:
-            shift_template_2 = np.zeros(n2['pursuit_template'].shape[0])
+            shift_template_2 = np.zeros(n2['full_template'].shape[0])
             for chan in range(0, self.sort_info['n_channels']):
-                chan_temp_2 = n2['pursuit_template'][chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan']]
+                chan_temp_2 = n2['full_template'][chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan']]
                 if shift > 0:
                     shift_template_2[chan*self.sort_info['n_samples_per_chan'] + shift:(chan+1)*self.sort_info['n_samples_per_chan']] = \
                                     chan_temp_2[:-1*shift]
@@ -422,10 +422,10 @@ class SegSummary(object):
                     shift_template_2[chan*self.sort_info['n_samples_per_chan']:(chan+1)*self.sort_info['n_samples_per_chan'] + shift] = \
                                     chan_temp_2[-1*shift:]
         else:
-            shift_template_2 = n2['pursuit_template']
+            shift_template_2 = n2['full_template']
 
         n1_weight = n1['spike_indices'].shape[0] / (n1['spike_indices'].shape[0] + n2['spike_indices'].shape[0])
-        merged_template = n1_weight * n1['pursuit_template'] + (1 - n1_weight) * shift_template_2
+        merged_template = n1_weight * n1['full_template'] + (1 - n1_weight) * shift_template_2
 
         return merged_template
 
@@ -498,7 +498,7 @@ class SegSummary(object):
         for merge_item in templates_to_merge:
             merged_template = self.merge_templates(merge_item[0], merge_item[1], merge_item[2])
             # Update new weighted merged template
-            self.summaries[merge_item[0]]['pursuit_template'] = merged_template
+            self.summaries[merge_item[0]]['full_template'] = merged_template
             # Also update number of spikes so that future merges can have the
             # correct weighting. These are no long in correspondence with the clips
             # and not sorted so it is assumed they will not be used again

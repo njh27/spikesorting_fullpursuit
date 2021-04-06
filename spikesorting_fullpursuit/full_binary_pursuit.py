@@ -1,7 +1,8 @@
 import numpy as np
 import pickle
 import os
-from copy import copy
+from copy import copy, deepcopy
+from scipy.stats import norm
 from spikesorting_fullpursuit import neuron_separability
 from spikesorting_fullpursuit.consolidate import SegSummary
 from spikesorting_fullpursuit.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples
@@ -221,7 +222,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             # This work item found nothing (or raised an exception)
             seg_data.append([[], [], [], [], w_item['ID']])
 
-    seg_summary = SegSummary(seg_data, seg_w_items, sort_info, v_dtype,
+    # Pass a copy of current state of sort info to seg_summary. Actual sort_info
+    # will be altered later but SegSummary must follow original data
+    seg_summary = SegSummary(seg_data, seg_w_items, deepcopy(sort_info), v_dtype,
                         absolute_refractory_period=absolute_refractory_period,
                         verbose=False)
     if len(seg_summary.summaries) == 0:
@@ -262,54 +265,35 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     chan_covariance_mats = noise_covariance_parallel(voltage, bp_chan_win,
                                                         10000, rand_state=None)
 
-
-print("Checking", len(seg_summary.summaries), "neurons for potential sums")
-templates = []
-n_template_spikes = []
-for n in seg_summary.summaries:
-    templates.append(n['full_template'])
-    n_template_spikes.append(n['spike_indices'].shape[0])
-
-    for n in neurons:
-        if not n['deleted_as_redundant']:
-            clips, _ = get_multichannel_clips(clips_dict, voltage,
-                                    n['spike_indices'],
-                                    clip_width=sort_info['clip_width'])
-            templates.append(np.mean(clips, axis=0))
-
-
-    templates = np.float32(np.vstack(templates))
+    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+    templates = []
+    n_template_spikes = []
+    for n in seg_summary.summaries:
+        clips, _ = get_multichannel_clips(clips_dict, voltage,
+                                n['spike_indices'],
+                                clip_width=sort_info['clip_width'])
+        templates.append(np.mean(clips, axis=0))
+        n_template_spikes.append(n['spike_indices'].shape[0])
+    templates = np.vstack(templates)
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
+    # The overlap check input here is hard coded to look at shifts +/- half
+    # clip width
+    print(templates.shape, n_template_spikes.shape)
     templates_to_check = sort_cython.find_overlap_templates(templates,
-                                sort_info['n_samples_per_chan'], sort_info['n_channels'],
-                                np.int64(np.abs(chan_win[0])//2),
-                                np.int64(np.abs(chan_win[1])//2),
+                                sort_info['n_samples_per_chan'],
+                                sort_info['n_channels'],
+                                np.int64(np.abs(bp_chan_win[0])//2),
+                                np.int64(np.abs(bp_chan_win[1])//2),
                                 n_template_spikes)
 
-
-    """
-    I WILL NEED FULL COVARIANCE MATRIX FOR BINARY PURSUIT BASED CLIP WIDTH AND
-    SHIFTS. I SHOULD FIND THE OVERLAPPING TEMPLATES BASED ON BINARY PURSUIT CLIP
-    WIDTH INSTEAD OF ORIGINAL CLIP WIDTH. I CAN THEN USE THE VARIANCE OF THE SHIFTS
-    TO DETERMINE WHETHER A TEMPLATE IS A SUM THAT NEEDS REMOVED BECAUSE IT WILL
-    MOST ACCURATELY REFLECT THE VARIANCE OF THE SUM OF THE OPTIMAL TEMPALTATES
-    AND I'M ALREADY COMPUTING IT ANYWAYS. MAKE SURE TO GO BACK AND DELETE THE
-    VARIANCES FROM THE CORRESPONDING TEMPLATES AS WELL.
-    I should first get the binary pursuit clip width, and the full covariance
-    matrix for this clip width + shifts.
-    Next need to get the sub-sampled covariance matrix for just the binary pursuit
-    clip width.
-    Make a function that asks whether a template is 50/50 detected above noise. I should
-    then delete such templates BEFORE doing the remove overlap templates. Even
-    if these are ultimately kept to stop noise from getting added to possibly good
-    units, it could be good to exclude them from the overlap templates? You don't
-    want to be calling a unit a sum of a neuron and noise...Or do you?
-    Then do remove overlap templates and check/delete inseparable ones.
-    """
-
-    # Sub index full covariance matrix to match original clip size
+    # Go through suspect templates in templates_to_check
     templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    # Use the sigma lower bound to decide the acceptable level of
+    # misclassification between template sums
+    confusion_threshold = norm.sf(sort_info['sigma_lower_bound'])
     for t_info in templates_to_check:
+        # templates_to_check is not length of templates so need to find the
+        # correct index of the template being checked
         t_ind = t_info[0]
         shift_temp = t_info[1]
         sum_ind_1, sum_ind_2 = t_info[2]
@@ -317,6 +301,7 @@ for n in seg_summary.summaries:
         print("Neuron number: ", t_ind)
         plt.plot(templates[t_ind, :])
         plt.plot(shift_temp)
+        plt.plot(templates[t_ind, :] - shift_temp)
         plt.show()
 
         print("As a sum of neurons numbers: ", sum_ind_1, sum_ind_2)
@@ -326,24 +311,20 @@ for n in seg_summary.summaries:
 
         p_confusion = neuron_separability.check_template_pair(
                 templates[t_ind, :], shift_temp, chan_covariance_mats, sort_info)
-        if p_confusion > :
+        if p_confusion > confusion_threshold:
             templates_to_delete[t_ind] = True
-        print("Prob confusion", p_confusion)
+        print("Prob confusion", p_confusion, "threshold is", confusion_threshold)
 
-    raise ValueError("stopping here")
-    # Remove these redundant templates from summary before sharpening
+    # Remove these overlap templates from summary before sharpening
     for x in reversed(range(0, len(seg_summary.summaries))):
         if templates_to_delete[x]:
             del seg_summary.summaries[x]
     print("Removing sums reduced number of templates to", len(seg_summary.summaries))
 
-    SHOULD I NEXT REMOVE ONE UNIT OF A PAIR WITH REALLY HIGH CONFUSION UNDER
-    THE ASSUMPTION THAT IT IS A REDUNDANT COPY?
-
-    # print("SHARPEN IS OFF!!!!")
     seg_summary.sharpen_across_chans()
     # seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
     neurons = seg_summary.summaries
+    print("Sharpening reduced number of templates to", len(neurons))
 
     # Return the original neighbors to the work items that were reset
     orig_neigh_ind = 0
@@ -367,7 +348,8 @@ for n in seg_summary.summaries:
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
 
-    # Get templates based on new binary pursuit clip width
+    # Get templates for remaining sharpened units across all channels in
+    # voltage to input to separability metrics
     templates = []
     for n in neurons:
         if not n['deleted_as_redundant']:
@@ -375,15 +357,35 @@ for n in seg_summary.summaries:
                                     n['spike_indices'],
                                     clip_width=sort_info['clip_width'])
             templates.append(np.mean(clips, axis=0))
+    del seg_summary # No longer needed so clear memory
+    separability_metrics = neuron_separability.compute_separability_metrics(
+                                templates, chan_covariance_mats, sort_info)
+    print("SEPARABILITY TEMPALTE SHAPE", separability_metrics['templates'].shape)
+    # Identify templates similar to noise and decide what to do with them
+    noisy_templates = neuron_separability.find_noisy_templates(
+                                            separability_metrics, sort_info)
+    separability_metrics, _ = neuron_separability.del_noise_templates_and_threshold(
+                                    separability_metrics, sort_info, noisy_templates)
+    if separability_metrics['templates'].shape[0] == 0:
+        # All data this segment found nothing (or raised an exception)
+        seg_data = []
+        for chan in range(0, sort_info['n_channels']):
+            curr_item = None
+            for w_item in seg_w_items:
+                if w_item['channel'] == chan:
+                    curr_item = w_item
+                    break
+            if curr_item is None:
+                # This should never be possible, but just to be sure
+                raise RuntimeError("Could not find a matching work item for unit")
+            seg_data.append([[], [], [], [], curr_item['ID']])
+        return seg_data
 
-    del seg_summary
-    separability_metrics = neuron_separability.compute_separability_metrics(templates,
-                            voltage, 100000, sort_info, seg_w_items[0]['thresholds'])
-
-    templates = np.vstack(templates)
-    print("Sharpening reduced number of templates to", templates.shape[0])
-    print("Starting full binary pursuit search with", templates.shape[0], "templates in segment", seg_number)
-
+    print("Starting full binary pursuit search with", separability_metrics['templates'].shape[0], "templates in segment", seg_number)
+    for t in range(0, separability_metrics['templates'].shape[0]):
+        print("This is template", t)
+        plt.plot(separability_metrics['templates'][t, :])
+        plt.show()
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     voltage, v_dtype, sort_info,
                     separability_metrics,

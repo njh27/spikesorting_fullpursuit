@@ -209,8 +209,8 @@ class TestDataset(object):
         """
         if len(firing_rates) != len(template_inds) or len(firing_rates) != len(chan_scaling_factors):
             raise ValueError("Input rates, templates, and scaling factors must all be the same length!")
-        if self.num_channels != len(chan_scaling_factors):
-            raise ValueError("Must have one channel scaling factor for each channel.", "Require", self.num_channels "but input", len(chan_scaling_factors))
+        if self.num_channels != len(chan_scaling_factors[0]):
+            raise ValueError("Must have one channel scaling factor for each channel.", "Require", self.num_channels, "but input", len(chan_scaling_factors))
 
         # Need to clear old voltage if spikes have been assigned
         if len(self.actual_IDs) > 0:

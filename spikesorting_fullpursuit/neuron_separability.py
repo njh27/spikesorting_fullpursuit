@@ -62,7 +62,8 @@ def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info)
     Intended for testing whether a sum of templates is equal to a given
     template. Templates are assumed to be aligned with one another as no
     shifting is performed. Probability of confusiong the templates is
-    returned. """
+    returned. This confusion is symmetric, i.e. p_confusion template_1 assigned
+    to template_2 equals p_confusion template_2 assigned to template_1. """
     n_chans = sort_info['n_channels']
     template_samples_per_chan = sort_info['n_samples_per_chan']
 
@@ -141,7 +142,9 @@ def compute_separability_metrics(templates, channel_covariance_mats,
                                 * separability_metrics['neuron_variances'][n])
 
         # Determine peak channel for this unit
-        separability_metrics['peak_channel'][n] = np.argmax(np.abs(templates[n, :])) // template_samples_per_chan
+        separability_metrics['peak_channel'][n] = ( np.argmax(np.abs(
+                                    separability_metrics['templates'][n, :]))
+                                    // template_samples_per_chan )
         # Decision boundary between this unit and noise using noise probability
         # for this unit's peak channel
         # separability_metrics['neuron_lower_thresholds'][n] = find_decision_boundary_equal_var(

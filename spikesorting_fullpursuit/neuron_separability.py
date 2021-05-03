@@ -139,7 +139,14 @@ def compute_separability_metrics(templates, channel_covariance_mats,
 
         separability_metrics['neuron_lower_thresholds'][n] = (
                                 -expectation + sort_info['sigma_lower_bound']
-                                * separability_metrics['neuron_variances'][n])
+                                * np.sqrt(separability_metrics['neuron_variances'][n]))
+        separability_metrics['neuron_lower_thresholds'][n] = max(0,
+                            separability_metrics['neuron_lower_thresholds'][n])
+        print("Lower threshold", n, "is:", separability_metrics['neuron_lower_thresholds'][n])
+        noise_bound = (expectation - (sort_info['sigma_lower_bound'])
+                        * np.sqrt(separability_metrics['neuron_variances'][n]))
+        print("Noise bound is", noise_bound)
+        separability_metrics['neuron_lower_thresholds'][n] = max(noise_bound, 0)
 
         # Determine peak channel for this unit
         separability_metrics['peak_channel'][n] = ( np.argmax(np.abs(
@@ -188,12 +195,13 @@ def find_noisy_templates(separability_metrics, sort_info):
                         * np.sqrt(separability_metrics['neuron_variances'][neuron])
         if separability_metrics['neuron_lower_thresholds'][neuron] > lower_confidence_bound:
             print("Neuron", neuron, "is NOISE")
+            # print("BUT NOT DELETING IT")
             noisy_templates[neuron] = True
 
     return noisy_templates
 
 
-def del_noise_templates_and_threshold(separability_metrics, sort_info,
+def rethreshold_noise_and_templates(separability_metrics, sort_info,
                                         noisy_templates):
     """ This function first decides whether the templates indicated as noise by
     noisy_templates are required to maintain sorting accuracy above sigma noise
@@ -201,6 +209,10 @@ def del_noise_templates_and_threshold(separability_metrics, sort_info,
     a new lower boundary according to their decision boundary with the deleted
     units. Data for all noisy_templates are then removed from
     separability_metrics. """
+
+    # print("SKIPPING rethreshold_noise_and_templates LINE 212")
+    # return separability_metrics, noisy_templates
+
     n_chans = sort_info['n_channels']
     max_shift = (sort_info['n_samples_per_chan'] // 4) - 1
     n_neurons = separability_metrics['templates'].shape[0]
@@ -223,6 +235,8 @@ def del_noise_templates_and_threshold(separability_metrics, sort_info,
                                 separability_metrics['templates'][n, :],
                                 separability_metrics['templates'][noise_n, :],
                                 n_chans, max_shift=max_shift, align_abs=True)
+            # Expected value of Likelihood function for good neuron, n, given
+            # that the true voltage is the noise neuron, noise_n
             expectation_n_noise_n = np.dot(shift_temp_n, shift_temp_noise_n) \
                                     - 0.5 * separability_metrics['template_SS'][n]
             decision_boundary = find_decision_boundary_equal_var(
@@ -230,6 +244,9 @@ def del_noise_templates_and_threshold(separability_metrics, sort_info,
                                         separability_metrics['neuron_variances'][n])
             # Check if lower threshold must be increased in event this noise
             # neuron is deleted
+
+            """ I THINK THIS ONLY NEEDS TO ASK IF GOOD NEURON N, GIVEN A NOISE SPIKE, EXCEEDS GOOD NEURON N THRESHOLD. i.e.
+            the probability that a noise spike will be added to good neuron N if the noise spike template is deleted. """
             if decision_boundary > separability_metrics['neuron_lower_thresholds'][n]:
                 # If choosing to delete this noise neuron will drive the decision
                 # boundary too high for neuron n, remove noise neuron from the
@@ -261,7 +278,14 @@ def del_noise_templates_and_threshold(separability_metrics, sort_info,
             separability_metrics['neuron_lower_thresholds'] = max_boundaries
             separability_metrics['contamination'] = max_contamination
 
-    # Remove data associated with noise templates from separability_metrics
+    return separability_metrics, noisy_templates
+
+
+def delete_noise_assign_thresholds(separability_metrics, noisy_templates):
+    """ Remove data associated with noise templates from separability_metrics
+    and reassign values IN PLACE to separability metrics dictionary. """
+    print("SKIPPING delete_noise_assign_thresholds LINE 283")
+    return separability_metrics
     for key in separability_metrics.keys():
         if key in ['channel_covariance_mats', 'channel_p_noise']:
             continue
@@ -273,7 +297,8 @@ def del_noise_templates_and_threshold(separability_metrics, sort_info,
         else:
             print("!!! Could not find a condition for metrics key !!!", key)
 
-    return separability_metrics, noisy_templates
+    return separability_metrics
+
 
 def pairwise_separability(separability_metrics, sort_info):
     """

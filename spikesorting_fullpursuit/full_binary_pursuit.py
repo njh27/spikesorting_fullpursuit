@@ -301,7 +301,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         print("Neuron number: ", t_ind)
         plt.plot(templates[t_ind, :])
         plt.plot(shift_temp)
-        plt.plot(templates[t_ind, :] - shift_temp)
+        # plt.plot(templates[t_ind, :] - shift_temp)
         plt.show()
 
         print("As a sum of neurons numbers: ", sum_ind_1, sum_ind_2)
@@ -321,6 +321,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             del seg_summary.summaries[x]
     print("Removing sums reduced number of templates to", len(seg_summary.summaries))
 
+    # print("!!! SKIPPED SHARPENING !!!")
     seg_summary.sharpen_across_chans()
     # seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
     neurons = seg_summary.summaries
@@ -364,8 +365,10 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Identify templates similar to noise and decide what to do with them
     noisy_templates = neuron_separability.find_noisy_templates(
                                             separability_metrics, sort_info)
-    separability_metrics, _ = neuron_separability.del_noise_templates_and_threshold(
+    separability_metrics, noisy_templates = neuron_separability.rethreshold_noise_and_templates(
                                     separability_metrics, sort_info, noisy_templates)
+    separability_metrics = neuron_separability.delete_noise_assign_thresholds(
+                                    separability_metrics, noisy_templates)
     if separability_metrics['templates'].shape[0] == 0:
         # All data this segment found nothing (or raised an exception)
         seg_data = []

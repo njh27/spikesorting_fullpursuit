@@ -262,9 +262,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Get the noise covariance over time within the binary pursuit clip width
     print("!!! ONLY USING 10K NOISE SAMPLES FOR COVARIANCE !!!")
     print("Computing clip noise covariance for each channel")
+    # Inputing rand_state as the current state should ensure that this function
+    # stays on the same current random generator state such that starting
+    # sorting at a given state will produce the same covariance matrix
     chan_covariance_mats = noise_covariance_parallel(voltage, bp_chan_win,
-                                                        10000, rand_state=None)
-
+                                                        10000, rand_state=np.random.get_state())
     print("Checking", len(seg_summary.summaries), "neurons for potential sums")
     templates = []
     n_template_spikes = []
@@ -365,9 +367,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Identify templates similar to noise and decide what to do with them
     noisy_templates = neuron_separability.find_noisy_templates(
                                             separability_metrics, sort_info)
-    separability_metrics, noisy_templates = neuron_separability.rethreshold_noise_and_templates(
+    separability_metrics, noisy_templates = neuron_separability.delete_and_threshold_noise(
                                     separability_metrics, sort_info, noisy_templates)
-    separability_metrics = neuron_separability.delete_noise_assign_thresholds(
+    separability_metrics = neuron_separability.delete_noise_units(
                                     separability_metrics, noisy_templates)
     if separability_metrics['templates'].shape[0] == 0:
         # All data this segment found nothing (or raised an exception)

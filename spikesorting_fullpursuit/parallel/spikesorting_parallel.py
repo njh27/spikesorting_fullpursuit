@@ -26,9 +26,9 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['do_ZCA_transform'] = True
     settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
     settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
-    settings['check_components'] = 100 # Number of PCs to check. None means all
+    settings['check_components'] = 20 # Number of PCs to check. None means all
     settings['max_components'] = 10 # Max number to use, of those checked
-    settings['min_firing_rate'] = 0.1 # Neurons with fewer threshold crossings than this are removed
+    settings['min_firing_rate'] = 0.0 # Neurons with fewer threshold crossings than satisfy this rate are removed
     settings['p_value_cut_thresh'] = 0.05
     settings['max_gpu_memory'] = None # None means use as much memory as possible
     settings['save_1_cpu'] = True
@@ -36,9 +36,8 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
     # sigma_lower_bound = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
-    settings['sigma_lower_bound'] = 1.96 # Number of noise standard deviations a template match must exceed for a unit to be added. Higher numbers reduce noise induced false discoveries at the cost of true positives.
-    settings['sigma_template_ci'] = 4.0 # Standard deviations used to determine a confidence bound around a unit's template for spike assignment
-    settings['absolute_refractory_period'] = 15e-4
+    settings['sigma_lower_bound'] = 4.0 # Number of noise standard deviations a template match must exceed for a unit to be added. Higher numbers reduce noise induced false discoveries at the cost of true positives.
+    settings['absolute_refractory_period'] = 10e-4
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
     settings['do_overlap_recheck'] = True

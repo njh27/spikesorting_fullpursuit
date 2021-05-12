@@ -4,8 +4,7 @@ from spikesorting_fullpursuit.consolidate import optimal_align_templates
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
 from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 
-import matplotlib.pyplot as plt
-
+"""CHECKED"""
 
 
 def find_decision_boundary_equal_var(mu_1, mu_2, var, p_1=0.5):
@@ -91,7 +90,7 @@ def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info)
 
 def compute_separability_metrics(templates, channel_covariance_mats,
                                  sort_info):
-    """ Calculate variance and template sum squared metrics needed to compute
+    """ Calculate the various variance and template metrics needed to compute
     separability_metrics between units and the delta likelihood function for
     binary pursuit."""
 
@@ -140,14 +139,6 @@ def compute_separability_metrics(templates, channel_covariance_mats,
                                 expectation - sort_info['sigma_lower_bound']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
 
-        # separability_metrics['neuron_lower_thresholds'][n] = max(0,
-        #                     separability_metrics['neuron_lower_thresholds'][n])
-        # print("Lower threshold", n, "is:", separability_metrics['neuron_lower_thresholds'][n])
-        # noise_bound = (expectation - (sort_info['sigma_lower_bound'])
-        #                 * np.sqrt(separability_metrics['neuron_variances'][n]))
-        # print("Noise bound is", noise_bound)
-        # separability_metrics['neuron_lower_thresholds'][n] = max(noise_bound, 0)
-
         # Determine peak channel for this unit
         separability_metrics['peak_channel'][n] = ( np.argmax(np.abs(
                                     separability_metrics['templates'][n, :]))
@@ -162,8 +153,7 @@ def compute_separability_metrics(templates, channel_covariance_mats,
 
 def find_noisy_templates(separability_metrics, sort_info):
     """ Identify templates as noisy if their lower confidene bound is less than
-    their lower threshold. In separability metrics are originally computed
-    with the lower threshold equal to the noise decision boundary. """
+    or equal to the decision boundary at 0. """
     n_neurons = separability_metrics['templates'].shape[0]
 
     noisy_templates = np.zeros(n_neurons, dtype=np.bool)
@@ -179,7 +169,9 @@ def find_noisy_templates(separability_metrics, sort_info):
 def delete_and_threshold_noise(separability_metrics, sort_info,
                                         noisy_templates):
     """ This function first decides whether the templates indicated as noise by
-    noisy_templates """
+    noisy_templates will be useful for sorting other units. If it is, then it
+    is kept. If its detectability is so small or dissimilar to other units,
+    then it will be deleted permaneantly. """
     n_chans = sort_info['n_channels']
     max_shift = (sort_info['n_samples_per_chan'] // 4) - 1
     n_neurons = separability_metrics['templates'].shape[0]
@@ -211,7 +203,6 @@ def delete_and_threshold_noise(separability_metrics, sort_info,
                 # template has enough probability of exceeding threshold to be
                 # either incorrectly added to the good unit or improve its
                 # sorting so rethreshold the noise unit and keep it
-                print("Noise neuron", noise_n, "was kept to improve sorting for neuron", n)
                 new_noisy_templates[noise_n] = False
                 # Rethreshold the noise unit so that spikes are only added to
                 # it if they exceed the sigma upper bound of the noisy unit
@@ -229,8 +220,8 @@ def delete_and_threshold_noise(separability_metrics, sort_info,
 
 
 def delete_noise_units(separability_metrics, noisy_templates):
-    """ Remove data associated with noise templates from separability_metrics
-    and reassign values IN PLACE to separability metrics dictionary. """
+    """ Remove data associated with deleted noise templates from
+    separability_metrics and reassign values IN PLACE to separability_metrics. """
     for key in separability_metrics.keys():
         if key in ['channel_covariance_mats', 'channel_p_noise']:
             continue
@@ -248,22 +239,21 @@ def delete_noise_units(separability_metrics, noisy_templates):
 def add_n_spikes(separability_metrics, neuron_labels):
     """ Adds number of spikes assigned to each unit in separabilit_metrics
     after binary pursuit is run. Spikes are added by modifying the input
-    separability_metrics dictionary.
+    separability_metrics dictionary. Called in binary_pursuit_parallel.
     """
     separability_metrics['n_spikes'] = np.zeros(separability_metrics['templates'].shape[0])
     for n in range(0, separability_metrics['templates'].shape[0]):
         separability_metrics['n_spikes'][n] = np.count_nonzero(neuron_labels == n)
 
-    # n_spikes added to existing separability_metrics
     return None
 
 
 def pairwise_separability(separability_metrics, sort_info):
     """
-    Note that output matrix of separabilty errors is not necessarily symmetric
-    due to the multiplication of the probability both units' likelihoods are
-    less than zero. After running binary pursuit, the number of spikes added
-    to each unit will be appended using "add_n_spikes" below.
+    Uses separability metrics to determine the overlap between pairs of units
+    and estimate the probability of confusing spikes between the units. Similar
+    estimates are made for the probability of adding noise to a unit and missing
+    spikes from a unit.
     """
     n_chans = sort_info['n_channels']
     template_samples_per_chan = sort_info['n_samples_per_chan']
@@ -327,157 +317,3 @@ def pairwise_separability(separability_metrics, sort_info):
                 pair_separability_matrix[n1, n2] = 0
 
     return pair_separability_matrix, noise_contamination, noise_misses
-
-
-# def shifted_template_sum_variance(templates, n_chans, n_samples_per_chan,
-#                                     n_max_shift_inds, channel_covariance_mats):
-#     """
-#     Note that for symmetry in matrix storage, t1 t2 at zero shift will be
-#     repeated for each pair.
-#     """
-#     n_templates = templates.shape[0]
-#     # Add 1 to max shift inds to include shift = 0
-#     n_shifts = n_max_shift_inds + 1
-#     shifted_sum_variances = np.zeros((n_templates * n_templates, n_shifts))
-#     shifted_sum_variances_single = np.zeros((n_templates * n_templates, n_shifts))
-#     chan_shifted_sum_templates = np.zeros((n_shifts, n_samples_per_chan + n_shifts))
-#     chan_shifted_sum_templates_single = np.zeros((n_samples_per_chan + n_shifts))
-#     for t1_ind in range(0, n_templates):
-#         for t2_ind in range(0, n_templates):
-#             # Row where shifted t1 and t2 variances stored for output
-#             shift_sum_row = t1_ind * n_templates + t2_ind
-#             for chan in range(0, n_chans):
-#                 t_win = [chan*n_samples_per_chan, (chan+1)*n_samples_per_chan]
-#                 # t1 is fixed at beginning of summed template
-#                 chan_shifted_sum_templates[:, 0:n_samples_per_chan] = templates[t1_ind, t_win[0]:t_win[1]]
-#                 # Add in t2 at each shifted lag relative to t1
-#                 for shift_ind in range(0, n_shifts):
-#                     chan_shifted_sum_templates_single[0:n_samples_per_chan] = templates[t1_ind, t_win[0]:t_win[1]]
-#                     chan_shifted_sum_templates_single[shift_ind:(shift_ind+n_samples_per_chan)] += templates[t2_ind, t_win[0]:t_win[1]]
-#
-#                     shifted_sum_variances_single[shift_sum_row, shift_ind] += (chan_shifted_sum_templates_single[None, :]
-#                                  @ channel_covariance_mats[chan]
-#                                  @ chan_shifted_sum_templates_single[:, None])
-#
-#                     chan_shifted_sum_templates[shift_ind, shift_ind:(shift_ind+n_samples_per_chan)] += templates[t2_ind, t_win[0]:t_win[1]]
-#                 # Add variance for each channel
-#                 # Use matrix multiplication as loop shortcut for first step
-#                 # then sum because result is not true matrix multiplication
-#                 shifted_sum_variances[shift_sum_row, :] += np.sum(
-#                             (chan_shifted_sum_templates @ channel_covariance_mats[chan])
-#                             * chan_shifted_sum_templates, axis=1)
-#                 # Reset these templates to 0 for next channel
-#                 chan_shifted_sum_templates[:] = 0.0
-#                 chan_shifted_sum_templates_single[:] = 0.0
-#
-#     print("max var diffs", np.amax(np.amax(np.abs(shifted_sum_variances_single - shifted_sum_variances))))
-#
-#     return shifted_sum_variances_single
-
-
-def empirical_separability(voltage, spike_times, templates, window_samples, separability_metrics, add_spikes=False):
-    """ """
-
-    overlapping_bools = []
-    for s1 in range(0, len(spike_times)):
-        overlapping_bools.append(np.ones(spike_times[s1].shape[0], dtype=np.bool))
-        for s2 in range(0, len(spike_times)):
-            if s1 == s2:
-                continue
-            overlapping_spike_bool = find_overlapping_spike_bool(spike_times[s1], spike_times[s2], overlap_tol=window_samples[1])
-            overlapping_bools[s1] = np.logical_and(overlapping_bools[s1], ~overlapping_spike_bool)
-    for ob in range(0, len(spike_times)):
-        spike_times[ob] = spike_times[ob][overlapping_bools[ob]]
-
-    LL_E_diff_mat = np.zeros((templates.shape[0], templates.shape[0]))
-    LL_Var_diff_mat = np.zeros((templates.shape[0], templates.shape[0]))
-    misclassification_errors = np.zeros((templates.shape[0], templates.shape[0]))
-    n_output_clips = []
-    for n1 in range(0, len(spike_times)):
-        spike_clips, valid_event_indices = get_multichannel_clips(
-                            voltage, spike_times[n1]+1, window_samples)
-
-        n_output_clips.append(spike_clips)
-        LL = []
-        for n2 in range(0, len(spike_times)):
-
-            LL.append(spike_clips @ templates[n2, :][:, None] - 0.5*np.sum(templates[n2, :] ** 2))
-
-            var_L_n1 = 0
-            template_samples_per_chan = templates.shape[1] // voltage.shape[0]
-            for chan in range(0, voltage.shape[0]):
-                t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
-                # Multiply template with covariance then template transpose
-                var_L_n1 += (templates[n2, :][None, t_win[0]:t_win[1]]
-                                 @ separability_metrics['channel_covariance_mats'][chan]
-                                 @ templates[n2, :][t_win[0]:t_win[1], None])
-            print("VAR", n2, "given", n1, np.var(LL[-1]), var_L_n1)
-
-        for n2 in range(0, len(spike_times)):
-            LL_E_diff_mat[n1, n2] = np.mean(LL[n1] - LL[n2])
-            LL_Var_diff_mat[n1, n2] = np.var(LL[n1] - LL[n2])
-
-            print("Empirical EXP of DIFFERENCE", LL_E_diff_mat[n1, n2])
-
-            E_L_n1 = 0.5 * np.sum(templates[n1, :] ** 2)
-            E_L_n2 = (np.dot(templates[n1, :], templates[n2, :])
-                      -0.5 * np.sum(templates[n2, :] ** 2))
-            print("Calculated EXP of DIFFERENCE", E_L_n1 - E_L_n2)
-
-            var_diff = 0
-            template_samples_per_chan = templates.shape[1] // voltage.shape[0]
-            for chan in range(0, voltage.shape[0]):
-                t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
-                # Multiply template with covariance then template transpose
-                diff_template = templates[n1, :] - templates[n2, :]
-                var_diff += (diff_template[None, t_win[0]:t_win[1]]
-                                 @ separability_metrics['channel_covariance_mats'][chan]
-                                 @ diff_template[t_win[0]:t_win[1], None])
-            print("Empirical VAR of DIFFERENCE", LL_Var_diff_mat[n1, n2])
-            print("Calculated VAR of DIFFERENCE", var_diff)
-
-            misclassification_errors[n1, n2] = np.count_nonzero(LL[n2] > LL[n1]) / spike_clips.shape[0]
-
-    return misclassification_errors, LL_E_diff_mat, LL_Var_diff_mat, n_output_clips
-
-
-def get_multichannel_clips(voltage, spike_times, window):
-
-    if spike_times.ndim > 1:
-        raise ValueError("Event_indices must be one dimensional array of indices")
-
-    # Ignore spikes whose clips extend beyond the data and create mask for removing them
-    valid_event_indices = np.ones(spike_times.shape[0], dtype=np.bool)
-    start_ind = 0
-    n = spike_times[start_ind]
-
-    while (n + window[0]) < 0:
-        valid_event_indices[start_ind] = False
-        start_ind += 1
-        if start_ind == spike_times.size:
-            # There are no valid indices
-            valid_event_indices[:] = False
-            return None, valid_event_indices
-        n = spike_times[start_ind]
-    stop_ind = spike_times.shape[0] - 1
-    n = spike_times[stop_ind]
-    while (n + window[1]) >= voltage.shape[1]:
-        valid_event_indices[stop_ind] = False
-        stop_ind -= 1
-        if stop_ind < 0:
-            # There are no valid indices
-            valid_event_indices[:] = False
-            return None, valid_event_indices
-        n = spike_times[stop_ind]
-    spike_clips = np.empty((np.count_nonzero(valid_event_indices), (window[1] - window[0]) * voltage.shape[0]))
-    for out_ind, spk in enumerate(range(start_ind, stop_ind+1)): # Add 1 to index through last valid index
-        chan_ind = 0
-        start = 0
-        for chan in range(0, voltage.shape[0]):
-            chan_ind += 1
-            stop = chan_ind * (window[1] - window[0])
-            spike_clips[out_ind, start:stop] = voltage[chan, spike_times[spk]+window[0]:spike_times[spk]+window[1]]
-            # Subtract start ind above to adjust for discarded events
-            start = stop
-
-    return spike_clips, valid_event_indices

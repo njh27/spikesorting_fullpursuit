@@ -10,91 +10,14 @@ from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.c_cython import sort_cython
 from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parallel
 
-import matplotlib.pyplot as plt
-
-def find_overlap_templates(templates, n_samples_per_chan, n_chans,
-                            n_pre_inds, n_post_inds, n_template_spikes):
-    """ Use this for testing. There is a corresponding cython verison that should
-        be much faster. """
-
-    def get_shifted_template(template, shift):
-        """ """
-        shifted_template = np.zeros_like(template)
-        for chan in range(0, n_chans):
-            chan_temp = template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan]
-            if shift > 0:
-                shifted_template[chan*n_samples_per_chan+shift:(chan+1)*n_samples_per_chan] = \
-                                chan_temp[:-shift]
-            else:
-                shifted_template[chan*n_samples_per_chan:(chan+1)*n_samples_per_chan+shift] = \
-                                chan_temp[-shift:]
-        return shifted_template
-
-
-    templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
-    if templates.shape[0] < 3:
-        # Need at least 3 templates for one to be sum of two others
-        return templates_to_delete
-    templates_SS = np.sum(templates ** 2, axis=1)
-    sum_n1_n2_template = np.zeros(templates.shape[1])
-
-    # Compute the possible template shifts up front so not iteratively repeating
-    # the same computation over and over again
-    all_template_shifts = []
-    for t in range(0, templates.shape[0]):
-        all_shifts = np.zeros((n_post_inds+1 + n_pre_inds, templates.shape[1]))
-        as_ind = 0
-        for s in range(-n_pre_inds, n_post_inds+1):
-            all_shifts[as_ind, :] = get_shifted_template(templates[t, :], s)
-            as_ind += 1
-        all_template_shifts.append(all_shifts)
-
-    for test_unit in range(0, templates.shape[0]):
-        test_template = templates[test_unit, :]
-
-        min_residual_SS = np.inf
-        best_pair = None
-        best_shifts = None
-        best_inds = None
-
-        for n1 in range(0, templates.shape[0]):
-            if (n_template_spikes[n1] < 5*n_template_spikes[test_unit]) or (n1 == test_unit) or (templates_SS[n1] > templates_SS[test_unit]):
-                continue
-            template_1 = templates[n1, :]
-
-            for n2 in range(n1+1, templates.shape[0]):
-                if (n_template_spikes[n2] < 5*n_template_spikes[test_unit]) or (n2 == test_unit) or (templates_SS[n2] > templates_SS[test_unit]):
-                    continue
-                template_2 = templates[n2, :]
-
-                s1_ind = 0
-                for shift1 in range(-n_pre_inds, n_post_inds+1):
-                    shifted_t1 = all_template_shifts[n1][s1_ind, :]
-                    s2_ind = 0
-                    for shift2 in range(-n_pre_inds, n_post_inds+1):
-                        # Copy data from t1 shift into sum
-                        sum_n1_n2_template[:] = shifted_t1[:]
-                        shifted_t2 = all_template_shifts[n2][s2_ind, :]
-                        sum_n1_n2_template += shifted_t2
-
-                        residual_SS = np.sum((test_template - sum_n1_n2_template) ** 2)
-                        if residual_SS < min_residual_SS:
-                            min_residual_SS = residual_SS
-                            best_pair = [n1, n2]
-                            best_shifts = [shift1, shift2]
-                            best_inds = [s1_ind, s2_ind]
-
-                        s2_ind += 1
-                    s1_ind += 1
-        # print("MIN RESIDUAL", min_residual_SS)
-        if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.85:
-            templates_to_delete[test_unit] = True
-
-    return templates_to_delete
+"""CHECKED"""
 
 
 def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info):
-    """"""
+    """ Determines a clip width to use for binary pursuit by asking how much
+    the current clip width must be increased so that it returns near a median
+    voltage of 0 at both ends of the clip width. This is constrained by the
+    sorting parameter max_binary_pursuit_clip_width_factor."""
     # Maximim factor by which the clip width can be increased
     if sort_info['max_binary_pursuit_clip_width_factor'] <= 1.0:
         # Do not use expanded clip widths, just return
@@ -134,7 +57,6 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
     noise_sample_inds = np.random.choice(voltage.shape[1], 10*sort_info['sampling_rate'])
     median_noise = np.median(np.median(np.abs(voltage[:, noise_sample_inds]), axis=1))
     clip_end_tolerance = 0.05 * median_noise
-    print("clip tolerance is", clip_end_tolerance)
 
     bp_chan_win_samples, _ = time_window_to_samples(bp_clip_width, sort_info['sampling_rate'])
     chan_win_samples, _ = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
@@ -173,7 +95,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                         sort_info, v_dtype, overlap_ratio_threshold,
                         absolute_refractory_period,
                         kernels_path=None, max_gpu_memory=None):
-
+    """ This is the main function that runs binary pursuit. It first handles
+    the unit and template consolidation and the removal of noise templates to
+    create the final template set for binary pursuit derived from the input
+    segment sorted data. Then the templates are input to binary pursuit. Output
+    is finally formatted for final output. """
     # Get numpy view of voltage for clips and binary pursuit
     seg_volts_buffer = data_dict['segment_voltages'][seg_number][0]
     seg_volts_shape = data_dict['segment_voltages'][seg_number][1]
@@ -266,7 +192,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # stays on the same current random generator state such that starting
     # sorting at a given state will produce the same covariance matrix
     chan_covariance_mats = noise_covariance_parallel(voltage, bp_chan_win,
-                                                        10000, rand_state=np.random.get_state())
+                                                        100000, rand_state=np.random.get_state())
     print("Checking", len(seg_summary.summaries), "neurons for potential sums")
     templates = []
     n_template_spikes = []
@@ -280,7 +206,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
     # The overlap check input here is hard coded to look at shifts +/- half
     # clip width
-    print(templates.shape, n_template_spikes.shape)
     templates_to_check = sort_cython.find_overlap_templates(templates,
                                 sort_info['n_samples_per_chan'],
                                 sort_info['n_channels'],
@@ -299,23 +224,10 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         t_ind = t_info[0]
         shift_temp = t_info[1]
         sum_ind_1, sum_ind_2 = t_info[2]
-
-        print("Neuron number: ", t_ind)
-        plt.plot(templates[t_ind, :])
-        plt.plot(shift_temp)
-        # plt.plot(templates[t_ind, :] - shift_temp)
-        plt.show()
-
-        print("As a sum of neurons numbers: ", sum_ind_1, sum_ind_2)
-        plt.plot(templates[sum_ind_1, :])
-        plt.plot(templates[sum_ind_2, :])
-        plt.show()
-
         p_confusion = neuron_separability.check_template_pair(
                 templates[t_ind, :], shift_temp, chan_covariance_mats, sort_info)
         if p_confusion > confusion_threshold:
             templates_to_delete[t_ind] = True
-        print("Prob confusion", p_confusion, "threshold is", confusion_threshold)
 
     # Remove these overlap templates from summary before sharpening
     for x in reversed(range(0, len(seg_summary.summaries))):
@@ -323,9 +235,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             del seg_summary.summaries[x]
     print("Removing sums reduced number of templates to", len(seg_summary.summaries))
 
-    # print("!!! SKIPPED SHARPENING !!!")
     seg_summary.sharpen_across_chans()
-    # seg_summary.remove_redundant_neurons(overlap_ratio_threshold=overlap_ratio_threshold)
     neurons = seg_summary.summaries
     print("Sharpening reduced number of templates to", len(neurons))
 
@@ -363,7 +273,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     del seg_summary # No longer needed so clear memory
     separability_metrics = neuron_separability.compute_separability_metrics(
                                 templates, chan_covariance_mats, sort_info)
-    print("SEPARABILITY TEMPALTE SHAPE", separability_metrics['templates'].shape)
     # Identify templates similar to noise and decide what to do with them
     noisy_templates = neuron_separability.find_noisy_templates(
                                             separability_metrics, sort_info)
@@ -387,10 +296,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         return seg_data
 
     print("Starting full binary pursuit search with", separability_metrics['templates'].shape[0], "templates in segment", seg_number)
-    for t in range(0, separability_metrics['templates'].shape[0]):
-        print("This is template", t)
-        plt.plot(separability_metrics['templates'][t, :])
-        plt.show()
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     voltage, v_dtype, sort_info,
                     separability_metrics,
@@ -474,7 +379,5 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         else:
             # This work item found nothing (or raised an exception)
             seg_data.append([[], [], [], [], curr_item['ID']])
-    # Make everything compatible with regular postprocessing.WorkItemSummary
-    sort_info['binary_pursuit_only'] = True
 
     return seg_data

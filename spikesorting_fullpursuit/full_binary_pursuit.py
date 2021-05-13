@@ -186,7 +186,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     print("Binary pursuit samples per chan", sort_info['n_samples_per_chan'], "from", original_n_samples_per_chan)
 
     # Get the noise covariance over time within the binary pursuit clip width
-    print("Computing clip noise covariance for each channel")
+    print("Computing clip noise covariance for each channel with", sort_info['n_cov_samples'], "clip samples")
     # Inputing rand_state as the current state should ensure that this function
     # stays on the same current random generator state such that starting
     # sorting at a given state will produce the same covariance matrix

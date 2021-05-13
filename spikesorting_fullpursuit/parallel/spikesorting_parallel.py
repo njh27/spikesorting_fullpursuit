@@ -36,6 +36,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
     # sigma_lower_bound = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
+    settings['n_cov_samples'] = 100000 # Number of random clips to use to estimate noise covariance matrix
     settings['sigma_lower_bound'] = 4.0 # Number of noise standard deviations a template match must exceed for a unit to be added. Higher numbers reduce noise induced false discoveries at the cost of true positives.
     settings['absolute_refractory_period'] = 10e-4
     settings['get_adjusted_clips'] = False

@@ -423,7 +423,7 @@ __kernel void compute_template_maximum_likelihood(
             best_spike_label_private = template_number;
             best_spike_index_private = start + i;
         }
-        if ((current_maximum_likelihood > 0.0)
+        if ((current_maximum_likelihood > likelihood_lower_thresholds[best_spike_label_private])
             && (start + i >= start_of_my_window) && (start + i < end_of_my_window) )
         {
             /* Track windows that need checked next pass regardless of whether */
@@ -923,12 +923,6 @@ __kernel void binary_pursuit(
             }
         }
     }
-    // else
-    // {
-    //     /* Since we are not adding a spike here after all, we do not need to
-    //     recheck this window. Otherwise this will take forever and do nothing. */
-    //     check_window_on_next_pass[id] = 0;
-    // }
 
     barrier(CLK_LOCAL_MEM_FENCE); /* Wait for all workers to get here */
     prefix_local_sum(local_scratch); /* Compute the prefix sum to give our offset into spike indices) */

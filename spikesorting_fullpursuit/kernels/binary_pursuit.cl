@@ -923,6 +923,12 @@ __kernel void binary_pursuit(
             }
         }
     }
+    // else
+    // {
+    //     /* Since we are not adding a spike here after all, we do not need to
+    //     recheck this window. Otherwise this will take forever and do nothing. */
+    //     check_window_on_next_pass[id] = 0;
+    // }
 
     barrier(CLK_LOCAL_MEM_FENCE); /* Wait for all workers to get here */
     prefix_local_sum(local_scratch); /* Compute the prefix sum to give our offset into spike indices) */

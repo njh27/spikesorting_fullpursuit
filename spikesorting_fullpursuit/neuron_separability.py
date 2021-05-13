@@ -139,6 +139,9 @@ def compute_separability_metrics(templates, channel_covariance_mats,
                                 expectation - sort_info['sigma_lower_bound']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
 
+        # if separability_metrics['neuron_lower_thresholds'][n] > 0:
+        #     separability_metrics['neuron_lower_thresholds'][n] = 0.0
+
         # Determine peak channel for this unit
         separability_metrics['peak_channel'][n] = ( np.argmax(np.abs(
                                     separability_metrics['templates'][n, :]))
@@ -159,8 +162,7 @@ def find_noisy_templates(separability_metrics, sort_info):
     noisy_templates = np.zeros(n_neurons, dtype=np.bool)
     # Find neurons that are too close to noise and need to be deleted
     for neuron in range(0, n_neurons):
-        if separability_metrics['neuron_lower_thresholds'][neuron] <= 0.0:
-            print("Neuron", neuron, "is NOISY")
+        if separability_metrics['neuron_lower_thresholds'][neuron] < 0.0:
             noisy_templates[neuron] = True
 
     return noisy_templates

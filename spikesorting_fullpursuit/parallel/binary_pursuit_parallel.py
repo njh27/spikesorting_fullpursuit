@@ -530,7 +530,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
             print("Looking in", num_template_widths, "windows")
             while True:
                 n_loops += 1
-                if n_loops % 10 == 0:
+                if n_loops % 1 == 0 and n_loops > 1:
                     print("Starting loop", n_loops, "for this chunk")
                     print("Next round has", new_window_indices.shape[0], "windows to check")
 
@@ -571,7 +571,6 @@ def binary_pursuit(voltage, v_dtype, sort_info,
                 overlap_window_indices = np.uint32(np.nonzero(overlap_recheck_window)[0])
                 if overlap_window_indices.shape[0] > 0 and sort_info['do_overlap_recheck']:
                     # Still more flagged spikes to check
-                    # print("Rechecking", overlap_window_indices.shape[0], "spike that were flagged as overlaps")
                     # Copy the overlap window indices to the overlap indices buffer
                     next_wait_event = [cl.enqueue_copy(queue, overlap_window_indices_buffer, overlap_window_indices, wait_for=next_wait_event)]
                     queue.finish() # Needs to finish copy before checking indices
@@ -662,9 +661,6 @@ def binary_pursuit(voltage, v_dtype, sort_info,
                                               wait_for=next_wait_event)
                         queue.finish()
                         next_wait_event = [overlap_event]
-
-
-
 
                 n_to_enqueue = total_work_size_pursuit #np.amin([total_work_size_pursuit, max_enqueue_pursuit])
                 for enqueue_step in np.arange(np.int64(0), total_work_size_pursuit, n_to_enqueue, dtype=np.int64):

@@ -258,7 +258,7 @@ class RunBinaryPursuit(object):
 
     def sort_test_dataset(self, add_templates=None, sort_templates=None, rand_state=None, kwargs={}):
 
-        self.sort_info = {'sigma_lower_bound': 2.0,
+        self.sort_info = {'sigma_bp_noise': 2.0,
                         'sigma_template_ci': 4.0,
                         'get_adjusted_clips': False,
                         'max_gpu_memory': None,

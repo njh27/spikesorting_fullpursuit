@@ -136,11 +136,12 @@ def compute_separability_metrics(templates, channel_covariance_mats,
                         @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
 
         separability_metrics['neuron_lower_thresholds'][n] = (
-                                expectation - sort_info['sigma_lower_bound']
+                                expectation - sort_info['sigma_bp_noise']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
-
-        # if separability_metrics['neuron_lower_thresholds'][n] > 0:
-        #     separability_metrics['neuron_lower_thresholds'][n] = 0.0
+        # If template does not overlap zero, set its threshold to 0
+        # Units overlapping zero will be thresholded in check_noise_templates
+        if separability_metrics['neuron_lower_thresholds'][n] > 0:
+            separability_metrics['neuron_lower_thresholds'][n] = 0.0
 
         # Determine peak channel for this unit
         separability_metrics['peak_channel'][n] = ( np.argmax(np.abs(
@@ -168,7 +169,7 @@ def find_noisy_templates(separability_metrics, sort_info):
     return noisy_templates
 
 
-def delete_and_threshold_noise(separability_metrics, sort_info,
+def check_noise_templates(separability_metrics, sort_info,
                                         noisy_templates):
     """ This function first decides whether the templates indicated as noise by
     noisy_templates will be useful for sorting other units. If it is, then it
@@ -198,7 +199,7 @@ def delete_and_threshold_noise(separability_metrics, sort_info,
                                     - 0.5 * separability_metrics['template_SS'][n]
             # Find the upper bound of the distribution of the likelihood
             # function for neuron n, given that voltage = noise_n
-            noise_match_upper_bound = expectation_n_noise_n + sort_info['sigma_lower_bound'] \
+            noise_match_upper_bound = expectation_n_noise_n + sort_info['sigma_bp_noise'] \
                                 * np.sqrt(separability_metrics['neuron_variances'][n])
             if noise_match_upper_bound > 0.0:
                 # The likelihood function for good template n given the noise

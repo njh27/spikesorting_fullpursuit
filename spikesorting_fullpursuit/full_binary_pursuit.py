@@ -216,7 +216,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
     # Use the sigma lower bound to decide the acceptable level of
     # misclassification between template sums
-    confusion_threshold = norm.sf(sort_info['sigma_lower_bound'])
+    confusion_threshold = norm.sf(sort_info['sigma_bp_noise'])
     for t_info in templates_to_check:
         # templates_to_check is not length of templates so need to find the
         # correct index of the template being checked
@@ -275,7 +275,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Identify templates similar to noise and decide what to do with them
     noisy_templates = neuron_separability.find_noisy_templates(
                                             separability_metrics, sort_info)
-    separability_metrics, noisy_templates = neuron_separability.delete_and_threshold_noise(
+    separability_metrics, noisy_templates = neuron_separability.check_noise_templates(
                                     separability_metrics, sort_info, noisy_templates)
     separability_metrics = neuron_separability.delete_noise_units(
                                     separability_metrics, noisy_templates)

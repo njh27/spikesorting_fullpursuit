@@ -35,9 +35,9 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['segment_duration'] = 300 # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
     settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
-    # sigma_lower_bound = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
-    settings['n_cov_samples'] = 100000 # Number of random clips to use to estimate noise covariance matrix
-    settings['sigma_lower_bound'] = 4.0 # Number of noise standard deviations a template match must exceed for a unit to be added. Higher numbers reduce noise induced false discoveries at the cost of true positives.
+    # sigma_bp_noise = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
+    settings['n_cov_samples'] = 100000 # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce repeatable results, but 10,000 has some variance.
+    settings['sigma_bp_noise'] = 4.0 # Number of noise standard deviations a template match must exceed for a unit to be added. Higher numbers reduce noise induced false discoveries at the cost of true positives.
     settings['absolute_refractory_period'] = 10e-4
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
@@ -82,7 +82,7 @@ def spike_sorting_settings_parallel(**kwargs):
             if settings[key] <= 0  or type(settings[key]) != int:
                 raise ValueError("Input setting '{0}' must be a postive integer".format(key))
 
-        if key in ['min_firing_rate', 'sigma_lower_bound',
+        if key in ['min_firing_rate', 'sigma_bp_noise',
                     'max_binary_pursuit_clip_width_factor']:
 
             if settings[key] < 0:

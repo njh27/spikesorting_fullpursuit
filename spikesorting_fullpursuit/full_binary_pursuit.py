@@ -208,8 +208,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates_to_check = sort_cython.find_overlap_templates(templates,
                                 sort_info['n_samples_per_chan'],
                                 sort_info['n_channels'],
-                                np.int64(np.abs(bp_chan_win[0])//2),
-                                np.int64(np.abs(bp_chan_win[1])//2),
+                                np.int64(np.abs(bp_chan_win[0])//1.5),
+                                np.int64(np.abs(bp_chan_win[1])//1.5),
                                 n_template_spikes)
 
     # Go through suspect templates in templates_to_check

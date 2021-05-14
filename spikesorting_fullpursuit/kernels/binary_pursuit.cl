@@ -423,7 +423,7 @@ __kernel void compute_template_maximum_likelihood(
             best_spike_label_private = template_number;
             best_spike_index_private = start + i;
         }
-        if ((current_maximum_likelihood > likelihood_lower_thresholds[best_spike_label_private])
+        if ((current_maximum_likelihood > likelihood_lower_thresholds[template_number])
             && (start + i >= start_of_my_window) && (start + i < end_of_my_window) )
         {
             /* Track windows that need checked next pass regardless of whether */

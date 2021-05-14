@@ -419,7 +419,12 @@ def find_overlap_templates(np.ndarray[float, ndim=2] templates,
         # if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:
         #     templates_to_delete[test_unit] = True
         if best_shifted_template is not None:
-          templates_to_check.append([test_unit, best_shifted_template, best_pair])
+          best_shifted_template_ss = np.sum(best_shifted_template ** 2)
+          # Best template can't just be a sum where one template is shifted so far
+          # that it makes no contribution
+          if (best_shifted_template_ss > templates_SS[best_pair[0]]
+              and best_shifted_template_ss > templates_SS[best_pair[1]]):
+              templates_to_check.append([test_unit, best_shifted_template, best_pair])
 
     return templates_to_check #templates_to_delete
 

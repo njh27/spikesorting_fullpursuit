@@ -193,6 +193,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     chan_covariance_mats = noise_covariance_parallel(voltage, bp_chan_win,
                                                         100000, rand_state=np.random.get_state())
     print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+    seg_summary.sharpen_across_chans()
+    print("Sharpening reduced number of templates to", len(seg_summary.summaries))
     templates = []
     n_template_spikes = []
     for n in seg_summary.summaries:
@@ -208,8 +210,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates_to_check = sort_cython.find_overlap_templates(templates,
                                 sort_info['n_samples_per_chan'],
                                 sort_info['n_channels'],
-                                np.int64(np.abs(bp_chan_win[0])//1.5),
-                                np.int64(np.abs(bp_chan_win[1])//1.5),
+                                np.int64(np.abs(bp_chan_win[0])//1.25),
+                                np.int64(np.abs(bp_chan_win[1])//1.25),
                                 n_template_spikes)
 
     # Go through suspect templates in templates_to_check
@@ -234,9 +236,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             del seg_summary.summaries[x]
     print("Removing sums reduced number of templates to", len(seg_summary.summaries))
 
-    seg_summary.sharpen_across_chans()
+    # Get updated neurons after removing overlap templates
     neurons = seg_summary.summaries
-    print("Sharpening reduced number of templates to", len(neurons))
 
     # Return the original neighbors to the work items that were reset
     orig_neigh_ind = 0

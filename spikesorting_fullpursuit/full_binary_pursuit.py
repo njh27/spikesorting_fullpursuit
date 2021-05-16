@@ -191,7 +191,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # stays on the same current random generator state such that starting
     # sorting at a given state will produce the same covariance matrix
     chan_covariance_mats = noise_covariance_parallel(voltage, bp_chan_win,
-                                            sort_info['n_cov_samples'], 
+                                            sort_info['n_cov_samples'],
                                             rand_state=np.random.get_state())
     seg_summary.sharpen_across_chans()
     print("Sharpening reduced number of templates to", len(seg_summary.summaries))

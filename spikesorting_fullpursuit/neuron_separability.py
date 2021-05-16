@@ -237,6 +237,7 @@ def delete_noise_units(separability_metrics, noisy_templates):
         else:
             print("!!! Could not find a condition for metrics key !!!", key)
 
+    print("Removed", np.count_nonzero(noisy_templates), "templates as noise")
     return separability_metrics
 
 

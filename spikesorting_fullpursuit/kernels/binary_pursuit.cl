@@ -666,6 +666,7 @@ __kernel void parse_overlap_recheck_indices(
     __global unsigned int * restrict overlap_best_spike_labels,
     __global float * restrict full_likelihood_function,
     const unsigned int n_max_shift_inds,
+    __global const float * restrict likelihood_lower_thresholds,
     __global float * restrict overlap_group_best_likelihood,
     __global unsigned int * restrict overlap_group_best_work_id)
 {
@@ -727,19 +728,28 @@ __kernel void parse_overlap_recheck_indices(
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];
 
     /* Reset the likelihood and best index and label to maximum */
-    if (actual_template_likelihood_at_index >= actual_current_maximum_likelihood)
+    if ((actual_template_likelihood_at_index >= actual_current_maximum_likelihood)
+        && (actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private]))
     {
         /* The main label has better likelihood than best shifted match */
         best_spike_likelihoods[id] = best_group_likelihood;
         overlap_best_spike_labels[id] = best_spike_label_private;
         overlap_best_spike_indices[id] = absolute_fixed_index;
     }
-    else
+    else if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index )
+        && (actual_current_maximum_likelihood > likelihood_lower_thresholds[template_number]))
     {
         /* The best shifted match unit has better likelihood than the main label */
         best_spike_likelihoods[id] = best_group_likelihood;
         overlap_best_spike_labels[id] = template_number;
         overlap_best_spike_indices[id] = absolute_shift_index;
+    }
+    else
+    {
+        /* This isn't totally necessary but says "do nothing" so we stick with
+        our original spike index. */
+        overlap_best_spike_indices[id] = best_spike_indices[id];
+        overlap_best_spike_labels[id] = best_spike_labels[id];
     }
 }
 

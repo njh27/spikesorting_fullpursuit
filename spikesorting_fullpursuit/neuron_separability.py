@@ -73,6 +73,7 @@ def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info)
     for chan in range(0, n_chans):
         t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
         diff_template = template_1[t_win[0]:t_win[1]] - template_2[t_win[0]:t_win[1]]
+        diff_template = np.squeeze(chan_covariance_mats[chan] @ diff_template[:, None]) + diff_template
         var_diff += (diff_template[None, :]
                      @ chan_covariance_mats[chan]
                      @ diff_template[:, None])

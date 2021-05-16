@@ -383,14 +383,14 @@ def find_overlap_templates(np.ndarray[float, ndim=2] templates,
         best_shifted_template = None
 
         for n1 in range(0, templates.shape[0]):
-            if (n_template_spikes[n1] < n_template_spikes[test_unit]) or (n1 == test_unit):# or (templates_SS[n1] > templates_SS[test_unit]):
+            if (n_template_spikes[n1] < n_template_spikes[test_unit]) or (n1 == test_unit):
                 continue
             # if templates_to_delete[n1]:
             #   continue
             template_1 = templates[n1, :]
 
             for n2 in range(n1+1, templates.shape[0]):
-                if (n_template_spikes[n2] < n_template_spikes[test_unit]) or (n2 == test_unit):# or (templates_SS[n2] > templates_SS[test_unit]):
+                if (n_template_spikes[n2] < n_template_spikes[test_unit]) or (n2 == test_unit):
                     continue
                 # if templates_to_delete[n2]:
                 #   continue

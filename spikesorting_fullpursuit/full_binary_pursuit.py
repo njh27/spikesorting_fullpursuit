@@ -107,7 +107,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     original_clip_width = [s for s in sort_info['clip_width']]
     original_n_samples_per_chan = copy(sort_info['n_samples_per_chan'])
     # Max shift indices to check for binary pursuit overlaps
-    n_max_shift_inds = original_n_samples_per_chan-1
+    n_max_shift_inds = (original_n_samples_per_chan-1)
 
     # Determine the set of work items for this segment
     seg_w_items = [w for w in work_items if w['seg_number'] == seg_number]
@@ -191,10 +191,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # stays on the same current random generator state such that starting
     # sorting at a given state will produce the same covariance matrix
     chan_covariance_mats = noise_covariance_parallel(voltage, bp_chan_win,
-                                                        100000, rand_state=np.random.get_state())
-    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+                                            sort_info['n_cov_samples'], 
+                                            rand_state=np.random.get_state())
     seg_summary.sharpen_across_chans()
     print("Sharpening reduced number of templates to", len(seg_summary.summaries))
+    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
     templates = []
     n_template_spikes = []
     for n in seg_summary.summaries:
@@ -210,8 +211,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates_to_check = sort_cython.find_overlap_templates(templates,
                                 sort_info['n_samples_per_chan'],
                                 sort_info['n_channels'],
-                                np.int64(np.abs(bp_chan_win[0])//1.25),
-                                np.int64(np.abs(bp_chan_win[1])//1.25),
+                                np.int64(np.abs(bp_chan_win[0])//1.5),
+                                np.int64(np.abs(bp_chan_win[1])//1.5),
                                 n_template_spikes)
 
     # Go through suspect templates in templates_to_check
@@ -227,6 +228,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         sum_ind_1, sum_ind_2 = t_info[2]
         p_confusion = neuron_separability.check_template_pair(
                 templates[t_ind, :], shift_temp, chan_covariance_mats, sort_info)
+        print("P confusion", p_confusion, "Confusion threshold", confusion_threshold)
         if p_confusion > confusion_threshold:
             templates_to_delete[t_ind] = True
 

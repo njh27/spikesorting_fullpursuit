@@ -488,6 +488,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
             parse_overlap_recheck_indices_kernel.set_arg(8, overlap_best_spike_labels_buffer) # Storage for new best overlap indices
             parse_overlap_recheck_indices_kernel.set_arg(9, full_likelihood_function_buffer)
             parse_overlap_recheck_indices_kernel.set_arg(10, n_max_shift_inds)
+            parse_overlap_recheck_indices_kernel.set_arg(11, lower_thresholds_buffer)
 
             check_overlap_reassignments_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage
             check_overlap_reassignments_kernel.set_arg(1, np.uint32(template_samples_per_chan)) # Number of timepoints in each template
@@ -607,10 +608,10 @@ def binary_pursuit(voltage, v_dtype, sort_info,
                     if n_loops == 1:
                         overlap_group_best_likelihood_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_work_groups, dtype=np.float32))
                         overlap_recheck_indices_kernel.set_arg(14, overlap_group_best_likelihood_buffer)
-                        parse_overlap_recheck_indices_kernel.set_arg(11, overlap_group_best_likelihood_buffer)
+                        parse_overlap_recheck_indices_kernel.set_arg(12, overlap_group_best_likelihood_buffer)
                         overlap_group_best_work_id_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_work_groups, dtype=np.uint32))
                         overlap_recheck_indices_kernel.set_arg(15, overlap_group_best_work_id_buffer)
-                        parse_overlap_recheck_indices_kernel.set_arg(12, overlap_group_best_work_id_buffer)
+                        parse_overlap_recheck_indices_kernel.set_arg(13, overlap_group_best_work_id_buffer)
                         curr_overlaps_buffer_size = num_work_groups
                         print("Made buffers for a total of", num_work_groups, "work groups")
 
@@ -620,10 +621,10 @@ def binary_pursuit(voltage, v_dtype, sort_info,
                         overlap_group_best_work_id_buffer.release()
                         overlap_group_best_likelihood_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_work_groups, dtype=np.float32))
                         overlap_recheck_indices_kernel.set_arg(14, overlap_group_best_likelihood_buffer)
-                        parse_overlap_recheck_indices_kernel.set_arg(11, overlap_group_best_likelihood_buffer)
+                        parse_overlap_recheck_indices_kernel.set_arg(12, overlap_group_best_likelihood_buffer)
                         overlap_group_best_work_id_buffer = cl.Buffer(ctx, mf.READ_WRITE | mf.COPY_HOST_PTR, hostbuf=np.zeros(num_work_groups, dtype=np.uint32))
                         overlap_recheck_indices_kernel.set_arg(15, overlap_group_best_work_id_buffer)
-                        parse_overlap_recheck_indices_kernel.set_arg(12, overlap_group_best_work_id_buffer)
+                        parse_overlap_recheck_indices_kernel.set_arg(13, overlap_group_best_work_id_buffer)
                         curr_overlaps_buffer_size = num_work_groups
                         print("Made buffers for a total of", num_work_groups, "work groups")
 
@@ -709,20 +710,6 @@ def binary_pursuit(voltage, v_dtype, sort_info,
                 next_wait_event.append(cl.enqueue_copy(queue, additional_spike_labels, additional_spike_labels_buffer, wait_for=None))
                 chunk_total_additional_spike_indices.append(additional_spike_indices)
                 chunk_total_additional_spike_labels.append(additional_spike_labels)
-
-                # closest_ind = np.argmin(np.abs(additional_spike_indices - (290853 - clip_init_samples)))
-                # closest_val = additional_spike_indices[closest_ind]
-                # if np.abs(closest_val - (290853 - clip_init_samples)) < 80:
-                #     print("CLIP init samples are", clip_init_samples)
-                #     print("At NLOOP", n_loops, "found index", closest_val)
-                # if num_additional_spikes[0] > 1:
-                #     print("NUMBER UNIQUE ADDITIONAL SPIKE INDICES", np.unique(additional_spike_indices).shape[0], "of", additional_spike_indices.shape[0], "total")
-                #     if num_additional_spikes[0] > 10:
-                #         print("last values are", additional_spike_indices[-10:])
-                #
-                #     additional_spike_indices.sort()
-                #     print("Their min sorted diff is", np.amin(np.diff(additional_spike_indices)))
-
 
                 # We have added additional spikes this pass, so we need to subtract them off
                 # by calling the compute_residuals kernel. Most of the arguments are the

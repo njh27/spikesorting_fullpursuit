@@ -348,7 +348,6 @@ def find_overlap_templates(np.ndarray[float, ndim=2] templates,
                                 chan_temp[-shift:]
         return shifted_template
 
-
     # templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
     templates_to_check = []
     if templates.shape[0] < 3:
@@ -375,44 +374,66 @@ def find_overlap_templates(np.ndarray[float, ndim=2] templates,
     cdef Py_ssize_t test_unit, n1, n2, s1_ind, s2_ind
     for test_unit in template_SS_order:
         test_template = templates[test_unit, :]
+        test_template_min_chan = np.argmin(test_template) // n_samples_per_chan
+        test_template_max_chan = np.argmax(test_template) // n_samples_per_chan
 
         min_residual_SS = np.inf
         best_pair = None
         best_shifts = None
         best_inds = None
         best_shifted_template = None
-        best_residual_t1 = np.inf
-        best_residual_t2 = np.inf
 
         for n1 in range(0, templates.shape[0]):
-            if (n_template_spikes[n1] < n_template_spikes[test_unit]) or (n1 == test_unit):
+            # Skip if this would mean nearly 25% of spikes are overlaps at this
+            # specific lag
+            if (n_template_spikes[n1] < 4*n_template_spikes[test_unit]) or (n1 == test_unit):
                 continue
             # if templates_to_delete[n1]:
             #   continue
             template_1 = templates[n1, :]
+            # best_residual_t1 = np.inf
 
             for n2 in range(n1+1, templates.shape[0]):
-                if (n_template_spikes[n2] < n_template_spikes[test_unit]) or (n2 == test_unit):
+              # Skip if this would mean nearly 25% of spikes are overlaps at this
+              # specific lag
+                if (n_template_spikes[n2] < 4*n_template_spikes[test_unit]) or (n2 == test_unit):
                     continue
                 # if templates_to_delete[n2]:
                 #   continue
                 template_2 = templates[n2, :]
+                # best_residual_t2 = np.inf
+                # Templates can't come close to accounting for minima of
+                # test template on its min channel so skip
+                tmin1 = np.amin(template_1[test_template_min_chan*n_samples_per_chan:(test_template_min_chan+1)*n_samples_per_chan])
+                tmin2 = np.amin(template_2[test_template_min_chan*n_samples_per_chan:(test_template_min_chan+1)*n_samples_per_chan])
+                testmin = np.amin(test_template[test_template_min_chan*n_samples_per_chan:(test_template_min_chan+1)*n_samples_per_chan])
+                # print("Min channel", test_template_min_chan, "Template 1 min", tmin1, "Template 2 min", tmin2, "Min sum", tmin1 + tmin2, "Test template min", testmin)
+                if tmin1 + tmin2 > 0.75 * testmin:
+                    continue
+                # Templates can't come close to accounting for maxima of
+                # test template so skip
+                tmax1 = np.amax(template_1[test_template_max_chan*n_samples_per_chan:(test_template_max_chan+1)*n_samples_per_chan])
+                tmax2 = np.amax(template_2[test_template_max_chan*n_samples_per_chan:(test_template_max_chan+1)*n_samples_per_chan])
+                testmax = np.amax(test_template[test_template_max_chan*n_samples_per_chan:(test_template_max_chan+1)*n_samples_per_chan])
+                # print("Min channel", test_template_max_chan, "Template 1 max", tmax1, "Template 2 max", tmax2, "Min sum", tmax1 + tmax2, "Test template max", testmax)
+                if tmax1 + tmax2 < 0.75 * testmax:
+                    continue
 
                 s1_ind = 0
                 for shift1 in range(-n_pre_inds, n_post_inds+1):
                     shifted_t1 = all_template_shifts[n1][s1_ind, :]
-                    residual_shifted_t1 = np.sum((test_template - shifted_t1) ** 2)
-                    if residual_shifted_t1 < best_residual_t1:
-                        best_residual_t1 = residual_shifted_t1
+                    # residual_shifted_t1 = np.sum((test_template - shifted_t1) ** 2)
+                    # if residual_shifted_t1 < best_residual_t1:
+                    #     best_residual_t1 = residual_shifted_t1
                     s2_ind = 0
                     for shift2 in range(-n_pre_inds, n_post_inds+1):
                         # Copy data from t1 shift into sum
                         sum_n1_n2_template[:] = shifted_t1[:]
                         shifted_t2 = all_template_shifts[n2][s2_ind, :]
                         sum_n1_n2_template += shifted_t2
-                        residual_shifted_t2 = np.sum((test_template - shifted_t2) ** 2)
-                        if residual_shifted_t2 < best_residual_t2:
-                            best_residual_t2 = residual_shifted_t2
+                        # residual_shifted_t2 = np.sum((test_template - shifted_t2) ** 2)
+                        # if residual_shifted_t2 < best_residual_t2:
+                        #     best_residual_t2 = residual_shifted_t2
 
                         residual_SS_sum = np.sum((test_template - sum_n1_n2_template) ** 2)
                         if residual_SS_sum < min_residual_SS:
@@ -427,9 +448,10 @@ def find_overlap_templates(np.ndarray[float, ndim=2] templates,
         # if 1 - (min_residual_SS / templates_SS[test_unit]) > 0.75:
         #     templates_to_delete[test_unit] = True
         if best_shifted_template is not None:
-            if ( (residual_SS_sum < best_residual_t1)
-                and (residual_SS_sum < best_residual_t2) ):
-              templates_to_check.append([test_unit, best_shifted_template, best_pair])
+            # print("Residual SS", residual_SS_sum, "Best t1 residual", best_residual_t1, "Best t2 residual", best_residual_t2)
+            # if ( (residual_SS_sum < best_residual_t1)
+            #     and (residual_SS_sum < best_residual_t2) ):
+            templates_to_check.append([test_unit, best_shifted_template, best_pair])
 
     return templates_to_check #templates_to_delete
 

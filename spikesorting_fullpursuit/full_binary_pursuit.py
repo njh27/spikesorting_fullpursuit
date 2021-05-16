@@ -273,6 +273,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                                     clip_width=sort_info['clip_width'])
             templates.append(np.mean(clips, axis=0))
     del seg_summary # No longer needed so clear memory
+
     separability_metrics = neuron_separability.compute_separability_metrics(
                                 templates, chan_covariance_mats, sort_info)
     # Identify templates similar to noise and decide what to do with them
@@ -282,6 +283,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                                     separability_metrics, sort_info, noisy_templates)
     separability_metrics = neuron_separability.delete_noise_units(
                                     separability_metrics, noisy_templates)
+
     if separability_metrics['templates'].shape[0] == 0:
         # All data this segment found nothing (or raised an exception)
         seg_data = []
@@ -298,6 +300,10 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         return seg_data
 
     print("Starting full binary pursuit search with", separability_metrics['templates'].shape[0], "templates in segment", seg_number)
+    print("!! ! CHECKING TOO MANY TEMPLATES !!!")
+    if separability_metrics['templates'].shape[0] > 3:
+        raise RuntimeError("TOO many templates")
+
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     voltage, v_dtype, sort_info,
                     separability_metrics,

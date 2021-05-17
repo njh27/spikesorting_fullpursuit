@@ -228,7 +228,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         sum_ind_1, sum_ind_2 = t_info[2]
         p_confusion = neuron_separability.check_template_pair(
                 templates[t_ind, :], shift_temp, chan_covariance_mats, sort_info)
-        print("P confusion", p_confusion, "Confusion threshold", confusion_threshold)
+        # print("P confusion", p_confusion, "Confusion threshold", confusion_threshold)
         if p_confusion > confusion_threshold:
             templates_to_delete[t_ind] = True
 
@@ -300,10 +300,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         return seg_data
 
     print("Starting full binary pursuit search with", separability_metrics['templates'].shape[0], "templates in segment", seg_number)
-    print("!! ! CHECKING TOO MANY TEMPLATES !!!")
-    if separability_metrics['templates'].shape[0] > 3:
-        raise RuntimeError("TOO many templates")
-
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     voltage, v_dtype, sort_info,
                     separability_metrics,

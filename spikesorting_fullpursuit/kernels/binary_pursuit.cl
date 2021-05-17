@@ -727,7 +727,10 @@ __kernel void parse_overlap_recheck_indices(
     float actual_template_likelihood_at_index = full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index];
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];
 
-    /* Reset the likelihood and best index and label to maximum */
+    /* Reset the likelihood and best index and label to maximum.
+      These need to be reset only if the new index can pass the
+      threshold check in "binary_pursuit" below. Otherwise this
+      spike won't get added but it will continue to be checked. */
     if ((actual_template_likelihood_at_index >= actual_current_maximum_likelihood)
         && (actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private]))
     {

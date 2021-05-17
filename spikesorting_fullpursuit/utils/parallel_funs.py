@@ -105,7 +105,7 @@ def covar_one_chan(chan):
     if pool_dict['rand_state'] is not None:
         np.random.set_state(pool_dict['rand_state'])
     # Limit threads within each process
-    mkl.set_num_threads(2)
+    mkl.set_num_threads(1)
     voltage = np.frombuffer(pool_dict['share_voltage'],
                 dtype=pool_dict['share_voltage_dtype']).reshape(pool_dict['share_voltage_shape'])
 
@@ -138,7 +138,7 @@ def noise_covariance_parallel(voltage_array, window, n_samples=100000,
     np.copyto(shared_v_array_np, voltage_array)
 
     chan_covar_mats = []
-    with mp.Pool(processes=psutil.cpu_count(logical=False)//2,
+    with mp.Pool(processes=psutil.cpu_count(logical=False),
                  initializer=init_covar_pool_dict, initargs=(shared_v_array,
                  voltage_array.shape, voltage_array.dtype, window,
                  n_samples, rand_state)) as pool:

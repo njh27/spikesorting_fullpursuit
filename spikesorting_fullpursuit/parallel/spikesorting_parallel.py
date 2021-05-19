@@ -37,7 +37,8 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
     # sigma_bp_noise = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
     settings['n_cov_samples'] = 10000 # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
-    settings['sigma_bp_noise'] = 4.0 # Number of noise standard deviations a template match must exceed for a unit to be added. Higher numbers reduce noise induced false discoveries at the cost of true positives.
+    settings['sigma_bp_noise'] = 3.0 # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
+    settings['sigma_bp_CI'] = 6.0 # Number of noise standard deviations a template match must exceed for a spike to be added. Lower numbers reduce noise induced false discoveries at the cost of true positives.
     settings['absolute_refractory_period'] = 10e-4
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.

@@ -791,7 +791,7 @@ class WorkItemSummary(object):
                                                  self.absolute_refractory_period)
                         # Use the biggest bin over bin change observed in the
                         # CCG as an error tolerance
-                        _, _, max_delta = calc_ccg_overlap_ratios(self.sort_data[chan][seg][0][select_1],
+                        _, _, max_delta = analyze_spike_timing.calc_ccg_overlap_ratios(self.sort_data[chan][seg][0][select_1],
                                             self.sort_data[chan][seg][0][select_2],
                                             self.absolute_refractory_period,
                                             self.sort_info['sampling_rate'])
@@ -1099,7 +1099,7 @@ class WorkItemSummary(object):
         n1_spikes = self.neuron_summary_by_seg[seg1][n1_ind]['spike_indices']
         n2_spikes = self.neuron_summary_by_seg[seg2][n2_ind]['spike_indices']
         max_samples = int(round(overlap_time * self.sort_info['sampling_rate']))
-        overlap_ratio = calc_overlap_ratio(n1_spikes, n2_spikes, max_samples)
+        overlap_ratio = analyze_spike_timing.calc_overlap_ratio(n1_spikes, n2_spikes, max_samples)
         return overlap_ratio
 
     def any_linked(self, neuron):
@@ -1164,7 +1164,7 @@ class WorkItemSummary(object):
                 # if neuron1['channel'] not in neuron2['neighbors']:
                 #     continue # If they are not in same neighborhood, do nothing
                 # overlap_time = max(neuron1['duplicate_tol_inds'], neuron2['duplicate_tol_inds']) / self.sort_info['sampling_rate']
-                exp, act, delta = calc_ccg_overlap_ratios(
+                exp, act, delta = analyze_spike_timing.calc_ccg_overlap_ratios(
                                                 neuron1['spike_indices'],
                                                 neuron2['spike_indices'],
                                                 overlap_time,
@@ -1899,7 +1899,7 @@ class WorkItemSummary(object):
                 # if neuron1['channel'] not in neuron2['neighbors']:
                 #     continue # If they are not in same neighborhood, do nothing
                 # overlap_time = max(neuron1['duplicate_tol_inds'], neuron2['duplicate_tol_inds']) / self.sort_info['sampling_rate']
-                exp, act, delta = calc_ccg_overlap_ratios(
+                exp, act, delta = analyze_spike_timing.calc_ccg_overlap_ratios(
                                                 neuron1['spike_indices'],
                                                 neuron2['spike_indices'],
                                                 overlap_time,

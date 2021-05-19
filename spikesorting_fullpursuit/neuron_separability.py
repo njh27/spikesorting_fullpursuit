@@ -139,11 +139,17 @@ def compute_separability_metrics(templates, channel_covariance_mats,
         separability_metrics['neuron_lower_thresholds'][n] = (
                                 expectation - sort_info['sigma_bp_noise']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
+        lower_CI = (expectation - sort_info['sigma_bp_CI']
+                        * np.sqrt(separability_metrics['neuron_variances'][n]))
+
+        if separability_metrics['neuron_lower_thresholds'][n] >= 0.0:
+            # Neuron is not noise
+            separability_metrics['neuron_lower_thresholds'][n] = max(lower_CI, separability_metrics['neuron_lower_thresholds'][n])
         # If template does not overlap zero, set its threshold to 0
         # Units overlapping zero will be thresholded in check_noise_templates
-        if separability_metrics['neuron_lower_thresholds'][n] > 0:
-            separability_metrics['neuron_lower_thresholds'][n] = 0.0
-
+        # if separability_metrics['neuron_lower_thresholds'][n] > 0:
+        #     separability_metrics['neuron_lower_thresholds'][n] = 0.0
+        print("LOWER THRESHOLD", separability_metrics['neuron_lower_thresholds'][n])
         # Determine peak channel for this unit
         separability_metrics['peak_channel'][n] = ( np.argmax(np.abs(
                                     separability_metrics['templates'][n, :]))

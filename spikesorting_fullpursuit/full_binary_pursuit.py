@@ -206,6 +206,27 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         n_template_spikes.append(n['spike_indices'].shape[0])
     templates = np.vstack(templates)
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
+
+    print("COMPARING CONVOLUTION")
+    from scipy.signal import fftconvolve
+    expectation_t_conv = np.zeros(templates.shape[0])
+    expectation_t_covar = np.zeros(templates.shape[0])
+    for n_t in range(0, templates.shape[0]):
+        for n_chan in range(0, sort_info['n_channels']):
+            chan_template = templates[n_t, n_chan*sort_info['n_samples_per_chan']:(n_chan+1)*sort_info['n_samples_per_chan']]
+            chan_conv = fftconvolve(voltage[n_chan, :], chan_template, "valid")
+            n_conv_per_chan = chan_conv.shape[0]
+            expectation_t_conv[n_t] += np.sum(chan_conv)
+
+            chan_t_covar = chan_covariance_mats[n_chan] @ chan_template[:, None]
+            expectation_t_covar[n_t] += np.sum(chan_t_covar)
+
+        expectation_t_conv[n_t] /= (n_conv_per_chan)
+        expectation_t_covar[n_t] /= templates.shape[1]
+
+        print("Convolution mean is", expectation_t_conv[n_t], "Covariance mean is", expectation_t_covar[n_t])
+
+
     # The overlap check input here is hard coded to look at shifts +/- half
     # clip width
     templates_to_check = sort_cython.find_overlap_templates(templates,

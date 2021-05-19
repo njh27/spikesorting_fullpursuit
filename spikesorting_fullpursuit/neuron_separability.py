@@ -144,7 +144,7 @@ def compute_separability_metrics(templates, channel_covariance_mats,
 
         if separability_metrics['neuron_lower_thresholds'][n] >= 0.0:
             # Neuron is not noise
-            separability_metrics['neuron_lower_thresholds'][n] = max(lower_CI, separability_metrics['neuron_lower_thresholds'][n])
+            separability_metrics['neuron_lower_thresholds'][n] = max(lower_CI, 0.0)
         # If template does not overlap zero, set its threshold to 0
         # Units overlapping zero will be thresholded in check_noise_templates
         # if separability_metrics['neuron_lower_thresholds'][n] > 0:

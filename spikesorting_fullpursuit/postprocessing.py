@@ -772,19 +772,19 @@ class WorkItemSummary(object):
                         union_binary_pursuit_bool = union_binary_pursuit_bool[keep_bool]
                         union_clips = union_clips[keep_bool, :]
 
-                        union_fraction_mua_rate = calc_fraction_mua(
+                        union_fraction_mua_rate = analyze_spike_timing.calc_fraction_mua(
                                                          union_spikes,
                                                          self.sort_info['sampling_rate'],
                                                          2*spike_half_width,
                                                          self.absolute_refractory_period)
                         # Need to get fraction MUA by rate, rather than peak,
                         # for comparison here
-                        fraction_mua_rate_1 = calc_fraction_mua(
+                        fraction_mua_rate_1 = analyze_spike_timing.calc_fraction_mua(
                                                  self.sort_data[chan][seg][0][select_1],
                                                  self.sort_info['sampling_rate'],
                                                  2*spike_half_width,
                                                  self.absolute_refractory_period)
-                        fraction_mua_rate_2 = calc_fraction_mua(
+                        fraction_mua_rate_2 = analyze_spike_timing.calc_fraction_mua(
                                                  self.sort_data[chan][seg][0][select_2],
                                                  self.sort_info['sampling_rate'],
                                                  2*spike_half_width,
@@ -1309,26 +1309,26 @@ class WorkItemSummary(object):
                     # we do not use peak MUA here but rather the rate based MUA
                     # Need to union with compliment so spikes are not double
                     # counted, which will reduce the rate based MUA
-                    neuron_1_compliment = ~find_overlapping_spike_bool(
+                    neuron_1_compliment = ~analyze_spike_timing.find_overlapping_spike_bool(
                             neuron_1['spike_indices'], neuron_2['spike_indices'],
                             self.half_clip_inds)
                     union_spikes = np.hstack((neuron_1['spike_indices'][neuron_1_compliment], neuron_2['spike_indices']))
                     union_spikes.sort()
                     # union_duplicate_tol = self.half_clip_inds
                     union_duplicate_tol = max(neuron_1['duplicate_tol_inds'], neuron_2['duplicate_tol_inds'])
-                    union_fraction_mua_rate = calc_fraction_mua(
+                    union_fraction_mua_rate = analyze_spike_timing.calc_fraction_mua(
                                                      union_spikes,
                                                      self.sort_info['sampling_rate'],
                                                      union_duplicate_tol,
                                                      self.absolute_refractory_period)
                     # Need to get fraction MUA by rate, rather than peak,
                     # for comparison here
-                    fraction_mua_rate_1 = calc_fraction_mua(
+                    fraction_mua_rate_1 = analyze_spike_timing.calc_fraction_mua(
                                              neuron_1['spike_indices'],
                                              self.sort_info['sampling_rate'],
                                              union_duplicate_tol,
                                              self.absolute_refractory_period)
-                    fraction_mua_rate_2 = calc_fraction_mua(
+                    fraction_mua_rate_2 = analyze_spike_timing.calc_fraction_mua(
                                              neuron_2['spike_indices'],
                                              self.sort_info['sampling_rate'],
                                              union_duplicate_tol,
@@ -2026,24 +2026,24 @@ class WorkItemSummary(object):
                     # we do not use peak MUA here but rather the rate based MUA
                     # Need to union with compliment so spikes are not double
                     # counted, which will reduce the rate based MUA
-                    neuron_1_compliment = ~find_overlapping_spike_bool(
+                    neuron_1_compliment = ~analyze_spike_timing.find_overlapping_spike_bool(
                             neuron_1['spike_indices'], neuron_2['spike_indices'],
                             self.half_clip_inds)
                     union_spikes = np.hstack((neuron_1['spike_indices'][neuron_1_compliment], neuron_2['spike_indices']))
                     union_spikes.sort()
-                    union_fraction_mua_rate = calc_fraction_mua(
+                    union_fraction_mua_rate = analyze_spike_timing.calc_fraction_mua(
                                                      union_spikes,
                                                      self.sort_info['sampling_rate'],
                                                      self.half_clip_inds,
                                                      self.absolute_refractory_period)
                     # Need to get fraction MUA by rate, rather than peak,
                     # for comparison here
-                    fraction_mua_rate_1 = calc_fraction_mua(
+                    fraction_mua_rate_1 = analyze_spike_timing.calc_fraction_mua(
                                              neuron_1['spike_indices'],
                                              self.sort_info['sampling_rate'],
                                              self.half_clip_inds,
                                              self.absolute_refractory_period)
-                    fraction_mua_rate_2 = calc_fraction_mua(
+                    fraction_mua_rate_2 = analyze_spike_timing.calc_fraction_mua(
                                              neuron_2['spike_indices'],
                                              self.sort_info['sampling_rate'],
                                              self.half_clip_inds,

@@ -4,7 +4,6 @@ from spikesorting_fullpursuit.consolidate import optimal_align_templates
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
 from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 
-"""CHECKED"""
 
 
 def find_decision_boundary_equal_var(mu_1, mu_2, var, p_1=0.5):
@@ -136,20 +135,11 @@ def compute_separability_metrics(templates, channel_covariance_mats,
                         @ separability_metrics['channel_covariance_mats'][chan]
                         @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
 
+        # Set threshold in standard deviations from decision boundary at 0
         separability_metrics['neuron_lower_thresholds'][n] = (
-                                expectation - sort_info['sigma_bp_noise']
+                                sort_info['sigma_bp_noise']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
-        lower_CI = (expectation - sort_info['sigma_bp_CI']
-                        * np.sqrt(separability_metrics['neuron_variances'][n]))
 
-        if separability_metrics['neuron_lower_thresholds'][n] >= 0.0:
-            # Neuron is not noise
-            separability_metrics['neuron_lower_thresholds'][n] = max(lower_CI, 0.0)
-        # If template does not overlap zero, set its threshold to 0
-        # Units overlapping zero will be thresholded in check_noise_templates
-        # if separability_metrics['neuron_lower_thresholds'][n] > 0:
-        #     separability_metrics['neuron_lower_thresholds'][n] = 0.0
-        print("LOWER THRESHOLD", separability_metrics['neuron_lower_thresholds'][n])
         # Determine peak channel for this unit
         separability_metrics['peak_channel'][n] = ( np.argmax(np.abs(
                                     separability_metrics['templates'][n, :]))
@@ -168,10 +158,13 @@ def find_noisy_templates(separability_metrics, sort_info):
     n_neurons = separability_metrics['templates'].shape[0]
 
     noisy_templates = np.zeros(n_neurons, dtype=np.bool)
-    # Find neurons that are too close to noise and need to be deleted
+    # Find neurons that are too close to decision boundary and need to be deleted
     for neuron in range(0, n_neurons):
-        if separability_metrics['neuron_lower_thresholds'][neuron] < 0.0:
+        # This implies that the neuron's expected value given a spike is present
+        # has a distribution that overlaps the distribution centered at 0.0
+        if 2 * separability_metrics['neuron_lower_thresholds'][neuron] > 0.5 * separability_metrics['template_SS'][neuron]:
             noisy_templates[neuron] = True
+            print("Unit", neuron, "is noisy.")
 
     return noisy_templates
 
@@ -208,18 +201,13 @@ def check_noise_templates(separability_metrics, sort_info,
             # function for neuron n, given that voltage = noise_n
             noise_match_upper_bound = expectation_n_noise_n + sort_info['sigma_bp_noise'] \
                                 * np.sqrt(separability_metrics['neuron_variances'][n])
-            if noise_match_upper_bound > 0.0:
+            if noise_match_upper_bound > separability_metrics['neuron_lower_thresholds'][n]:
                 # The likelihood function for good template n given the noise
                 # template has enough probability of exceeding threshold to be
                 # either incorrectly added to the good unit or improve its
-                # sorting so rethreshold the noise unit and keep it
+                # sorting so keep it
                 new_noisy_templates[noise_n] = False
-                # Rethreshold the noise unit so that spikes are only added to
-                # it if they exceed the sigma upper bound of the noisy unit
-                # given that the voltage is noise (i.e. = 0). Since distributions
-                # are symmetric, this is the same as the negative of the currently
-                # assigned lower threshold.
-                separability_metrics['neuron_lower_thresholds'][noise_n] *= -1
+                print("Keeping unit", noise_n, "to improve sorting.")
                 break
             # If we make it here for each neuron, then if we delete the noise
             # unit, spikes from that unit are unlikely to be added to any of
@@ -322,6 +310,7 @@ def pairwise_separability(separability_metrics, sort_info):
             # Expected difference between n1 and n2 likelihood functions
             E_diff_n1_n2 = E_L_n1 - E_L_n2
             if var_diff > 0:
+                # Probability n2 likelihood greater than n1
                 pair_separability_matrix[n1, n2] = norm.cdf(0, E_diff_n1_n2, np.sqrt(var_diff))
             else:
                 # No variance (should be the same unit)

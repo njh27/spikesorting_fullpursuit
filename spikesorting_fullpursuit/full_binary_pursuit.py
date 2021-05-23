@@ -300,9 +300,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
 
-    print("!!!!!!! CHECKING FOR TOO MANY TEMPLATES !!!!!!!!")
-    if separability_metrics['templates'].shape[0] > 2:
-        raise RuntimeError("TOO MANY TEMPLATES")
+    # print("!!!!!!! CHECKING FOR TOO MANY TEMPLATES !!!!!!!!")
+    # if separability_metrics['templates'].shape[0] > 2:
+    #     raise RuntimeError("TOO MANY TEMPLATES")
     print("Starting full binary pursuit search with", separability_metrics['templates'].shape[0], "templates in segment", seg_number)
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     voltage, v_dtype, sort_info,

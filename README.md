@@ -2,17 +2,32 @@
 
 This package provides a neural spike sorting algorithm implementation as described
 in our publication Hall et al. The internal algorithm clusters spike waveforms in a manner derived from
-the isocut algorithm of [Chung et al. 2017](https://www.sciencedirect.com/science/article/pii/S0896627317307456) to
-discover neuron spike waveforms. These spike waveform templates are then used to derive
+the isocut algorithm of [Chung et al. 2017](https://www.sciencedirect.com/science/article/pii/S0896627317307456) to discover neuron spike waveforms. These spike waveform templates are then used to derive
 all the spike event times associated with each neuron using a slightly modified version
-of the binary pursuit algorithm proposed by [Pillow et al. 2013](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0062123).
+of the binary pursuit algorithm proposed by [Pillow et al. 2013](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0062123). The current code-base significantly extends this work by adding alignment, sharpening, and noise estimation among other things.
+
+A primary focus in fully using the binary pursuit approach to detect spike times is to enable
+the best possible detection of spikes that overlap in space and time in the voltage trace. The goal
+is to accurately detect spikes in the voltage while minimizing false discoveries in order
+to allow analyses of single, isolated neurons and cross correlogram analyses between
+simultaneously recorded neurons even in the face of high firing rates.
 
 
 # Installation
 
-Clone git repository
+### Requirements
+This package depends heavily on the numpy and scipy python packages. The easiest way
+to ensure the majority of package requirements are met is to install via that ANACONDA
+source and API. Additional requirements not part of the standard Anaconda install
+are Cython, pyopencl, and the multiprocessing library, all of which are freely available
+and installable via the Anaconda API.
 
-pip install -e spikesorting_fullpursuit
+A GPU is required to run the binary pursuit algorithm via pyopencl.
+
+### Install package
+Navigate to the directory containing the package spikesorting_fullpursuit.
+Type:
+<pip install -e spikesorting_fullpursuit>
 
 
 # Spike Sorting

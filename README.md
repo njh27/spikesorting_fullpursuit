@@ -26,8 +26,7 @@ A GPU is required to run the binary pursuit algorithm via pyopencl.
 
 ### Install package
 Navigate to the directory containing the package spikesorting_fullpursuit.
-Type:
-<pip install -e spikesorting_fullpursuit>
+Type: <br /> <pip install -e spikesorting_fullpursuit>
 
 
 # Spike Sorting

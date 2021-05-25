@@ -19,8 +19,10 @@ simultaneously recorded neurons even in the face of high firing rates.
 This package depends heavily on the numpy and scipy python packages. The easiest way
 to ensure the majority of package requirements are met is to install via that ANACONDA
 source and API. Additional requirements not part of the standard Anaconda install
-are Cython, pyopencl, and the multiprocessing library, all of which are freely available
-and installable via the Anaconda API.
+are pyopencl, and the multiprocessing library, all of which are freely available
+and installable via the Anaconda API. The Cython package was used to generate
+C code extensions included in the c_cython sub-package and would be required for
+modifications to these files.
 
 A GPU is required to run the binary pursuit algorithm via pyopencl.
 

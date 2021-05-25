@@ -34,7 +34,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['save_1_cpu'] = True
     settings['segment_duration'] = 300 # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
     settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
-    settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel
+    settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel. Improves speed and accuracy but can miss clusters for low firing rate units on multiple channels
     # sigma_bp_noise = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
     settings['n_cov_samples'] = 10000 # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
     settings['sigma_bp_noise'] = 1.645 # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
@@ -569,7 +569,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                                 use_rand_init=settings['use_rand_init'],
                                 method='chan_pca')
             curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
-            if settings['verbose']: print("After MULTI BY CHAN BRANCH", curr_num_clusters.size, "different clusters", flush=True)
+            if settings['verbose']: print("After MULTI BRANCH by channel", curr_num_clusters.size, "different clusters", flush=True)
 
         # Delete any clusters under min_cluster_size before binary pursuit
         if settings['verbose']: print("Current smallest cluster has", np.amin(n_per_cluster), "spikes", flush=True)

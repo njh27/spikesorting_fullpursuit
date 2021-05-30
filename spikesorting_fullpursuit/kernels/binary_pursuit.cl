@@ -418,12 +418,13 @@ __kernel void compute_template_maximum_likelihood(
     {
         current_maximum_likelihood = full_likelihood_function[full_likelihood_function_offset + i];
         if ( (current_maximum_likelihood > best_spike_likelihood_private) )
+            // && (current_maximum_likelihood > likelihood_lower_thresholds[template_number]) )
         {
             best_spike_likelihood_private = current_maximum_likelihood;
             best_spike_label_private = template_number;
             best_spike_index_private = start + i;
         }
-        if ((current_maximum_likelihood > likelihood_lower_thresholds[template_number])
+        if ((current_maximum_likelihood > 0.0)
             && (start + i >= start_of_my_window) && (start + i < end_of_my_window) )
         {
             /* Track windows that need checked next pass regardless of whether */
@@ -438,7 +439,11 @@ __kernel void compute_template_maximum_likelihood(
     overlap_recheck[id] = 0;
     /* Must set overlap_recheck to 1 ONLY IF a spike will be added in this */
     /* window by binary pursuit. */
-    if ((best_spike_likelihood_private > likelihood_lower_thresholds[best_spike_label_private]) && (best_spike_index_private >= start_of_my_window) && (best_spike_index_private < end_of_my_window))
+    // if ((best_spike_likelihood_private > likelihood_lower_thresholds[best_spike_label_private]) && (best_spike_index_private >= start_of_my_window) && (best_spike_index_private < end_of_my_window))
+    // {
+    //     overlap_recheck[id] = 1;
+    // }
+    if ( (best_spike_likelihood_private > 0.0) && (best_spike_index_private >= start_of_my_window) && (best_spike_index_private < end_of_my_window))
     {
         overlap_recheck[id] = 1;
     }
@@ -706,19 +711,27 @@ __kernel void parse_overlap_recheck_indices(
     }
     if ((best_group_likelihood <= best_spike_likelihood_private) || (best_group_likelihood <= 0.0))
     {
+        overlap_recheck[id] = 0;
         return; /* Shifts didn't improve so just return the previous values */
     }
 
     /* Shifts improved likelihood, so we need to use best shifts ID and crazy indices to find answer */
     if ((best_template_shifts_id % (n_local_ID * local_size)) >= items_per_index)
     {
-        return; /* Extra worker with nothing to do (should not be possible)*/
+        return; /* Extra worker with nothing to do */
     }
 
     /* Figure out the template and shifts for this worker based on crazy indexing */
     __private const unsigned int template_number = (unsigned int) (best_template_shifts_id % (size_t) num_templates);
     __private const signed int fixed_shift_ref_ind = (unsigned int) ((best_template_shifts_id / (size_t) num_templates) % num_shifts);
     __private const signed int template_shift_ref_ind = (unsigned int) ((best_template_shifts_id / (num_shifts * (size_t) num_templates)) % num_shifts);
+
+    if ( (best_group_likelihood < likelihood_lower_thresholds[best_spike_label_private])
+        && (best_group_likelihood < likelihood_lower_thresholds[template_number]) )
+    {
+        overlap_recheck[id] = 0;
+        return; /* Even combined template doesn't exceed either unit's threshold */
+    }
 
     /* These should all be in bounds or overlap_recheck_indices wouldn't have */
     /* likelihood > 0 */
@@ -748,6 +761,12 @@ __kernel void parse_overlap_recheck_indices(
         overlap_best_spike_labels[id] = template_number;
         overlap_best_spike_indices[id] = absolute_shift_index;
     }
+    // if (actual_template_likelihood_at_index > 0.0)
+    // {
+    //     best_spike_likelihoods[id] = best_group_likelihood;
+    //     overlap_best_spike_labels[id] = best_spike_label_private;
+    //     overlap_best_spike_indices[id] = absolute_fixed_index;
+    // }
     else
     {
         /* Says "do nothing" so we stick with our original spike index
@@ -785,6 +804,11 @@ __kernel void check_overlap_reassignments(
     const unsigned int start_of_my_window = ((signed int) id) * ((signed int) template_length);
     const unsigned int end_of_my_window = (id + 1) * template_length;
 
+    if (overlap_recheck[id] == 0)
+    {
+        return;
+    }
+
     best_spike_indices[id] = overlap_best_spike_indices[id];
     best_spike_labels[id] = overlap_best_spike_labels[id];
     if ((overlap_best_spike_indices[id] < start_of_my_window) && (id > 1))
@@ -798,18 +822,18 @@ __kernel void check_overlap_reassignments(
             overlap_recheck[id] = 0;
             best_spike_indices[id] = 0;
             /* But we should still recheck its neighbors as if it were added */
-            check_window_on_next_pass[id - 1] = 1;
-            check_window_on_next_pass[id] = 1;
-            check_window_on_next_pass[id + 1] = 1;
+            check_window_on_next_pass[id - 1] = 2;
+            check_window_on_next_pass[id] = 2;
+            check_window_on_next_pass[id + 1] = 2;
         }
         else
         {
-            check_window_on_next_pass[id - 2] = 1;
+            check_window_on_next_pass[id - 2] = 2;
         }
     }
     if ((overlap_best_spike_indices[id] >= end_of_my_window) && (id + 2 < voltage_length / template_length))
     {
-        check_window_on_next_pass[id + 2] = 1;
+        check_window_on_next_pass[id + 2] = 2;
     }
     return;
 }
@@ -911,38 +935,47 @@ __kernel void binary_pursuit(
     if (end_of_my_window < voltage_length - template_length && num_neighbor_channels > 0)
     {
         maximum_likelihood = best_spike_likelihoods[id];
-        if (maximum_likelihood > 0.0)
-        {
-            maximum_likelihood_neuron = best_spike_labels[id];
-            maximum_likelihood_index = best_spike_indices[id];
-        }
+        maximum_likelihood_neuron = best_spike_labels[id];
+        maximum_likelihood_index = best_spike_indices[id];
     }
 
     /* If the best maximum likelihood is greater than threshold and within our window */
     /* or was an overlap recheck) add the spike to the output */
     local_scratch[local_id] = 0;
     has_spike = 0;
-    if ( (maximum_likelihood > likelihood_lower_thresholds[best_spike_labels[id]])
-        || (overlap_recheck[id] == 1) )
+    if ( (maximum_likelihood > likelihood_lower_thresholds[maximum_likelihood_neuron]) )
     {
         if ( ((maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window))
             || (overlap_recheck[id] == 1) )
         {
             local_scratch[local_id] = 1;
             has_spike = 1;
+            check_window_on_next_pass[id] = 3;
             if (id > 0)
             {
-                check_window_on_next_pass[id-1] = 1;
+                check_window_on_next_pass[id-1] = 3;
             }
             if (id + 1 < voltage_length / template_length)
             {
-                check_window_on_next_pass[id+1] = 1;
+                check_window_on_next_pass[id+1] = 3;
             }
         }
     }
 
     barrier(CLK_LOCAL_MEM_FENCE); /* Wait for all workers to get here */
     prefix_local_sum(local_scratch); /* Compute the prefix sum to give our offset into spike indices) */
+
+    /* The purpose of this is to increase the convergence rate. Without it the
+    algorithm will repeatedly check windows flagged in 'compute_template_maximum_likelihood'
+    even if they do not cross threshold and will never be added. These events have
+    check_window_on_next_pass[id] == 1, whereas windows flagged for recheck for
+    other reasons are assigned check_window_on_next_pass[id] > 1. */
+    if ( (maximum_likelihood <= likelihood_lower_thresholds[maximum_likelihood_neuron])
+        && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)
+        && (check_window_on_next_pass[id] == 1) )
+    {
+        check_window_on_next_pass[id] = 0;
+    }
 
     if ((local_id == (local_size - 1)) && (local_scratch[(local_size - 1)] || has_spike)) /* I am the last worker and there are spikes to add in this group */
     {

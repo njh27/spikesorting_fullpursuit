@@ -122,6 +122,28 @@ class SProbe16by2(AbstractProbe):
         return np.int64(neighbors)
 
 
+class SProbe8by2(AbstractProbe):
+
+    def __init__(self, sampling_rate, voltage_array=None):
+        AbstractProbe.__init__(self, sampling_rate, 16, voltage_array=voltage_array, voltage_dtype=None)
+
+    def get_neighbors(self, channel):
+        # These are organized into stereotrodes. Our neighbors are the channels on
+        # our same stereotrode, the two stereotrodes above us, and the two
+        # stereotrodes below us.
+
+        if channel > self.num_channels - 1 or channel < 0:
+            raise ValueError("Invalid electrode channel")
+
+        stereotrode_number = (channel) // 2
+        total_stereotrodes = (16) // 2
+        start_stereotrode = max(0, stereotrode_number - 2)
+        end_stereotrode = min(total_stereotrodes, stereotrode_number + 3)
+        neighbors = np.arange(start_stereotrode * 2, end_stereotrode * 2, 1)
+
+        return np.int64(neighbors)
+
+
 class SingleElectrode(AbstractProbe):
 
     def __init__(self, sampling_rate, voltage_array=None):

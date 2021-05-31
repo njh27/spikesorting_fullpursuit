@@ -424,7 +424,7 @@ __kernel void compute_template_maximum_likelihood(
             best_spike_label_private = template_number;
             best_spike_index_private = start + i;
         }
-        if ((current_maximum_likelihood > 0.0)
+        if ((current_maximum_likelihood > likelihood_lower_thresholds[template_number])
             && (start + i >= start_of_my_window) && (start + i < end_of_my_window) )
         {
             /* Track windows that need checked next pass regardless of whether */
@@ -971,7 +971,7 @@ __kernel void binary_pursuit(
     check_window_on_next_pass[id] == 1, whereas windows flagged for recheck for
     other reasons are assigned check_window_on_next_pass[id] > 1. */
     if ( (maximum_likelihood <= likelihood_lower_thresholds[maximum_likelihood_neuron])
-        && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)
+        // && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)
         && (check_window_on_next_pass[id] == 1) )
     {
         check_window_on_next_pass[id] = 0;

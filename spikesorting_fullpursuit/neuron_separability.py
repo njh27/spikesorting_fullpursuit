@@ -124,6 +124,7 @@ def compute_separability_metrics(templates, channel_covariance_mats,
     # likelihood function distribution given this variance
     separability_metrics['neuron_variances'] = np.zeros(n_templates)
     separability_metrics['neuron_lower_thresholds'] = np.zeros(n_templates)
+    separability_metrics['neuron_lower_CI'] = np.zeros(n_templates)
     for n in range(0, n_templates):
         expectation = 0.5 * separability_metrics['template_SS'][n]
         for chan in range(0, n_chans):
@@ -138,6 +139,9 @@ def compute_separability_metrics(templates, channel_covariance_mats,
         # Set threshold in standard deviations from decision boundary at 0
         separability_metrics['neuron_lower_thresholds'][n] = (
                                 sort_info['sigma_bp_noise']
+                                * np.sqrt(separability_metrics['neuron_variances'][n]))
+
+        separability_metrics['neuron_lower_CI'][n] = (expectation - sort_info['sigma_bp_CI']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
 
         # Determine peak channel for this unit
@@ -226,12 +230,24 @@ def delete_noise_units(separability_metrics, noisy_templates):
         elif key in ['templates', 'template_SS_by_chan']:
             separability_metrics[key] = separability_metrics[key][~noisy_templates, :]
         elif key in ['template_SS', 'neuron_variances',
-                     'neuron_lower_thresholds', 'contamination', 'peak_channel']:
+                     'neuron_lower_thresholds', 'neuron_lower_CI',
+                     'contamination', 'peak_channel']:
             separability_metrics[key] = separability_metrics[key][~noisy_templates]
         else:
-            print("!!! Could not find a condition for metrics key !!!", key)
+            print("!!! Could not find a condition for a key in separability_metrics!!!", key)
 
     print("Removed", np.count_nonzero(noisy_templates), "templates as noise")
+    return separability_metrics
+
+
+def set_bp_threshold(separability_metrics):
+    """ Set binary pursuit threshold to the max of the decision boundary or the
+    lower confidence bound. """
+    for n in range(0, separability_metrics['neuron_lower_CI'].shape[0]):
+        separability_metrics['neuron_lower_thresholds'][n] = max(
+                            separability_metrics['neuron_lower_thresholds'][n],
+                            separability_metrics['neuron_lower_CI'][n])
+
     return separability_metrics
 
 

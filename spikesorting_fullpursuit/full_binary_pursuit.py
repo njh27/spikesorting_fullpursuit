@@ -284,6 +284,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                                     separability_metrics, sort_info, noisy_templates)
     separability_metrics = neuron_separability.delete_noise_units(
                                     separability_metrics, noisy_templates)
+    separability_metrics = neuron_separability.set_bp_threshold(separability_metrics)
 
     if separability_metrics['templates'].shape[0] == 0:
         # All data this segment found nothing (or raised an exception)

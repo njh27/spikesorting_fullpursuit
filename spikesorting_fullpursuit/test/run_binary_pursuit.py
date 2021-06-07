@@ -257,9 +257,8 @@ class RunBinaryPursuit(object):
                 self.voltage_array[chan, :] += (signal.fftconvolve(spiketrain[neuron], convolve_kernel, mode='same')).astype(self.voltage_dtype)
 
     def sort_test_dataset(self, add_templates=None, sort_templates=None, rand_state=None, kwargs={}):
-
-        self.sort_info = {'sigma_bp_noise': 2.0,
-                        'sigma_template_ci': 4.0,
+        self.sort_info = {'sigma_bp_noise': 1.645,
+                        'sigma_bp_CI': 4.0,
                         'get_adjusted_clips': False,
                         'max_gpu_memory': None,
                         'max_shift_inds': None,
@@ -306,10 +305,11 @@ class RunBinaryPursuit(object):
                                                 self.sort_info)
         noisy_templates = neuron_separability.find_noisy_templates(
                                         self.separability_metrics, self.sort_info)
-        self.separability_metrics, noisy_templates = neuron_separability.del_noise_templates_and_threshold(
-                                        self.separability_metrics,
-                                        self.sort_info,
-                                        noisy_templates)
+        self.separability_metrics, noisy_templates = neuron_separability.check_noise_templates(
+                                        self.separability_metrics, self.sort_info, noisy_templates)
+        self.separability_metrics = neuron_separability.delete_noise_units(
+                                        self.separability_metrics, noisy_templates)
+        separability_metrics = neuron_separability.set_bp_threshold(self.separability_metrics)
         if self.separability_metrics['templates'].size == 0:
             print("All templates were removed")
             self.binary_pursuit_results = {'spike_indices': [],

@@ -166,7 +166,7 @@ def compute_separability_metrics(templates, channel_covariance_mats,
         separability_metrics['neuron_lower_CI'][n] = (expectation - sort_info['sigma_bp_CI']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
 
-        upper_CI = (-1*expectation + sort_info['sigma_bp_CI']
+        upper_CI = (-1*expectation + sort_info['sigma_bp_noise']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
 
         print("UPPER CI IS ", upper_CI)
@@ -197,7 +197,10 @@ def find_noisy_templates(separability_metrics, sort_info):
     for neuron in range(0, n_neurons):
         # This implies that the neuron's expected value given a spike is present
         # has a distribution that overlaps the distribution centered at 0.0
-        if 2 * separability_metrics['neuron_lower_thresholds'][neuron] > 0.5 * separability_metrics['template_SS'][neuron]:
+        # if 2 * separability_metrics['neuron_lower_thresholds'][neuron] > 0.5 * separability_metrics['template_SS'][neuron]:
+        #     noisy_templates[neuron] = True
+        #     print("Unit", neuron, "is noisy.")
+        if separability_metrics['neuron_lower_thresholds'][neuron] > separability_metrics['neuron_lower_CI'][neuron]:
             noisy_templates[neuron] = True
             print("Unit", neuron, "is noisy.")
 

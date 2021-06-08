@@ -199,7 +199,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates = []
     n_template_spikes = []
     print("COMPUTING TEMPLATE VARIANCES AT LINE 202 OF FULL BINARY PURSUIT")
-    template_var = []
+    template_covar = []
     for n in seg_summary.summaries:
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 n['spike_indices'],
@@ -208,8 +208,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         n_template_spikes.append(n['spike_indices'].shape[0])
         n_cov_samples = max(sort_info['n_cov_samples'], clips.shape[0])
         cov_sample_inds = np.random.randint(0, clips.shape[0], n_cov_samples)
-        template_cov = np.cov(clips[cov_sample_inds, :], rowvar=False)
-        template_var.append(templates[-1][None, :] @ template_cov @ templates[-1][:, None])
+        template_covar.append(np.cov(clips[cov_sample_inds, :], rowvar=False))
     templates = np.vstack(templates)
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
 
@@ -233,9 +232,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         # correct index of the template being checked
         t_ind = t_info[0]
         shift_temp = t_info[1]
-        sum_ind_1, sum_ind_2 = t_info[2]
-        p_confusion = neuron_separability.check_template_pair(
-                templates[t_ind, :], shift_temp, chan_covariance_mats, sort_info)
+        # sum_ind_1, sum_ind_2 = t_info[2]
+        # p_confusion = neuron_separability.check_template_pair(
+        #         templates[t_ind, :], shift_temp, chan_covariance_mats, sort_info)
+        p_confusion = neuron_separability.check_template_pair_template(
+                        templates[t_ind, :], shift_temp, template_covar[t_ind])
         print("P confusion", p_confusion, "Confusion threshold", confusion_threshold)
         if p_confusion > confusion_threshold:
             templates_to_delete[t_ind] = True
@@ -244,7 +245,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     for x in reversed(range(0, len(seg_summary.summaries))):
         if templates_to_delete[x]:
             del seg_summary.summaries[x]
-            del template_var[x]
+            del template_covar[x]
     print("Removing sums reduced number of templates to", len(seg_summary.summaries))
 
     # Get updated neurons after removing overlap templates
@@ -284,15 +285,16 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     del seg_summary # No longer needed so clear memory
 
     separability_metrics = neuron_separability.compute_separability_metrics(
-                                templates, chan_covariance_mats, sort_info, template_var)
+                                templates, chan_covariance_mats, sort_info, template_covar)
     # Identify templates similar to noise and decide what to do with them
     noisy_templates = neuron_separability.find_noisy_templates(
                                             separability_metrics, sort_info)
+    separability_metrics = neuron_separability.set_bp_threshold(separability_metrics)
     separability_metrics, noisy_templates = neuron_separability.check_noise_templates(
                                     separability_metrics, sort_info, noisy_templates)
     separability_metrics = neuron_separability.delete_noise_units(
                                     separability_metrics, noisy_templates)
-    separability_metrics = neuron_separability.set_bp_threshold(separability_metrics)
+
 
     if separability_metrics['templates'].shape[0] == 0:
         # All data this segment found nothing (or raised an exception)

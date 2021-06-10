@@ -187,16 +187,16 @@ def compute_separability_metrics(templates, channel_covariance_mats,
                         @ separability_metrics['template_covariance_mats'][n]
                         @ separability_metrics['templates'][n, :][:, None])
         # Set threshold in standard deviations from decision boundary at 0
-        separability_metrics['neuron_lower_thresholds'][n] = (
-                                sort_info['sigma_bp_noise']
-                                * np.sqrt(separability_metrics['neuron_variances'][n]))
+        # separability_metrics['neuron_lower_thresholds'][n] = (
+        #                         sort_info['sigma_bp_noise']
+        #                         * np.sqrt(separability_metrics['neuron_variances'][n]))
 
         separability_metrics['neuron_lower_CI'][n] = (expectation - sort_info['sigma_bp_CI']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
 
         # Set threshold in standard deviations from expected value at voltage = 0
-        # separability_metrics['neuron_lower_thresholds'][n] = (-1*expectation + sort_info['sigma_bp_noise']
-        #                         * np.sqrt(separability_metrics['neuron_variances'][n]))
+        separability_metrics['neuron_lower_thresholds'][n] = (-1*expectation + sort_info['sigma_bp_noise']
+                                * np.sqrt(separability_metrics['neuron_variances'][n]))
         print("Lower CI", separability_metrics['neuron_lower_CI'][n])
         print("Lower THRESHOLD", separability_metrics['neuron_lower_thresholds'][n])
         # separability_metrics['neuron_lower_thresholds'][n] = max(separability_metrics['neuron_lower_thresholds'][n], 0)
@@ -273,16 +273,16 @@ def check_noise_templates(separability_metrics, sort_info,
                             @ separability_metrics['templates'][n, :][:, None])
             # Find the upper bound of the distribution of the likelihood
             # function for neuron n, given that voltage = noise_n
-            noise_match_upper_bound = expectation_n_noise_n + sort_info['sigma_bp_noise'] \
-                                * np.sqrt(var_n_noise_n)
-            # # Probability a noise spike exceeds threshold and added to good unit
-            # p_noise_added = norm.sf(separability_metrics['neuron_lower_thresholds'][n],
-            #                     expectation_n_noise_n, np.sqrt(var_n_noise_n))
-            # # Probability of not detecting a good spike given good spike present.
-            # # This is defined by sigma_bp_CI
-            # p_n_added_n = 1 - norm.sf(6, 0, 1)
-            # if p_noise_added > p_n_added_n:
-            if noise_match_upper_bound > separability_metrics['neuron_lower_thresholds'][n]:
+            # noise_match_upper_bound = expectation_n_noise_n + sort_info['sigma_bp_noise'] \
+            #                     * np.sqrt(var_n_noise_n)
+            # Probability a noise spike exceeds threshold and added to good unit
+            p_noise_added = norm.sf(separability_metrics['neuron_lower_thresholds'][n],
+                                expectation_n_noise_n, np.sqrt(var_n_noise_n))
+            # Probability of adding a noise false positive given that good
+            # neuron is not present as definted by bp noise threshold
+            p_n_added_noise = norm.sf(sort_info['sigma_bp_noise'], 0, 1)
+            if p_noise_added > p_n_added_noise:
+            # if noise_match_upper_bound > separability_metrics['neuron_lower_thresholds'][n]:
                 # The likelihood function for good template n given the noise
                 # template has enough probability of exceeding threshold to be
                 # either incorrectly added to the good unit or improve its
@@ -364,6 +364,7 @@ def pairwise_separability(separability_metrics, sort_info):
     # Compute separability measure for all pairs of neurons
     pair_separability_matrix = np.zeros((n_neurons, n_neurons))
     for n1 in range(0, n_neurons):
+        # Expected n1 likelihood given n1 spike
         E_L_n1 = 0.5 * separability_metrics['template_SS'][n1]
         noise_misses[n1] = norm.cdf(
                     separability_metrics['neuron_lower_thresholds'][n1], E_L_n1, np.sqrt(separability_metrics['neuron_variances'][n1]))
@@ -386,21 +387,45 @@ def pairwise_separability(separability_metrics, sort_info):
                                 separability_metrics['templates'][n1, :],
                                 separability_metrics['templates'][n2, :],
                                 n_chans, max_shift=max_shift, align_abs=True)
-            var_diff = 0
+            # var_diff = 0
+            # for chan in range(0, n_chans):
+            #     s_win = [chan*shift_samples_per_chan, (chan+1)*shift_samples_per_chan]
+            #     # Adjust covariance matrix to new templates, shifting according to template 1
+            #     if optimal_shift >= 0:
+            #         s_chan_cov = separability_metrics['channel_covariance_mats'][chan][optimal_shift:, optimal_shift:]
+            #     else:
+            #         s_chan_cov = separability_metrics['channel_covariance_mats'][chan][0:optimal_shift, 0:optimal_shift]
+            #     # Multiply template with covariance then template transpose to
+            #     # get variance of the likelihood function (or the difference)
+            #     diff_template = shift_temp1[s_win[0]:s_win[1]] - shift_temp2[s_win[0]:s_win[1]]
+            #     var_diff += (diff_template[None, :]
+            #                  @ s_chan_cov
+            #                  @ diff_template[:, None])
+            # Need to break up template covariance mats channel-wise since this
+            # is how the aligned templates are shifted. This indexing is
+            # complicated because we have to drop row and column elements of
+            # the covariance matrix that have been removed from the templates
+            # channel-wise
+            s_temp_cov = np.zeros(shift_temp1.shape[0], shift_temp1.shape[0])
             for chan in range(0, n_chans):
+                t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
                 s_win = [chan*shift_samples_per_chan, (chan+1)*shift_samples_per_chan]
                 # Adjust covariance matrix to new templates, shifting according to template 1
                 if optimal_shift >= 0:
-                    s_chan_cov = separability_metrics['channel_covariance_mats'][chan][optimal_shift:, optimal_shift:]
+                    s_temp_cov = separability_metrics['template_covariance_mats'][n1][:, t_win][optimal_shift:, optimal_shift:]
                 else:
-                    s_chan_cov = separability_metrics['channel_covariance_mats'][chan][0:optimal_shift, 0:optimal_shift]
-                # Multiply template with covariance then template transpose to
-                # get variance of the likelihood function (or the difference)
-                diff_template = shift_temp1[s_win[0]:s_win[1]] - shift_temp2[s_win[0]:s_win[1]]
-                var_diff += (diff_template[None, :]
-                             @ s_chan_cov
-                             @ diff_template[:, None])
+                    s_temp_cov = separability_metrics['template_covariance_mats'][n1][:, t_win][0:optimal_shift, 0:optimal_shift]
+            # Adjust covariance matrix to new templates, shifting according to template 1
+                if optimal_shift >= 0:
+                    s_chan_cov = separability_metrics['template_covariance_mats'][n1][optimal_shift:, optimal_shift:]
+                else:
+                    s_chan_cov = separability_metrics['template_covariance_mats'][n1][0:optimal_shift, 0:optimal_shift]
+            diff_template = shift_temp1 - shift_temp2
+            var_diff = (diff_template[None, :]
+                        @ separability_metrics['template_covariance_mats'][n]
+                        @ diff_template[:, None])
 
+            # Expected n2 likelihood given n1 spike
             n_1_n2_SS = np.dot(shift_temp1, shift_temp2)
             # Assuming full template 2 data here as this will be counted in
             # computation of likelihood function

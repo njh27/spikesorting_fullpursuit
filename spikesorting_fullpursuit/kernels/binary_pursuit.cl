@@ -761,11 +761,35 @@ __kernel void parse_overlap_recheck_indices(
         overlap_best_spike_labels[id] = template_number;
         overlap_best_spike_indices[id] = absolute_shift_index;
     }
-    // if (actual_template_likelihood_at_index > 0.0)
+    // if ((actual_template_likelihood_at_index >= actual_current_maximum_likelihood)
+    //     && (actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private]))
     // {
-    //     best_spike_likelihoods[id] = best_group_likelihood;
+    //     /* The main label has better likelihood than best shifted match */
+    //     best_spike_likelihoods[id] = actual_template_likelihood_at_index;
     //     overlap_best_spike_labels[id] = best_spike_label_private;
     //     overlap_best_spike_indices[id] = absolute_fixed_index;
+    // }
+    // else if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index )
+    //     && (actual_current_maximum_likelihood > likelihood_lower_thresholds[template_number]))
+    // {
+    //     /* The best shifted match unit has better likelihood than the main label */
+    //     best_spike_likelihoods[id] = actual_current_maximum_likelihood;
+    //     overlap_best_spike_labels[id] = template_number;
+    //     overlap_best_spike_indices[id] = absolute_shift_index;
+    // }
+    // else if (actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private])
+    // {
+    //     /* The main label exceeds threshold */
+    //     best_spike_likelihoods[id] = actual_template_likelihood_at_index;
+    //     overlap_best_spike_labels[id] = best_spike_label_private;
+    //     overlap_best_spike_indices[id] = absolute_fixed_index;
+    // }
+    // else if (actual_current_maximum_likelihood > likelihood_lower_thresholds[template_number])
+    // {
+    //     /* The best shifted match exceeds threshold */
+    //     best_spike_likelihoods[id] = actual_current_maximum_likelihood;
+    //     overlap_best_spike_labels[id] = template_number;
+    //     overlap_best_spike_indices[id] = absolute_shift_index;
     // }
     else
     {

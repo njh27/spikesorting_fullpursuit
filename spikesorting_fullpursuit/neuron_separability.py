@@ -145,6 +145,8 @@ def compute_separability_metrics(templates, channel_covariance_mats,
     template_samples_per_chan = sort_info['n_samples_per_chan']
 
     separability_metrics = {}
+    # Store the samples per channel used in binary pursuit
+    separability_metrics['bp_n_samples_per_chan'] = sort_info['n_samples_per_chan']
     separability_metrics['templates'] = np.vstack(templates)
     # Compute our template sum squared error (see note below).
     separability_metrics['template_SS'] = np.sum(separability_metrics['templates'] ** 2, axis=1)
@@ -302,7 +304,8 @@ def delete_noise_units(separability_metrics, noisy_templates):
     """ Remove data associated with deleted noise templates from
     separability_metrics and reassign values IN PLACE to separability_metrics. """
     for key in separability_metrics.keys():
-        if key in ['channel_covariance_mats', 'channel_p_noise']:
+        if key in ['channel_covariance_mats', 'channel_p_noise',
+                    'bp_n_samples_per_chan']:
             continue
         elif key in ['templates', 'template_SS_by_chan']:
             separability_metrics[key] = separability_metrics[key][~noisy_templates, :]
@@ -354,7 +357,7 @@ def pairwise_separability(separability_metrics, sort_info):
     spikes from a unit.
     """
     n_chans = sort_info['n_channels']
-    template_samples_per_chan = sort_info['n_samples_per_chan']
+    template_samples_per_chan = separability_metrics['bp_n_samples_per_chan']
     max_shift = (template_samples_per_chan // 4) - 1
     n_neurons = separability_metrics['templates'].shape[0]
 
@@ -381,6 +384,9 @@ def pairwise_separability(separability_metrics, sort_info):
                 / p_spike_added)
 
         for n2 in range(0, separability_metrics['templates'].shape[0]):
+            # if separability_metrics['peak_channel'][n1] != separability_metrics['peak_channel'][n2]:
+            #     print("Skipping comparison not on the same channel")
+            #     continue
             # Need to optimally align n2 template with n1 template for computing
             # the covariance/difference of their Likelihood functions
             shift_temp1, shift_temp2, optimal_shift, shift_samples_per_chan = optimal_align_templates(
@@ -401,28 +407,24 @@ def pairwise_separability(separability_metrics, sort_info):
             #     var_diff += (diff_template[None, :]
             #                  @ s_chan_cov
             #                  @ diff_template[:, None])
-            # Need to break up template covariance mats channel-wise since this
-            # is how the aligned templates are shifted. This indexing is
-            # complicated because we have to drop row and column elements of
-            # the covariance matrix that have been removed from the templates
-            # channel-wise
-            s_temp_cov = np.zeros(shift_temp1.shape[0], shift_temp1.shape[0])
+            # Need to zero pad the shifted templates so that we can use the
+            # covariance matrix
+            pad_shift_temp1 = np.zeros(separability_metrics['templates'][n1, :].shape[0])
+            pad_shift_temp2 = np.zeros(separability_metrics['templates'][n2, :].shape[0])
             for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
                 s_win = [chan*shift_samples_per_chan, (chan+1)*shift_samples_per_chan]
                 # Adjust covariance matrix to new templates, shifting according to template 1
                 if optimal_shift >= 0:
-                    s_temp_cov = separability_metrics['template_covariance_mats'][n1][:, t_win][optimal_shift:, optimal_shift:]
+                    pad_shift_temp1[t_win[0]+optimal_shift:t_win[1]] = shift_temp1[s_win[0]:s_win[1]]
+                    pad_shift_temp2[t_win[0]+optimal_shift:t_win[1]] = shift_temp2[s_win[0]:s_win[1]]
                 else:
-                    s_temp_cov = separability_metrics['template_covariance_mats'][n1][:, t_win][0:optimal_shift, 0:optimal_shift]
-            # Adjust covariance matrix to new templates, shifting according to template 1
-                if optimal_shift >= 0:
-                    s_chan_cov = separability_metrics['template_covariance_mats'][n1][optimal_shift:, optimal_shift:]
-                else:
-                    s_chan_cov = separability_metrics['template_covariance_mats'][n1][0:optimal_shift, 0:optimal_shift]
-            diff_template = shift_temp1 - shift_temp2
+                    pad_shift_temp1[t_win[0]:t_win[1]+optimal_shift] = shift_temp1[s_win[0]:s_win[1]]
+                    pad_shift_temp2[t_win[0]:t_win[1]+optimal_shift] = shift_temp2[s_win[0]:s_win[1]]
+            diff_template = pad_shift_temp1 - pad_shift_temp2
+            # Use n1 covariance because computing conditioned on n1 spike
             var_diff = (diff_template[None, :]
-                        @ separability_metrics['template_covariance_mats'][n]
+                        @ separability_metrics['template_covariance_mats'][n1]
                         @ diff_template[:, None])
 
             # Expected n2 likelihood given n1 spike

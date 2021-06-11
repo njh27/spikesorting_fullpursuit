@@ -35,10 +35,10 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['segment_duration'] = 300 # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
     settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
     settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel. Improves speed and accuracy but can miss clusters for low firing rate units on multiple channels
-    # sigma_bp_noise = 90%: 1.645, 95%: 1.96, 99%: 2.576; NOTE: these are used one sided
     settings['n_cov_samples'] = 10000 # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
+    # sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; NOTE: these are one sided
     settings['sigma_bp_noise'] = 4.0 # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
-    settings['sigma_bp_CI'] = 6.0 # Number of noise standard deviations a template match must exceed for a spike to be added. Lower numbers reduce noise induced false discoveries at the cost of true positives.
+    settings['sigma_bp_CI'] = 12.0 # Number of noise standard deviations a template match must exceed for a spike to be added. Zero or None ignores this parameter.
     settings['absolute_refractory_period'] = 10e-4
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
@@ -65,29 +65,26 @@ def spike_sorting_settings_parallel(**kwargs):
         if key in ['do_branch_PCA', 'do_branch_PCA_by_chan', 'do_ZCA_transform',
                     'use_rand_init', 'add_peak_valley', 'save_1_cpu',
                     'sort_peak_clips_only', 'get_adjusted_clips']:
-
             if type(settings[key]) != bool:
                 if settings[key] != 'False' and settings[key] != 0:
                     settings[key] = True
                 else:
                     settings[key] = False
                 print("Input setting '{0}' was converted to boolean value: ".format(key), settings[key])
-
         if key in ['segment_duration', 'segment_overlap']:
             # Note actual relative values for overlap are checked in main function
             if settings[key] <= 0:
                 raise ValueError("Input setting '{0}' must be a postive number".format(key))
-
         if key in ['check_components', 'max_components']:
-
             if settings[key] <= 0  or type(settings[key]) != int:
                 raise ValueError("Input setting '{0}' must be a postive integer".format(key))
-
         if key in ['min_firing_rate', 'sigma_bp_noise',
                     'max_binary_pursuit_clip_width_factor']:
-
             if settings[key] < 0:
                 print("Input setting '{0}' was invalid and converted to zero".format(key))
+        if key in ['sigma_bp_CI']:
+            if settings[key] is None:
+                settings[key] = 0.0
 
     return settings
 

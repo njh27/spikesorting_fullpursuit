@@ -995,7 +995,7 @@ __kernel void binary_pursuit(
     check_window_on_next_pass[id] == 1, whereas windows flagged for recheck for
     other reasons are assigned check_window_on_next_pass[id] > 1. */
     if ( (maximum_likelihood <= likelihood_lower_thresholds[maximum_likelihood_neuron])
-        // && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)
+        && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)
         && (check_window_on_next_pass[id] == 1) )
     {
         check_window_on_next_pass[id] = 0;

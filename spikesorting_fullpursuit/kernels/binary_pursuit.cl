@@ -424,7 +424,9 @@ __kernel void compute_template_maximum_likelihood(
             best_spike_label_private = template_number;
             best_spike_index_private = start + i;
         }
-        if ((current_maximum_likelihood > likelihood_lower_thresholds[template_number])
+        // if ( (current_maximum_likelihood > 0.0)
+        if ( (1)
+        // if ( (current_maximum_likelihood > likelihood_lower_thresholds[template_number])
             && (start + i >= start_of_my_window) && (start + i < end_of_my_window) )
         {
             /* Track windows that need checked next pass regardless of whether */
@@ -961,6 +963,35 @@ __kernel void binary_pursuit(
         maximum_likelihood = best_spike_likelihoods[id];
         maximum_likelihood_neuron = best_spike_labels[id];
         maximum_likelihood_index = best_spike_indices[id];
+
+        /* This check massively increases convergence across the number of windows
+        to check on each iteration. It tests for the situation where the maximum
+        likelihood occurs in a neighboring window and is over threshold, but is
+        blocked from being added by a sub threshold event with greater likelihood
+        in a neighboring window 2+ IDs away from the current one. Such blocking
+        can daisy chain and create a situation where many windows are checked on
+        each iteration without the chance of a spike ever being added.
+        This might be able to create a race situation but I don't think it will
+        affect the rule being implemented. Just might converge in a different
+        number of iterations but the rule is still correct because the other
+        check for convergence below happens after this and after a barrier.
+        */
+        if ( (maximum_likelihood_index < start_of_my_window)
+            && (check_window_on_next_pass[id] == 1) && (id > 0) )
+        {
+            if (check_window_on_next_pass[id-1] == 0)
+            {
+                check_window_on_next_pass[id] = 0;
+            }
+        }
+        if ( (maximum_likelihood_index >= end_of_my_window)
+            && (check_window_on_next_pass[id] == 1) && (id + 1 < voltage_length / template_length) )
+        {
+            if (check_window_on_next_pass[id+1] == 0)
+            {
+                check_window_on_next_pass[id] = 0;
+            }
+        }
     }
 
     /* If the best maximum likelihood is greater than threshold and within our window */
@@ -994,11 +1025,15 @@ __kernel void binary_pursuit(
     even if they do not cross threshold and will never be added. These events have
     check_window_on_next_pass[id] == 1, whereas windows flagged for recheck for
     other reasons are assigned check_window_on_next_pass[id] > 1. */
-    if ( (maximum_likelihood <= likelihood_lower_thresholds[maximum_likelihood_neuron])
-        && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)
-        && (check_window_on_next_pass[id] == 1) )
+    if (end_of_my_window < voltage_length - template_length && num_neighbor_channels > 0)
     {
-        check_window_on_next_pass[id] = 0;
+        if ( (maximum_likelihood <= likelihood_lower_thresholds[maximum_likelihood_neuron])
+            // && (maximum_likelihood_index >= start_of_my_window) && (maximum_likelihood_index < end_of_my_window)
+            // && (check_window_on_next_pass[id] == 1) )
+            && (check_window_on_next_pass[id] < 3) )
+        {
+            check_window_on_next_pass[id] = 0;
+        }
     }
 
     if ((local_id == (local_size - 1)) && (local_scratch[(local_size - 1)] || has_spike)) /* I am the last worker and there are spikes to add in this group */

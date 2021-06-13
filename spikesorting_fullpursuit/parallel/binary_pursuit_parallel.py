@@ -688,6 +688,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
                 queue.finish() # Needs to finish copy before deciding indices
                 # Use next_check_window data to determine window indices for next pass
                 new_window_indices = np.uint32(np.nonzero(next_check_window)[0])
+
                 # Copy the new window indices to the window indices buffer
                 next_wait_event = [cl.enqueue_copy(queue, window_indices_buffer, new_window_indices, wait_for=next_wait_event)]
                 # Reset number of indices to check for both kernels

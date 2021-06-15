@@ -29,7 +29,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['check_components'] = 20 # Number of PCs to check. None means all
     settings['max_components'] = 5 # Max number to use, of those checked
     settings['min_firing_rate'] = 0.1 # Neurons with fewer threshold crossings than satisfy this rate are removed
-    settings['p_value_cut_thresh'] = 0.05
+    settings['p_value_cut_thresh'] = 0.01
     settings['max_gpu_memory'] = None # None means use as much memory as possible
     settings['save_1_cpu'] = True
     settings['segment_duration'] = 300 # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
@@ -38,7 +38,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings['n_cov_samples'] = 10000 # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
     # sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; NOTE: these are one sided
     settings['sigma_bp_noise'] = 2.326 # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
-    settings['sigma_bp_CI'] = 16.0 # Number of noise standard deviations a template match must exceed for a spike to be added. Zero or None ignores this parameter.
+    settings['sigma_bp_CI'] = 16.0 # Number of noise standard deviations a template match must exceed for a spike to be added. np.inf or None ignores this parameter.
     settings['absolute_refractory_period'] = 10e-4
     settings['get_adjusted_clips'] = False
     settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
@@ -84,7 +84,7 @@ def spike_sorting_settings_parallel(**kwargs):
                 print("Input setting '{0}' was invalid and converted to zero".format(key))
         if key in ['sigma_bp_CI']:
             if settings[key] is None:
-                settings[key] = 0.0
+                settings[key] = np.inf
 
     return settings
 

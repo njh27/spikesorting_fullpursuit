@@ -225,8 +225,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
     # Use the sigma lower bound to decide the acceptable level of
     # misclassification between template sums
-    print("CONFUSION THRESHOLD SET AT 4 !!!!!!!!!!")
-    confusion_threshold = norm.sf(4)#2*sort_info['sigma_bp_noise'])
+    confusion_threshold = norm.sf(sort_info['sigma_bp_noise'])
     for t_info in templates_to_check:
         # templates_to_check is not length of templates so need to find the
         # correct index of the template being checked

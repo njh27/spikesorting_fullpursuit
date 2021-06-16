@@ -505,7 +505,13 @@ class SegSummary(object):
             self.summaries[merge_item[0]]['spike_indices'] = np.hstack((self.summaries[merge_item[0]]['spike_indices'], self.summaries[merge_item[1]]['spike_indices'] + merge_item[2]))
             # Need these to stay sorted for future clip finding
             self.summaries[merge_item[0]]['spike_indices'].sort()
-
+            # Update to unioned neighborhood
+            self.summaries[merge_item[0]]['neighbors'] = np.union1d(
+                                    self.summaries[merge_item[0]]['neighbors'],
+                                    self.summaries[merge_item[1]]['neighbors'])
+            self.summaries[merge_item[0]]['high_snr_neighbors'] = np.union1d(
+                                    self.summaries[merge_item[0]]['high_snr_neighbors'],
+                                    self.summaries[merge_item[1]]['high_snr_neighbors'])
         # Delete merged units
         inds_to_delete.sort()
         for d_ind in reversed(inds_to_delete):

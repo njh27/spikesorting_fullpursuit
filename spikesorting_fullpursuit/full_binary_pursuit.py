@@ -10,7 +10,6 @@ from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.c_cython import sort_cython
 from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parallel
 
-"""CHECKED"""
 
 
 def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, sort_info):
@@ -120,11 +119,12 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Need to build this in format used for consolidate functions
     seg_data = []
     original_neighbors = []
+    print("!!!!!!USING ACTUAL NEIGHBORS LINE 127 FULL BINARY PURSUIT")
     for w_item in seg_w_items:
         if w_item['ID'] in data_dict['results_dict'].keys():
             # Reset neighbors to all channels for full binary pursuit
             original_neighbors.append(w_item['neighbors'])
-            w_item['neighbors'] = np.arange(0, voltage.shape[0], dtype=np.int64)
+            # w_item['neighbors'] = np.arange(0, voltage.shape[0], dtype=np.int64)
 
             if len(data_dict['results_dict'][w_item['ID']][0]) == 0:
                 # This work item found nothing (or raised an exception)
@@ -199,16 +199,23 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates = []
     n_template_spikes = []
     print("COMPUTING TEMPLATE VARIANCES AT LINE 202 OF FULL BINARY PURSUIT")
+    print("!!!! ZEROING OUT NON NEIGHBORHOOD CHANNELS OF CLIPS/TEMPLATES (line ~209 full binary pursuit) !!!!")
     template_covar = []
     for n in seg_summary.summaries:
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 n['spike_indices'],
                                 clip_width=sort_info['clip_width'])
+        for chan in range(0, sort_info['n_channels']):
+            if chan not in n['neighbors']:
+                c_win = [chan * sort_info['n_samples_per_chan'], (chan+1) * sort_info['n_samples_per_chan']]
+                clips[:, c_win[0]:c_win[1]] = 0.0
+
         templates.append(np.mean(clips, axis=0))
         n_template_spikes.append(n['spike_indices'].shape[0])
         n_cov_samples = max(sort_info['n_cov_samples'], clips.shape[0])
         cov_sample_inds = np.random.randint(0, clips.shape[0], n_cov_samples)
         template_covar.append(np.cov(clips[cov_sample_inds, :], rowvar=False))
+
     templates = np.vstack(templates)
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
 
@@ -275,11 +282,18 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Get templates for remaining sharpened units across all channels in
     # voltage to input to separability metrics
     templates = []
+    print("!!! ZEROING OUT NON NEIGHBOR CHANNELS FOR TEMPLATES LINE 284 full binary pursuit !!!")
     for n in neurons:
         if not n['deleted_as_redundant']:
             clips, _ = get_multichannel_clips(clips_dict, voltage,
                                     n['spike_indices'],
                                     clip_width=sort_info['clip_width'])
+
+            for chan in range(0, sort_info['n_channels']):
+                if chan not in n['neighbors']:
+                    c_win = [chan * sort_info['n_samples_per_chan'], (chan+1) * sort_info['n_samples_per_chan']]
+                    clips[:, c_win[0]:c_win[1]] = 0.0
+
             templates.append(np.mean(clips, axis=0))
     del seg_summary # No longer needed so clear memory
 

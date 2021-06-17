@@ -381,7 +381,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
             # We will find all spikes in binary pursuit so set chunk crossings to zero
             chunk_crossings = np.array([], dtype=np.uint32)
             chunk_labels = np.array([], dtype=np.uint32)
-
+            
             # - Set up the compute_residual kernel -
             # Create our buffers on the graphics cards.
             # Essentially all we are doing is copying each of our arrays to the graphics card.

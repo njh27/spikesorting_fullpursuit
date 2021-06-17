@@ -176,12 +176,13 @@ class SingleTetrode(AbstractProbe):
 
 class DistanceBasedProbe(AbstractProbe):
 
-    def __init__(self, sampling_rate, num_channels, xy_layout, voltage_array=None):
+    def __init__(self, sampling_rate, num_channels, xy_layout, radius, voltage_array=None):
         """ xy_layout is 2D numpy array where each row represents its
         corresonding channel number and each column gives the x, y coordinates
         of that channel in micrometers. """
         AbstractProbe.__init__(self, sampling_rate, num_channels, voltage_array=voltage_array, voltage_dtype=None)
 
+        self.distance_radius = radius
         self.distance_mat = np.zeros((xy_layout.shape[0], xy_layout.shape[0]))
         for n_trode in range(0, xy_layout.shape[0]):
             for n_pair in range(n_trode + 1, xy_layout.shape[0]):
@@ -190,10 +191,10 @@ class DistanceBasedProbe(AbstractProbe):
                 self.distance_mat[n_pair, n_trode] = self.distance_mat[n_trode, n_pair]
 
     def get_neighbors(self, channel):
-        """ Neighbors returned as all channels within 75 microns of input channel. """
+        """ Neighbors returned as all channels within self.distance_radius microns of input channel. """
         if channel > self.num_channels - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
-        neighbors = np.flatnonzero(self.distance_mat[channel, :] < 151)
+        neighbors = np.flatnonzero(self.distance_mat[channel, :] < self.distance_radius)
         neighbors.sort()
         return np.int64(neighbors)
 

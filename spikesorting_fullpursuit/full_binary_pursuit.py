@@ -205,16 +205,18 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 n['spike_indices'],
                                 clip_width=sort_info['clip_width'])
+        mask = np.zeros(clips.shape, dtype=np.bool)
         for chan in range(0, sort_info['n_channels']):
             if chan not in n['neighbors']:
                 c_win = [chan * sort_info['n_samples_per_chan'], (chan+1) * sort_info['n_samples_per_chan']]
                 clips[:, c_win[0]:c_win[1]] = 0.0
+                mask[:, c_win[0]:c_win[1]] = True
 
         templates.append(np.mean(clips, axis=0))
         n_template_spikes.append(n['spike_indices'].shape[0])
         n_cov_samples = max(sort_info['n_cov_samples'], clips.shape[0])
         cov_sample_inds = np.random.randint(0, clips.shape[0], n_cov_samples)
-        template_covar.append(np.cov(clips[cov_sample_inds, :], rowvar=False))
+        template_covar.append(np.cov(clips[cov_sample_inds, :], rowvar=False, ddof=0))
 
     templates = np.vstack(templates)
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)

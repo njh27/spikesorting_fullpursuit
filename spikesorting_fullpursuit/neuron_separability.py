@@ -4,7 +4,7 @@ from spikesorting_fullpursuit.consolidate import optimal_align_templates
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
 from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 
-
+import matplotlib.pyplot as plt
 
 def find_decision_boundary_equal_var(mu_1, mu_2, var, p_1=0.5):
     """ Helper function to return the decision boundary between two 1D
@@ -273,13 +273,16 @@ def check_noise_templates(separability_metrics, sort_info,
             var_n_noise_n = (separability_metrics['templates'][n, :][None, :]
                             @ separability_metrics['template_covariance_mats'][noise_n]
                             @ separability_metrics['templates'][n, :][:, None])
+            if var_n_noise_n == 0.0:
+                # Templates do not overlap across channels
+                continue
             # Find the upper bound of the distribution of the likelihood
             # function for neuron n, given that voltage = noise_n
             # noise_match_upper_bound = expectation_n_noise_n + sort_info['sigma_bp_noise'] \
             #                     * np.sqrt(var_n_noise_n)
             # Probability a noise spike exceeds threshold and added to good unit
             p_noise_added = norm.sf(separability_metrics['neuron_lower_thresholds'][n],
-                                expectation_n_noise_n, np.sqrt(var_n_noise_n))
+                                    expectation_n_noise_n, np.sqrt(var_n_noise_n))
             # Probability of adding a noise false positive given that good
             # neuron is not present as definted by bp noise threshold
             p_n_added_noise = norm.sf(sort_info['sigma_bp_noise'], 0, 1)

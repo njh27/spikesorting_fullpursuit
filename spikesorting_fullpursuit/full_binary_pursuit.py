@@ -198,17 +198,16 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     print("Checking", len(seg_summary.summaries), "neurons for potential sums")
     templates = []
     n_template_spikes = []
-    print("COMPUTING TEMPLATE VARIANCES AT LINE 202 OF FULL BINARY PURSUIT")
-    print("!!!! ZEROING OUT NON NEIGHBORHOOD CHANNELS OF CLIPS/TEMPLATES (line ~209 full binary pursuit) !!!!")
     template_covar = []
     for n in seg_summary.summaries:
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 n['spike_indices'],
                                 clip_width=sort_info['clip_width'])
-        for chan in range(0, sort_info['n_channels']):
-            if chan not in n['neighbors']:
-                c_win = [chan * sort_info['n_samples_per_chan'], (chan+1) * sort_info['n_samples_per_chan']]
-                clips[:, c_win[0]:c_win[1]] = 0.0
+        print("!!!SKIPPING ZEROING OUT NEIGHBOR CHANNELS line 207 full binary pursuit")
+        # for chan in range(0, sort_info['n_channels']):
+        #     if chan not in n['neighbors']:
+        #         c_win = [chan * sort_info['n_samples_per_chan'], (chan+1) * sort_info['n_samples_per_chan']]
+        #         clips[:, c_win[0]:c_win[1]] = 0.0
 
         templates.append(np.mean(clips, axis=0))
         n_template_spikes.append(n['spike_indices'].shape[0])

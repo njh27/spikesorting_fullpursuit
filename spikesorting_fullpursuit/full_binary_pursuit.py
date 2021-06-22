@@ -216,9 +216,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         templates.append(robust_template)
         # templates.append(np.mean(clips, axis=0))
 
-        plt.plot(templates[-1], color='b')
-        plt.plot(robust_template, color='k')
-        plt.show()
+        # plt.plot(templates[-1], color='b')
+        # plt.plot(robust_template, color='k')
+        # plt.show()
 
         n_template_spikes.append(n['spike_indices'].shape[0])
         n_cov_samples = max(sort_info['n_cov_samples'], clips.shape[0])

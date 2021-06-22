@@ -372,7 +372,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
         # Loop over chunks
         for chunk_number, start_index in enumerate(chunk_onsets):
             stop_index = np.uint32(min(n_samples, start_index + num_indices_per_chunk))
-            print("Starting chunk number", chunk_number, "from", start_index, "to", stop_index, "samples", flush=True)
+            print("Starting chunk number", chunk_number+1, "from", start_index, "to", stop_index, "samples", flush=True)
             chunk_voltage = np.float32(voltage[:, start_index:stop_index])
             chunk_voltage_length = np.uint32(stop_index - start_index)
             # Reshape voltage over channels into a single 1D vector
@@ -381,7 +381,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
             # We will find all spikes in binary pursuit so set chunk crossings to zero
             chunk_crossings = np.array([], dtype=np.uint32)
             chunk_labels = np.array([], dtype=np.uint32)
-            
+
             # - Set up the compute_residual kernel -
             # Create our buffers on the graphics cards.
             # Essentially all we are doing is copying each of our arrays to the graphics card.

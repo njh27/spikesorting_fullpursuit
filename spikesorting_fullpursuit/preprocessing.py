@@ -552,6 +552,20 @@ def cleanup_clusters(clips, neuron_labels):
 
     return keep_clips
 
+def calculate_robust_template(clips):
+
+    robust_template = np.zeros(clips.shape[1], dtype=clips.dtype)
+    sample_medians = np.median(clips, axis=0)
+    for sample in range(0, clips.shape[1]):
+        sample_MAD = np.median(np.abs(clips[:, sample] - sample_medians[sample]))
+        # Samples within 1 MAD
+        select_1MAD = np.logical_and(clips[:, sample] > sample_medians[sample] - sample_MAD,
+                                     clips[:, sample] < sample_medians[sample] + sample_MAD)
+        # Robust template as median of samples within 1 MAD
+        robust_template[sample] = np.median(clips[select_1MAD, sample])
+
+    return robust_template
+
 
 def keep_cluster_centroid(clips, neuron_labels, n_keep=100):
     keep_clips = np.ones(clips.shape[0], dtype=np.bool)

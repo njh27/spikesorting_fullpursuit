@@ -5,6 +5,7 @@ from copy import copy, deepcopy
 from scipy.stats import norm
 from spikesorting_fullpursuit import neuron_separability
 from spikesorting_fullpursuit.consolidate import SegSummary
+from spikesorting_fullpursuit.preprocessing import calculate_robust_template
 from spikesorting_fullpursuit.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.c_cython import sort_cython
@@ -196,20 +197,29 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     seg_summary.sharpen_across_chans()
     print("Sharpening reduced number of templates to", len(seg_summary.summaries))
     print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+    import matplotlib.pyplot as plt
     templates = []
     n_template_spikes = []
     template_covar = []
+    print("!!!SKIPPING ZEROING OUT NEIGHBOR CHANNELS line 207 full binary pursuit")
+    print("!!!!USING ROBUST TEMPLATE LINE 215 full binary pursuit")
     for n in seg_summary.summaries:
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 n['spike_indices'],
                                 clip_width=sort_info['clip_width'])
-        print("!!!SKIPPING ZEROING OUT NEIGHBOR CHANNELS line 207 full binary pursuit")
+
         # for chan in range(0, sort_info['n_channels']):
         #     if chan not in n['neighbors']:
         #         c_win = [chan * sort_info['n_samples_per_chan'], (chan+1) * sort_info['n_samples_per_chan']]
         #         clips[:, c_win[0]:c_win[1]] = 0.0
+        robust_template = calculate_robust_template(clips)
+        templates.append(robust_template)
+        # templates.append(np.mean(clips, axis=0))
 
-        templates.append(np.mean(clips, axis=0))
+        plt.plot(templates[-1], color='b')
+        plt.plot(robust_template, color='k')
+        plt.show()
+
         n_template_spikes.append(n['spike_indices'].shape[0])
         n_cov_samples = max(sort_info['n_cov_samples'], clips.shape[0])
         cov_sample_inds = np.random.randint(0, clips.shape[0], n_cov_samples)
@@ -282,6 +292,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # voltage to input to separability metrics
     templates = []
     print("!!! ZEROING OUT NON NEIGHBOR CHANNELS FOR TEMPLATES LINE 284 full binary pursuit !!!")
+    print("!!! USING ROBUST TEMPLATE LINES 308 full binary pursuit")
     for n in neurons:
         if not n['deleted_as_redundant']:
             clips, _ = get_multichannel_clips(clips_dict, voltage,
@@ -293,7 +304,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                     c_win = [chan * sort_info['n_samples_per_chan'], (chan+1) * sort_info['n_samples_per_chan']]
                     clips[:, c_win[0]:c_win[1]] = 0.0
 
-            templates.append(np.mean(clips, axis=0))
+            # templates.append(np.mean(clips, axis=0))
+            robust_template = calculate_robust_template(clips)
+            templates.append(robust_template)
     del seg_summary # No longer needed so clear memory
 
     separability_metrics = neuron_separability.compute_separability_metrics(

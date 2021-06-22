@@ -554,15 +554,23 @@ def cleanup_clusters(clips, neuron_labels):
 
 def calculate_robust_template(clips):
 
+    if clips.shape[0] == 1 or clips.ndims == 1:
+        # Only 1 clip so nothing to average over
+        return clips
     robust_template = np.zeros(clips.shape[1], dtype=clips.dtype)
     sample_medians = np.median(clips, axis=0)
     for sample in range(0, clips.shape[1]):
-        sample_MAD = np.median(np.abs(clips[:, sample] - sample_medians[sample]))
+        # Compute MAD with standard deviation conversion factor
+        sample_MAD = np.median(np.abs(clips[:, sample] - sample_medians[sample])) / 0.6745
         # Samples within 1 MAD
         select_1MAD = np.logical_and(clips[:, sample] > sample_medians[sample] - sample_MAD,
                                      clips[:, sample] < sample_medians[sample] + sample_MAD)
-        # Robust template as median of samples within 1 MAD
-        robust_template[sample] = np.median(clips[select_1MAD, sample])
+        if ~np.any(select_1MAD):
+            # Nothing within 1 MAD STD so just fall back on median
+            robust_template[sample] = sample_medians[sample]
+        else:
+            # Robust template as median of samples within 1 MAD
+            robust_template[sample] = np.median(clips[select_1MAD, sample])
 
     return robust_template
 

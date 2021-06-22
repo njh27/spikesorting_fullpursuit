@@ -554,7 +554,7 @@ def cleanup_clusters(clips, neuron_labels):
 
 def calculate_robust_template(clips):
 
-    if clips.shape[0] == 1 or clips.ndims == 1:
+    if clips.shape[0] == 1 or clips.ndim == 1:
         # Only 1 clip so nothing to average over
         return clips
     robust_template = np.zeros(clips.shape[1], dtype=clips.dtype)

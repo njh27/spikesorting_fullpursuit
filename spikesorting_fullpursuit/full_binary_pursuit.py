@@ -221,7 +221,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         # plt.show()
 
         n_template_spikes.append(n['spike_indices'].shape[0])
-        if n_cov_samples >= clips.shape[0]:
+        if sort_info['n_cov_samples'] >= clips.shape[0]:
             cov_sample_inds = np.arange(0, clips.shape[0])
         else:
             cov_sample_inds = np.random.randint(0, clips.shape[0], n_cov_samples)

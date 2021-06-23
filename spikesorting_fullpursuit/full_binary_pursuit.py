@@ -224,7 +224,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         if sort_info['n_cov_samples'] >= clips.shape[0]:
             cov_sample_inds = np.arange(0, clips.shape[0])
         else:
-            cov_sample_inds = np.random.randint(0, clips.shape[0], n_cov_samples)
+            cov_sample_inds = np.random.randint(0, clips.shape[0], sort_info['n_cov_samples'])
         template_covar.append(np.cov(clips[cov_sample_inds, :], rowvar=False, ddof=0))
 
     templates = np.vstack(templates)

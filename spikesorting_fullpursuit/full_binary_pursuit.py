@@ -230,13 +230,14 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates = np.vstack(templates)
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
 
-    # The overlap check input here is hard coded to look at shifts +/- half
-    # clip width
+    # The overlap check input here is hard coded to look at shifts +/- the
+    # original input chan win (clip_width). This is arbitrary
+    print("CHAN WIN LINE 235 FULL BP IS", chan_win, "FLOORED TO", chan_win[0]//1.1)
     templates_to_check = sort_cython.find_overlap_templates(templates,
                                 sort_info['n_samples_per_chan'],
                                 sort_info['n_channels'],
-                                np.int64(np.abs(bp_chan_win[0])//1.5),
-                                np.int64(np.abs(bp_chan_win[1])//1.5),
+                                np.int64(np.abs(chan_win[0])-1),
+                                np.int64(np.abs(chan_win[1])-1),
                                 n_template_spikes)
 
     # Go through suspect templates in templates_to_check
@@ -249,7 +250,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         # correct index of the template being checked
         t_ind = t_info[0]
         shift_temp = t_info[1]
-        # sum_ind_1, sum_ind_2 = t_info[2]
         # p_confusion = neuron_separability.check_template_pair(
         #         templates[t_ind, :], shift_temp, chan_covariance_mats, sort_info)
         p_confusion = neuron_separability.check_template_pair_template(
@@ -321,7 +321,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                                     separability_metrics, sort_info, noisy_templates)
     separability_metrics = neuron_separability.delete_noise_units(
                                     separability_metrics, noisy_templates)
-
 
     if separability_metrics['templates'].shape[0] == 0:
         # All data this segment found nothing (or raised an exception)

@@ -200,7 +200,6 @@ def binary_pursuit(voltage, v_dtype, sort_info,
     template_sum_squared = np.float32(-0.5 * separability_metrics['template_SS'])
     template_sum_squared_by_channel = np.float32(separability_metrics['template_SS_by_chan'].flatten(order='C'))
     neuron_lower_thresholds = np.float32(separability_metrics['neuron_lower_thresholds'])
-    # neuron_upper_thresholds = np.float32(separability_metrics['neuron_upper_thresholds'])
 
     # Load OpenCL code from a file (stored as a string)
     if kernels_path is None:

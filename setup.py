@@ -1,10 +1,20 @@
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Build import cythonize
+import pkg_resources
+from pkg_resources import DistributionNotFound, VersionConflict
 import numpy as np
 
+dependencies = [
+    'pyopencl >= 2019.1.2'
+    'cython'
+]
+pkg_resources.require(dependencies)
+
 ext  =  [Extension('spikesorting_fullpursuit.c_cython.sort_cython', sources=['spikesorting_fullpursuit/c_cython/sort_cython.pyx'])]
-pkg_req = ['Cython', 'pyopencl (>= 1.2)']
+pkg_req = [
+    'cython', 'pyopencl (>= 2019.1.2)'
+]
 
 setup(name='spikesorting_fullpursuit',
       version='1.0',

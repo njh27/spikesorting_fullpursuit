@@ -16,15 +16,37 @@ simultaneously recorded neurons even in the face of high firing rates.
 # Installation
 
 ### Requirements
-This package depends heavily on the numpy and scipy python packages. The easiest way
-to ensure the majority of package requirements are met is to install via that ANACONDA
+This package depends on the numpy and scipy python packages. The easiest way
+to ensure the majority of package requirements are met is to install via the ANACONDA
 source and API. Additional requirements not part of the standard Anaconda install
 are pyopencl, and the multiprocessing library, all of which are freely available
-and installable via the Anaconda API. The Cython package was used to generate
+and installable via the Anaconda API. The cython package was used to generate
 C code extensions included in the c_cython sub-package and would be required for
 modifications to these files.
 
-A GPU is required to run the binary pursuit algorithm via pyopencl.
+A GPU is required to run the binary pursuit algorithm via pyopencl. This step
+can be tricky and depends on specific hardware/firmware/software configurations.
+We give brief guidance here, but can off little help otherwise. You may need
+to install an OpenCL driver for your specific GPU in order for it to work with
+OpenCL. Depending on the age of your machine and/or GPU, it may be the case that
+you need to choose to install an older version of pyopencl. The oldest case we
+tested was pyopencl version 2019.1.2.
+
+The most recent version of pyopencl can be installed with conda using:
+		conda install -c conda-forge pyopencl
+
+Older versions can be installed by specifying the version. e.g.:
+		conda install -c conda-forge pyopencl=2019.1.2
+
+A simple test to see whether pyopencl can detect your graphics card is to run:
+		import pyopencl as cl
+		platforms = cl.get_platforms()
+		for platform in platforms:
+			devices = platform.get_devices(cl.device_type.GPU)
+			print(devices)
+If successful this should print the name of your GPU(s). If multiple GPUs are
+detected, our script searches for the one with greatest memory for use. This
+can be checked or modified in binary_pursuit_parallel.py lines 221-231.
 
 ### Install package
 Navigate to the directory containing the package spikesorting_fullpursuit.

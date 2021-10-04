@@ -796,7 +796,6 @@ def spike_sort_parallel(Probe, **kwargs):
         samples_over_thresh, work_items = map(list, zip(*[[x, y] for x, y in reversed(
                                             sorted(zip(samples_over_thresh,
                                             work_items), key=lambda pair: pair[0]))]))
-
     n_cpus = psutil.cpu_count(logical=True)
     if settings['save_1_cpu']:
         n_cpus -= 1

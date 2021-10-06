@@ -175,19 +175,20 @@ def compute_separability_metrics(templates, channel_covariance_mats,
     separability_metrics['neuron_lower_CI'] = np.zeros(n_templates)
     for n in range(0, n_templates):
         expectation = 0.5 * separability_metrics['template_SS'][n]
-        # for chan in range(0, n_chans):
-        #     t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
-        #     separability_metrics['template_SS_by_chan'][n, chan] = np.sum(
-        #             separability_metrics['templates'][n, t_win[0]:t_win[1]] ** 2)
-        #
-        #     separability_metrics['neuron_variances'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
-        #                 @ separability_metrics['channel_covariance_mats'][chan]
-        #                 @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
+        for chan in range(0, n_chans):
+            t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
+            separability_metrics['template_SS_by_chan'][n, chan] = np.sum(
+                    separability_metrics['templates'][n, t_win[0]:t_win[1]] ** 2)
 
+            separability_metrics['neuron_variances'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
+                        @ separability_metrics['channel_covariance_mats'][chan]
+                        @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
+        print("Channelwise variance", separability_metrics['neuron_variances'][n])
         separability_metrics['neuron_variances'][n] = (
                         separability_metrics['templates'][n, :][None, :]
                         @ separability_metrics['template_covariance_mats'][n]
                         @ separability_metrics['templates'][n, :][:, None])
+        print("Full template variance", separability_metrics['neuron_variances'][n])
         # Set threshold in standard deviations from decision boundary at 0
         # separability_metrics['neuron_lower_thresholds'][n] = (
         #                         sort_info['sigma_bp_noise']

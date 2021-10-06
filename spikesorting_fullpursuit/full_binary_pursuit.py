@@ -201,6 +201,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates = []
     n_template_spikes = []
     template_covar = []
+    chan_covariance_mats_clips = []
     print("!!!SKIPPING ZEROING OUT NEIGHBOR CHANNELS line 207 full binary pursuit")
     print("!!!!USING ROBUST TEMPLATE LINE 215 full binary pursuit")
     for n in seg_summary.summaries:
@@ -227,12 +228,13 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             cov_sample_inds = np.random.randint(0, clips.shape[0], sort_info['n_cov_samples'])
         template_covar.append(np.cov(clips[cov_sample_inds, :], rowvar=False, ddof=0))
 
+        for chan in range(0, sort_info['n_channels']):
+
     templates = np.vstack(templates)
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
 
     # The overlap check input here is hard coded to look at shifts +/- the
     # original input chan win (clip_width). This is arbitrary
-    print("CHAN WIN LINE 235 FULL BP IS", chan_win, "FLOORED TO", chan_win[0]//1.1)
     templates_to_check = sort_cython.find_overlap_templates(templates,
                                 sort_info['n_samples_per_chan'],
                                 sort_info['n_channels'],

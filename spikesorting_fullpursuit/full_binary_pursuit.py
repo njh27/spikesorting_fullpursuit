@@ -201,7 +201,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates = []
     n_template_spikes = []
     template_covar = []
-    chan_covariance_mats_clips = []
+    neuron_chan_covariance_mats = []
     print("!!!SKIPPING ZEROING OUT NEIGHBOR CHANNELS line 207 full binary pursuit")
     print("!!!!USING ROBUST TEMPLATE LINE 215 full binary pursuit")
     for n in seg_summary.summaries:
@@ -228,7 +228,15 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             cov_sample_inds = np.random.randint(0, clips.shape[0], sort_info['n_cov_samples'])
         template_covar.append(np.cov(clips[cov_sample_inds, :], rowvar=False, ddof=0))
 
+        n_covars = []
+        if sort_info['n_cov_samples'] >= clips.shape[0]:
+            cov_sample_inds = np.arange(0, clips.shape[0])
+        else:
+            cov_sample_inds = np.random.randint(0, clips.shape[0], sort_info['n_cov_samples'])
         for chan in range(0, sort_info['n_channels']):
+            c_win = [chan * sort_info['n_samples_per_chan'], (chan+1) * sort_info['n_samples_per_chan']]
+            n_covars.append(np.cov(clips[cov_sample_inds, :][:, c_win[0]:c_win[1]], rowvar=False, ddof=0))
+        neuron_chan_covariance_mats.append(n_covars)
 
     templates = np.vstack(templates)
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
@@ -314,7 +322,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     del seg_summary # No longer needed so clear memory
 
     separability_metrics = neuron_separability.compute_separability_metrics(
-                                templates, chan_covariance_mats, sort_info, template_covar)
+                                templates, neuron_chan_covariance_mats, sort_info, template_covar)
     # Identify templates similar to noise and decide what to do with them
     noisy_templates = neuron_separability.find_noisy_templates(
                                             separability_metrics, sort_info)

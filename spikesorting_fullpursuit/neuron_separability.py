@@ -181,9 +181,13 @@ def compute_separability_metrics(templates, channel_covariance_mats,
                     separability_metrics['templates'][n, t_win[0]:t_win[1]] ** 2)
 
             separability_metrics['neuron_variances'][n] += (separability_metrics['templates'][n, t_win[0]:t_win[1]][None, :]
-                        @ separability_metrics['channel_covariance_mats'][chan]
+                        @ separability_metrics['channel_covariance_mats'][n][chan]
                         @ separability_metrics['templates'][n, t_win[0]:t_win[1]][:, None])
         print("Channelwise variance", separability_metrics['neuron_variances'][n])
+        separability_metrics['neuron_lower_thresholds'][n] = (-1*expectation + sort_info['sigma_bp_noise']
+                                * np.sqrt(separability_metrics['neuron_variances'][n]))
+        print("Channelwise threshold", separability_metrics['neuron_lower_thresholds'][n])
+
         separability_metrics['neuron_variances'][n] = (
                         separability_metrics['templates'][n, :][None, :]
                         @ separability_metrics['template_covariance_mats'][n]

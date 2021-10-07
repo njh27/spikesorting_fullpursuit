@@ -1,20 +1,27 @@
+import sys
 import numpy as np
-import spikesorting_fullpursuit as fbp
 from spikesorting_fullpursuit.test import gen_dataset
 
 
+
+"""
+Will save a file called "test_voltage.npy" to the directory specified in the
+first input argument.
+ex.
+    python make_and_save_voltage.py /mydir
+
+    creates a numpy voltage array saved at: /mydir/test_voltage.npy
+"""
 if __name__ == '__main__':
     """
     """
     if len(sys.argv) < 1:
         raise ValueError("Requires 1 input specifying save destination.")
     data_folder = sys.argv[1]
-    save_fname = data_folder + '/sorted.pickle'
+    data_folder = data_folder.rstrip("/")
+    save_fname = data_folder + '/test_voltage.npy'
     if not '.npy' in save_fname[-4:]:
         save_fname = save_fname + '.npy'
-
-    print("Sorting data from file: ", data_folder)
-    print("Output will be saved as: ", save_fname)
 
     n_chans = 4 # Number of channels to make in test dataset
     v_duration = 60 # Test dataset duration in seconds
@@ -39,7 +46,10 @@ if __name__ == '__main__':
     # Specify the neurons' properties in the dataset
     firing_rates = np.array([90, 100]) # Firing rates
     template_inds = np.array([1, 0]) # Templates used for waveforms
-    chan_scaling_factors = 2*np.array([[1.85, 2.25, 1.65, .5], [3.85, 3.95, 1.95, 3.7]]) # Amplitude of neurons on each of the 4 channels
+    chan_scaling_factors = np.array([[1.85, 2.25, 1.65, .5], [3.85, 3.95, 1.95, 3.7]]) # Amplitude of neurons on each of the 4 channels
     refractory_win = 1.5e-3 # Set refractory period at 1.5 ms
     # Generate the test dataset by choosing spike times and adding them according to the specified properties
     test_data.gen_test_dataset(firing_rates, template_inds, chan_scaling_factors, refractory_win)
+
+    np.save(save_fname, test_data.Probe.voltage)
+    print("Saved test voltage array to: ", save_fname)

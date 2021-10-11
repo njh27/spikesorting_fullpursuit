@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.signal import filtfilt, butter
 from spikesorting_fullpursuit import preprocessing
+from spikesorting_fullpursuit.utils.parallel_funs import filter_parallel
 
 
 
@@ -76,6 +77,26 @@ class AbstractProbe(object):
         their specific geometry. Must return numpy array of integers. """
         pass
 
+    def bandpass_filter_parallel(self, low_cutoff=1000, high_cutoff=8000):
+        """ One pole bandpass forward backward butterworth filter on each channel.
+        Uses parallel filtering to speed up for large datasets. """
+        if self.filter_band[0] is not None and self.filter_band[1] is not None:
+            if low_cutoff <= self.filter_band[0] and high_cutoff >= self.filter_band[1]:
+                # Don't keep doing costly filtering if it won't have any effect
+                print("Voltage has already been filtered within input frequency band. Skipping filtering.")
+                return
+        self.voltage = filter_parallel(self, low_cutoff, high_cutoff)
+
+        # Update Probe filter band values
+        if self.filter_band[0] is None:
+            self.filter_band[0] = low_cutoff
+        elif low_cutoff > self.filter_band[0]:
+            self.filter_band[0] = low_cutoff
+        if self.filter_band[1] is None:
+            self.filter_band[1] = high_cutoff
+        elif high_cutoff < self.filter_band[1]:
+            self.filter_band[1] = high_cutoff
+
     def bandpass_filter(self, low_cutoff=1000, high_cutoff=8000):
         """ One pole bandpass forward backward butterworth filter on each channel. """
         if self.filter_band[0] is not None and self.filter_band[1] is not None:
@@ -91,13 +112,13 @@ class AbstractProbe(object):
 
         # Update Probe filter band values
         if self.filter_band[0] is None:
-            self.filter_band[0] = low_cutoff
+            self.filter_band[0] = low_cutoff * (self.sampling_rate / 2)
         elif low_cutoff > self.filter_band[0]:
-            self.filter_band[0] = low_cutoff
+            self.filter_band[0] = low_cutoff * (self.sampling_rate / 2)
         if self.filter_band[1] is None:
-            self.filter_band[1] = high_cutoff
+            self.filter_band[1] = high_cutoff * (self.sampling_rate / 2)
         elif high_cutoff < self.filter_band[1]:
-            self.filter_band[1] = high_cutoff
+            self.filter_band[1] = high_cutoff * (self.sampling_rate / 2)
 
 
 class SProbe16by2(AbstractProbe):

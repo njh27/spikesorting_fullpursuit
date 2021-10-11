@@ -98,7 +98,7 @@ def init_covar_pool_dict(volt_array, volt_shape, volt_dtype, window,
     pool_dict['n_samples'] = n_samples
     pool_dict['rand_state'] = rand_state
     return
-
+    
 
 def covar_one_chan(chan):
 

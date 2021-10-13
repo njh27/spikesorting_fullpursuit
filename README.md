@@ -61,6 +61,15 @@ This package also defines a Julia element called an electrode which has some kno
 
 ## Usage
 
+NOTE:
+ If running this script causes your computer to hang or crash, you might try testing
+ first with 'do_overlap_recheck' set to "False". The overlap recheck can be time
+ consuming and may cause your GPU to either crash or timeout. It is likely that
+ the watchdog timer for your operating system or graphics card will need to be
+ increased in order to successfully run. Alternatively, you could run using a
+ smaller 'max_gpu_memory' which will sort less data in each GPU call and therefore
+ might run faster without causing a timeout.
+
 Calls to `spike_sort` using an `AbstractRecording` will be wrapped in a generic electrode object, where `neighbors` only returns the current electrode (e.g., no neighbors).
 
 To sort a file:

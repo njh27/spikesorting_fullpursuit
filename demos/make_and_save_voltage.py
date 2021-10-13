@@ -8,7 +8,7 @@ from spikesorting_fullpursuit.test import gen_dataset
 Will save a file called "test_voltage.npy" to the directory specified in the
 first input argument.
 ex.
-    python make_and_save_voltage.py /mydir
+    python make_and_save_voltage.py /mydir/test_voltage.npy
 
     creates a numpy voltage array saved at: /mydir/test_voltage.npy
 """
@@ -17,9 +17,8 @@ if __name__ == '__main__':
     """
     if len(sys.argv) < 1:
         raise ValueError("Requires 1 input specifying save destination.")
-    data_folder = sys.argv[1]
-    data_folder = data_folder.rstrip("/")
-    save_fname = data_folder + '/test_voltage.npy'
+    save_fname = sys.argv[1]
+    save_fname = save_fname.rstrip("/")
     if not '.npy' in save_fname[-4:]:
         save_fname = save_fname + '.npy'
 

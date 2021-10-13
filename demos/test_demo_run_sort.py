@@ -4,10 +4,23 @@ import pickle
 from spikesorting_fullpursuit import electrode
 from spikesorting_fullpursuit.parallel.spikesorting_parallel import spike_sort_parallel
 
-# python test_demo_run_sort.py ./mysavedir/test_voltage.npy ./mysavedir/sorted_demo.pickle
+"""
+ ex. python test_demo_run_sort.py ./mysavedir/test_voltage.npy ./mysavedir/sorted_demo.pickle
+
+NOTE:
+ If running this script causes your computer to hang or crash, you might try testing
+ first with 'do_overlap_recheck' set to "False". The overlap recheck can be time
+ consuming and may cause your GPU to either crash or timeout. It is likely that
+ the watchdog timer for your operating system or graphics card will need to be
+ increased in order to successfully run. Alternatively, you could run using a
+ smaller 'max_gpu_memory' which will sort less data in each GPU call and therefore
+ might run faster without causing a timeout.
+ """
 
 if __name__ == '__main__':
     """
+    Sets up a probe and filters the voltage for the numpy voltage file input.
+    Then spike sorting is run and the output is saved.
     """
     if len(sys.argv) < 3:
         raise ValueError("Requires 2 inputs. Voltage file and save destination.")

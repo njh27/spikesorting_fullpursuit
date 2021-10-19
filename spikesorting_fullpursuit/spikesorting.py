@@ -370,7 +370,7 @@ def spike_sort_item(Probe, work_item, settings):
         # Need to get newly aligned clips and bp_bool = False
         clips, valid_event_indices = segment.get_multichannel_clips(Probe, work_item['neighbors'], crossings, clip_width=settings['clip_width'])
         crossings, neuron_labels = segment.keep_valid_inds([crossings, neuron_labels], valid_event_indices)
-        bp_bool = np.zeros(crossings.size, dtype=np.bool)
+        bp_bool = np.zeros(crossings.size, dtype="bool")
 
     if len(neuron_labels) == 0:
         # Nothing found in binary pursuit, probably with binary_pursuit_only == True

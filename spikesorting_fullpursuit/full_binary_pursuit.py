@@ -139,7 +139,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             seg_data.append([data_dict['results_dict'][w_item['ID']][0],
                               data_dict['results_dict'][w_item['ID']][1],
                               clips,
-                              np.zeros(len(data_dict['results_dict'][w_item['ID']][0]), dtype=np.bool),
+                              np.zeros(len(data_dict['results_dict'][w_item['ID']][0]), dtype="bool"),
                               w_item['ID']])
             if type(seg_data[-1][0][0]) == np.ndarray:
                 if seg_data[-1][0][0].size > 0:
@@ -251,7 +251,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                                 n_template_spikes)
 
     # Go through suspect templates in templates_to_check
-    templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    templates_to_delete = np.zeros(templates.shape[0], dtype="bool")
     # Use the sigma lower bound to decide the acceptable level of
     # misclassification between template sums
     confusion_threshold = norm.sf(sort_info['sigma_bp_noise'])

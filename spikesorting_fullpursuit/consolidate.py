@@ -262,7 +262,7 @@ class SegSummary(object):
         shift_samples_per_chan = self.sort_info['n_samples_per_chan'] - np.abs(best_shift)
         clips_1 = np.zeros((n1['clips'].shape[0], shift_samples_per_chan * self.sort_info['n_channels']), dtype=self.v_dtype)
         clips_2 = np.zeros((n2['clips'].shape[0], shift_samples_per_chan * self.sort_info['n_channels']), dtype=self.v_dtype)
-        sample_select = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype=np.bool)
+        sample_select = np.zeros(shift_samples_per_chan * self.sort_info['n_channels'], dtype="bool")
 
         # Get clips for each channel, shift them, and assign for output, which
         # will be clips that have each channel individually aligned and

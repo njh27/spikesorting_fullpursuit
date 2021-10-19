@@ -147,7 +147,7 @@ class TestDataset(object):
         The refactory period (in sec) determines the silency period between two adjacent spikes.
         Samples per seconds defines the sampling rate of output spiketrain. """
         number_of_samples = int(np.round(self.duration * self.samples_per_second))
-        spiketrain = np.zeros(number_of_samples, dtype=np.bool)
+        spiketrain = np.zeros(number_of_samples, dtype="bool")
         random_nums = np.random.random(spiketrain.size)
 
         if tau_ref < 0:
@@ -242,7 +242,7 @@ class TestDataset(object):
             # Remove any spike times that might overlap with each other within half a template
             overlapping_bools = []
             for n1 in range(0, len(self.actual_IDs)):
-                overlapping_bools.append(np.ones(self.actual_IDs[n1].shape[0], dtype=np.bool))
+                overlapping_bools.append(np.ones(self.actual_IDs[n1].shape[0], dtype="bool"))
                 for n2 in range(0, len(self.actual_IDs)):
                     if n1 == n2:
                         continue
@@ -397,7 +397,7 @@ class TestDataset(object):
                 spiketrain[:] = False
                 spiketrain[self.actual_IDs[neuron]] = True
 
-            remove_IDs = np.zeros(self.actual_IDs[neuron].size, dtype=np.bool)
+            remove_IDs = np.zeros(self.actual_IDs[neuron].size, dtype="bool")
             for i, spk_ind in enumerate(self.actual_IDs[neuron]):
                 chan_scaling_factors = drift_funs[neuron](spk_ind)
                 if np.all(chan_scaling_factors < scaled_spike_thresh):

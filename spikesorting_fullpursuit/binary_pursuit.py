@@ -465,7 +465,7 @@ def binary_pursuit(Probe, channel, event_indices, neuron_labels,
                 secret_spike_indices.append(all_chunk_crossings + start_index)
                 secret_spike_labels.append(all_chunk_labels)
                 adjusted_spike_clips.append(all_adjusted_clips)
-                all_chunk_bool = np.zeros(all_chunk_crossings.shape[0], dtype=np.bool)
+                all_chunk_bool = np.zeros(all_chunk_crossings.shape[0], dtype="bool")
                 all_chunk_bool[0:chunk_total_additional_spikes] = True
                 secret_spike_bool.append(all_chunk_bool)
 

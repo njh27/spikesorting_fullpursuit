@@ -437,7 +437,7 @@ class WorkItemSummary(object):
                 if len(self.sort_data[chan][seg][0]) == 0:
                     # No data in this segment
                     continue
-                keep_bool = np.ones(self.sort_data[chan][seg][0].shape[0], dtype=np.bool)
+                keep_bool = np.ones(self.sort_data[chan][seg][0].shape[0], dtype="bool")
                 for l in np.unique(self.sort_data[chan][seg][1]):
                     unit_select = self.sort_data[chan][seg][1] == l
                     keep_bool[unit_select] = remove_binary_pursuit_duplicates(

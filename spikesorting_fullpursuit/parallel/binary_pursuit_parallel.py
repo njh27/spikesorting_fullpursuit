@@ -60,7 +60,7 @@ def compute_shift_indices(templates, samples_per_chan, n_chans):
     L_shift = np.zeros(3*samples_per_chan)
     max_shift = int(samples_per_chan // 2)
     # NOTE: Need to add 1 to size of failed_assignments to include 0 shift at failed_assignments[max_shift]
-    failed_assignments = np.zeros(2*max_shift+1, dtype=np.bool)
+    failed_assignments = np.zeros(2*max_shift+1, dtype="bool")
     for f in range(0, templates.shape[0]):
         fixed_t = templates[f, :]
         fixed_t_ss = .5 * np.sum(fixed_t ** 2)
@@ -817,7 +817,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
                 secret_spike_indices.append(all_chunk_crossings + start_index)
                 secret_spike_labels.append(all_chunk_labels)
                 adjusted_spike_clips.append(all_adjusted_clips)
-                all_chunk_bool = np.zeros(all_chunk_crossings.shape[0], dtype=np.bool)
+                all_chunk_bool = np.zeros(all_chunk_crossings.shape[0], dtype="bool")
                 all_chunk_bool[0:chunk_total_additional_spikes] = True
                 secret_spike_bool.append(all_chunk_bool)
 

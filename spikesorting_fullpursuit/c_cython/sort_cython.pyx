@@ -171,7 +171,7 @@ def optimal_reconstruction_pca_order(np.ndarray[double, ndim=2, mode="c"] spikes
       break
 
   max_vaf_components = comp
-  cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
+  cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype="bool")
   cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]
   if vaf_ptr[1] < 0:
     # First PC is worse than the mean
@@ -303,7 +303,7 @@ def optimal_reconstruction_pca_order_F(np.ndarray[double, ndim=2, mode="fortran"
       break
 
   max_vaf_components = comp
-  cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype=np.bool)
+  cdef np.ndarray[np.npy_bool, ndim=1, cast=True] is_worse_than_mean = np.zeros(1, dtype="bool")
   cdef uint8_t *iwtm_ptr = &is_worse_than_mean[0]
   if vaf_ptr[1] < 0:
     # First PC is worse than the mean
@@ -348,7 +348,7 @@ def find_overlap_templates(np.ndarray[float, ndim=2] templates,
                                 chan_temp[-shift:]
         return shifted_template
 
-    # templates_to_delete = np.zeros(templates.shape[0], dtype=np.bool)
+    # templates_to_delete = np.zeros(templates.shape[0], dtype="bool")
     templates_to_check = []
     if templates.shape[0] < 3:
         # Need at least 3 templates for one to be sum of two others

@@ -42,9 +42,9 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
     zca_thresholds = np.copy(thresholds)
     # convert cushion to zero centered window
     thresh_cushion = (thresh_cushion * 2 + 1)
-    volt_thresh_bool = np.zeros(voltage_data.shape, dtype=np.bool)
+    volt_thresh_bool = np.zeros(voltage_data.shape, dtype="bool")
     for chan_v in range(0, volt_thresh_bool.shape[0]):
-        volt_thresh_bool[chan_v, :] = np.rint(signal.fftconvolve(np.abs(voltage_data[chan_v, :]) > zca_thresholds[chan_v], np.ones(thresh_cushion), mode='same')).astype(np.bool)
+        volt_thresh_bool[chan_v, :] = np.rint(signal.fftconvolve(np.abs(voltage_data[chan_v, :]) > zca_thresholds[chan_v], np.ones(thresh_cushion), mode='same')).astype("bool")
     sigma = np.empty((voltage_data.shape[0], voltage_data.shape[0]))
     for i in range(0, voltage_data.shape[0]):
         # Compute i variance for diagonal elements of sigma
@@ -515,7 +515,7 @@ def compute_template_pca_by_channel(clips, labels, curr_chan_inds,
 
 def keep_max_on_main(clips, main_chan_inds):
 
-    keep_clips = np.ones(clips.shape[0], dtype=np.bool)
+    keep_clips = np.ones(clips.shape[0], dtype="bool")
     for c in range(0, clips.shape[0]):
         max_ind = np.argmax(np.abs(clips[c, :]))
         if max_ind < main_chan_inds[0] or max_ind > main_chan_inds[-1]:
@@ -526,7 +526,7 @@ def keep_max_on_main(clips, main_chan_inds):
 
 def cleanup_clusters(clips, neuron_labels):
 
-    keep_clips = np.ones(clips.shape[0], dtype=np.bool)
+    keep_clips = np.ones(clips.shape[0], dtype="bool")
 
     total_SSE_clips = np.sum(clips ** 2, axis=1)
     total_mean_SSE_clips = np.mean(total_SSE_clips)
@@ -576,7 +576,7 @@ def calculate_robust_template(clips):
 
 
 def keep_cluster_centroid(clips, neuron_labels, n_keep=100):
-    keep_clips = np.ones(clips.shape[0], dtype=np.bool)
+    keep_clips = np.ones(clips.shape[0], dtype="bool")
     if n_keep > clips.shape[0]:
         # Everything will be kept no matter what so just exit
         return keep_clips
@@ -585,7 +585,7 @@ def keep_cluster_centroid(clips, neuron_labels, n_keep=100):
         nl_template = np.mean(clips[select_nl, :], axis=0)
         nl_distances = np.sum((clips[select_nl, :] - nl_template[None, :]) ** 2, axis=1)
         dist_order = np.argpartition(nl_distances, min(n_keep, nl_distances.shape[0]-1))[0:min(n_keep, nl_distances.shape[0])]
-        select_dist = np.zeros(nl_distances.shape[0], dtype=np.bool)
+        select_dist = np.zeros(nl_distances.shape[0], dtype="bool")
         select_dist[dist_order] = True
         keep_clips[select_nl] = select_dist
 

@@ -57,7 +57,7 @@ def get_singlechannel_clips(voltage, channel, spike_times, window):
         raise ValueError("Event_indices must be one dimensional array of indices")
 
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
-    valid_event_indices = np.ones(spike_times.shape[0], dtype=np.bool)
+    valid_event_indices = np.ones(spike_times.shape[0], dtype="bool")
     start_ind = 0
     n = spike_times[start_ind]
 
@@ -98,7 +98,7 @@ def init_covar_pool_dict(volt_array, volt_shape, volt_dtype, window,
     pool_dict['n_samples'] = n_samples
     pool_dict['rand_state'] = rand_state
     return
-    
+
 
 def covar_one_chan(chan):
 

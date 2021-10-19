@@ -30,7 +30,7 @@ def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0., a
     skip_indices = max(int(round(skip * probe_dict['sampling_rate'])), 1) - 1
     # Working with ABSOLUTE voltage here
     voltage = np.abs(chan_voltage)
-    first_thresh_index = np.zeros(voltage.shape[0], dtype=np.bool)
+    first_thresh_index = np.zeros(voltage.shape[0], dtype="bool")
     # Find points above threshold where preceeding sample was below threshold (excludes first point)
     first_thresh_index[1:] = np.logical_and(voltage[1:] > threshold, voltage[0:-1] <= threshold)
     events = np.nonzero(first_thresh_index)[0]
@@ -58,7 +58,7 @@ def identify_threshold_crossings(chan_voltage, probe_dict, threshold, skip=0., a
             events[evt] = start + min_index
 
     # Remove events that follow preceeding valid event by less than skip_indices samples
-    bad_index = np.zeros(events.shape[0], dtype=np.bool)
+    bad_index = np.zeros(events.shape[0], dtype="bool")
     last_n = 0
     for n in range(1, events.shape[0]):
         if events[n] - events[last_n] < skip_indices:
@@ -163,7 +163,7 @@ def align_events_with_best_template(probe_dict, chan_voltage, neuron_labels, eve
     clips, valid_inds = get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width=clip_width)
     event_indices = event_indices[valid_inds]
     neuron_labels = neuron_labels[valid_inds]
-    overlaps = np.zeros(event_indices.size, dtype=np.bool)
+    overlaps = np.zeros(event_indices.size, dtype="bool")
     templates, labels = calculate_templates(clips, neuron_labels)
     templates = [(t)/np.amax(np.abs(t)) for t in templates]
     window = np.abs(window)
@@ -229,7 +229,7 @@ def wavelet_align_events(probe_dict, chan_voltage, event_indices,clip_width, ban
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
     clips, valid_inds = get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width=clip_width)
     event_indices = event_indices[valid_inds]
-    overlaps = np.zeros(event_indices.size, dtype=np.bool)
+    overlaps = np.zeros(event_indices.size, dtype="bool")
     # Create a mexican hat central template, centered on the current clip width
     window = np.abs(window)
     center = max(window)
@@ -373,7 +373,7 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width)
 
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
-    valid_event_indices = np.ones(event_indices.shape[0], dtype=np.bool)
+    valid_event_indices = np.ones(event_indices.shape[0], dtype="bool")
     start_ind = 0
     n = event_indices[start_ind]
     while n + window[0] < 0:
@@ -416,7 +416,7 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
 
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
-    valid_event_indices = np.ones(event_indices.shape[0], dtype=np.bool)
+    valid_event_indices = np.ones(event_indices.shape[0], dtype="bool")
     start_ind = 0
     n = event_indices[start_ind]
 

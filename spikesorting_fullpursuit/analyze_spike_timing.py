@@ -35,9 +35,9 @@ def zero_symmetric_ccg(spikes_1, spikes_2, samples_window=40, d_samples=40, retu
 
     # Convert to spike trains
     train_len = int(max(spikes_1[-1], spikes_2[-1])) + 1 # This is samples, so need to add 1
-    spike_trains_1 = np.zeros(train_len, dtype=np.bool)
+    spike_trains_1 = np.zeros(train_len, dtype="bool")
     spike_trains_1[spikes_1] = True
-    spike_trains_2 = np.zeros(train_len, dtype=np.bool)
+    spike_trains_2 = np.zeros(train_len, dtype="bool")
     spike_trains_2[spikes_2] = True
 
     for lag_ind, lag in enumerate(samples_axis):
@@ -64,7 +64,7 @@ def find_overlapping_spike_bool(spikes_1, spikes_2, overlap_tol, except_equal=Fa
         are numpy arrays of spike indices in units of samples. Input spikes_1 and
         spikes_2 MUST be SORTED because this function won't work if they
         are not ordered."""
-    overlap_bool = np.zeros(spikes_1.shape[0], dtype=np.bool)
+    overlap_bool = np.zeros(spikes_1.shape[0], dtype="bool")
     ind1 = 0
     ind2 = 0
     while (ind1 < spikes_1.shape[0]) and (ind2 < spikes_2.shape[0]):
@@ -85,7 +85,7 @@ def find_overlapping_spike_bool(spikes_1, spikes_2, overlap_tol, except_equal=Fa
 def keep_binary_pursuit_duplicates(event_indices, binary_pursuit_bool, tol_inds):
     """ Preferentially KEEPS spikes found in binary pursuit.
     """
-    keep_bool = np.ones(event_indices.size, dtype=np.bool)
+    keep_bool = np.ones(event_indices.size, dtype="bool")
     curr_index = 0
     next_index = 1
     while next_index < event_indices.size:
@@ -119,7 +119,7 @@ def remove_binary_pursuit_duplicates(event_indices, clips, unit_template,
     pursuit. This can remove double dipping artifacts as binary pursuit attempts
     to minimize residual error. This only applies for data sorted within the
     same segment and belonging to the same unit, so inputs should reflect that. """
-    keep_bool = np.ones(event_indices.size, dtype=np.bool)
+    keep_bool = np.ones(event_indices.size, dtype="bool")
     temp_sse = np.zeros(2)
     curr_index = 0
     next_index = 1
@@ -159,7 +159,7 @@ def remove_binary_pursuit_duplicates(event_indices, clips, unit_template,
 def remove_spike_event_duplicates(event_indices, clips, unit_template, tol_inds):
     """
     """
-    keep_bool = np.ones(event_indices.size, dtype=np.bool)
+    keep_bool = np.ones(event_indices.size, dtype="bool")
     temp_sse = np.zeros(2)
     curr_index = 0
     next_index = 1
@@ -190,7 +190,7 @@ def remove_spike_event_duplicates_across_chans(combined_neuron):
     """
     """
     event_indices = combined_neuron['spike_indices']
-    keep_bool = np.ones(event_indices.size, dtype=np.bool)
+    keep_bool = np.ones(event_indices.size, dtype="bool")
     temp_sse = np.zeros(2)
     curr_index = 0
     next_index = 1
@@ -235,7 +235,7 @@ def compute_spike_trains(spike_indices, bin_width_samples, min_max_indices):
     select = np.logical_and(spike_indices >= min_max_indices[0], spike_indices <= min_max_indices[1])
     # Convert the spike indices to units of bin_width_samples
     spikes = (np.floor((spike_indices[select] + bin_width_samples/2 - min_max_indices[0]) / bin_width_samples)).astype(np.int64)
-    spike_train = np.zeros(train_len, dtype=np.bool)
+    spike_train = np.zeros(train_len, dtype="bool")
     spike_train[spikes] = True
 
     return spike_train

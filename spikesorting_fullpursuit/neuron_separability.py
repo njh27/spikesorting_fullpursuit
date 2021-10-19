@@ -230,7 +230,7 @@ def find_noisy_templates(separability_metrics, sort_info):
     or equal to the decision boundary at 0. """
     n_neurons = separability_metrics['templates'].shape[0]
 
-    noisy_templates = np.zeros(n_neurons, dtype=np.bool)
+    noisy_templates = np.zeros(n_neurons, dtype="bool")
     # Find neurons that are too close to decision boundary and need to be deleted
     for neuron in range(0, n_neurons):
         # This implies that the neuron's expected value given a spike is present

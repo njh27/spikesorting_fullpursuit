@@ -39,7 +39,7 @@ Older versions can be installed by specifying the version. e.g.: \
 		conda install -c conda-forge pyopencl=2019.1.2 \
 
 A simple test to see whether pyopencl can detect your graphics card is to run: \
-		import pyopencl as cl \
+    import pyopencl as cl \
 		platforms = cl.get_platforms() \
 		for platform in platforms: \
 			devices = platform.get_devices(cl.device_type.GPU) \

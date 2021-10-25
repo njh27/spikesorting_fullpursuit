@@ -39,13 +39,13 @@ Older versions can be installed by specifying the version. e.g.: \
 		&nbsp;&nbsp;&nbsp;&nbsp; conda install -c conda-forge pyopencl=2019.1.2
 
 A simple test to see whether pyopencl can detect your graphics card is to run: \
-'''
+```
     import pyopencl as cl \
 		platforms = cl.get_platforms() \
 		for platform in platforms: \
 		devices = platform.get_devices(cl.device_type.GPU) \
 		print(devices) \
-'''
+```
 If successful this should print the name of your GPU(s). If multiple GPUs are
 detected, our script searches for the one with greatest memory for use. This
 can be checked or modified in binary_pursuit_parallel.py lines 221-231.

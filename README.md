@@ -33,10 +33,14 @@ you need to choose to install an older version of pyopencl. The oldest case we
 tested was pyopencl version 2019.1.2.
 
 The most recent version of pyopencl can be installed with conda using: \
-		&nbsp;&nbsp;&nbsp;&nbsp; conda install -c conda-forge pyopencl
+```
+conda install -c conda-forge pyopencl
+```
 
 Older versions can be installed by specifying the version. e.g.: \
-		&nbsp;&nbsp;&nbsp;&nbsp; conda install -c conda-forge pyopencl=2019.1.2
+```
+conda install -c conda-forge pyopencl=2019.1.2
+```
 
 A simple test to see whether pyopencl can detect your graphics card is to run: \
 ```
@@ -47,33 +51,14 @@ for platform in platforms:
 	print(devices)
 ```
 If successful this should print the name of your GPU(s). If multiple GPUs are
-detected, our script searches for the one with greatest memory for use. This
-can be checked or modified in binary_pursuit_parallel.py lines 221-231.
+detected, the current code searches for the one with greatest memory for use.
+This can be checked or modified in binary_pursuit_parallel.py ~lines 221-231.
 
 ### Install package
 Navigate to the directory containing the package spikesorting_fullpursuit. Type: \
- 		&nbsp;&nbsp;&nbsp;&nbsp; > pip install -e spikesorting_fullpursuit
-
-The most recent version of pyopencl can be installed with conda using: \
-		&nbsp;&nbsp;&nbsp;&nbsp; conda install -c conda-forge pyopencl
-
-Older versions can be installed by specifying the version. e.g.: \
-		&nbsp;&nbsp;&nbsp;&nbsp; conda install -c conda-forge pyopencl=2019.1.2
-
-A simple test to see whether pyopencl can detect your graphics card is to run: \
-    &nbsp;&nbsp;&nbsp;&nbsp; import pyopencl as cl \
-		&nbsp;&nbsp;&nbsp;&nbsp; platforms = cl.get_platforms() \
-		&nbsp;&nbsp;&nbsp;&nbsp; for platform in platforms: \
-		&nbsp;&nbsp;&nbsp;&nbsp; devices = platform.get_devices(cl.device_type.GPU) \
-		&nbsp;&nbsp;&nbsp;&nbsp; print(devices) \
-If successful this should print the name of your GPU(s). If multiple GPUs are
-detected, our script searches for the one with greatest memory for use. This
-can be checked or modified in binary_pursuit_parallel.py lines 221-231.
-
-### Install package
-Navigate to the directory containing the package spikesorting_fullpursuit. Type: \
- 		&nbsp;&nbsp;&nbsp;&nbsp; > pip install -e spikesorting_fullpursuit
-
+```
+> pip install -e spikesorting_fullpursuit
+```
 
 # Spike Sorting
 

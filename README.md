@@ -1,21 +1,22 @@
-# spikesorting_fullpursuit
+## Spike Sorting Full Binary Pursuit
 
 This package provides a neural spike sorting algorithm implementation as described
 in our publication Hall et al. The internal algorithm clusters spike waveforms in a manner derived from
 the isocut algorithm of [Chung et al. 2017](https://www.sciencedirect.com/science/article/pii/S0896627317307456) to discover neuron spike waveforms. These spike waveform templates are then used to derive
 all the spike event times associated with each neuron using a slightly modified version
-of the binary pursuit algorithm proposed by [Pillow et al. 2013](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0062123). The current code-base significantly extends this work by adding alignment, sharpening, and noise estimation among other things.
+of the binary pursuit algorithm proposed by [Pillow et al. 2013](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0062123). The current code-base significantly extends this work by adding alignment, sharpening, and noise estimation among other things. Because all spike events are ultimately discovered by the binary
+pursuit algorithm (not just the missed events as suggested originally by Pillow et al.) we have
+called the algorithm Full Binary Pursuit (FBP).
 
 A primary focus in fully using the binary pursuit approach to detect spike times is to enable
-the best possible detection of spikes that overlap in space and time in the voltage trace. The goal
+detection of spikes that overlap in space and time in the voltage trace. The goal
 is to accurately detect spikes in the voltage while minimizing false discoveries in order
 to allow analyses of single, isolated neurons and cross correlogram analyses between
 simultaneously recorded neurons even in the face of high firing rates.
 
+### Installation
 
-# Installation
-
-### Requirements
+#### Requirements
 This package depends on the numpy and scipy python packages. The easiest way
 to ensure the majority of package requirements are met is to install via the ANACONDA
 source and API. Additional requirements not part of the standard Anaconda install
@@ -32,17 +33,17 @@ OpenCL. Depending on the age of your machine and/or GPU, it may be the case that
 you need to choose to install an older version of pyopencl. The oldest case we
 tested was pyopencl version 2019.1.2.
 
-The most recent version of pyopencl can be installed with conda using: \
+The most recent version of pyopencl can be installed with conda using:  
 ```
 conda install -c conda-forge pyopencl
 ```
 
-Older versions can be installed by specifying the version. e.g.: \
+Older versions can be installed by specifying the version. e.g.:  
 ```
 conda install -c conda-forge pyopencl=2019.1.2
 ```
 
-A simple test to see whether pyopencl can detect your graphics card is to run: \
+A simple test to see whether pyopencl can detect your graphics card is to run:  
 ```
 import pyopencl as cl
 platforms = cl.get_platforms()
@@ -54,28 +55,41 @@ If successful this should print the name of your GPU(s). If multiple GPUs are
 detected, the current code searches for the one with greatest memory for use.
 This can be checked or modified in binary_pursuit_parallel.py ~lines 221-231.
 
-### Install package
-Navigate to the directory containing the package spikesorting_fullpursuit. Type: \
+#### Install package
+Navigate to the directory containing the package spikesorting_fullpursuit. Type:  
 ```
-> pip install -e spikesorting_fullpursuit
+pip install -e spikesorting_fullpursuit
 ```
 
-# Spike Sorting
+### Usage
+Basic usage is shown in the scripts and Jupyter notebook provided in "demos". Successfully running
+these demos on your own machine should also provide evidence that the software is correctly
+installed and able to use a GPU.  
+**NOTE:**  
+If running this script causes your computer to hang or crash, you might try testing
+first with 'do_overlap_recheck' set to "False". The overlap recheck can be time
+consuming and may cause your GPU to either crash or timeout. It is likely that
+the watchdog timer for your operating system or graphics card will need to be
+increased in order to successfully run. Alternatively, you could run using a
+smaller 'max_gpu_memory' or with shorter segment durations, which will sort less
+data in each GPU call and therefore might run faster without causing a timeout.
+Be sure that the program is discovering and using the desired GPU.
 
-This package provides the ability to sort neurophysiological timeseries recorded for single or multi-contact electrodes. The internal algorithm is based on IsoCut, described in a *Neuron* paper by Chung et al. (2017). However, the current code-base significantly extends this work by adding alignment, sharpening, and noise estimation.
 
-This package also defines a Julia element called an electrode which has some known geometry. Specifically, this electrode object implements a function called `neighbors` which returns a array of neighboring contacts given a primary contact (note: the `neighbors` function should always return the current contact number in the returned list).
+Once FBP is
+installed and correctly detecting and using the host machine GPU, users must accomplish
+two objectives to sort their own data.
 
-## Usage
+1) Voltage timeseries of data must be in an N channels by M samples Numpy array.
 
-NOTE:
- If running this script causes your computer to hang or crash, you might try testing
- first with 'do_overlap_recheck' set to "False". The overlap recheck can be time
- consuming and may cause your GPU to either crash or timeout. It is likely that
- the watchdog timer for your operating system or graphics card will need to be
- increased in order to successfully run. Alternatively, you could run using a
- smaller 'max_gpu_memory' which will sort less data in each GPU call and therefore
- might run faster without causing a timeout.
+2) The user must create an appropriate electrode object that inherits from  the
+"AbstractProbe" class defined in the "electrode.py" module. The AbstractProbe class
+requires specification of the basic details of the recorded voltage such as sampling rate
+and the number of channels. The primary purpose of the user defined subclass object is
+to specify the "get_neighbors" function.
+
+
+
 
 Calls to `spike_sort` using an `AbstractRecording` will be wrapped in a generic electrode object, where `neighbors` only returns the current electrode (e.g., no neighbors).
 

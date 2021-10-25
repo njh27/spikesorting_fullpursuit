@@ -23,7 +23,7 @@ if __name__ == '__main__':
         save_fname = save_fname + '.npy'
 
     n_chans = 4 # Number of channels to make in test dataset
-    v_duration = 60 # Test dataset duration in seconds
+    v_duration = 30 # Test dataset duration in seconds
     random_seed = None # Set seed of numpy random number generator for spike times
     neuron_templates = None # Just use default pre-loaded template waveforms to generate spike voltage traces
     frequency_range = (300, 6000) # Frequencies of dataset in Hz

@@ -68,7 +68,7 @@ if __name__ == '__main__':
     raw_voltage = np.load(volt_fname)
     raw_voltage = np.float32(raw_voltage)
 
-    # Create the Probe object that specifies neighbor function for our current
+    # Create the electrode object that specifies neighbor function for our current
     # tetrode test dataset
     Probe = electrode.SingleTetrode(sampling_rate=40000, voltage_array=raw_voltage)
     # We need to filter our voltage before passing it to the spike sorter. Just

@@ -43,8 +43,8 @@ A simple test to see whether pyopencl can detect your graphics card is to run: \
 import pyopencl as cl
 platforms = cl.get_platforms()
 for platform in platforms:
-		devices = platform.get_devices(cl.device_type.GPU)
-		print(devices)
+devices = platform.get_devices(cl.device_type.GPU)
+print(devices)
 ```
 If successful this should print the name of your GPU(s). If multiple GPUs are
 detected, our script searches for the one with greatest memory for use. This

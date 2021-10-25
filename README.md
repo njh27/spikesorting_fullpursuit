@@ -65,7 +65,7 @@ pip install -e spikesorting_fullpursuit
 Basic usage is shown in the scripts and Jupyter notebook provided in "demos". Successfully running
 these demos on your own machine should also provide evidence that the software is correctly
 installed and able to use a GPU.  
-**NOTE:**  
+> **NOTE:**  
 If running this script causes your computer to hang or crash, you might try testing
 first with 'do_overlap_recheck' set to "False". The overlap recheck can be time
 consuming and may cause your GPU to either crash or timeout. It is likely that

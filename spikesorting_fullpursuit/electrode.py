@@ -75,7 +75,8 @@ class AbstractProbe(object):
     def get_neighbors(channel):
         """ Should be defined by any subclass electrode/probe to account for
         their specific geometry. Must return numpy array of integers. """
-        pass
+        if channel > self.num_channels - 1 or channel < 0:
+            raise ValueError("Invalid electrode channel")
 
     def bandpass_filter_parallel(self, low_cutoff=1000, high_cutoff=8000):
         """ One pole bandpass forward backward butterworth filter on each channel.

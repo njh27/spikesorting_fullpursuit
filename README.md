@@ -75,18 +75,21 @@ smaller 'max_gpu_memory' or with shorter segment durations, which will sort less
 data in each GPU call and therefore might run faster without causing a timeout.
 Be sure that the program is discovering and using the desired GPU.
 
-
-Once FBP is
-installed and correctly detecting and using the host machine GPU, users must accomplish
-two objectives to sort their own data.
+Once FBP is installed and correctly detecting and using the host machine GPU,
+users must accomplish two objectives to sort their own data.
 
 1) Voltage timeseries of data must be in an N channels by M samples Numpy array.
 
-2) The user must create an appropriate electrode object that inherits from  the
-"AbstractProbe" class defined in the "electrode.py" module. The AbstractProbe class
-requires specification of the basic details of the recorded voltage such as sampling rate
+2) The user must create an appropriate electrode object that inherits from the
+**AbstractProbe** class defined in the **electrode.py** module. The AbstractProbe class
+requires specification of the basic details of the recorded voltage data such as sampling rate
 and the number of channels. The primary purpose of the user defined subclass object is
-to specify the "get_neighbors" function.
+to specify the "get_neighbors" function. This function takes a single input, a channel
+number, and returns its corresponding "neighborhood" of channels. Users should ensure
+to keep the error check shown in the provided objects to ensure only channels within
+range are requested. The returned neighborhood is a numpy array of channel numbers. The
+returned numbers will be used to define a neighborhood for clustering of detected spike
+events. Returned neighborhoods for channel c, **MUST** include c.
 
 
 

@@ -4,7 +4,7 @@ import platform as sys_platform
 import re
 import time
 from spikesorting_fullpursuit.sort import reorder_labels
-from spikesorting_fullpursuit import segment, neuron_separability
+from spikesorting_fullpursuit import neuron_separability
 from spikesorting_fullpursuit.parallel import segment_parallel
 from scipy.signal import fftconvolve
 

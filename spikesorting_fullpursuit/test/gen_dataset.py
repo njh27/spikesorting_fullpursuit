@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import signal
 from scipy import stats
-from spikesorting_fullpursuit import electrode, spikesorting
+from spikesorting_fullpursuit import electrode
 from spikesorting_fullpursuit.parallel import spikesorting_parallel
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
 from spikesorting_fullpursuit.postprocessing import WorkItemSummary
@@ -414,25 +414,6 @@ class TestDataset(object):
             self.actual_IDs[neuron] += half_temp_width # Re-center the spike times
         self.Probe.set_new_voltage(self.voltage_array)
 
-    def sort_test_dataset(self, kwargs):
-
-        spike_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
-                              'filter_band': self.frequency_range,
-                              'p_value_cut_thresh': 0.01, 'check_components': None,
-                              'max_components': 10,
-                              'min_firing_rate': 1,
-                              'add_peak_valley': False, 'do_ZCA_transform': True,
-                              'do_branch_PCA': True,
-                              'max_gpu_memory': None,
-                              'use_rand_init': True,
-                              'verbose': True}
-        for key in kwargs:
-            spike_sort_kwargs[key] = kwargs[key]
-
-        sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **spike_sort_kwargs)
-
-        return sort_data, work_items, sort_info
-
     def sort_test_dataset_parallel(self, kwargs):
 
         spike_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
@@ -452,87 +433,3 @@ class TestDataset(object):
         sort_data, work_items, sort_info = spikesorting_parallel.spike_sort_parallel(self.Probe, **spike_sort_kwargs)
 
         return sort_data, work_items, sort_info
-
-
-    def compare_single_vs_parallel(self, kwargs):
-
-        single_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
-                              'filter_band': self.frequency_range,
-                              'p_value_cut_thresh': 0.01, 'check_components': None,
-                              'max_components': 10,
-                              'min_firing_rate': 1,
-                              'add_peak_valley': False, 'do_ZCA_transform': True,
-                              'do_branch_PCA': True,
-                              'max_gpu_memory': None,
-                              'use_rand_init': True,
-                              'verbose': True}
-        for key in kwargs:
-            single_sort_kwargs[key] = kwargs[key]
-        par_sort_kwargs = {'sigma': 4., 'clip_width': [-6e-4, 8e-4],
-                           'filter_band': self.frequency_range,
-                           'p_value_cut_thresh': 0.01, 'check_components': None,
-                           'max_components': 10,
-                           'min_firing_rate': 1,
-                           'add_peak_valley': False, 'do_branch_PCA': True,
-                           'max_gpu_memory': None,
-                           'save_1_cpu': True, 'use_rand_init': True,
-                           'verbose': True,
-                           'test_flag': True, 'log_dir': None,
-                           'do_ZCA_transform': True}
-        for key in single_sort_kwargs.keys():
-            par_sort_kwargs[key] = single_sort_kwargs[key]
-
-        # Enforce test_flag else this will almost surely fail
-        par_sort_kwargs['test_flag'] = True
-
-        # Set and save random generator state
-        self.random_state = np.random.get_state()
-        first_state = self.random_state
-        np.random.set_state(first_state)
-        sort_data, work_items, sort_info = spikesorting.spike_sort(self.Probe, **single_sort_kwargs)
-
-        # Make default work summary to check and organize data
-        single_wis = WorkItemSummary(sort_data, work_items, sort_info)
-
-
-        np.random.set_state(first_state)
-        sort_data, work_items, sort_info = spikesorting_parallel.spike_sort_parallel(self.Probe, **par_sort_kwargs)
-        self.random_state = first_state
-
-        parallel_wis = WorkItemSummary(sort_data, work_items, sort_info)
-
-        for key in single_wis.sort_info.keys():
-            assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key]), "key {0} does not match".format(key)
-        for key in parallel_wis.sort_info.keys():
-            if key in ['log_dir', 'test_flag', 'save_1_cpu', 'tmp_clips_dir']:
-                continue
-            assert np.all(single_wis.sort_info[key] == parallel_wis.sort_info[key])
-        print("All sort info is the SAME.")
-
-        assert len(single_wis.sort_data) == len(parallel_wis.sort_data), "Number of sort_data elements are different"
-
-        # WorkItemSummary rearranges these as a list of channels by segments
-        for chan in range(0, len(single_wis.sort_data)):
-            # Iterate over zipped segments
-            for s, p in zip(single_wis.sort_data[chan], parallel_wis.sort_data[chan]):
-                for data_ind in range(0, len(s)):
-                    try:
-                        assert np.allclose(s[data_ind], p[data_ind], equal_nan=True), "Data item {0} {1} on chan {2} !!! DIFFERENT !!!".format(s[4], data_ind, chan)
-                    except:
-                        print("Data item {0} {1} on chan {2} !!! DIFFERENT (probably in size) !!!".format(s[4], data_ind, chan))
-                        raise
-            print("All seg data on chan", chan, "is the SAME.")
-
-        assert len(single_wis.work_items) == len(parallel_wis.work_items), "Number of work_items elements are different"
-
-        # WorkItemSummary rearranges these as a list of channels by segments
-        for chan in range(0, len(single_wis.sort_data)):
-            # Iterate over zipped segments
-            for s, p in zip(single_wis.work_items[chan], parallel_wis.work_items[chan]):
-                for key in s.keys():
-                    assert np.all(s[key] == p[key]), "Data item {0} {1} on chan {2} !!! DIFFERENT !!!".format(s['ID'], key, chan)
-                for key in p.keys():
-                    assert np.all(s[key] == p[key]), "Data item {0} {1} on chan {2} !!! DIFFERENT !!!".format(s['ID'], key, chan)
-            print("All seg work items on chan", chan, "are the SAME.")
-
-        return single_wis, parallel_wis

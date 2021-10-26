@@ -58,7 +58,7 @@ if __name__ == '__main__':
             'sigma_bp_CI': 12.0,
             'absolute_refractory_period': 10e-4,
             'get_adjusted_clips': False,
-            'max_binary_pursuit_clip_width_factor': 2.0,
+            'max_binary_pursuit_clip_width_factor': 1.0,
             'verbose': True,
             'test_flag': False,
             'log_dir': log_dir,

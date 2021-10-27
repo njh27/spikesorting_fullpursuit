@@ -56,9 +56,18 @@ detected, the current code searches for the one with greatest memory for use.
 This can be checked or modified in binary_pursuit_parallel.py ~lines 221-231.
 
 #### Install package
-Navigate to the directory containing the package spikesorting_fullpursuit. Type:  
+Copy the remote git repository locally, for example with:
+```
+git clone https://github.com/njh27/spikesorting_fullpursuit.git
+```
+Navigate to the directory containing the package spikesorting_fullpursuit (the
+	directory where the clone command above was executed). Type:  
 ```
 pip install -e spikesorting_fullpursuit
+```
+If successful, you should now be able to import the package in python using:
+```
+import spikesorting_fullpursuit
 ```
 
 ### Usage

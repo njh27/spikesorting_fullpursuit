@@ -6,9 +6,10 @@ from spikesorting_fullpursuit.test import gen_dataset
 
 """
 Will save a file called "test_voltage.npy" to the directory specified in the
-first input argument.
+first input argument and save the ground truth spike times to the directory specified
+in the second argument.
 ex.
-    python make_and_save_voltage.py /mydir/test_voltage.npy
+    python make_and_save_voltage.py /mydir/test_voltage.npy /mydir/ground_truth.npy
 
     creates a numpy voltage array saved at: /mydir/test_voltage.npy
 """

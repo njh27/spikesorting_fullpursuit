@@ -70,7 +70,7 @@ If successful, you should now be able to import the package in python using:
 import spikesorting_fullpursuit
 ```
 
-### Usage
+### Testing with demos
 Basic usage is shown in the scripts and Jupyter notebook provided in "demos". Successfully running
 these demos on your own machine should also provide evidence that the software is correctly
 installed and able to use a GPU.  
@@ -84,6 +84,16 @@ smaller 'max_gpu_memory' or with shorter segment durations, which will sort less
 data in each GPU call and therefore might run faster without causing a timeout.
 Be sure that the program is discovering and using the desired GPU.
 
+To run the demo scripts from the command line where the git repository was installed,
+scripts should be run in this order:  
+First make the voltage data and save ground truth:
+```
+python spikesorting_fullpursuit/demos/make_and_save_voltage.py test_voltage.npy
+
+
+```
+
+### Usage
 Once FBP is installed and correctly detecting and using the host machine GPU,
 users must accomplish two objectives to sort their own data.
 

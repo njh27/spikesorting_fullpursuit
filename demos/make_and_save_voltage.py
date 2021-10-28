@@ -1,26 +1,34 @@
 import sys
 import numpy as np
+import pickle
 from spikesorting_fullpursuit.test import gen_dataset
 
 
 
 """
 Will save a file called "test_voltage.npy" to the directory specified in the
-first input argument.
+first input argument and save the ground truth spike times in the directory
+given in the second argument.
 ex.
-    python make_and_save_voltage.py /mydir/test_voltage.npy
+    python make_and_save_voltage.py /mydir/test_voltage.npy /mydir/test_ground_truth.pickle
 
     creates a numpy voltage array saved at: /mydir/test_voltage.npy
+    and an array of ground truth spike times at /mydir/test_ground_truth.pickle
+
 """
 if __name__ == '__main__':
     """
     """
-    if len(sys.argv) < 1:
-        raise ValueError("Requires 1 input specifying save destination.")
-    save_fname = sys.argv[1]
-    save_fname = save_fname.rstrip("/")
-    if not '.npy' in save_fname[-4:]:
-        save_fname = save_fname + '.npy'
+    if len(sys.argv) < 3:
+        raise ValueError("Requires 2 inputs specifying save destination for voltage and ground truth spike times.")
+    volt_fname = sys.argv[1]
+    volt_fname = volt_fname.rstrip("/")
+    if not '.npy' in volt_fname[-4:]:
+        volt_fname = volt_fname + '.npy'
+    gt_fname = sys.argv[2]
+    gt_fname = gt_fname.rstrip("/")
+    if not '.pickle' in gt_fname[-7:]:
+        gt_fname = gt_fname + '.pickle'
 
     n_chans = 4 # Number of channels to make in test dataset
     v_duration = 30 # Test dataset duration in seconds
@@ -50,5 +58,9 @@ if __name__ == '__main__':
     # Generate the test dataset by choosing spike times and adding them according to the specified properties
     test_data.gen_test_dataset(firing_rates, template_inds, chan_scaling_factors, refractory_win)
 
-    np.save(save_fname, test_data.Probe.voltage)
-    print("Saved test voltage array to: ", save_fname)
+    print("Saving test voltage array as: ", volt_fname)
+    np.save(volt_fname, test_data.Probe.voltage)
+
+    print("Saving ground truth file as", gt_fname)
+    with open(gt_fname, 'wb') as fp:
+        pickle.dump(test_data.actual_IDs, fp, protocol=-1)

@@ -88,10 +88,17 @@ To run the demo scripts from the command line where the git repository was insta
 scripts should be run in this order:  
 First make the voltage data and save ground truth:
 ```
-python ./spikesorting_fullpursuit/demos/make_and_save_voltage.py test_voltage.npy
-
-
+python ./spikesorting_fullpursuit/demos/make_and_save_voltage.py test_voltage.npy test_ground_truth.pickle
 ```
+Then run the sorting algorithm on the generated synthetic data:
+```
+python ./spikesorting_fullpursuit/demos/test_demo_run_sort.py test_voltage.npy sorted_demo.pickle
+```
+Run automated postprocessing to place sorter output into a dictionary sorted neurons:
+```
+python ./spikesorting_fullpursuit/demos/test_demo_postprocessing.py sorted_demo.pickle sorted_neurons.pickle
+```
+
 
 ### Usage
 Once FBP is installed and correctly detecting and using the host machine GPU,

@@ -88,7 +88,7 @@ To run the demo scripts from the command line where the git repository was insta
 scripts should be run in this order:  
 First make the voltage data and save ground truth:
 ```
-python spikesorting_fullpursuit/demos/make_and_save_voltage.py test_voltage.npy
+python ./spikesorting_fullpursuit/demos/make_and_save_voltage.py test_voltage.npy
 
 
 ```

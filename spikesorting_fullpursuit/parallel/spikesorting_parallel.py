@@ -20,7 +20,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'sigma': 4.0, # Threshold based on noise level
         'clip_width': [-8e-4, 8e-4], # Width of clip in seconds
         'p_value_cut_thresh': 0.01, # Statistical criterion for splitting clusters during iso-cut
-        segment_duration': 300, # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
+        'segment_duration': 300, # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
         'segment_overlap': 150, # Seconds of overlap between adjacent segments
         'do_branch_PCA': True, # Use branch PCA method to split clusters
         'do_branch_PCA_by_chan': True, # Repeat branch PCA on each single channel separately

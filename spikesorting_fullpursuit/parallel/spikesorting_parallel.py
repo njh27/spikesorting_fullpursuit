@@ -16,7 +16,37 @@ from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 
 
 def spike_sorting_settings_parallel(**kwargs):
-    settings = {}
+    settings = {
+        'sigma': 4.0, # Threshold based on noise level
+        'clip_width': [-8e-4, 8e-4], # Width of clip in seconds
+        'p_value_cut_thresh': 0.01, # Statistical criterion for splitting clusters during iso-cut
+        segment_duration': 300, # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
+        'segment_overlap': 150, # Seconds of overlap between adjacent segments
+        'do_branch_PCA': True, # Use branch PCA method to split clusters
+        'do_branch_PCA_by_chan': True, # Repeat branch PCA on each single channel separately
+        'do_overlap_recheck': True, # Explicitly check if each spike is better accounted for as a sum of 2 spikes (templates)
+        'filter_band': (300, 6000), # Sorting DOES NOT FILTER THE DATA! This is information for the sorter to use. Filter voltage as desired BEFORE sorting
+        'do_ZCA_transform': True, # Whether to perform ZCA whitening on voltage before sorting
+        'check_components': 20, # Number of PCs to check for clustering. None means all
+        'max_components': 5, # Max number of PCs to use to form the clustering space, out of those checked
+        'min_firing_rate': 0.1, # Neurons with fewer threshold crossings than satisfy this rate are removed
+        'use_rand_init': True, # If true, initial clustering uses at least some randomly chosen centers
+        'add_peak_valley': False, # Use peak valley in addition to PCs for clustering space
+        'max_gpu_memory': None, # Maximum bytes to tryto store on GPU during sorting. None means use as much memory as possible
+        'save_1_cpu': True, # If true, leaves one CPU not in use during parallel clustering
+        'sort_peak_clips_only': True, # If True, each sort only uses clips with peak on the main channel. Improves speed and accuracy but can miss clusters for low firing rate units on multiple channels
+        'n_cov_samples': 20000, # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
+        # sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; NOTE: these are one sided
+        'sigma_bp_noise': 2.326, # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
+        'sigma_bp_CI': 12.0, # Number of noise standard deviations a template match must exceed for a spike to be added. np.inf or None ignores this parameter.
+        'absolute_refractory_period': 10e-4, # Absolute refractory period expected between spikes of a single neuron. This is used in postprocesing.
+        'get_adjusted_clips': False, # Returns spike clips after the waveforms of any potentially overlapping spikes have been removed
+        'max_binary_pursuit_clip_width_factor': 1.0, # The factor by which binary pursuit template matching can be increased relative to clip width for clustering. The best values for clustering and template matching are not always the same.
+                                                     # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
+        'verbose': False, # Set to true for more things to be printed while the sorter runs
+        'test_flag': False, # Indicates a test run of parallel code that does NOT spawn multiple processes
+        'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
+        }
 
     settings['sigma'] = 4.0 # Threshold based on noise level
     settings['clip_width'] = [-8e-4, 8e-4]# Width of clip in seconds

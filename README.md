@@ -126,4 +126,45 @@ events. Returned neighborhoods for channel c, **MUST** include c.
 ### Settings
 The function `spike_sort` takes a number of optional arguments that can adjust the behavior of the sorter.
 In general, the default settings to `spike_sort` should yield a fairly good sort for reasonably isolated
-neurons. A description of the optional arguments and their default values follows.
+neurons. A brief description of the optional arguments and their default values follows. The inputs are given
+to the call to spikesorting_parallel via a settings dictionary argument, e.g.  
+```
+settings['sigma'] = 4.0 # Threshold based on noise level
+	settings['clip_width'] = [-8e-4, 8e-4]# Width of clip in seconds
+	settings['p_value_cut_thresh'] = 0.01
+	settings['segment_duration'] = 300 # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
+	settings['segment_overlap'] = 150 # Seconds of overlap between adjacent segments
+	settings['do_branch_PCA'] = True # Use branch pca method to split clusters
+	settings['do_branch_PCA_by_chan'] = True
+	settings['do_overlap_recheck'] = True
+	settings['filter_band'] = (300, 6000) # This is information for the sorter to use. Sorting DOES NOT FILTER THE DATA!
+	settings['do_ZCA_transform'] = True
+	settings['check_components'] = 20 # Number of PCs to check. None means all
+	settings['max_components'] = 5 # Max number to use, of those checked
+	settings['min_firing_rate'] = 0.1 # Neurons with fewer threshold crossings than satisfy this rate are removed
+	settings['use_rand_init'] = True # Initial clustering uses at least some randomly chosen centers
+	settings['add_peak_valley'] = False # Use peak valley in addition to PCs for sorting
+	settings['max_gpu_memory'] = None # None means use as much memory as possible
+	settings['save_1_cpu'] = True
+	settings['sort_peak_clips_only'] = True # If True, each sort only uses clips with peak on the main channel. Improves speed and accuracy but can miss clusters for low firing rate units on multiple channels
+	settings['n_cov_samples'] = 20000 # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
+	# sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; NOTE: these are one sided
+	settings['sigma_bp_noise'] = 2.326 # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
+	settings['sigma_bp_CI'] = 12.0 # Number of noise standard deviations a template match must exceed for a spike to be added. np.inf or None ignores this parameter.
+	settings['absolute_refractory_period'] = 10e-4
+	settings['get_adjusted_clips'] = False
+	settings['max_binary_pursuit_clip_width_factor'] = 1.0 # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
+	settings['verbose'] = False
+	settings['test_flag'] = False # Indicates a test run of parallel code that does NOT spawn multiple processes
+	settings['log_dir'] = None # Directory where output logs will be saved as text files
+	```
+
+### Output
+The immediate output from the sorter should be entered into the postprocessing
+WorkItemSummary object as shown in the examples. The final output from this
+process is a Python list of dictionaries, where each dictionary (list element)
+represents the data for a single sorted unit. The dictionary contains lots of
+information about the sorting procedure performed, but importantly contains
+NumPy arrays of the spike indices for each detected spike event for that unit.
+The current version also outputs all of the spike clip waveforms. This is very
+memory intensive and it might be desirable to remove these from the final output.

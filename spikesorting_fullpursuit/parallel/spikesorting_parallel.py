@@ -687,6 +687,11 @@ def spike_sort_parallel(Probe, **kwargs):
             # will not miss spikes on the edges
             clip_samples = segment_parallel.time_window_to_samples(settings['clip_width'], Probe.sampling_rate)[0]
             settings['segment_overlap'] = int(3 * (clip_samples[1] - clip_samples[0]))
+        else if settings['segment_overlap'] <= 0:
+            # If segment is specified with no overlap, use minimal overlap that
+            # will not miss spikes on the edges
+            clip_samples = segment_parallel.time_window_to_samples(settings['clip_width'], Probe.sampling_rate)[0]
+            settings['segment_overlap'] = int(3 * (clip_samples[1] - clip_samples[0]))
         else:
             settings['segment_overlap'] = int(np.ceil(settings['segment_overlap'] * Probe.sampling_rate))
         input_duration_seconds = settings['segment_duration']

@@ -98,6 +98,11 @@ Run automated postprocessing to place sorter output into a dictionary sorted neu
 ```
 python ./spikesorting_fullpursuit/demos/test_demo_postprocessing.py sorted_demo.pickle sorted_neurons.pickle
 ```
+Finally run a quick script that compares sorted results to the ground truth generated
+data and make a couple figures:
+```
+python ./spikesorting_fullpursuit/demos/test_demo_results.py sorted_neurons.pickle test_ground_truth.pickle
+```
 
 
 ### Usage

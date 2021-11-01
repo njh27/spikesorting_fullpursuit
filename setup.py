@@ -6,7 +6,7 @@ from pkg_resources import DistributionNotFound, VersionConflict
 import numpy as np
 
 dependencies = [
-    'pyopencl >= 2019.1.2'
+    'pyopencl >= 2019.1.2',
     'cython'
 ]
 pkg_resources.require(dependencies)

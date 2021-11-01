@@ -129,7 +129,7 @@ In general, the default settings to `spike_sort` should yield a fairly good sort
 neurons. A brief description of the optional arguments and their default values follows. The inputs are given
 to the call to spikesorting_parallel via a settings dictionary argument, e.g.  
 ```
-settings['sigma'] = 4.0 # Threshold based on noise level
+	settings['sigma'] = 4.0 # Threshold based on noise level
 	settings['clip_width'] = [-8e-4, 8e-4]# Width of clip in seconds
 	settings['p_value_cut_thresh'] = 0.01
 	settings['segment_duration'] = 300 # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
@@ -157,7 +157,7 @@ settings['sigma'] = 4.0 # Threshold based on noise level
 	settings['verbose'] = False
 	settings['test_flag'] = False # Indicates a test run of parallel code that does NOT spawn multiple processes
 	settings['log_dir'] = None # Directory where output logs will be saved as text files
-	```
+```
 
 ### Output
 The immediate output from the sorter should be entered into the postprocessing

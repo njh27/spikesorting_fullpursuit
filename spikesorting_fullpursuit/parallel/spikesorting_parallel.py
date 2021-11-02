@@ -18,7 +18,7 @@ from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 def spike_sorting_settings_parallel(**kwargs):
     settings = {
         'sigma': 4.0, # Threshold based on noise level
-        'clip_width': [-8e-4, 8e-4], # Width of clip in seconds
+        'clip_width': [-10e-4, 10e-4], # Width of clip in seconds
         'p_value_cut_thresh': 0.01, # Statistical criterion for splitting clusters during iso-cut
         'segment_duration': 300, # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
         'segment_overlap': 150, # Seconds of overlap between adjacent segments

@@ -36,7 +36,7 @@ if __name__ == '__main__':
     # Setup the sorting parameters dictionary.
     spike_sort_args = {
             'sigma': 4.0, # Threshold based on noise level
-            'clip_width': [-8e-4, 8e-4], # Width of clip in seconds
+            'clip_width': [-10e-4, 10e-4], # Width of clip in seconds
             'p_value_cut_thresh': 0.01,
             'segment_duration': 300,
             'segment_overlap': 150,

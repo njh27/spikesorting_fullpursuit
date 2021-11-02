@@ -120,12 +120,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Need to build this in format used for consolidate functions
     seg_data = []
     original_neighbors = []
-    print("!!!!!!USING ACTUAL NEIGHBORS LINE 127 FULL BINARY PURSUIT")
     for w_item in seg_w_items:
         if w_item['ID'] in data_dict['results_dict'].keys():
             # Reset neighbors to all channels for full binary pursuit
             original_neighbors.append(w_item['neighbors'])
-            # w_item['neighbors'] = np.arange(0, voltage.shape[0], dtype=np.int64)
+            w_item['neighbors'] = np.arange(0, voltage.shape[0], dtype=np.int64)
 
             if len(data_dict['results_dict'][w_item['ID']][0]) == 0:
                 # This work item found nothing (or raised an exception)
@@ -158,7 +157,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         print("Found no neuron templates for binary pursuit")
         return [[[], [], [], [], None]]
 
-    print("Entered with", len(seg_summary.summaries), "templates in segment", seg_number)
+    if sort_info['verbose']: print("Entered with", len(seg_summary.summaries), "templates in segment", seg_number)
 
     # Need this chan_win before assigning binary pursuit clip width. Used for
     # find_overlap_templates
@@ -183,11 +182,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     if bp_reduction_samples_per_chan != original_n_samples_per_chan:
         # This should be coded so this never happens, but if it does it could be a difficult to notice disaster during consolidate
         raise RuntimeError("Template reduction from binary pursuit does not have the same number of samples as original!")
-    print("Binary pursuit clip width is", sort_info['clip_width'], "from", original_clip_width)
-    print("Binary pursuit samples per chan", sort_info['n_samples_per_chan'], "from", original_n_samples_per_chan)
+    if sort_info['verbose']: print("Binary pursuit clip width is", sort_info['clip_width'], "from", original_clip_width)
+    if sort_info['verbose']: print("Binary pursuit samples per chan", sort_info['n_samples_per_chan'], "from", original_n_samples_per_chan)
 
     # Get the noise covariance over time within the binary pursuit clip width
-    print("Computing clip noise covariance for each channel with", sort_info['n_cov_samples'], "clip samples")
+    if sort_info['verbose']: print("Computing clip noise covariance for each channel with", sort_info['n_cov_samples'], "clip samples")
     # Inputing rand_state as the current state should ensure that this function
     # stays on the same current random generator state such that starting
     # sorting at a given state will produce the same covariance matrix
@@ -195,31 +194,18 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                                             sort_info['n_cov_samples'],
                                             rand_state=np.random.get_state())
     seg_summary.sharpen_across_chans()
-    print("Sharpening reduced number of templates to", len(seg_summary.summaries))
-    print("Checking", len(seg_summary.summaries), "neurons for potential sums")
-    import matplotlib.pyplot as plt
+    if sort_info['verbose']: print("Sharpening reduced number of templates to", len(seg_summary.summaries))
+    if sort_info['verbose']: print("Checking", len(seg_summary.summaries), "neurons for potential sums")
     templates = []
     n_template_spikes = []
     template_covar = []
     neuron_chan_covariance_mats = []
-    print("!!!SKIPPING ZEROING OUT NEIGHBOR CHANNELS line 207 full binary pursuit")
-    print("!!!!USING ROBUST TEMPLATE LINE 215 full binary pursuit")
     for n in seg_summary.summaries:
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 n['spike_indices'],
                                 clip_width=sort_info['clip_width'])
-
-        # for chan in range(0, sort_info['n_channels']):
-        #     if chan not in n['neighbors']:
-        #         c_win = [chan * sort_info['n_samples_per_chan'], (chan+1) * sort_info['n_samples_per_chan']]
-        #         clips[:, c_win[0]:c_win[1]] = 0.0
         robust_template = calculate_robust_template(clips)
         templates.append(robust_template)
-        # templates.append(np.mean(clips, axis=0))
-
-        # plt.plot(templates[-1], color='b')
-        # plt.plot(robust_template, color='k')
-        # plt.show()
 
         n_template_spikes.append(n['spike_indices'].shape[0])
         if sort_info['n_cov_samples'] >= clips.shape[0]:
@@ -260,11 +246,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         # correct index of the template being checked
         t_ind = t_info[0]
         shift_temp = t_info[1]
-        # p_confusion = neuron_separability.check_template_pair(
-        #         templates[t_ind, :], shift_temp, chan_covariance_mats, sort_info)
         p_confusion = neuron_separability.check_template_pair_template(
-                        templates[t_ind, :], shift_temp, template_covar[t_ind])
-        print("P confusion", p_confusion, "Confusion threshold", confusion_threshold)
+                        templates[t_ind, :], shift_temp, template_covar[t_ind],
+                        chan_covariance_mats, sort_info)
         if p_confusion > confusion_threshold:
             templates_to_delete[t_ind] = True
 
@@ -273,7 +257,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         if templates_to_delete[x]:
             del seg_summary.summaries[x]
             del template_covar[x]
-    print("Removing sums reduced number of templates to", len(seg_summary.summaries))
+    if sort_info['verbose']: print("Removing sums reduced number of templates to", len(seg_summary.summaries))
 
     # Get updated neurons after removing overlap templates
     neurons = seg_summary.summaries
@@ -303,20 +287,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Get templates for remaining sharpened units across all channels in
     # voltage to input to separability metrics
     templates = []
-    print("!!! ZEROING OUT NON NEIGHBOR CHANNELS FOR TEMPLATES LINE 284 full binary pursuit !!!")
-    print("!!! USING ROBUST TEMPLATE LINES 308 full binary pursuit")
     for n in neurons:
         if not n['deleted_as_redundant']:
             clips, _ = get_multichannel_clips(clips_dict, voltage,
                                     n['spike_indices'],
                                     clip_width=sort_info['clip_width'])
-
-            for chan in range(0, sort_info['n_channels']):
-                if chan not in n['neighbors']:
-                    c_win = [chan * sort_info['n_samples_per_chan'], (chan+1) * sort_info['n_samples_per_chan']]
-                    clips[:, c_win[0]:c_win[1]] = 0.0
-
-            # templates.append(np.mean(clips, axis=0))
             robust_template = calculate_robust_template(clips)
             templates.append(robust_template)
     del seg_summary # No longer needed so clear memory
@@ -347,10 +322,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
 
-    # print("!!!!!!! CHECKING FOR TOO MANY TEMPLATES !!!!!!!!")
-    # if separability_metrics['templates'].shape[0] > 2:
-    #     raise RuntimeError("TOO MANY TEMPLATES")
-    print("Starting full binary pursuit search with", separability_metrics['templates'].shape[0], "templates in segment", seg_number)
+    if sort_info['verbose']: print("Starting full binary pursuit search with", separability_metrics['templates'].shape[0], "templates in segment", seg_number)
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     voltage, v_dtype, sort_info,
                     separability_metrics,

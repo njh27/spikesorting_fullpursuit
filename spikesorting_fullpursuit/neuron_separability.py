@@ -193,7 +193,6 @@ def compute_separability_metrics(templates, channel_covariance_mats,
         # Set threshold in standard deviations from expected value at voltage = 0
         separability_metrics['neuron_lower_thresholds'][n] = (-1*expectation + sort_info['sigma_bp_noise']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
-
         # Determine peak channel for this unit
         separability_metrics['peak_channel'][n] = ( np.argmax(np.abs(
                                     separability_metrics['templates'][n, :]))
@@ -233,13 +232,16 @@ def check_noise_templates(separability_metrics, sort_info,
     max_shift = (sort_info['n_samples_per_chan'] // 4) - 1
     n_neurons = separability_metrics['templates'].shape[0]
 
+    # Threshold probability for adding noise based on sigma bp noise
+    p_add_noise_threshold = norm.sf(sort_info['sigma_bp_noise'], 0, 1)
+
     new_noisy_templates = np.copy(noisy_templates)
     for noise_n in range(0, n_neurons):
         # Find each noisy template that could be deleted
         if not noisy_templates[noise_n]:
             continue
         for n in range(0, n_neurons):
-            # For each template that will NOT be deleted
+            # For each template that is NOT candidate for deletion
             if noisy_templates[n]:
                 continue
             # First get aligned templates
@@ -252,19 +254,15 @@ def check_noise_templates(separability_metrics, sort_info,
             expectation_n_noise_n = np.dot(shift_temp_n, shift_temp_noise_n) \
                                     - 0.5 * separability_metrics['template_SS'][n]
             # Variance of likelihood for good neuron given noise unit spike
-            var_n_noise_n = (separability_metrics['templates'][n, :][None, :]
-                            @ separability_metrics['template_covariance_mats'][noise_n]
-                            @ separability_metrics['templates'][n, :][:, None])
+            var_n_noise_n = separability_metrics['neuron_variances'][n]
             if var_n_noise_n == 0.0:
                 # Templates do not overlap across channels
                 continue
             # Probability a noise spike exceeds threshold and added to good unit
             p_noise_added = norm.sf(separability_metrics['neuron_lower_thresholds'][n],
                                     expectation_n_noise_n, np.sqrt(var_n_noise_n))
-            # Probability of adding a noise false positive given that good
-            # neuron is not present as definted by bp noise threshold
-            p_n_added_noise = norm.sf(sort_info['sigma_bp_noise'], 0, 1)
-            if p_noise_added > p_n_added_noise:
+
+            if p_noise_added > p_add_noise_threshold:
                 # The likelihood function for good template n given the noise
                 # template has enough probability of exceeding threshold to be
                 # either incorrectly added to the good unit or improve its

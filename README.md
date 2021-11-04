@@ -84,6 +84,11 @@ smaller 'max_gpu_memory' or with shorter segment durations, which will sort less
 data in each GPU call and therefore might run faster without causing a timeout.
 Be sure that the program is discovering and using the desired GPU.
 
+When using the Jupyter notebook under git, it will likely be useful to configure
+how git handles notebook changes and output. Specifically, you may consider using
+the nbstripout package, which can be installed either through pip or anaconda
+as explained here: [Mateos Blog](http://mateos.io/blog/jupyter-notebook-in-git/)
+
 To run the demo scripts from the command line where the git repository was installed,
 scripts should be run in this order:  
 First make the voltage data and save ground truth:

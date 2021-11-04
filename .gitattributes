@@ -1,1 +1,4 @@
 *.ipynb filter=jupyternotebook
+
+*.zpln filter=nbstripout
+*.ipynb diff=ipynb

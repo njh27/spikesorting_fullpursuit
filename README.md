@@ -172,5 +172,9 @@ process is a Python list of dictionaries, where each dictionary (list element)
 represents the data for a single sorted unit. The dictionary contains lots of
 information about the sorting procedure performed, but importantly contains
 NumPy arrays of the spike indices for each detected spike event for that unit.
-The current version also outputs all of the spike clip waveforms. This is very
+
+> **NOTE:**
+The current version outputs all of the spike clip waveforms. This is very
 memory intensive and it might be desirable to remove these from the final output.
+However, the clips are used for stitching segments and are needed for automated
+post-processing using the WorkItemSummary object.

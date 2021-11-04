@@ -222,6 +222,16 @@ def combine_two_neurons(neuron1, neuron2):
     return combined_neuron
 
 
+def delete_spike_clips(neurons):
+    """ Removes the spike clips from each neuron dictionary in neurons to reduce
+    memory usage for final output. Should only be used after post-processing steps
+    are completed. """
+    for n in neurons:
+        del neurons['clips']
+
+    return neurons
+
+
 class WorkItemSummary(object):
     """ Main class that handles and organizes output of spike_sort function.
 
@@ -1699,7 +1709,8 @@ class WorkItemSummary(object):
         return combined_neuron
 
     def summarize_neurons_across_channels(self, overlap_ratio_threshold=1,
-                                            min_segs_per_unit=1):
+                                            min_segs_per_unit=1,
+                                            remove_clips=False):
         """ Creates output neurons list by combining segment-wise neurons across
         segments and across channels based on stitch_segments and then using
         identical spikes found during the overlapping portions of consecutive
@@ -1791,9 +1802,12 @@ class WorkItemSummary(object):
             neuron_summary.append(self.join_neuron_dicts(n))
             # Indicate origin of summary for each neuron
             neuron_summary[-1]['summary_type'] = 'across_channels'
+        if remove_clips:
+            neuron_summary = delete_spike_clips(neuron_summary)
         return neuron_summary
 
-    def summarize_neurons_within_channel(self, min_segs_per_unit=1):
+    def summarize_neurons_within_channel(self, min_segs_per_unit=1,
+                                         remove_clips=False):
         """ Creates output neurons list by combining segment-wise neurons across
         segments within each channel using stitch_segments. Requires that there
         be overlap between segments, and enough overlap to be useful. """
@@ -1870,6 +1884,8 @@ class WorkItemSummary(object):
             neuron_summary.append(self.join_neuron_dicts(n))
             # Indicate origin of summary for each neuron
             neuron_summary[-1]['summary_type'] = 'within_channel'
+        if remove_clips:
+            neuron_summary = delete_spike_clips(neuron_summary)
         return neuron_summary
 
     def remove_redundant_within_channel_summaries(self, neurons, overlap_ratio_threshold=1):

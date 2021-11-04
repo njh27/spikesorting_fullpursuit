@@ -55,7 +55,8 @@ if __name__ == '__main__':
     # Finally summarize neurons across channels (combining and removing duplicate
     # neurons across space) to get a list of sorted "neurons"
     neurons = work_summary.summarize_neurons_across_channels(
-                    overlap_ratio_threshold=np.inf, min_segs_per_unit=1)
+                    overlap_ratio_threshold=np.inf, min_segs_per_unit=1,
+                    remove_clips=False)
 
     print("Saving neurons file as", fname_out_data)
     with open(fname_out_data, 'wb') as fp:

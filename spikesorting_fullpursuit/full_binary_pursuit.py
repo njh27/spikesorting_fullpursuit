@@ -193,6 +193,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # computing the separability metrics for each unit
     templates = []
     all_resid_clips = []
+    n_template_spikes = []
     for n in seg_summary.summaries:
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 n['spike_indices'],
@@ -200,6 +201,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         robust_template = calculate_robust_template(clips)
         templates.append(robust_template)
         all_resid_clips.append(clips - robust_template)
+        n_template_spikes.append(n['spike_indices'].shape[0])
 
     templates = np.vstack(templates)
     all_resid_clips = np.vstack(all_resid_clips)

@@ -87,8 +87,7 @@ def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info)
     return p_confusion
 
 
-def compute_separability_metrics(templates, channel_covariance_mats,
-                                 sort_info, template_covar):
+def compute_separability_metrics(templates, channel_covariance_mats, sort_info):
     """ Calculate the various variance and template metrics needed to compute
     separability_metrics between units and the delta likelihood function for
     binary pursuit."""
@@ -316,7 +315,7 @@ def pairwise_separability(separability_metrics, sort_info):
                                 separability_metrics['templates'][n1, :],
                                 separability_metrics['templates'][n2, :],
                                 n_chans, max_shift=max_shift, align_abs=True)
-                                
+
             # Need to zero pad the shifted templates so that we can use the
             # covariance matrix
             pad_shift_temp1 = np.zeros(separability_metrics['templates'][n1, :].shape[0])

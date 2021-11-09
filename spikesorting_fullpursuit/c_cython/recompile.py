@@ -5,6 +5,7 @@ from Cython.Build import cythonize
 import numpy as np
 
 ext  =  [Extension( "sort_cython", sources=['sort_cython.pyx'] )]
+# You must navigate into this directory, not from a path, to compile this way
 # compile as: $ python recompile.py build_ext --inplace
 # compile as: > python.exe recompile.py build_ext --inplace
 setup(

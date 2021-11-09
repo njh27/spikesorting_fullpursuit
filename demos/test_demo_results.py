@@ -51,7 +51,7 @@ if __name__ == '__main__':
     for test_num in range(0, len(ground_truth)):
         print("Matched actual unit", test_num, "to sorted neuron", test_match_to_neurons[test_num])
 
-    # Plot the templates of the sorted neurons
+    # Plot the templates of the best matching sorted neurons
     print("Figure 1 shows templates of the discovered units")
     fig, axes = plt.subplots(1)
     for n in test_match_to_neurons:
@@ -60,6 +60,24 @@ if __name__ == '__main__':
             axes.plot(neurons[n_num]['template'][chan][0:], label="Unit " + str(n))
     fig.suptitle('Sorted unit templates', fontsize=16)
     leg = axes.legend()
+
+    # Plot the templates of any additional unmatched sorted neurons
+    if len(neurons) > 2:
+        print("The extra template plot shows additional units that are not a best match to any ground truth unit")
+        fig, axes = plt.subplots(1)
+        for n in range(0, len(neurons)):
+            is_matched = False
+            for test_num in test_match_to_neurons.keys():
+                if test_match_to_neurons[test_num] == n:
+                    # This sorted unit is a best match to a ground truth so skip
+                    is_matched = True
+                    break
+            if is_matched:
+                continue
+            for chan in neurons[n]['channel']:
+                axes.plot(neurons[n]['template'][chan][0:], label="Unit " + str(n))
+        fig.suptitle('Unmatched sorted unit templates', fontsize=16)
+        leg = axes.legend()
 
     # Print true positive and false discoveries for best matching to ground truth neuron 1
     ground_truth_unit = 0

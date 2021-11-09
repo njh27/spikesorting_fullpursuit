@@ -239,14 +239,19 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         p_confusion = neuron_separability.check_template_pair(
                         templates[t_ind, :], shift_temp, chan_covariance_mats,
                         sort_info)
+        print("P confusion", p_confusion, "Threshold", confusion_threshold)
         if p_confusion > confusion_threshold:
             templates_to_delete[t_ind] = True
 
-    # Remove these overlap templates from summary before sharpening
+    # Remove these overlap templates from summary
+    templates = templates[~templates_to_delete, :]
     for x in reversed(range(0, len(seg_summary.summaries))):
         if templates_to_delete[x]:
             del seg_summary.summaries[x]
     if sort_info['verbose']: print("Removing sums reduced number of templates to", len(seg_summary.summaries))
+
+    seg_summary.sharpen_across_chans(chan_covariance_mats)
+    if sort_info['verbose']: print("Removing confused pairs reduced number of templates to", len(seg_summary.summaries))
 
     # Get updated neurons after removing overlap templates
     neurons = seg_summary.summaries

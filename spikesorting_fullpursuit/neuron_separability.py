@@ -4,7 +4,7 @@ from spikesorting_fullpursuit.consolidate import optimal_align_templates
 from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
 from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 
-import matplotlib.pyplot as plt
+
 
 def find_decision_boundary_equal_var(mu_1, mu_2, var, p_1=0.5):
     """ Helper function to return the decision boundary between two 1D
@@ -127,10 +127,14 @@ def compute_separability_metrics(templates, channel_covariance_mats, sort_info):
     separability_metrics['neuron_lower_CI'] = np.zeros(n_templates)
     for n in range(0, n_templates):
         expectation = 0.5 * separability_metrics['template_SS'][n]
-        separability_metrics['neuron_variances'][n] = (
-                        separability_metrics['templates'][n, :][None, :]
-                        @ separability_metrics['channel_covariance_mats'][n]
-                        @ separability_metrics['templates'][n, :][:, None])
+        # Compute and store variance of likelihood function for neuron n
+        separability_metrics['neuron_variances'][n] = 0.
+        for chan in range(0, n_chans):
+            t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
+            chan_template = separability_metrics['templates'][n, t_win[0]:t_win[1]]
+            separability_metrics['neuron_variances'][n] += (chan_template[None, :]
+                                                            @ channel_covariance_mats[chan]
+                                                            @ chan_template[:, None])
 
         separability_metrics['neuron_lower_CI'][n] = (expectation - sort_info['sigma_bp_CI']
                                 * np.sqrt(separability_metrics['neuron_variances'][n]))
@@ -311,32 +315,20 @@ def pairwise_separability(separability_metrics, sort_info):
             #     continue
             # Need to optimally align n2 template with n1 template for computing
             # the covariance/difference of their Likelihood functions
+            # Need the zero padded shifted templates so that we can use the
+            # covariance matrix
             shift_temp1, shift_temp2, optimal_shift, shift_samples_per_chan = optimal_align_templates(
                                 separability_metrics['templates'][n1, :],
                                 separability_metrics['templates'][n2, :],
-                                n_chans, max_shift=max_shift, align_abs=True)
-
-            # Need to zero pad the shifted templates so that we can use the
-            # covariance matrix
-            pad_shift_temp1 = np.zeros(separability_metrics['templates'][n1, :].shape[0])
-            pad_shift_temp2 = np.zeros(separability_metrics['templates'][n2, :].shape[0])
-            for chan in range(0, n_chans):
-                t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
-                s_win = [chan*shift_samples_per_chan, (chan+1)*shift_samples_per_chan]
-                # Adjust covariance matrix to new templates, shifting according to template 1
-                if optimal_shift >= 0:
-                    pad_shift_temp1[t_win[0]+optimal_shift:t_win[1]] = shift_temp1[s_win[0]:s_win[1]]
-                    pad_shift_temp2[t_win[0]+optimal_shift:t_win[1]] = shift_temp2[s_win[0]:s_win[1]]
-                else:
-                    pad_shift_temp1[t_win[0]:t_win[1]+optimal_shift] = shift_temp1[s_win[0]:s_win[1]]
-                    pad_shift_temp2[t_win[0]:t_win[1]+optimal_shift] = shift_temp2[s_win[0]:s_win[1]]
+                                n_chans, max_shift=max_shift, align_abs=True,
+                                zero_pad=True)
 
             # Compute the variance of the difference of distirubions using the
             # channel-wise covariance matrices
             var_diff = 0
             for chan in range(0, n_chans):
                 t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
-                diff_template = pad_shift_temp1[t_win[0]:t_win[1]] - pad_shift_temp2[t_win[0]:t_win[1]]
+                diff_template = shift_temp1[t_win[0]:t_win[1]] - shift_temp2[t_win[0]:t_win[1]]
                 var_diff += (diff_template[None, :]
                              @ separability_metrics['channel_covariance_mats'][chan]
                              @ diff_template[:, None])

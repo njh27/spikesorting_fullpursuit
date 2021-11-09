@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import norm
 from spikesorting_fullpursuit.sort import merge_clusters, initial_cluster_farthest
 from spikesorting_fullpursuit import preprocessing
 from spikesorting_fullpursuit.analyze_spike_timing import remove_spike_event_duplicates
@@ -7,9 +8,11 @@ import matplotlib.pyplot as plt
 
 
 
-def optimal_align_templates(temp_1, temp_2, n_chans, max_shift=None, align_abs=False):
+def optimal_align_templates(temp_1, temp_2, n_chans, max_shift=None,
+                            align_abs=False, zero_pad=False):
     """ """
-
+    if temp_1.shape[0] // n_chans != int(temp_1.shape[0] / n_chans):
+        raise ValueError("Template shape must be evenly divisible by n_chans (i.e. there are the same number of samples per channel).")
     n_samples_per_chan = temp_1.shape[0] // n_chans
     if temp_1.shape[0] != temp_2.shape[0] or temp_1.ndim > 1 or n_samples_per_chan == 0:
         raise ValueError("Input templates must be 1D vectors of the same size")
@@ -51,7 +54,54 @@ def optimal_align_templates(temp_1, temp_2, n_chans, max_shift=None, align_abs=F
     shift_temp2 = np.hstack(shift_temp2)
     shift_samples_per_chan = shift_temp1.shape[0] // n_chans
 
+    if zero_pad:
+        # Instead of truncating, zero pad the shift to output same size templates
+        pad_shift_temp1 = np.zeros(temp_1.shape[0])
+        pad_shift_temp2 = np.zeros(temp_2.shape[0])
+        for chan in range(0, n_chans):
+            t_win = [chan*n_samples_per_chan, (chan+1)*n_samples_per_chan]
+            s_win = [chan*shift_samples_per_chan, (chan+1)*shift_samples_per_chan]
+            if optimal_shift >= 0:
+                pad_shift_temp1[t_win[0]+optimal_shift:t_win[1]] = shift_temp1[s_win[0]:s_win[1]]
+                pad_shift_temp2[t_win[0]+optimal_shift:t_win[1]] = shift_temp2[s_win[0]:s_win[1]]
+            else:
+                pad_shift_temp1[t_win[0]:t_win[1]+optimal_shift] = shift_temp1[s_win[0]:s_win[1]]
+                pad_shift_temp2[t_win[0]:t_win[1]+optimal_shift] = shift_temp2[s_win[0]:s_win[1]]
+        return pad_shift_temp1, pad_shift_temp2, optimal_shift, n_samples_per_chan
+
     return shift_temp1, shift_temp2, optimal_shift, shift_samples_per_chan
+
+
+def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info):
+    """
+    Intended for testing whether a sum of templates is equal to a given
+    template. Templates are assumed to be aligned with one another as no
+    shifting is performed. Probability of confusiong the templates is
+    returned. This confusion is symmetric, i.e. p_confusion template_1 assigned
+    to template_2 equals p_confusion template_2 assigned to template_1. """
+    n_chans = sort_info['n_channels']
+    template_samples_per_chan = sort_info['n_samples_per_chan']
+
+    # Compute separability given V = template_1.
+    E_L_t1 = 0.5 * np.dot(template_1, template_1)
+    E_L_t2 = np.dot(template_1, template_2) - 0.5 * np.dot(template_2, template_2)
+    var_diff = 0
+    for chan in range(0, n_chans):
+        t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
+        diff_template = template_1[t_win[0]:t_win[1]] - template_2[t_win[0]:t_win[1]]
+        var_diff += (diff_template[None, :]
+                     @ chan_covariance_mats[chan]
+                     @ diff_template[:, None])
+
+    # Expected difference between t1 and t2 likelihood functions
+    E_diff_t1_t2 = E_L_t1 - E_L_t2
+    if var_diff > 0:
+        # Probability likelihood nt - t2 < 0
+        p_confusion = norm.cdf(0, E_diff_t1_t2, np.sqrt(var_diff))
+    else:
+        p_confusion = 1.
+
+    return p_confusion
 
 
 class SegSummary(object):
@@ -107,16 +157,6 @@ class SegSummary(object):
                 neuron["spike_indices"] = self.sort_data[n_wi][0][select_label]
                 neuron['clips'] = self.sort_data[n_wi][2][select_label, :]
 
-                # # Remove all outlier clips to get best template estimate
-                # median_template = np.median(neuron['clips'], axis=0)
-                # clip_SSE = np.sum((neuron['clips'] - median_template) ** 2, axis=1)
-                # median_clip_SSE = np.median(clip_SSE)
-                # MAD_SSE = np.median(np.abs(clip_SSE - median_clip_SSE))
-                # keep_clips = np.logical_and(clip_SSE < median_clip_SSE + 2 * MAD_SSE,
-                #                             clip_SSE > median_clip_SSE - 2 * MAD_SSE)
-                # neuron['clips'] = neuron['clips'][keep_clips, :]
-                # neuron['spike_indices'] = neuron['spike_indices'][keep_clips]
-
                 # NOTE: This still needs to be done even though segments
                 # were ordered because of overlap!
                 # Ensure spike times are ordered. Must use 'stable' sort for
@@ -164,24 +204,6 @@ class SegSummary(object):
                     # Remember that SNR can only go down from here as binary
                     # pursuit can add spikes that didn't cross threshold
                     continue
-                # neuron['fraction_mua'] = calc_fraction_mua_to_peak(
-                #                             neuron["spike_indices"],
-                #                             self.sort_info['sampling_rate'],
-                #                             neuron['duplicate_tol_inds'],
-                #                             self.absolute_refractory_period)
-                # neuron['quality_score'] = neuron['snr'] * (1-neuron['fraction_mua']) \
-                #                                 * (neuron['spike_indices'].shape[0])
-
-                # Get noise standard deviation estimate for template
-                # neuron['template_noise_threshold'] = 0.
-                # background_noise_std = neuron['threshold'] / self.sort_info['sigma']
-                # neuron['template_noise_threshold'] = 2 * np.sqrt(np.sum(neuron['template']**2)) * 1.96 * background_noise_std
-                # # neuron['template_noise_threshold'] = np.mean(np.mean((neuron['clips'] - neuron["template"]) ** 2, axis=1))
-                # neuron_SS = np.sum(neuron['template']**2)
-                # print("Noise threshold is", neuron['template_noise_threshold'], "SUM square is", neuron_SS)
-                # if neuron_SS < neuron['template_noise_threshold']:
-                #     continue
-
 
                 # Preserve template over full neighborhood for certain comparisons
                 neuron['full_template'] = np.copy(neuron['template'])
@@ -303,6 +325,25 @@ class SegSummary(object):
             best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan = self.find_nearest_shifted_pair(remaining_inds, previously_compared_pairs)
             return best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan
 
+    def confusion_test_two_units(self, n1_ind, n2_ind, chan_covariance_mats):
+        import matplotlib.pyplot as plt
+        shift_temp1, shift_temp2, _, _ = optimal_align_templates(
+                self.summaries[n1_ind]['full_template'],
+                self.summaries[n2_ind]['full_template'],
+                self.sort_info['n_channels'], max_shift=None,
+                align_abs=False, zero_pad=True)
+
+        confusion_threshold = self.sort_info['p_value_cut_thresh']
+        p_confusion = check_template_pair(shift_temp1, shift_temp2,
+                        chan_covariance_mats, self.sort_info)
+        print("Pairwise confusion", p_confusion, "Threshold", confusion_threshold)
+        if p_confusion > confusion_threshold:
+            confused = True
+        else:
+            confused = False
+
+        return confused
+
     def re_sort_two_units(self, clips_1, clips_2, use_weights=True, curr_chan_inds=None):
         if self.sort_info['add_peak_valley'] and curr_chan_inds is None:
             raise ValueError("Must give curr_chan_inds if using peak valley.")
@@ -311,22 +352,6 @@ class SegSummary(object):
         clips = np.vstack((clips_1, clips_2))
         orig_neuron_labels = np.ones(clips.shape[0], dtype=np.int64)
         orig_neuron_labels[clips_1.shape[0]:] = 2
-
-        # scores = preprocessing.compute_template_pca(clips, orig_neuron_labels,
-        #             curr_chan_inds, self.sort_info['check_components'],
-        #             self.sort_info['max_components'],
-        #             add_peak_valley=self.sort_info['add_peak_valley'],
-        #             use_weights=use_weights)
-        # scores = preprocessing.compute_template_pca_by_channel(clips, orig_neuron_labels,
-        #             curr_chan_inds, self.sort_info['check_components'],
-        #             self.sort_info['max_components'],
-        #             add_peak_valley=True,
-        #             use_weights=use_weights)
-        # scores = preprocessing.compute_pca(clips,
-        #             self.sort_info['check_components'],
-        #             self.sort_info['max_components'],
-        #             add_peak_valley=self.sort_info['add_peak_valley'],
-        #             curr_chan_inds=curr_chan_inds)
 
         # Projection onto templates, weighted by number of spikes
         t1 = np.median(clips_1, axis=0)
@@ -337,10 +362,6 @@ class SegSummary(object):
         scores = clips @ np.vstack((t1, t2)).T
 
         scores = np.float64(scores)
-
-        # median_cluster_size = min(100, int(np.around(clips.shape[0] / 1000)))
-        # n_random = max(100, np.around(clips.shape[0] / 100)) if self.sort_info['use_rand_init'] else 0
-        # neuron_labels = initial_cluster_farthest(scores, median_cluster_size, n_random=n_random)
         neuron_labels = merge_clusters(scores, orig_neuron_labels,
                             split_only=False, merge_only=False,
                             p_value_cut_thresh=self.sort_info['p_value_cut_thresh'])
@@ -428,7 +449,7 @@ class SegSummary(object):
 
         return merged_template
 
-    def sharpen_across_chans(self):
+    def sharpen_across_chans(self, chan_covariance_mats=None):
         """
         """
         inds_to_delete = []
@@ -446,31 +467,9 @@ class SegSummary(object):
                 # nearest each other they can merge
                 ismerged = True
             else:
-                # is_merged, _, _ = self.merge_test_two_units(
-                #         clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
-                #         method='channel_template_pca', merge_only=True,
-                #         curr_chan_inds=None, use_weights=True)
-                # best_clip_chan_ind = None
-                # best_chan_snr = 0.
-                # for clip_chan_ind in range(0, chans_used_for_clips.shape[0]):
-                #     check_chan = chans_used_for_clips[clip_chan_ind]
-                #     curr_best_snr = max(self.summaries[best_pair[0]]['snr_by_chan'][check_chan],
-                #                         self.summaries[best_pair[1]]['snr_by_chan'][check_chan])
-                #     if curr_best_snr > best_chan_snr:
-                #         best_chan_snr = curr_best_snr
-                #         best_clip_chan_ind = clip_chan_ind
-                # curr_chan_inds = np.arange(best_clip_chan_ind*shift_samples_per_chan, (best_clip_chan_ind+1)*shift_samples_per_chan)
-
                 is_merged = self.re_sort_two_units(clips_1, clips_2, use_weights=False)
-                # print("MERGED", is_merged, "shift", best_shift, "pair", best_pair)
-                # print("THESE ARE THE TEMPLATES")
-                # plt.plot(self.summaries[best_pair[0]]['template'])
-                # plt.plot(self.summaries[best_pair[1]]['template'])
-                # plt.show()
-                # print("THESE ARE THE CLIPS AVERAGES")
-                # plt.plot(np.median(clips_1, axis=0))
-                # plt.plot(np.median(clips_2, axis=0))
-                # plt.show()
+            if not is_merged and chan_covariance_mats is not None:
+                is_merged = self.confusion_test_two_units(best_pair[0], best_pair[1], chan_covariance_mats)
             if is_merged:
                 # Delete the unit with the fewest spikes
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:
@@ -487,11 +486,6 @@ class SegSummary(object):
                 # These mutually closest failed so do not repeat either
                 remaining_inds.remove(best_pair[0])
                 remaining_inds.remove(best_pair[1])
-                # # Remove unit with the most spikes
-                # if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:
-                #     remaining_inds.remove(best_pair[0])
-                # else:
-                #     remaining_inds.remove(best_pair[1])
             previously_compared_pairs.append(best_pair)
 
         for merge_item in templates_to_merge:

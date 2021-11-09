@@ -55,44 +55,6 @@ def find_decision_boundary(mu_1, mu_2, var_1, var_2):
     return decision_boundary
 
 
-def check_template_pair_template(template_1, template_2, template_1_covar,
-        chan_covariance_mats=None, sort_info=None):
-    """
-    Intended for testing whether a sum of templates (template_2) is equal to a
-    given template (template_1). Templates are assumed to be aligned with one
-    another as no shifting is performed. Probability of confusing the templates
-    is returned. """
-    # Compute separability for template_1 and template_2 likelihood functions
-    # given that V = template_1
-    E_L_t1_vt1 = 0.5 * np.dot(template_1, template_1)
-    E_L_t2_vt1 = np.dot(template_1, template_2) - 0.5 * np.dot(template_2, template_2)
-    diff_template = template_1 - template_2
-    var_diff = (diff_template[None, :]
-                @ template_1_covar
-                @ diff_template[:, None])
-    # Expected difference between t1 and t2 likelihood functions given V=t1
-    E_diff_t1_t2 = E_L_t1_vt1 - E_L_t2_vt1
-
-    if chan_covariance_mats is not None:
-        n_chans = sort_info['n_channels']
-        template_samples_per_chan = sort_info['n_samples_per_chan']
-        for chan in range(0, n_chans):
-            t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
-            diff_template = template_1[t_win[0]:t_win[1]] - template_2[t_win[0]:t_win[1]]
-            var_diff += (diff_template[None, :]
-                         @ chan_covariance_mats[chan]
-                         @ diff_template[:, None])
-
-    if var_diff > 0:
-        # Probability likelihood t1 - t2 < 0, meaning that the likelihood
-        # fucntion for template_2 is greater when V = template_1
-        p_confusion = norm.cdf(0, E_diff_t1_t2, np.sqrt(var_diff))
-    else:
-        p_confusion = 1.
-
-    return p_confusion
-
-
 def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info):
     """
     Intended for testing whether a sum of templates is equal to a given
@@ -107,12 +69,6 @@ def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info)
     E_L_t1 = 0.5 * np.dot(template_1, template_1)
     E_L_t2 = np.dot(template_1, template_2) - 0.5 * np.dot(template_2, template_2)
     var_diff = 0
-
-    E_t2 = 0.5 * np.dot(template_2, template_2)
-    var_t1 = 0
-    var_t2 = 0
-    full_diff_template = template_1 - template_2
-    E_diff_template = 0.5 * np.dot(full_diff_template, full_diff_template)
     for chan in range(0, n_chans):
         t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
         diff_template = template_1[t_win[0]:t_win[1]] - template_2[t_win[0]:t_win[1]]
@@ -120,17 +76,8 @@ def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info)
                      @ chan_covariance_mats[chan]
                      @ diff_template[:, None])
 
-        chan_t1 = template_1[t_win[0]:t_win[1]]
-        var_t1 += (chan_t1[None, :]
-                     @ chan_covariance_mats[chan]
-                     @ chan_t1[:, None])
-        chan_t2 = template_2[t_win[0]:t_win[1]]
-        var_t2 += (chan_t2[None, :]
-                     @ chan_covariance_mats[chan]
-                     @ chan_t2[:, None])
-
     # Expected difference between t1 and t2 likelihood functions
-    E_diff_t1_t2 = np.abs(E_L_t1 - E_L_t2)
+    E_diff_t1_t2 = E_L_t1 - E_L_t2
     if var_diff > 0:
         # Probability likelihood nt - t2 < 0
         p_confusion = norm.cdf(0, E_diff_t1_t2, np.sqrt(var_diff))
@@ -160,7 +107,6 @@ def compute_separability_metrics(templates, channel_covariance_mats,
     separability_metrics['template_SS_by_chan'] = np.zeros((n_templates, n_chans))
     # Get channel covariance of appropriate size from the extra large covariance matrices
     separability_metrics['channel_covariance_mats'] = channel_covariance_mats
-    separability_metrics['template_covariance_mats'] = template_covar
     separability_metrics['contamination'] = np.zeros(n_templates)
     separability_metrics['peak_channel'] = np.zeros(n_templates, dtype=np.int64)
 
@@ -184,7 +130,7 @@ def compute_separability_metrics(templates, channel_covariance_mats,
         expectation = 0.5 * separability_metrics['template_SS'][n]
         separability_metrics['neuron_variances'][n] = (
                         separability_metrics['templates'][n, :][None, :]
-                        @ separability_metrics['template_covariance_mats'][n]
+                        @ separability_metrics['channel_covariance_mats'][n]
                         @ separability_metrics['templates'][n, :][:, None])
 
         separability_metrics['neuron_lower_CI'][n] = (expectation - sort_info['sigma_bp_CI']

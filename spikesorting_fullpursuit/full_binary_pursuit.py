@@ -185,37 +185,36 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     if sort_info['verbose']: print("Binary pursuit clip width is", sort_info['clip_width'], "from", original_clip_width)
     if sort_info['verbose']: print("Binary pursuit samples per chan", sort_info['n_samples_per_chan'], "from", original_n_samples_per_chan)
 
-    # Get the noise covariance over time within the binary pursuit clip width
-    if sort_info['verbose']: print("Computing clip noise covariance for each channel with", sort_info['n_cov_samples'], "clip samples")
-    # Inputing rand_state as the current state should ensure that this function
-    # stays on the same current random generator state such that starting
-    # sorting at a given state will produce the same covariance matrix
-    chan_covariance_mats = noise_covariance_parallel(voltage, bp_chan_win,
-                                            sort_info['n_cov_samples'],
-                                            rand_state=np.random.get_state())
     seg_summary.sharpen_across_chans()
     if sort_info['verbose']: print("Sharpening reduced number of templates to", len(seg_summary.summaries))
     if sort_info['verbose']: print("Checking", len(seg_summary.summaries), "neurons for potential sums")
+
+    # Gather the templates for each unit and the clip-template residuals for
+    # computing the separability metrics for each unit
     templates = []
-    n_template_spikes = []
-    template_covar = []
+    all_resid_clips = []
     for n in seg_summary.summaries:
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 n['spike_indices'],
                                 clip_width=sort_info['clip_width'])
         robust_template = calculate_robust_template(clips)
         templates.append(robust_template)
-
-        n_template_spikes.append(n['spike_indices'].shape[0])
-        if sort_info['n_cov_samples'] >= clips.shape[0]:
-            cov_sample_inds = np.arange(0, clips.shape[0])
-        else:
-            cov_sample_inds = np.random.randint(0, clips.shape[0], sort_info['n_cov_samples'])
-        template_covar.append(np.cov(clips[cov_sample_inds, :], rowvar=False, ddof=0))
+        all_resid_clips.append(clips - robust_template)
 
     templates = np.vstack(templates)
-    n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
+    all_resid_clips = np.vstack(all_resid_clips)
+    # Get the noise covariance over time within the binary pursuit clip width
+    if sort_info['verbose']: print("Computing clip noise covariance for each channel with", sort_info['n_cov_samples'], "clip samples")
+    chan_covariance_mats = []
+    for chan in range(0, sort_info['n_channels']):
+        t_win = [chan*sort_info['n_samples_per_chan'], (chan+1)*sort_info['n_samples_per_chan']]
+        if sort_info['n_cov_samples'] >= all_resid_clips.shape[0]:
+            cov_sample_inds = np.arange(0, all_resid_clips.shape[0])
+        else:
+            cov_sample_inds = np.random.randint(0, all_resid_clips.shape[0], sort_info['n_cov_samples'])
+        chan_covariance_mats.append(np.cov(all_resid_clips[cov_sample_inds, t_win[0]:t_win[1]], rowvar=False, ddof=0))
 
+    n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
     # The overlap check input here is hard coded to look at shifts +/- the
     # original input chan win (clip_width). This is arbitrary
     templates_to_check = sort_cython.find_overlap_templates(templates,
@@ -229,15 +228,15 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     templates_to_delete = np.zeros(templates.shape[0], dtype="bool")
     # Use the sigma lower bound to decide the acceptable level of
     # misclassification between template sums
-    confusion_threshold = norm.sf(sort_info['sigma_bp_noise'])
+    confusion_threshold = norm.sf(sort_info['sigma'])
     for t_info in templates_to_check:
         # templates_to_check is not length of templates so need to find the
         # correct index of the template being checked
         t_ind = t_info[0]
         shift_temp = t_info[1]
-        p_confusion = neuron_separability.check_template_pair_template(
-                        templates[t_ind, :], shift_temp, template_covar[t_ind],
-                        chan_covariance_mats, sort_info)
+        p_confusion = neuron_separability.check_template_pair(
+                        templates[t_ind, :], shift_temp, chan_covariance_mats,
+                        sort_info)
         if p_confusion > confusion_threshold:
             templates_to_delete[t_ind] = True
 
@@ -245,7 +244,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     for x in reversed(range(0, len(seg_summary.summaries))):
         if templates_to_delete[x]:
             del seg_summary.summaries[x]
-            del template_covar[x]
     if sort_info['verbose']: print("Removing sums reduced number of templates to", len(seg_summary.summaries))
 
     # Get updated neurons after removing overlap templates
@@ -286,7 +284,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     del seg_summary # No longer needed so clear memory
 
     separability_metrics = neuron_separability.compute_separability_metrics(
-                                templates, chan_covariance_mats, sort_info, template_covar)
+                                templates, chan_covariance_mats, sort_info)
     # Identify templates similar to noise and decide what to do with them
     noisy_templates = neuron_separability.find_noisy_templates(
                                             separability_metrics, sort_info)

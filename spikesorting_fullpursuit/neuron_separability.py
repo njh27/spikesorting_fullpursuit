@@ -316,20 +316,7 @@ def pairwise_separability(separability_metrics, sort_info):
                                 separability_metrics['templates'][n1, :],
                                 separability_metrics['templates'][n2, :],
                                 n_chans, max_shift=max_shift, align_abs=True)
-            # var_diff = 0
-            # for chan in range(0, n_chans):
-            #     s_win = [chan*shift_samples_per_chan, (chan+1)*shift_samples_per_chan]
-            #     # Adjust covariance matrix to new templates, shifting according to template 1
-            #     if optimal_shift >= 0:
-            #         s_chan_cov = separability_metrics['channel_covariance_mats'][chan][optimal_shift:, optimal_shift:]
-            #     else:
-            #         s_chan_cov = separability_metrics['channel_covariance_mats'][chan][0:optimal_shift, 0:optimal_shift]
-            #     # Multiply template with covariance then template transpose to
-            #     # get variance of the likelihood function (or the difference)
-            #     diff_template = shift_temp1[s_win[0]:s_win[1]] - shift_temp2[s_win[0]:s_win[1]]
-            #     var_diff += (diff_template[None, :]
-            #                  @ s_chan_cov
-            #                  @ diff_template[:, None])
+                                
             # Need to zero pad the shifted templates so that we can use the
             # covariance matrix
             pad_shift_temp1 = np.zeros(separability_metrics['templates'][n1, :].shape[0])
@@ -344,11 +331,16 @@ def pairwise_separability(separability_metrics, sort_info):
                 else:
                     pad_shift_temp1[t_win[0]:t_win[1]+optimal_shift] = shift_temp1[s_win[0]:s_win[1]]
                     pad_shift_temp2[t_win[0]:t_win[1]+optimal_shift] = shift_temp2[s_win[0]:s_win[1]]
-            diff_template = pad_shift_temp1 - pad_shift_temp2
-            # Use n1 covariance because computing conditioned on n1 spike
-            var_diff = (diff_template[None, :]
-                        @ separability_metrics['template_covariance_mats'][n1]
-                        @ diff_template[:, None])
+
+            # Compute the variance of the difference of distirubions using the
+            # channel-wise covariance matrices
+            var_diff = 0
+            for chan in range(0, n_chans):
+                t_win = [chan*template_samples_per_chan, (chan+1)*template_samples_per_chan]
+                diff_template = pad_shift_temp1[t_win[0]:t_win[1]] - pad_shift_temp2[t_win[0]:t_win[1]]
+                var_diff += (diff_template[None, :]
+                             @ separability_metrics['channel_covariance_mats'][chan]
+                             @ diff_template[:, None])
 
             # Expected n2 likelihood given n1 spike
             n_1_n2_SS = np.dot(shift_temp1, shift_temp2)

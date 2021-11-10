@@ -239,7 +239,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         p_confusion = neuron_separability.check_template_pair(
                         templates[t_ind, :], shift_temp, chan_covariance_mats,
                         sort_info)
-        print("P confusion", p_confusion, "Threshold", confusion_threshold)
         if p_confusion > confusion_threshold:
             templates_to_delete[t_ind] = True
 

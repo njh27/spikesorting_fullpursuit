@@ -336,7 +336,6 @@ class SegSummary(object):
         confusion_threshold = self.sort_info['p_value_cut_thresh']
         p_confusion = check_template_pair(shift_temp1, shift_temp2,
                         chan_covariance_mats, self.sort_info)
-        print("Pairwise confusion", p_confusion, "Threshold", confusion_threshold)
         if p_confusion > confusion_threshold:
             confused = True
         else:

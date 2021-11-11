@@ -46,6 +46,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'verbose': False, # Set to true for more things to be printed while the sorter runs
         'test_flag': False, # Indicates a test run of parallel code that does NOT spawn multiple processes
         'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
+        'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
         }
 
     for k in kwargs.keys():
@@ -911,7 +912,9 @@ def spike_sort_parallel(Probe, **kwargs):
                       'n_samples_per_chan': curr_chan_win[1] - curr_chan_win[0],
                       'sampling_rate': Probe.sampling_rate,
                       'n_segments': len(segment_onsets)})
-    sort_info['separability_metrics'] = [[] for x in range(0, sort_info['n_segments'])]
+    if sort_info['output_separability_metrics']:
+        # Initialize elements for separability metrics from each segment
+        sort_info['separability_metrics'] = [[] for x in range(0, sort_info['n_segments'])]
 
     for seg_number in range(0, len(segment_onsets)):
         seg_data = full_binary_pursuit.full_binary_pursuit(work_items,

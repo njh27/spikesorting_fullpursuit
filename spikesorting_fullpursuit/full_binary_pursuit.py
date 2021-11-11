@@ -326,8 +326,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         clips, _ = get_multichannel_clips(clips_dict, voltage,
                                 crossings, clip_width=sort_info['clip_width'])
 
-    # Save the separability metrics as used (and output) by binary_pursuit
-    sort_info['separability_metrics'][seg_number] = separability_metrics
+    if sort_info['output_separability_metrics']:
+        # Save the separability metrics as used (and output) by binary_pursuit
+        sort_info['separability_metrics'][seg_number] = separability_metrics
 
     chans_to_template_labels = {}
     for chan in range(0, sort_info['n_channels']):

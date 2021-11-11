@@ -80,8 +80,9 @@ first with 'do_overlap_recheck' set to "False". The overlap recheck can be time
 consuming and may cause your GPU to either crash or timeout. It is likely that
 the watchdog timer for your operating system or graphics card will need to be
 increased in order to successfully run. Alternatively, you could run using a
-smaller 'max_gpu_memory' or with shorter segment durations, which will sort less
-data in each GPU call and therefore might run faster without causing a timeout.
+smaller 'max_gpu_memory' or run with smaller segment durations, both of which
+will sort less data in each GPU call and therefore might run faster without
+causing a timeout.
 Be sure that the program is discovering and using the desired GPU.
 
 When using the Jupyter notebook under git, it will likely be useful to configure
@@ -163,6 +164,7 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 		'verbose': False, # Set to true for more things to be printed while the sorter runs
 		'test_flag': False, # Indicates a test run of parallel code that does NOT spawn multiple processes
 		'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
+		'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
 ```
 
 ### Output

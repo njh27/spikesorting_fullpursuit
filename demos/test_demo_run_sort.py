@@ -13,8 +13,10 @@ NOTE:
  consuming and may cause your GPU to either crash or timeout. It is likely that
  the watchdog timer for your operating system or graphics card will need to be
  increased in order to successfully run. Alternatively, you could run using a
- smaller 'max_gpu_memory' which will sort less data in each GPU call and therefore
- might run faster without causing a timeout.
+ smaller 'max_gpu_memory' or run with smaller segment durations, both of which
+ will sort less data in each GPU call and therefore might run faster without
+ causing a timeout. Be sure that the program is discovering and using the
+ desired GPU.
  """
 
 if __name__ == '__main__':

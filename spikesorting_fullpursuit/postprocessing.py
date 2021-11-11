@@ -227,7 +227,7 @@ def delete_spike_clips(neurons):
     memory usage for final output. Should only be used after post-processing steps
     are completed. """
     for n in neurons:
-        del neurons['clips']
+        del n['clips']
 
     return neurons
 

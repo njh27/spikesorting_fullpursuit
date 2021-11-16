@@ -3,7 +3,7 @@ import numpy as np
 
 
 
-def to_neuroviz(neurons, filename, save_fname, neuroviz_only=False):
+def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
     """
     Converts a sorted list of neurons output by FBP sorting to a dictionary
     with parameters suitable for viewing in NeuroViz.
@@ -18,7 +18,8 @@ def to_neuroviz(neurons, filename, save_fname, neuroviz_only=False):
         by FBP post processing.
     filename : string
         Directory where the neurons data originated. Will be used in the output
-        'filename__' field for the NeuroViz dictionary.
+        'filename__' field for the NeuroViz dictionary. Default of None will
+        use the filename field present in the input neurons.
     save_fname : string
         Directory where the NeuroViz compatible dictionary will be saved.
     neuroviz_only : bool
@@ -42,6 +43,13 @@ def to_neuroviz(neurons, filename, save_fname, neuroviz_only=False):
                'type__',
                'sampling_rate__']
 
+    if filename is None and neurons[0]['sort_info']['filename'] is None:
+        # No filename specified so use default
+        print("No filename specified, using 'default_fname'")
+        filename = "default_fname"
+    elif filename is None:
+        filename = neurons[0]['sort_info']['filename']
+        
     if neuroviz_only:
         nv_neurons = []
     for n in neurons:

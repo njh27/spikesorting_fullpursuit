@@ -917,7 +917,9 @@ def spike_sort_parallel(Probe, **kwargs):
         # Initialize elements for separability metrics from each segment
         sort_info['separability_metrics'] = [[] for x in range(0, sort_info['n_segments'])]
 
+    # Run binary pursuit for each segment using the discovered templates
     for seg_number in range(0, len(segment_onsets)):
+        if settings['verbose']: print("Start full binary pursuit on segment", seg_number)
         seg_data = full_binary_pursuit.full_binary_pursuit(work_items,
                     data_dict, seg_number, sort_info, Probe.v_dtype,
                     overlap_ratio_threshold=2,

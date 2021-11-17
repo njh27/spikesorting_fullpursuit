@@ -33,8 +33,8 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
     are modified in place.
     """
 
-    if save_fname[-7:] != ".pickle":
-        save_fname = save_fname + ".pickle"
+    if save_fname[-4:] != ".pkl":
+        save_fname = save_fname + ".pkl"
     # Use the default required NeuroViz keys
     nv_keys = ['spike_indices__',
                'filename__',
@@ -49,7 +49,7 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
         filename = "default_fname"
     elif filename is None:
         filename = neurons[0]['sort_info']['filename']
-        
+
     if neuroviz_only:
         nv_neurons = []
     for n in neurons:
@@ -98,5 +98,6 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
     else:
         with open(save_fname, 'wb') as fp:
             pickle.dump(neurons, fp, protocol=-1)
+    print("Saved NeuroViz file:", save_fname)
 
     return None

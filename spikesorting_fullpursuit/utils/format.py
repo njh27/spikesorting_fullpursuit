@@ -13,9 +13,10 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
 
     Parameters
     ----------
-    neurons : list of dict
+    neurons : list of dict (or string of pickle file)
         Each element of the list is a dictionary of sorted neurons as output
-        by FBP post processing.
+        by FBP post processing. If input as a string, the function will attempt
+        to load that string as a pickle file containing the neurons list.
     filename : string
         Directory where the neurons data originated. Will be used in the output
         'filename__' field for the NeuroViz dictionary. Default of None will
@@ -32,6 +33,10 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
     None. The resulting dictionary is saved to save_fname and the input neurons
     are modified in place.
     """
+
+    if isinstance(neurons, str):
+        with open(neurons, 'rb') as fp:
+            neurons = pickle.load(fp)
 
     if save_fname[-4:] != ".pkl":
         save_fname = save_fname + ".pkl"
@@ -92,12 +97,13 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
         if neuroviz_only:
             nv_neurons.append(viz_dict)
 
+    # Need to save protocol 3 to be compatiblel with Julia
     if neuroviz_only:
         with open(save_fname, 'wb') as fp:
-            pickle.dump(nv_neurons, fp, protocol=-1)
+            pickle.dump(nv_neurons, fp, protocol=3)
     else:
         with open(save_fname, 'wb') as fp:
-            pickle.dump(neurons, fp, protocol=-1)
+            pickle.dump(neurons, fp, protocol=3)
     print("Saved NeuroViz file:", save_fname)
 
     return None

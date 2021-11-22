@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 def optimal_align_templates(temp_1, temp_2, n_chans, max_shift=None,
                             align_abs=False, zero_pad=False):
     """ """
-    if temp_1.shape[0] // n_chans != int(temp_1.shape[0] / n_chans):
-        raise ValueError("Template shape must be evenly divisible by n_chans (i.e. there are the same number of samples per channel).")
-    n_samples_per_chan = temp_1.shape[0] // n_chans
     if temp_1.shape[0] != temp_2.shape[0] or temp_1.ndim > 1 or n_samples_per_chan == 0:
         raise ValueError("Input templates must be 1D vectors of the same size")
+    if temp_1.shape[0] % n_chans != 0:
+        raise ValueError("Template shape[0] must be evenly divisible by n_chans (i.e. there are the same number of samples per channel).")
+    n_samples_per_chan = int(temp_1.shape[0] / n_chans)
 
     if align_abs:
         # Use absolute value of cross correlation function to align
@@ -79,6 +79,12 @@ def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info)
     shifting is performed. Probability of confusiong the templates is
     returned. This confusion is symmetric, i.e. p_confusion template_1 assigned
     to template_2 equals p_confusion template_2 assigned to template_1. """
+    if template_1.shape[0] != template_2.shape[0] or template_1.ndim > 1:
+        raise ValueError("Input templates must be 1D vectors of the same size")
+    for cov_mat in chan_covariance_mats:
+        if template_1.shape[0] != cov_mat.shape[0] and template_1.shape[0] != cov_mat.shape[1]:
+            raise ValueError("Each channel covariance matrix in chan_covariance_mats must be square matrix with dimensions equal to template length.")
+
     n_chans = sort_info['n_channels']
     template_samples_per_chan = sort_info['n_samples_per_chan']
 
@@ -130,6 +136,23 @@ class SegSummary(object):
         main_template = neuron['template'][neuron['main_win'][0]:neuron['main_win'][1]]
         temp_range = np.amax(main_template) - np.amin(main_template)
         return temp_range / (3 * background_noise_std)
+
+    def set_bp_templates(self, bp_templates):
+        """ Assign the templates in the input bp_templates to the
+        corresponding seg summary units.
+        bp_templates must be a n_units x n_samples numpy array or list of
+        numpy array templates. These will be added to the summaries in the order
+        in which they appear!"""
+        if not isinstance(bp_templates, list):
+            if bp_templates.ndim == 1:
+                bp_templates = [bp_templates]
+            else:
+                templates_list = []
+                for t in range(0, bp_templates.shape[0]):
+                    templates_list.append(bp_templates[t, :])
+                bp_templates = templates_list
+        for ind, n in enumerate(self.summaries):
+            n['bp_template'] = bp_templates[ind]
 
     def make_summaries(self):
         """ Make a neuron summary for each unit in each segment and add them to
@@ -326,10 +349,9 @@ class SegSummary(object):
             return best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan
 
     def confusion_test_two_units(self, n1_ind, n2_ind, chan_covariance_mats):
-        import matplotlib.pyplot as plt
         shift_temp1, shift_temp2, _, _ = optimal_align_templates(
-                self.summaries[n1_ind]['full_template'],
-                self.summaries[n2_ind]['full_template'],
+                self.summaries[n1_ind]['bp_template'],
+                self.summaries[n2_ind]['bp_template'],
                 self.sort_info['n_channels'], max_shift=None,
                 align_abs=False, zero_pad=True)
 

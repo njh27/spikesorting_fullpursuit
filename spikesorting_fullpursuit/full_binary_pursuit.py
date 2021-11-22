@@ -191,9 +191,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     if sort_info['verbose']: print("Sharpening reduced number of templates to", len(seg_summary.summaries))
     if sort_info['verbose']: print("Checking", len(seg_summary.summaries), "neurons for potential sums")
 
-    # Gather the templates for each unit and the clip-template residuals for
+    # Gather the bp_templates for each unit and the clip-template residuals for
     # computing the separability metrics for each unit
-    templates = []
+    bp_templates = []
     all_resid_clips = []
     n_template_spikes = []
     for n in seg_summary.summaries:
@@ -201,11 +201,11 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                                 n['spike_indices'],
                                 clip_width=sort_info['clip_width'])
         robust_template = calculate_robust_template(clips)
-        templates.append(robust_template)
+        bp_templates.append(robust_template)
         all_resid_clips.append(clips - robust_template)
         n_template_spikes.append(n['spike_indices'].shape[0])
 
-    templates = np.vstack(templates)
+    bp_templates = np.vstack(bp_templates)
     all_resid_clips = np.vstack(all_resid_clips)
     # Get the noise covariance over time within the binary pursuit clip width
     if sort_info['verbose']: print("Computing clip noise covariance for each channel with", sort_info['n_cov_samples'], "clip samples")
@@ -221,41 +221,35 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     n_template_spikes = np.array(n_template_spikes, dtype=np.int64)
     # The overlap check input here is hard coded to look at shifts +/- the
     # original input chan win (clip_width). This is arbitrary
-    templates_to_check = sort_cython.find_overlap_templates(templates,
+    templates_to_check = sort_cython.find_overlap_templates(bp_templates,
                                 sort_info['n_samples_per_chan'],
                                 sort_info['n_channels'],
                                 np.int64(np.abs(chan_win[0])-1),
                                 np.int64(np.abs(chan_win[1])-1),
                                 n_template_spikes)
 
-    # Go through suspect templates in templates_to_check
-    templates_to_delete = np.zeros(templates.shape[0], dtype="bool")
+    # Go through suspect bp_templates in templates_to_check
+    templates_to_delete = np.zeros(bp_templates.shape[0], dtype="bool")
     # Use the sigma lower bound to decide the acceptable level of
     # misclassification between template sums
     confusion_threshold = norm.sf(sort_info['sigma'])
     for t_info in templates_to_check:
-        # templates_to_check is not length of templates so need to find the
+        # templates_to_check is not length of bp_templates so need to find the
         # correct index of the template being checked
         t_ind = t_info[0]
         shift_temp = t_info[1]
         p_confusion = neuron_separability.check_template_pair(
-                        templates[t_ind, :], shift_temp, chan_covariance_mats,
+                        bp_templates[t_ind, :], shift_temp, chan_covariance_mats,
                         sort_info)
         if p_confusion > confusion_threshold:
             templates_to_delete[t_ind] = True
 
-    # Remove these overlap templates from summary
-    templates = templates[~templates_to_delete, :]
+    # Remove units corresponding to overlap bp_templates from summary
+    bp_templates = bp_templates[~templates_to_delete, :]
     for x in reversed(range(0, len(seg_summary.summaries))):
         if templates_to_delete[x]:
             del seg_summary.summaries[x]
     if sort_info['verbose']: print("Removing sums reduced number of templates to", len(seg_summary.summaries))
-
-    seg_summary.sharpen_across_chans(chan_covariance_mats)
-    if sort_info['verbose']: print("Removing confused pairs reduced number of templates to", len(seg_summary.summaries))
-
-    # Get updated neurons after removing overlap templates
-    neurons = seg_summary.summaries
 
     # Return the original neighbors to the work items that were reset
     orig_neigh_ind = 0
@@ -264,7 +258,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             w_item['neighbors'] = original_neighbors[orig_neigh_ind]
             orig_neigh_ind += 1
 
-    if len(neurons) == 0:
+    if len(seg_summary.summaries) == 0:
         # All data this segment found nothing (or raised an exception)
         seg_data = []
         for chan in range(0, sort_info['n_channels']):
@@ -278,21 +272,17 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                 raise RuntimeError("Could not find a matching work item for unit")
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
-
-    # Get templates for remaining sharpened units across all channels in
-    # voltage to input to separability metrics
-    templates = []
-    for n in neurons:
-        if not n['deleted_as_redundant']:
-            clips, _ = get_multichannel_clips(clips_dict, voltage,
-                                    n['spike_indices'],
-                                    clip_width=sort_info['clip_width'])
-            robust_template = calculate_robust_template(clips)
-            templates.append(robust_template)
     del seg_summary # No longer needed so clear memory
 
+    # Perform final sharpening, this time including channel covariance matrices
+    # and the full binary pursuit templates so that confusion between binary
+    # pursuit templates is accounted for
+    seg_summary.set_bp_templates(bp_templates)
+    seg_summary.sharpen_across_chans(chan_covariance_mats)
+    if sort_info['verbose']: print("Removing confused pairs reduced number of templates to", len(seg_summary.summaries))
+
     separability_metrics = neuron_separability.compute_separability_metrics(
-                                templates, chan_covariance_mats, sort_info)
+                                bp_templates, chan_covariance_mats, sort_info)
     # Identify templates similar to noise and decide what to do with them
     noisy_templates = neuron_separability.find_noisy_templates(
                                             separability_metrics, sort_info)

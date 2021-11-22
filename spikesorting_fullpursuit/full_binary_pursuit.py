@@ -272,7 +272,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                 raise RuntimeError("Could not find a matching work item for unit")
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
-    del seg_summary # No longer needed so clear memory
 
     # Perform final sharpening, this time including channel covariance matrices
     # and the full binary pursuit templates so that confusion between binary
@@ -280,6 +279,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     seg_summary.set_bp_templates(bp_templates)
     seg_summary.sharpen_across_chans(chan_covariance_mats)
     if sort_info['verbose']: print("Removing confused pairs reduced number of templates to", len(seg_summary.summaries))
+    del seg_summary # No longer needed so clear memory
 
     separability_metrics = neuron_separability.compute_separability_metrics(
                                 bp_templates, chan_covariance_mats, sort_info)

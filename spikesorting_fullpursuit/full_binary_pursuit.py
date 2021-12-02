@@ -109,8 +109,6 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Determine the set of work items for this segment
     seg_w_items = [w for w in work_items if w['seg_number'] == seg_number]
 
-    if sort_info['verbose']: print("Seg work item keys are", seg_w_items[0].keys())
-
     # Make a dictionary with all info needed for get_multichannel_clips
     clips_dict = {'sampling_rate': sort_info['sampling_rate'],
                   'n_samples': seg_w_items[0]['n_samples'],

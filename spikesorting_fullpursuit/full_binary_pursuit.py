@@ -1,6 +1,4 @@
 import numpy as np
-import pickle
-import os
 from copy import copy, deepcopy
 from scipy.stats import norm
 from spikesorting_fullpursuit import neuron_separability
@@ -9,7 +7,6 @@ from spikesorting_fullpursuit.preprocessing import calculate_robust_template
 from spikesorting_fullpursuit.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.c_cython import sort_cython
-from spikesorting_fullpursuit.utils.parallel_funs import noise_covariance_parallel
 
 
 
@@ -276,9 +273,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # Perform final sharpening, this time including channel covariance matrices
     # and the full binary pursuit templates so that confusion between binary
     # pursuit templates is accounted for
-    seg_summary.set_bp_templates(bp_templates)
-    seg_summary.sharpen_across_chans(chan_covariance_mats)
-    if sort_info['verbose']: print("Removing confused pairs reduced number of templates to", len(seg_summary.summaries))
+    # seg_summary.set_bp_templates(bp_templates)
+    # seg_summary.sharpen_across_chans(chan_covariance_mats)
+    # if sort_info['verbose']: print("Removing confused pairs reduced number of templates to", len(seg_summary.summaries))
     del seg_summary # No longer needed so clear memory
 
     separability_metrics = neuron_separability.compute_separability_metrics(

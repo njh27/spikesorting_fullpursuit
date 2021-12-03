@@ -154,7 +154,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
         print("Found no neuron templates for binary pursuit")
         return [[[], [], [], [], None]]
 
-    if sort_info['verbose']: print("Entered with", len(seg_summary.summaries), "templates in segment", seg_number)
+    if sort_info['verbose']: print("Entered with", len(seg_summary.summaries), "templates in segment", seg_number+1)
 
     # Need this chan_win before assigning binary pursuit clip width. Used for
     # find_overlap_templates
@@ -302,7 +302,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
             seg_data.append([[], [], [], [], curr_item['ID']])
         return seg_data
 
-    if sort_info['verbose']: print("Starting full binary pursuit search with", separability_metrics['templates'].shape[0], "templates in segment", seg_number)
+    if sort_info['verbose']: print("Starting full binary pursuit search with", separability_metrics['templates'].shape[0], "templates in segment", seg_number+1)
     crossings, neuron_labels, bp_bool, clips = binary_pursuit_parallel.binary_pursuit(
                     voltage, v_dtype, sort_info,
                     separability_metrics,

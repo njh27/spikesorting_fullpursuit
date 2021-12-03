@@ -38,6 +38,10 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
         with open(neurons, 'rb') as fp:
             neurons = pickle.load(fp)
 
+    if len(neurons) == 0:
+        raise ValueError("No neurons found!")
+
+    save_fname = save_fname.rstrip(".pickle")
     if save_fname[-4:] != ".pkl":
         save_fname = save_fname + ".pkl"
     # Use the default required NeuroViz keys
@@ -47,6 +51,11 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
                'spike_indices_channel__',
                'type__',
                'sampling_rate__']
+
+    if "filename" not in neurons[0]['sort_info'].keys():
+        print("No filename field found for neurons. Setting field to 'None'.")
+        for n in neurons:
+            n['sort_info']['filename'] = None
 
     if filename is None and neurons[0]['sort_info']['filename'] is None:
         # No filename specified so use default

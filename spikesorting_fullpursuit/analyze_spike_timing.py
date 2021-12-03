@@ -242,7 +242,10 @@ def compute_spike_trains(spike_indices, bin_width_samples, min_max_indices):
 
 
 def calc_overlap_ratio(n1_spikes, n2_spikes, max_samples):
-    """
+    """ Calculates the percentage of spike indices from n1 and n2 spikes that
+    coincide within max_samples samples of each other. Only the time period
+    in which both n1 and n2 have indices that overlap each other are considered.
+    Spike indices are assumed to be ordered.
     """
     # Overlap time is the time that their spikes coexist
     overlap_win = [max(n1_spikes[0], n2_spikes[0]),

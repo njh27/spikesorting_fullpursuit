@@ -11,11 +11,12 @@ import matplotlib.pyplot as plt
 def optimal_align_templates(temp_1, temp_2, n_chans, max_shift=None,
                             align_abs=False, zero_pad=False):
     """ """
+    n_samples_per_chan = int(temp_1.shape[0] / n_chans)
     if temp_1.shape[0] != temp_2.shape[0] or temp_1.ndim > 1 or n_samples_per_chan == 0:
         raise ValueError("Input templates must be 1D vectors of the same size")
     if temp_1.shape[0] % n_chans != 0:
         raise ValueError("Template shape[0] must be evenly divisible by n_chans (i.e. there are the same number of samples per channel).")
-    n_samples_per_chan = int(temp_1.shape[0] / n_chans)
+
 
     if align_abs:
         # Use absolute value of cross correlation function to align

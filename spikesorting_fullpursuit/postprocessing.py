@@ -1476,17 +1476,19 @@ class WorkItemSummary(object):
                         if curr_overlap < self.min_overlapping_spikes:
                             if ol_verbose: print("RESULT: overlap of", curr_overlap, "is less than min_overlapping spikes", self.min_overlapping_spikes)
                             continue
-                        if curr_overlap > max_overlap_ratio:
+                        if curr_overlap >= max_overlap_ratio:
                             if ol_verbose: print("RESULT: overlap of", curr_overlap, "is set to max for linking")
                             max_overlap_ratio = curr_overlap
                             max_overlap_pair = [n1_ind, n2_ind]
                 if max_overlap_ratio > 0:
                     # Found a match that satisfies thresholds so link them
+                    if ol_verbose: print("Maximum overlap is", max_overlap_ratio, "which satisfies thresholds so linking them.")
                     self.neuron_summary_by_seg[seg][max_overlap_pair[0]]['next_seg_link'] = max_overlap_pair[1]
                     self.neuron_summary_by_seg[seg+1][max_overlap_pair[1]]['prev_seg_link'] = max_overlap_pair[0]
                     n1_remaining.remove(max_overlap_pair[0])
                 else:
                     # Maximum overlap is less than minimum required so done
+                    if ol_verbose: print("Maximum overlap is less than minimum required. Finished.")
                     break
 
     def stitch_neurons(self):

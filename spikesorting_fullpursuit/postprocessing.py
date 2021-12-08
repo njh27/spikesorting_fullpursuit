@@ -1433,11 +1433,9 @@ class WorkItemSummary(object):
             self.neuron_summary_by_seg[seg] = self.remove_redundant_neurons(
                                     seg, overlap_ratio_threshold)
 
-    def make_overlapping_links(self, verbose=False):
+    def make_overlapping_links(self, ol_verbose=False):
         """
         """
-        print("!!!!!!!!!SET OL verbose True in postprocessing line 1440!!!!!!!!")
-        ol_verbose = True
         # Now looking for overlaps not only between channels, but between segments
         # so use the largest reasonable overlap time window
         overlap_time = self.sort_info['clip_width'][1] - self.sort_info['clip_width'][0]

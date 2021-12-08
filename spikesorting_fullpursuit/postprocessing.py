@@ -805,11 +805,6 @@ class WorkItemSummary(object):
                                             self.sort_data[chan][seg][0][select_2],
                                             self.absolute_refractory_period,
                                             self.sort_info['sampling_rate'])
-                        # print("In sharpen CCG analysis we have", exp, act, max_delta)
-                        # print("with MUAs", union_fraction_mua_rate, fraction_mua_rate_1, fraction_mua_rate_2)
-                        # plt.plot(np.mean(clips_1, axis=0))
-                        # plt.plot(np.mean(clips_2, axis=0))
-                        # plt.show()
                         if union_fraction_mua_rate > min(fraction_mua_rate_1, fraction_mua_rate_2) + max_delta:
                             is_merged = False
 

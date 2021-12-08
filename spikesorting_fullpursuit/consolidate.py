@@ -82,12 +82,14 @@ def check_template_pair(template_1, template_2, chan_covariance_mats, sort_info)
     to template_2 equals p_confusion template_2 assigned to template_1. """
     if template_1.shape[0] != template_2.shape[0] or template_1.ndim > 1:
         raise ValueError("Input templates must be 1D vectors of the same size")
-    for cov_mat in chan_covariance_mats:
-        if template_1.shape[0] != cov_mat.shape[0] and template_1.shape[0] != cov_mat.shape[1]:
-            raise ValueError("Each channel covariance matrix in chan_covariance_mats must be square matrix with dimensions equal to template length.")
-
     n_chans = sort_info['n_channels']
-    template_samples_per_chan = sort_info['n_samples_per_chan']
+    if template_1.shape[0] % n_chans != 0:
+        raise ValueError("Template shape[0] must be evenly divisible by n_chans (i.e. there are the same number of samples per channel).")
+    template_samples_per_chan = template_1.shape[0] // n_chans
+    for cov_mat in chan_covariance_mats:
+        if template_samples_per_chan != cov_mat.shape[0] and template_samples_per_chan != cov_mat.shape[1]:
+            print("SHAPES LINE 87 CONSOLIDATE",  template_1.shape[0], cov_mat.shape[0], template_1.shape[0], cov_mat.shape[1])
+            raise ValueError("Each channel covariance matrix in chan_covariance_mats must be square matrix with dimensions equal to template length.")
 
     # Compute separability given V = template_1.
     E_L_t1 = 0.5 * np.dot(template_1, template_1)

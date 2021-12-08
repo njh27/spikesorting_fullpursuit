@@ -1144,7 +1144,7 @@ class WorkItemSummary(object):
                 is_all_linked = False
         return is_all_linked
 
-    def remove_redundant_neurons(self, seg, overlap_ratio_threshold=2):
+    def remove_redundant_neurons(self, seg, overlap_ratio_threshold=5):
         """
         Note that this function does not actually delete anything. It removes
         links between segments for redundant units and it adds a flag under
@@ -1421,7 +1421,7 @@ class WorkItemSummary(object):
                 neurons[best_pair[1]]['deleted_as_redundant'] = True
         return neurons
 
-    def remove_redundant_neurons_by_seg(self, overlap_ratio_threshold=1):
+    def remove_redundant_neurons_by_seg(self, overlap_ratio_threshold=5):
         """ Calls remove_redundant_neurons for each segment. """
         if overlap_ratio_threshold >= self.last_overlap_ratio_threshold:
             print("Redundant neurons already removed at threshold >=", overlap_ratio_threshold, "Further attempts will have no effect.")
@@ -1711,7 +1711,7 @@ class WorkItemSummary(object):
 
         return combined_neuron
 
-    def summarize_neurons_across_channels(self, overlap_ratio_threshold=1,
+    def summarize_neurons_across_channels(self, overlap_ratio_threshold=5,
                                             min_segs_per_unit=1,
                                             remove_clips=False):
         """ Creates output neurons list by combining segment-wise neurons across
@@ -1891,7 +1891,7 @@ class WorkItemSummary(object):
             neuron_summary = delete_spike_clips(neuron_summary)
         return neuron_summary
 
-    def remove_redundant_within_channel_summaries(self, neurons, overlap_ratio_threshold=1):
+    def remove_redundant_within_channel_summaries(self, neurons, overlap_ratio_threshold=5):
         """
         Removes redundant complete summaries as in 'remove_redundant_neurons' but
         for summaries created by 'summarize_neurons_within_channel'.

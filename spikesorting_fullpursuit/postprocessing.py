@@ -1710,8 +1710,7 @@ class WorkItemSummary(object):
         return combined_neuron
 
     def summarize_neurons_across_channels(self, overlap_ratio_threshold=5,
-                                            min_segs_per_unit=1,
-                                            remove_clips=False):
+                min_segs_per_unit=1, remove_clips=False, ol_verbose=False):
         """ Creates output neurons list by combining segment-wise neurons across
         segments and across channels based on stitch_segments and then using
         identical spikes found during the overlapping portions of consecutive
@@ -1780,7 +1779,7 @@ class WorkItemSummary(object):
         self.remove_redundant_neurons_by_seg(overlap_ratio_threshold)
         # NOTE: This MUST run AFTER remove redundant by seg or else you can
         # end up linking a redundant mixture to a good unit with broken link!
-        self.make_overlapping_links()
+        self.make_overlapping_links(ol_verbose)
 
         neurons = self.stitch_neurons()
         # Delete any redundant segs. These shouldn't really be in here anyways

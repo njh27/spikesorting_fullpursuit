@@ -35,6 +35,7 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
     """
 
     if isinstance(neurons, str):
+        print("Loading neurons file", neurons)
         with open(neurons, 'rb') as fp:
             neurons = pickle.load(fp)
 

@@ -8,3 +8,4 @@ import spikesorting_fullpursuit.neuron_separability
 import spikesorting_fullpursuit.postprocessing
 import spikesorting_fullpursuit.preprocessing
 import spikesorting_fullpursuit.sort
+import spikesorting_fullpursuit.wiener_filter

@@ -94,7 +94,7 @@ class TestDataset(object):
     def __init__(self, num_channels, duration, random_seed=None,
                  neuron_templates=None, frequency_range=(500, 8000),
                  samples_per_second=40000, amplitude=1, percent_shared_noise=0,
-                 correlate1_2=[0.0, 0.0], electrode_type='Probe',
+                 correlate1_2=False, electrode_type='Probe',
                  electrode_dtype=np.float32):
         self.num_channels = num_channels
         self.duration = duration
@@ -102,7 +102,10 @@ class TestDataset(object):
         self.frequency_range = frequency_range
         self.samples_per_second = samples_per_second
         self.electrode_dtype = electrode_dtype
-        self.correlate1_2 = correlate1_2
+        if (correlate1_2 is None) or (not correlate1_2):
+            self.correlate1_2 = [0., 0.]
+        else:
+            self.correlate1_2 = correlate1_2
 
         if electrode_type.lower() == 'probe':
             self.Probe = TestProbe(self.samples_per_second,

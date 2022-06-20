@@ -11,6 +11,7 @@ import time
 from traceback import print_tb
 from spikesorting_fullpursuit.parallel import segment_parallel
 from spikesorting_fullpursuit import sort, preprocessing, full_binary_pursuit
+from spikesorting_fullpursuit.wiener_filter import wiener_filter_segment
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 
 
@@ -517,6 +518,11 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                                         crossings, clip_width=settings['clip_width'])
         crossings, neuron_labels = segment_parallel.keep_valid_inds(
                 [crossings, neuron_labels], valid_event_indices)
+
+
+        """ PROBABLY WANT TO TRY WIENER HERE FIRST """
+        wiener_filter_segment()
+
 
         # Remove deviant clips before doing branch PCA to avoid getting clusters
         # of overlaps or garbage

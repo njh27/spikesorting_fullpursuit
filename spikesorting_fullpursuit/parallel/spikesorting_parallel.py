@@ -11,7 +11,7 @@ import time
 from traceback import print_tb
 from spikesorting_fullpursuit.parallel import segment_parallel
 from spikesorting_fullpursuit import sort, preprocessing, full_binary_pursuit
-from spikesorting_fullpursuit.wiener_filter import wiener_filter_segment
+# from spikesorting_fullpursuit.wiener_filter import wiener_filter_segment
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 
 
@@ -49,6 +49,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'test_flag': False, # Indicates a test run of parallel code that does NOT spawn multiple processes
         'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
         'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
+        'wiener_filter': True # Use wiener filter on data before binary pursuit. MUST use sort_peak_clips_only!
         }
 
     for k in kwargs.keys():
@@ -88,7 +89,10 @@ def spike_sorting_settings_parallel(**kwargs):
         if key in ['sigma_bp_CI']:
             if settings[key] is None:
                 settings[key] = np.inf
-
+        if key in ['wiener_filter']:
+            if not settings['sort_peak_clips_only']:
+                print("Wiener filter must use sort peak clips only. Setting to True.")
+            settings['sort_peak_clips_only'] = True
     return settings
 
 
@@ -519,11 +523,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings, neuron_labels = segment_parallel.keep_valid_inds(
                 [crossings, neuron_labels], valid_event_indices)
 
-
-        """ PROBABLY WANT TO TRY WIENER HERE FIRST """
-        wiener_filter_segment()
-
-
         # Remove deviant clips before doing branch PCA to avoid getting clusters
         # of overlaps or garbage
         keep_clips = preprocessing.cleanup_clusters(clips[:, curr_chan_inds], neuron_labels)
@@ -906,6 +905,19 @@ def spike_sort_parallel(Probe, **kwargs):
         p.join()
         p.close()
         del p
+
+
+    # Set threads/processes back to normal now that we are done
+    mkl.set_num_threads(n_threads)
+    # Run binary pursuit for each segment using the discovered templates
+    if settings['wiener_filter']:
+        if settings['verbose']: print("Starting segment-wise Wiener filter")
+        for seg_number in range(0, len(segment_onsets)):
+            if settings['verbose']: print("Start Winer filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
+            wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
+                                    Probe.v_dtype)
+
+
 
     # Set threads/processes back to normal now that we are done
     mkl.set_num_threads(n_threads)

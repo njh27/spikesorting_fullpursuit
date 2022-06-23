@@ -11,7 +11,7 @@ import time
 from traceback import print_tb
 from spikesorting_fullpursuit.parallel import segment_parallel
 from spikesorting_fullpursuit import sort, preprocessing, full_binary_pursuit
-# from spikesorting_fullpursuit.wiener_filter import wiener_filter_segment
+from spikesorting_fullpursuit.wiener_filter import wiener_filter_segment
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 
 
@@ -907,23 +907,6 @@ def spike_sort_parallel(Probe, **kwargs):
         p.close()
         del p
 
-
-    # Set threads/processes back to normal now that we are done
-    mkl.set_num_threads(n_threads)
-    # Run binary pursuit for each segment using the discovered templates
-    if settings['wiener_filter']:
-        if settings['verbose']: print("Starting segment-wise Wiener filter")
-        for seg_number in range(0, len(segment_onsets)):
-            if settings['verbose']: print("Start Winer filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
-            wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
-                                    Probe.v_dtype)
-
-
-
-    # Set threads/processes back to normal now that we are done
-    mkl.set_num_threads(n_threads)
-
-    sort_data = []
     sort_info = settings
     curr_chan_win, _ = segment_parallel.time_window_to_samples(
                                     settings['clip_width'], Probe.sampling_rate)
@@ -936,6 +919,26 @@ def spike_sort_parallel(Probe, **kwargs):
         # Initialize elements for separability metrics from each segment
         sort_info['separability_metrics'] = [[] for x in range(0, sort_info['n_segments'])]
 
+    # Set threads/processes back to normal now that we are done
+    mkl.set_num_threads(n_threads)
+    # Run binary pursuit for each segment using the discovered templates
+    if settings['wiener_filter']:
+        if settings['verbose']: print("Starting segment-wise Wiener filter")
+        filtered_voltage = []
+        for seg_number in range(0, len(segment_onsets)):
+            if settings['verbose']: print("Start Winer filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
+            # This will overwrite the segment voltage buffer!
+            fv = wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
+                                    Probe.v_dtype)
+
+            filtered_voltage.append(fv)
+
+
+
+    # Set threads/processes back to normal now that we are done
+    mkl.set_num_threads(n_threads)
+
+    sort_data = []
     # Run binary pursuit for each segment using the discovered templates
     for seg_number in range(0, len(segment_onsets)):
         if settings['verbose']: print("Start full binary pursuit on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
@@ -945,6 +948,7 @@ def spike_sort_parallel(Probe, **kwargs):
                     absolute_refractory_period=settings['absolute_refractory_period'],
                     kernels_path=None,
                     max_gpu_memory=settings['max_gpu_memory'])
+        seg_data[0].append(filtered_voltage[seg_number])
         sort_data.extend(seg_data)
 
     # Re-print any errors so more visible at the end of sorting

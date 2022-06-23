@@ -34,11 +34,11 @@ def wiener(original_voltage, signal_voltage, noise_voltage, smooth=1):
             # Rolling sum implementation of box-car filter separately of N
             # and S using the binsize passed in the `smooth` variable.
             half_bin_size = int(smooth / 2)
-            rolling_sum_num_points = min(half_bin_size, len(N))
+            rolling_sum_num_points = min(half_bin_size, N.shape[1])
             N_rolling_sum = np.sum(N[chan, 0:rolling_sum_num_points])
             S_rolling_sum = np.sum(S[chan, 0:rolling_sum_num_points])
-            for i in range(0, len(S)):
-                if i + half_bin_size < len(S):
+            for i in range(0, S.shape[1]):
+                if i + half_bin_size < S.shape[1]:
                     N_rolling_sum += N[chan, i+half_bin_size]
                     S_rolling_sum += S[chan, i+half_bin_size]
                     rolling_sum_num_points += 1
@@ -66,7 +66,8 @@ def wiener_optimal_filter(signal_power, noise_power, epsilon=1e-9):
 
 def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
                             v_dtype):
-    """ Does the Wiener filter on the segment voltage provided. """
+    """ Does the Wiener filter on the segment voltage provided. The new filtered
+    voltage OVERWRITES the input segment voltage! """
 
     # Get numpy view of voltage for clips and binary pursuit
     seg_volts_buffer = data_dict['segment_voltages'][seg_number][0]
@@ -111,12 +112,16 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
             continue
 
     if ( (sort_info['wiener_filter_smoothing'] is None) or
-         (sort_info['wiener_filter_smoothing'] < 1):
+         (sort_info['wiener_filter_smoothing'] < 1) ):
         wiener_filter_smooth_indices = 0
-     else:
+    else:
         wiener_filter_smooth_indices = ( (sort_info['wiener_filter_smoothing'] * voltage.shape[1])
                                         / (sort_info['sampling_rate'] // 2) )
     filtered_voltage = wiener(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
+    filtered_voltage = filtered_voltage * (np.std(voltage, axis=1) / np.std(filtered_voltage, axis=1))[:, None]
+    # Copy Winer filter segment voltage to the raw array buffer so we
+    # can re-use it for sorting
+    np.copyto(voltage, filtered_voltage)
 
     return filtered_voltage
 

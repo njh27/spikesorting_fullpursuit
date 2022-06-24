@@ -97,6 +97,18 @@ def spike_sorting_settings_parallel(**kwargs):
     return settings
 
 
+def single_thresholds(voltage, sigma):
+    if voltage.ndim == 1:
+        voltage = np.expand_dims(voltage, 0)
+    num_channels = voltage.shape[0]
+    thresholds = np.empty((num_channels, ))
+    for chan in range(0, num_channels):
+        abs_voltage = np.abs(voltage[chan, :])
+        thresholds[chan] = sigma * np.nanmedian(abs_voltage) / 0.6745
+
+    return thresholds
+
+
 def single_thresholds_and_samples(voltage, sigma):
     if voltage.ndim == 1:
         voltage = np.expand_dims(voltage, 0)
@@ -134,7 +146,7 @@ def parallel_zca_and_threshold(seg_num, sigma, zca_cushion, n_samples):
                     dtype=zca_pool_dict['voltage_dtype']).reshape(zca_pool_dict['share_voltage'][seg_num][1])
 
     # Plug numpy view into required functions
-    thresholds, _ = single_thresholds_and_samples(seg_voltage, sigma)
+    thresholds = single_thresholds(seg_voltage, sigma)
     zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                     thresholds, sigma, zca_cushion, n_samples)
 
@@ -713,9 +725,8 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
         p.close()
         del p
 
-    # May not need to return anything since data_dict is initialized globally
-    return None
-    # return work_items, init_dict, data_dict
+    # Return possible errors during processes for display later
+    return process_errors_list
 
 
 def init_data_dict(init_dict=None):
@@ -860,7 +871,7 @@ def spike_sort_parallel(Probe, **kwargs):
             if settings['do_ZCA_transform']:
                 if settings['verbose']: print("Finding voltage and thresholds for segment", x+1, "of", len(segment_onsets))
                 if settings['verbose']: print("Doing ZCA transform")
-                thresholds, _ = single_thresholds_and_samples(seg_voltage, settings['sigma'])
+                thresholds = single_thresholds(seg_voltage, settings['sigma'])
                 zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                                 thresholds, settings['sigma'],
                                 zca_cushion, n_samples=1e6)
@@ -896,9 +907,6 @@ def spike_sort_parallel(Probe, **kwargs):
                                'thresholds': thresholds_list[x],
                                })
 
-
-
-
     if not settings['test_flag']:
         if settings['log_dir'] is None:
             print("No log dir specified. Won't be able to see output from processes")
@@ -923,33 +931,7 @@ def spike_sort_parallel(Probe, **kwargs):
             cpu_alloc[x] = n_cpus
     init_dict['cpu_queue'] = cpu_queue
 
-
-
-    if settings['wiener_filter']:
-        wiener_vals = {'do_branch_PCA': True
-                        }
-        wiener_settings = {}
-        for key in settings:
-            if key in []:
-                wiener_settings[key] = wiener_vals[key]
-            else:
-                wiener_settings[key] = settings[key]
-        deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, wiener_settings)
-
-        # Set threads/processes back to normal for Wiener filter and filter
-        # each voltage segment
-        mkl.set_num_threads(n_threads)
-        if settings['verbose']: print("Starting segment-wise Wiener filter")
-        for seg_number in range(0, len(segment_onsets)):
-            if settings['verbose']: print("Start Winer filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
-            # This will overwrite the segment voltage buffer!
-            wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
-                                    Probe.v_dtype)
-
-
-    deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, settings)
-
-
+    # Sort info is just settings with some extra stuff added for the output
     sort_info = settings
     curr_chan_win, _ = segment_parallel.time_window_to_samples(
                                     settings['clip_width'], Probe.sampling_rate)
@@ -962,13 +944,43 @@ def spike_sort_parallel(Probe, **kwargs):
         # Initialize elements for separability metrics from each segment
         sort_info['separability_metrics'] = [[] for x in range(0, sort_info['n_segments'])]
 
+    if settings['wiener_filter']:
+        wiener_vals = {'do_branch_PCA': False,
+                       'do_branch_PCA_by_chan': False,
+                       'check_components': 20,
+                       'max_components': 5,
+                       'min_firing_rate': 0.1,
+                       'use_rand_init': False,
+                       'sort_peak_clips_only': True}
+        wiener_settings = {}
+        for key in settings:
+            if key in wiener_vals.keys():
+                wiener_settings[key] = wiener_vals[key]
+            else:
+                wiener_settings[key] = settings[key]
+        if settings['verbose']: print("Start clustering for Wiener filter templates.")
+        process_errors_list_wf = deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, wiener_settings)
 
+        # Set threads/processes back to normal for Wiener filter and filter
+        # each voltage segment
+        mkl.set_num_threads(n_threads)
+        if settings['verbose']: print("Starting segment-wise Wiener filter")
+        for seg_number in range(0, len(segment_onsets)):
+            if settings['verbose']: print("Start Winer filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
+            # This will overwrite the segment voltage buffer!
+            wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
+                                    Probe.v_dtype)
+            # Need to recompute the thresholds for the Wiener filtered data
+            seg_voltage = np.frombuffer(data_dict['segment_voltages'][seg_number][0],
+                                        dtype=Probe.v_dtype).reshape(data_dict['segment_voltages'][seg_number][1])
+            thresholds = single_thresholds(seg_voltage, settings['sigma'])
+            for wi in work_items:
+                if wi['seg_number'] == seg_number:
+                    wi['thresholds'] = thresholds
 
 
     # Re-deploy parallel clustering now using the Wiener filtered voltage
-
-
-
+    process_errors_list = deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, settings)
 
     # Set threads/processes back to normal now that we are done
     mkl.set_num_threads(n_threads)
@@ -985,6 +997,10 @@ def spike_sort_parallel(Probe, **kwargs):
         sort_data.extend(seg_data)
 
     # Re-print any errors so more visible at the end of sorting
+    if settings['wiener_filter']:
+        for pe in process_errors_list_wf:
+            print("Wiener filter item number", pe[0], "had the following error:")
+            print("            ", pe[1])
     for pe in process_errors_list:
         print("Item number", pe[0], "had the following error:")
         print("            ", pe[1])

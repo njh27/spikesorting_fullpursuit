@@ -229,7 +229,6 @@ class SegSummary(object):
                     # binary pursuit so skip it outright
                     # Remember that SNR can only go down from here as binary
                     # pursuit can add spikes that didn't cross threshold
-                    print("skipping low SNR")
                     continue
 
                 # Preserve template over full neighborhood for certain comparisons

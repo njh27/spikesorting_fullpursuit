@@ -118,7 +118,8 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
         wiener_filter_smooth_indices = ( (sort_info['wiener_filter_smoothing'] * voltage.shape[1])
                                         / (sort_info['sampling_rate'] // 2) )
     filtered_voltage = wiener(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
-    filtered_voltage = filtered_voltage * (np.std(voltage, axis=1) / np.std(filtered_voltage, axis=1))[:, None]
+    wiener_scale = (np.std(voltage, axis=1) / np.std(filtered_voltage, axis=1))
+    filtered_voltage = filtered_voltage * wiener_scale[:, None]
     # Copy Winer filter segment voltage to the raw array buffer so we
     # can re-use it for sorting
     np.copyto(voltage, filtered_voltage)

@@ -175,8 +175,8 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 		'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains
 				a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
 		'wiener_filter': True, # Use wiener filter on data before binary pursuit. MUST use sort_peak_clips_only!
-    'wiener_filter_smoothing': 100 # Hz or None for no smoothing. Smooths the signal and noise frequency domain so that the filter does
-				not become overly specific to the discovered templates.
+    'wiener_filter_smoothing': 100 # Hz or None for no smoothing. Smooths the signal and noise voltage spectra in the frequency domain so that
+				the filter does not become overly specific to the frequency of discovered templates.
 ```
 
 ### Output

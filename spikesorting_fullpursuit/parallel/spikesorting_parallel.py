@@ -38,9 +38,9 @@ def spike_sorting_settings_parallel(**kwargs):
         'save_1_cpu': True, # If true, leaves one CPU not in use during parallel clustering
         'sort_peak_clips_only': True, # If True, each sort only uses clips with peak on the main channel. Improves speed and accuracy but can miss clusters for low firing rate units on multiple channels
         'n_cov_samples': 20000, # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
-        # sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; NOTE: these are one sided
+        # e.g., sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; NOTE: these are one sided
         'sigma_bp_noise': 2.326, # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
-        'sigma_bp_CI': 12.0, # Number of noise standard deviations a template match must exceed for a spike to be added. np.inf or None ignores this parameter.
+        'sigma_bp_CI': None, # Number of noise standard deviations a template match must fall within for a spike to be added. np.inf or None ignores this parameter.
         'absolute_refractory_period': 10e-4, # Absolute refractory period expected between spikes of a single neuron. This is used in postprocesing.
         'get_adjusted_clips': False, # Returns spike clips after the waveforms of any potentially overlapping spikes have been removed
         'max_binary_pursuit_clip_width_factor': 1.0, # The factor by which binary pursuit template matching can be increased relative to clip width for clustering. The best values for clustering and template matching are not always the same.
@@ -617,6 +617,107 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         wrap_up()
 
 
+def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, settings):
+    """ This function takes the basic pre-made inputs for calling
+    spike_sort_item_parallel and handles deployment and deletion of the
+    parallel processes for each work item and initialization of the global
+    "data_dict" from the inputs of "init_dict".
+    """
+    # Need to reset certain elements of init_dict, but NOT THE VOLTAGE!
+    init_dict['results_dict'] = manager.dict()
+    init_dict['completed_items'] = manager.list()
+    init_dict['exits_dict'] = manager.dict()
+    init_dict['completed_items'] = manager.list()
+    completed_items_queue = manager.Queue(len(work_items))
+    init_dict['completed_items_queue'] = completed_items_queue
+    for x in range(0, len(work_items)):
+        # Initializing keys for each result seems to prevent broken pipe errors
+        init_dict['results_dict'][x] = None
+        init_dict['exits_dict'][x] = None
+
+    # Call init function to ensure data_dict is globally available before passing
+    # it into each process
+    init_data_dict(init_dict)
+    processes = []
+    proc_item_index = []
+    completed_items_index = 0
+    process_errors_list = []
+    print("Starting sorting pool")
+    # Put the work items through the sorter
+    for wi_ind, w_item in enumerate(work_items):
+        w_item['ID'] = wi_ind # Assign ID number in order of deployment
+        # With timeout=None, this will block until sufficient cpus are available
+        # as requested by cpu_alloc
+        # NOTE: this currently goes in order, so if 1 CPU is available but next
+        # work item wants 2, it will wait until 2 are available rather than
+        # starting a different item that only wants 1 CPU...
+        use_cpus = [cpu_queue.get(timeout=None) for x in range(cpu_alloc[wi_ind])]
+        n_complete = len(data_dict['completed_items']) # Do once to avoid race
+        if n_complete > completed_items_index:
+            for ci in range(completed_items_index, n_complete):
+                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID'], "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['seg_number'])
+                print("Exited with status: ", data_dict['exits_dict'][data_dict['completed_items'][ci]])
+                completed_items_index += 1
+                if not settings['test_flag']:
+                    done_index = proc_item_index.index(data_dict['completed_items'][ci])
+                    del proc_item_index[done_index]
+                    processes[done_index].join()
+                    processes[done_index].close()
+                    del processes[done_index]
+                    # Store error type if any
+                    if data_dict['exits_dict'][data_dict['completed_items'][ci]] != "Success":
+                        process_errors_list.append([work_items[data_dict['completed_items'][ci]]['ID'], data_dict['exits_dict'][data_dict['completed_items'][ci]]])
+
+        if not settings['test_flag']:
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
+            time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
+            proc = mp.Process(target=spike_sort_item_parallel,
+                              args=(data_dict, use_cpus, w_item, settings))
+            proc.start()
+            processes.append(proc)
+            proc_item_index.append(wi_ind)
+        else:
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
+            spike_sort_item_parallel(data_dict, use_cpus, w_item, settings)
+            print("finished sort one item")
+
+    if not settings['test_flag']:
+        # Wait here a bit to print out items as they complete and to ensure
+        # no process are left behind, as can apparently happen if you attempt to
+        # join() too soon without being sure everything is finished (especially using queues)
+        while completed_items_index < len(work_items) and not settings['test_flag']:
+            finished_item = completed_items_queue.get()
+            try:
+                done_index = proc_item_index.index(finished_item)
+            except ValueError:
+                # This item was already finished above so just clearing out
+                # completed_items_queue
+                continue
+            print("Completed item", finished_item+1, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['seg_number'])
+            print("Exited with status: ", data_dict['exits_dict'][finished_item])
+            completed_items_index += 1
+
+            del proc_item_index[done_index]
+            processes[done_index].join()
+            processes[done_index].close()
+            del processes[done_index]
+            # Store error type if any
+            if data_dict['exits_dict'][finished_item] != "Success":
+                process_errors_list.append([finished_item, data_dict['exits_dict'][finished_item]])
+
+    # Make sure all the processes finish up and close even though they should
+    # have finished above
+    while len(processes) > 0:
+        p = processes.pop()
+        p.join()
+        p.close()
+        del p
+
+    # May not need to return anything since data_dict is initialized globally
+    return None
+    # return work_items, init_dict, data_dict
+
+
 def init_data_dict(init_dict=None):
     global data_dict
     data_dict = {}
@@ -668,9 +769,8 @@ def spike_sort_parallel(Probe, **kwargs):
         settings['clip_width'] *= -1
     manager = mp.Manager()
     init_dict = {'num_channels': Probe.num_channels, 'sampling_rate': Probe.sampling_rate,
-                 'results_dict': manager.dict(), 'v_dtype': Probe.v_dtype,
-                 'completed_items': manager.list(), 'exits_dict': manager.dict(),
-                 'gpu_lock': manager.Lock(), 'filter_band': settings['filter_band']}
+                 'v_dtype': Probe.v_dtype, 'gpu_lock': manager.Lock(),
+                 'filter_band': settings['filter_band']}
     if settings['log_dir'] is not None:
         if os.path.exists(settings['log_dir']):
             rmtree(settings['log_dir'])
@@ -822,90 +922,33 @@ def spike_sort_parallel(Probe, **kwargs):
         if cpu_alloc[x] > n_cpus:
             cpu_alloc[x] = n_cpus
     init_dict['cpu_queue'] = cpu_queue
-    completed_items_queue = manager.Queue(len(work_items))
-    init_dict['completed_items_queue'] = completed_items_queue
-    for x in range(0, len(work_items)):
-        # Initializing keys for each result seems to prevent broken pipe errors
-        init_dict['results_dict'][x] = None
-        init_dict['exits_dict'][x] = None
 
-    # Call init function to ensure data_dict is globally available before passing
-    # it into each process
-    init_data_dict(init_dict)
-    processes = []
-    proc_item_index = []
-    completed_items_index = 0
-    process_errors_list = []
-    print("Starting sorting pool")
-    # Put the work items through the sorter
-    for wi_ind, w_item in enumerate(work_items):
-        w_item['ID'] = wi_ind # Assign ID number in order of deployment
-        # With timeout=None, this will block until sufficient cpus are available
-        # as requested by cpu_alloc
-        # NOTE: this currently goes in order, so if 1 CPU is available but next
-        # work item wants 2, it will wait until 2 are available rather than
-        # starting a different item that only wants 1 CPU...
-        use_cpus = [cpu_queue.get(timeout=None) for x in range(cpu_alloc[wi_ind])]
-        n_complete = len(data_dict['completed_items']) # Do once to avoid race
-        if n_complete > completed_items_index:
-            for ci in range(completed_items_index, n_complete):
-                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID'], "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['seg_number'])
-                print("Exited with status: ", data_dict['exits_dict'][data_dict['completed_items'][ci]])
-                completed_items_index += 1
-                if not settings['test_flag']:
-                    done_index = proc_item_index.index(data_dict['completed_items'][ci])
-                    del proc_item_index[done_index]
-                    processes[done_index].join()
-                    processes[done_index].close()
-                    del processes[done_index]
-                    # Store error type if any
-                    if data_dict['exits_dict'][data_dict['completed_items'][ci]] != "Success":
-                        process_errors_list.append([work_items[data_dict['completed_items'][ci]]['ID'], data_dict['exits_dict'][data_dict['completed_items'][ci]]])
 
-        if not settings['test_flag']:
-            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
-            time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
-            proc = mp.Process(target=spike_sort_item_parallel,
-                              args=(data_dict, use_cpus, w_item, settings))
-            proc.start()
-            processes.append(proc)
-            proc_item_index.append(wi_ind)
-        else:
-            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
-            spike_sort_item_parallel(data_dict, use_cpus, w_item, settings)
-            print("finished sort one item")
 
-    if not settings['test_flag']:
-        # Wait here a bit to print out items as they complete and to ensure
-        # no process are left behind, as can apparently happen if you attempt to
-        # join() too soon without being sure everything is finished (especially using queues)
-        while completed_items_index < len(work_items) and not settings['test_flag']:
-            finished_item = completed_items_queue.get()
-            try:
-                done_index = proc_item_index.index(finished_item)
-            except ValueError:
-                # This item was already finished above so just clearing out
-                # completed_items_queue
-                continue
-            print("Completed item", finished_item+1, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['seg_number'])
-            print("Exited with status: ", data_dict['exits_dict'][finished_item])
-            completed_items_index += 1
+    if settings['wiener_filter']:
+        wiener_vals = {'do_branch_PCA': True
+                        }
+        wiener_settings = {}
+        for key in settings:
+            if key in []:
+                wiener_settings[key] = wiener_vals[key]
+            else:
+                wiener_settings[key] = settings[key]
+        deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, wiener_settings)
 
-            del proc_item_index[done_index]
-            processes[done_index].join()
-            processes[done_index].close()
-            del processes[done_index]
-            # Store error type if any
-            if data_dict['exits_dict'][finished_item] != "Success":
-                process_errors_list.append([finished_item, data_dict['exits_dict'][finished_item]])
+        # Set threads/processes back to normal for Wiener filter and filter
+        # each voltage segment
+        mkl.set_num_threads(n_threads)
+        if settings['verbose']: print("Starting segment-wise Wiener filter")
+        for seg_number in range(0, len(segment_onsets)):
+            if settings['verbose']: print("Start Winer filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
+            # This will overwrite the segment voltage buffer!
+            wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
+                                    Probe.v_dtype)
 
-    # Make sure all the processes finish up and close even though they should
-    # have finished above
-    while len(processes) > 0:
-        p = processes.pop()
-        p.join()
-        p.close()
-        del p
+
+    deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, settings)
+
 
     sort_info = settings
     curr_chan_win, _ = segment_parallel.time_window_to_samples(
@@ -919,25 +962,16 @@ def spike_sort_parallel(Probe, **kwargs):
         # Initialize elements for separability metrics from each segment
         sort_info['separability_metrics'] = [[] for x in range(0, sort_info['n_segments'])]
 
-    # Set threads/processes back to normal now that we are done
-    mkl.set_num_threads(n_threads)
-    # Run binary pursuit for each segment using the discovered templates
-    if settings['wiener_filter']:
-        if settings['verbose']: print("Starting segment-wise Wiener filter")
-        filtered_voltage = []
-        for seg_number in range(0, len(segment_onsets)):
-            if settings['verbose']: print("Start Winer filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
-            # This will overwrite the segment voltage buffer!
-            fv = wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
-                                    Probe.v_dtype)
 
-            filtered_voltage.append(fv)
+
+
+    # Re-deploy parallel clustering now using the Wiener filtered voltage
+
 
 
 
     # Set threads/processes back to normal now that we are done
     mkl.set_num_threads(n_threads)
-
     sort_data = []
     # Run binary pursuit for each segment using the discovered templates
     for seg_number in range(0, len(segment_onsets)):
@@ -948,7 +982,6 @@ def spike_sort_parallel(Probe, **kwargs):
                     absolute_refractory_period=settings['absolute_refractory_period'],
                     kernels_path=None,
                     max_gpu_memory=settings['max_gpu_memory'])
-        seg_data[0].append(filtered_voltage[seg_number])
         sort_data.extend(seg_data)
 
     # Re-print any errors so more visible at the end of sorting

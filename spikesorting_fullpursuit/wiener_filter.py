@@ -123,6 +123,6 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
     # can re-use it for sorting
     np.copyto(voltage, filtered_voltage)
 
-    return filtered_voltage
+    return None
 
 #

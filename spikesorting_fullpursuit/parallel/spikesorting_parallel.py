@@ -951,7 +951,8 @@ def spike_sort_parallel(Probe, **kwargs):
                        'max_components': 5,
                        'min_firing_rate': 0.1,
                        'use_rand_init': False,
-                       'sort_peak_clips_only': True}
+                       'sort_peak_clips_only': True,
+                       'sigma': settings['sigma']}
         wiener_settings = {}
         for key in settings:
             if key in wiener_vals.keys():

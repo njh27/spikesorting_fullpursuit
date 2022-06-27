@@ -1,5 +1,8 @@
 import numpy as np
-from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples, get_singlechannel_clips
+from copy import deepcopy
+from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples, get_singlechannel_clips, get_multichannel_clips
+from spikesorting_fullpursuit.consolidate import SegSummary
+from spikesorting_fullpursuit.preprocessing import calculate_robust_template
 
 
 
@@ -84,32 +87,69 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
                   'v_dtype': v_dtype}
     clip_window, clip_width = time_window_to_samples(sort_info['clip_width'], sort_info['sampling_rate'])
 
-    # Need to go through each work item for this seg_number
+    # Need to build this in format used for consolidate functions
+    seg_data = []
+    original_neighbors = []
     for w_item in seg_w_items:
         if w_item['ID'] in data_dict['results_dict'].keys():
+            # Reset neighbors to all channels for full binary pursuit
+            original_neighbors.append(w_item['neighbors'])
+            w_item['neighbors'] = np.arange(0, voltage.shape[0], dtype=np.int64)
+
             if len(data_dict['results_dict'][w_item['ID']][0]) == 0:
                 # This work item found nothing (or raised an exception)
+                seg_data.append([[], [], [], [], w_item['ID']])
                 continue
-            # Get the clips for each channel in neighborhood of this work item
-            for chan in w_item['neighbors']:
-                clips, valid_inds = get_singlechannel_clips(clips_dict,
-                                        voltage[chan, :],
-                                        data_dict['results_dict'][w_item['ID']][0],
-                                        sort_info['clip_width'])
-                if clips is None:
-                    raise RuntimeError("NO CLIPS?")
-                # For each neuron compute its template
-                for n_id in np.unique(data_dict['results_dict'][w_item['ID']][1]):
-                    n_inds = data_dict['results_dict'][w_item['ID']][1] == n_id
-                    n_template = np.mean(clips[n_inds, :], axis=0)
-                    n_inds = np.logical_and(n_inds, valid_inds)
-                    # Subtract the template of each neuron and add to signal
-                    for spk in data_dict['results_dict'][w_item['ID']][0][n_inds]:
-                        volt_noise[chan, spk+clip_window[0]:spk+clip_window[1]] -= n_template
-                        volt_signal[chan, spk+clip_window[0]:spk+clip_window[1]] += n_template
+            clips, _ = get_multichannel_clips(clips_dict, voltage,
+                                    data_dict['results_dict'][w_item['ID']][0],
+                                    clip_width=sort_info['clip_width'])
+
+            # Insert list of crossings, labels, clips, binary pursuit spikes
+            seg_data.append([data_dict['results_dict'][w_item['ID']][0],
+                              data_dict['results_dict'][w_item['ID']][1],
+                              clips,
+                              np.zeros(len(data_dict['results_dict'][w_item['ID']][0]), dtype="bool"),
+                              w_item['ID']])
+            if type(seg_data[-1][0][0]) == np.ndarray:
+                if seg_data[-1][0][0].size > 0:
+                    # Adjust crossings for segment start time
+                    seg_data[-1][0][0] += w_item['index_window'][0]
         else:
             # This work item found nothing (or raised an exception)
-            continue
+            seg_data.append([[], [], [], [], w_item['ID']])
+
+    # Pass a copy of current state of sort info to seg_summary. Actual sort_info
+    # will be altered later but SegSummary must follow original data
+    seg_summary = SegSummary(seg_data, seg_w_items, deepcopy(sort_info), v_dtype,
+                        absolute_refractory_period=sort_info['absolute_refractory_period'],
+                        verbose=False)
+    if len(seg_summary.summaries) == 0:
+        print("Found no neuron templates for Wiener filter!")
+        return None
+    print("SHARPENING WIENERS!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print("start neurons", len(seg_summary.summaries))
+    seg_summary.sharpen_across_chans()
+    print("sharpened neurons", len(seg_summary.summaries))
+
+    # Need to go through each neuron for this seg_number
+    for n in seg_summary.summaries:
+        # Get the clips for each channel in neighborhood of this work item
+        for chan in n['neighbors']:
+            clips, valid_inds = get_singlechannel_clips(clips_dict,
+                                    voltage[chan, :],
+                                    n['spike_indices'],
+                                    sort_info['clip_width'])
+            # Make noise and signal by adding/subtracting this neurons template
+            n['spike_indices'] = n['spike_indices'][valid_inds]
+            robust_template = calculate_robust_template(clips)
+            for spk in n['spike_indices']:
+                volt_noise[chan, spk+clip_window[0]:spk+clip_window[1]] -= robust_template
+                volt_signal[chan, spk+clip_window[0]:spk+clip_window[1]] += robust_template
+
+    # Put back the original neighbors to work items since changed in-place
+    for w_item_ind, w_item in enumerate(seg_w_items):
+        if w_item['ID'] in data_dict['results_dict'].keys():
+            w_item['neighbors'] = original_neighbors[w_item_ind]
 
     if ( (sort_info['wiener_filter_smoothing'] is None) or
          (sort_info['wiener_filter_smoothing'] < 1) ):

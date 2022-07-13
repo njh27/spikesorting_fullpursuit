@@ -23,7 +23,11 @@ in integer samples (i.e., the boxcar window).
 """
 def wiener(original_voltage, signal_voltage, noise_voltage, smooth=1):
 
-    assert original_voltage.ndim == 2
+    print("VOLTAGE shape", original_voltage.shape)
+    if original_voltage.ndim == 1:
+        original_voltage = np.expand_dims(original_voltage, 0)
+        signal_voltage = np.expand_dims(signal_voltage, 0)
+        noise_voltage = np.expand_dims(noise_voltage, 0)
     assert (signal_voltage.shape == original_voltage.shape) and (noise_voltage.shape == original_voltage.shape)
 
     original_ft = np.fft.rfft(original_voltage, axis=1) # Input in frequency domain
@@ -58,6 +62,48 @@ def wiener(original_voltage, signal_voltage, noise_voltage, smooth=1):
             N_smoothed[:] = 0.
 
     filtered_signal = np.fft.irfft(original_ft * wiener_optimal_filter(S, N), axis=1)
+    return filtered_signal
+
+
+def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth=1):
+
+
+    assert (signal_voltage.shape == original_voltage.shape) and (noise_voltage.shape == original_voltage.shape)
+    voltage_shape = original_voltage.shape
+    print("WIENERING ALL!")
+    # get 1D view of input voltage arrays
+    ov = original_voltage.ravel(order="C")
+    sv = signal_voltage.ravel(order="C")
+    nv = noise_voltage.ravel(order="C")
+    original_ft = np.fft.rfft(ov) # Input in frequency domain
+    S = abs2(np.fft.rfft(sv)) # Signal power spectrum
+    N = abs2(np.fft.rfft(nv)) # Noise power spectrum
+    smooth = int(smooth)
+    if smooth > 1:
+        S_smoothed = np.zeros(S.shape[0])
+        N_smoothed = np.zeros(N.shape[0])
+        # Rolling sum implementation of box-car filter separately of N
+        # and S using the binsize passed in the `smooth` variable.
+        half_bin_size = int(smooth / 2)
+        rolling_sum_num_points = min(half_bin_size, N.shape[0])
+        N_rolling_sum = np.sum(N[0:rolling_sum_num_points])
+        S_rolling_sum = np.sum(S[0:rolling_sum_num_points])
+        for i in range(0, S.shape[0]):
+            if i + half_bin_size < S.shape[0]:
+                N_rolling_sum += N[i+half_bin_size]
+                S_rolling_sum += S[i+half_bin_size]
+                rolling_sum_num_points += 1
+            if ( (i - half_bin_size) > 0 ):
+                N_rolling_sum -= N[i-half_bin_size]
+                S_rolling_sum -= S[i-half_bin_size]
+                rolling_sum_num_points -= 1
+            S_smoothed[i] = S_rolling_sum / rolling_sum_num_points
+            N_smoothed[i] = N_rolling_sum / rolling_sum_num_points
+        S = S_smoothed
+        N = N_smoothed
+
+    filtered_signal = np.fft.irfft(original_ft * wiener_optimal_filter(S, N))
+    filtered_signal = np.reshape(filtered_signal, voltage_shape, order="C")
     return filtered_signal
 
 
@@ -157,7 +203,10 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
     else:
         wiener_filter_smooth_indices = ( (sort_info['wiener_filter_smoothing'] * voltage.shape[1])
                                         / (sort_info['sampling_rate'] // 2) )
-    filtered_voltage = wiener(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
+
+
+    # filtered_voltage = wiener(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
+    filtered_voltage = wiener_all(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
     wiener_scale = (np.std(voltage, axis=1) / np.std(filtered_voltage, axis=1))
     filtered_voltage = filtered_voltage * wiener_scale[:, None]
     # Copy Winer filter segment voltage to the raw array buffer so we

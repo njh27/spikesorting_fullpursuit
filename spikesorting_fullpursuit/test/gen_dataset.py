@@ -95,13 +95,14 @@ class TestDataset(object):
                  neuron_templates=None, frequency_range=(500, 8000),
                  samples_per_second=40000, amplitude=1, percent_shared_noise=0,
                  correlate1_2=False, electrode_type='Probe',
-                 electrode_dtype=np.float32):
+                 electrode_dtype=np.float32, noise_type="white"):
         self.num_channels = num_channels
         self.duration = duration
         self.voltage_array = None
         self.frequency_range = frequency_range
         self.samples_per_second = samples_per_second
         self.electrode_dtype = electrode_dtype
+        self.noise_type = noise_type
         if (correlate1_2 is None) or (not correlate1_2):
             self.correlate1_2 = [0., 0.]
         else:
@@ -193,6 +194,10 @@ class TestDataset(object):
         phases = np.random.rand(Np) * 2 * np.pi
         phases = np.cos(phases) + 1j * np.sin(phases)
         f[1:Np+1] *= phases
+
+        if self.noise_type.lower() == "pink":
+            f[1:Np] = (f[1:Np] * Np) / np.arange(1, Np, 1)
+
         f[-1:-1-Np:-1] = np.conj(f[1:Np+1])
         bandlimited_noise = np.fft.ifft(f).real
         bandlimited_noise = bandlimited_noise * self.amplitude / (3 * np.std(bandlimited_noise))

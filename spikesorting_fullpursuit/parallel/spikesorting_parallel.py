@@ -50,7 +50,8 @@ def spike_sorting_settings_parallel(**kwargs):
         'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
         'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
         'wiener_filter': True, # Use wiener filter on data before binary pursuit. MUST use sort_peak_clips_only!
-        'wiener_filter_smoothing': 100 # Hz or None for no smoothing
+        'wiener_filter_smoothing': 100, # Hz or None for no smoothing
+        'same_wiener': True # If true, compute Wiener filter over all channels at once, using the same filter for every channel
         }
 
     for k in kwargs.keys():

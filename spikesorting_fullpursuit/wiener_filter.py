@@ -23,7 +23,6 @@ in integer samples (i.e., the boxcar window).
 """
 def wiener(original_voltage, signal_voltage, noise_voltage, smooth=1):
 
-    print("VOLTAGE shape", original_voltage.shape)
     if original_voltage.ndim == 1:
         original_voltage = np.expand_dims(original_voltage, 0)
         signal_voltage = np.expand_dims(signal_voltage, 0)
@@ -66,11 +65,13 @@ def wiener(original_voltage, signal_voltage, noise_voltage, smooth=1):
 
 
 def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth=1):
-
-
+    """ Performs Wiener filter over data across all channels in voltage at once
+    using the same filter for every channel. The idea is to help avoid
+    potential pitfalls of using a very small/noisy "signal" on channels without
+    threshold crossings that could in turn amplify this noise via filtering.
+    """
     assert (signal_voltage.shape == original_voltage.shape) and (noise_voltage.shape == original_voltage.shape)
     voltage_shape = original_voltage.shape
-    print("WIENERING ALL!")
     # get 1D view of input voltage arrays
     ov = original_voltage.ravel(order="C")
     sv = signal_voltage.ravel(order="C")
@@ -200,17 +201,20 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
     if ( (sort_info['wiener_filter_smoothing'] is None) or
          (sort_info['wiener_filter_smoothing'] < 1) ):
         wiener_filter_smooth_indices = 0
+    elif sort_info['same_wiener']:
+        # Use the same Wiener filter for all channels computed over all data
+        wiener_filter_smooth_indices = ( (sort_info['wiener_filter_smoothing'] * voltage.size)
+                                        / (sort_info['sampling_rate'] // 2) )
+        filtered_voltage = wiener_all(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
     else:
         wiener_filter_smooth_indices = ( (sort_info['wiener_filter_smoothing'] * voltage.shape[1])
                                         / (sort_info['sampling_rate'] // 2) )
+        filtered_voltage = wiener(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
 
-
-    # filtered_voltage = wiener(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
-    filtered_voltage = wiener_all(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
+    # Rescale filtered voltage to original space and Copy Winer filter segment
+    # voltage to the raw array buffer so we can re-use it for sorting
     wiener_scale = (np.std(voltage, axis=1) / np.std(filtered_voltage, axis=1))
     filtered_voltage = filtered_voltage * wiener_scale[:, None]
-    # Copy Winer filter segment voltage to the raw array buffer so we
-    # can re-use it for sorting
     np.copyto(voltage, filtered_voltage)
 
     return None

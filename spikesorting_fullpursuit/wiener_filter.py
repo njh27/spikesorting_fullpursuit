@@ -198,6 +198,7 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
         if w_item['ID'] in data_dict['results_dict'].keys():
             w_item['neighbors'] = original_neighbors[w_item_ind]
 
+    print("Starting Wiener filter")
     if ( (sort_info['wiener_filter_smoothing'] is None) or
          (sort_info['wiener_filter_smoothing'] < 1) ):
         wiener_filter_smooth_indices = 0

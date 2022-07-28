@@ -33,6 +33,15 @@ OpenCL. Depending on the age of your machine and/or GPU, it may be the case that
 you need to choose to install an older version of pyopencl. The oldest case we
 tested was pyopencl version 2019.1.2.
 
+Memory usage is very high especially for large files and floating point values.
+The opencl GPU code generally only handles up to float32 and so it makes the
+most sense to input numpy voltage arrays as datatype "np.float32". Operations
+such as filtering and especially Wiener filter increase this memory use and
+again mitigates toward float32 being used and so memory mapping has been
+implemented for the storage of the voltage arrays. The arrays of spike clips
+can become similarly large and should likely be memory mapped unless large
+amounts of memory are available (probably at least on the order of 200 GB ram).
+
 The most recent version of pyopencl can be installed with conda using:  
 ```
 conda install -c conda-forge pyopencl

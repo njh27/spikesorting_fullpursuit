@@ -391,7 +391,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             else:
                 sys.stdout = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + ".out", "w")
                 sys.stderr = open(settings['log_dir'] + "/SpikeSortItem" + str(work_item['ID']) + "_errors.out", "w")
-            print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']))
+            print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']+1))
 
         # Setup threads and affinity based on use_cpus if not on mac OS
         if 'win32' == sys.platform:
@@ -668,7 +668,7 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
         n_complete = len(data_dict['completed_items']) # Do once to avoid race
         if n_complete > completed_items_index:
             for ci in range(completed_items_index, n_complete):
-                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID'], "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['seg_number'])
+                print("Completed item", work_items[data_dict['completed_items'][ci]]['ID'], "from chan", work_items[data_dict['completed_items'][ci]]['channel'], "segment", work_items[data_dict['completed_items'][ci]]['seg_number']+1)
                 print("Exited with status: ", data_dict['exits_dict'][data_dict['completed_items'][ci]])
                 completed_items_index += 1
                 if not settings['test_flag']:
@@ -682,7 +682,7 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
                         process_errors_list.append([work_items[data_dict['completed_items'][ci]]['ID'], data_dict['exits_dict'][data_dict['completed_items'][ci]]])
 
         if not settings['test_flag']:
-            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']+1))
             time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
             proc = mp.Process(target=spike_sort_item_parallel,
                               args=(data_dict, use_cpus, w_item, settings))
@@ -690,7 +690,7 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
             processes.append(proc)
             proc_item_index.append(wi_ind)
         else:
-            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']))
+            print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']+1))
             spike_sort_item_parallel(data_dict, use_cpus, w_item, settings)
             print("finished sort one item")
 
@@ -706,7 +706,7 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
                 # This item was already finished above so just clearing out
                 # completed_items_queue
                 continue
-            print("Completed item", finished_item+1, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['seg_number'])
+            print("Completed item", finished_item+1, "from chan", work_items[finished_item]['channel'], "segment", work_items[finished_item]['seg_number']+1)
             print("Exited with status: ", data_dict['exits_dict'][finished_item])
             completed_items_index += 1
 

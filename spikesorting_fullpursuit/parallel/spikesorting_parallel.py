@@ -2,6 +2,7 @@ import pickle
 import os
 import sys
 sys.path.append(os.getcwd())
+from tempfile import mkdtemp
 from shutil import rmtree
 import mkl
 import numpy as np
@@ -48,6 +49,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'verbose': False, # Set to true for more things to be printed while the sorter runs
         'test_flag': False, # Indicates a test run of parallel code that does NOT spawn multiple processes
         'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
+        'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd()
         'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
         'wiener_filter': True, # Use wiener filter on data before binary pursuit. MUST use sort_peak_clips_only!
         'wiener_filter_smoothing': 150, # Hz or None for no smoothing
@@ -95,7 +97,22 @@ def spike_sorting_settings_parallel(**kwargs):
             if not settings['sort_peak_clips_only']:
                 print("Wiener filter must use sort peak clips only. Setting to True.")
             settings['sort_peak_clips_only'] = True
+        if key == 'memmap_dir':
+            if settings['memmap_dir'] is None:
+                settings['memmap_dir'] = os.getcwd()
     return settings
+
+
+### Some helpful functions for watching memory usage ###
+def bytes_to_GiB_MiB(n_bytes):
+    return n_bytes/2**30, (n_bytes%(2**30))/2**20
+
+def print_mem_usage():
+    process = psutil.Process(os.getpid())
+    print("Mem Usage {:} GiB {:} MiB".format(*bytes_to_GiB_MiB(process.memory_info().rss)), flush=True)
+    return process.memory_info().rss
+
+########################################################
 
 
 def single_thresholds(voltage, sigma):
@@ -414,6 +431,10 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         seg_volts_shape = data_dict['segment_voltages'][work_item['seg_number']][1]
         voltage = np.frombuffer(seg_volts_buffer, dtype=item_dict['v_dtype']).reshape(seg_volts_shape)
         neighbors = work_item['neighbors']
+
+        if settings['verbose']:
+            print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']+1))
+            print_mem_usage()
 
         skip = np.amax(np.abs(settings['clip_width'])) / 2
         align_window = [skip, skip]
@@ -850,8 +871,17 @@ def spike_sort_parallel(Probe, **kwargs):
     for x in range(0, len(segment_onsets)):
         # Slice over num_channels should keep same shape
         # Build list in segment order
-        seg_voltages.append(Probe.voltage[0:Probe.num_channels,
-                                          segment_onsets[x]:segment_offsets[x]])
+        # Create list of filename, dtype, shape, for the memmaped voltages
+        file_info = [os.path.join(settings['memmap_dir'], "volt_seg{0}.bin".format(str(x))),
+                     Probe.v_dtype,
+                     (Probe.num_channels, segment_offsets[x]-segment_onsets[x])]
+        seg_voltages.append(file_info)
+        v_mmap = np.memmap(file_info[0], dtype=file_info[1], mode='w+', shape=file_info[2])
+        v_mmap[:] = Probe.voltage[:, segment_onsets[x]:segment_offsets[x]]
+        # Save memmap changes to disk
+        v_mmap.flush()
+        del v_mmap
+
     samples_over_thresh = []
     if not settings['test_flag'] and settings['do_ZCA_transform']:
         # Use parallel processing to get zca voltage and thresholds

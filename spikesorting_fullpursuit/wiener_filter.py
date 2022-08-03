@@ -1,5 +1,6 @@
 import numpy as np
 from copy import deepcopy
+import os
 from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples, get_singlechannel_clips, get_multichannel_clips
 from spikesorting_fullpursuit.consolidate import SegSummary
 from spikesorting_fullpursuit.preprocessing import calculate_robust_template
@@ -21,7 +22,8 @@ This function optimally smooths the noise and signal power spectra using
 a running average specified by `smooth`. The smooth parameter is provided
 in integer samples (i.e., the boxcar window).
 """
-def wiener(original_voltage, signal_voltage, noise_voltage, smooth=1):
+def wiener(original_voltage, signal_voltage, noise_voltage, smooth,
+           data_dict, seg_number, sort_info):
 
     if original_voltage.ndim == 1:
         original_voltage = np.expand_dims(original_voltage, 0)
@@ -29,9 +31,33 @@ def wiener(original_voltage, signal_voltage, noise_voltage, smooth=1):
         noise_voltage = np.expand_dims(noise_voltage, 0)
     assert (signal_voltage.shape == original_voltage.shape) and (noise_voltage.shape == original_voltage.shape)
 
-    original_ft = np.fft.rfft(original_voltage, axis=1) # Input in frequency domain
-    S = abs2(np.fft.rfft(signal_voltage, axis=1)) # Signal power spectrum
-    N = abs2(np.fft.rfft(noise_voltage, axis=1)) # Noise power spectrum
+    original_mem = np.fft.rfft(original_voltage, axis=1) # Input in frequency domain
+    o_ft_fname = os.path.join(sort_info['memmap_dir'], "orig_ft{0}.bin".format(str(seg_number)))
+    original_ft = np.memmap(o_ft_fname,
+                            dtype=original_mem.dtype,
+                            mode='w+', shape=original_mem.shape)
+    original_ft[:] = original_mem[:]
+    original_ft.flush()
+    del original_mem
+
+    S_mem = abs2(np.fft.rfft(signal_voltage, axis=1)) # Signal power spectrum
+    S_ft_fname = os.path.join(sort_info['memmap_dir'], "S_ft{0}.bin".format(str(seg_number)))
+    S = np.memmap(S_ft_fname,
+                  dtype=S_mem.dtype,
+                  mode='w+', shape=S_mem.shape)
+    S[:] = S_mem[:]
+    S.flush()
+    del S_mem
+
+    N_mem = abs2(np.fft.rfft(noise_voltage, axis=1)) # Noise power spectrum
+    N_ft_fname = os.path.join(sort_info['memmap_dir'], "N_ft{0}.bin".format(str(seg_number)))
+    N = np.memmap(N_ft_fname,
+                  dtype=N_mem.dtype,
+                  mode='w+', shape=N_mem.shape)
+    N[:] = N_mem[:]
+    N.flush()
+    del N_mem
+
     smooth = int(smooth)
     if smooth > 1:
         S_smoothed = np.zeros(S.shape[1])
@@ -61,10 +87,20 @@ def wiener(original_voltage, signal_voltage, noise_voltage, smooth=1):
             N_smoothed[:] = 0.
 
     filtered_signal = np.fft.irfft(original_ft * wiener_optimal_filter(S, N), axis=1)
+
+    # Cleanup memmaps
+    del original_ft
+    os.remove(o_ft_fname)
+    del S
+    os.remove(S_ft_fname)
+    del N
+    os.remove(N_ft_fname)
+
     return filtered_signal
 
 
-def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth=1):
+def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth,
+               data_dict, seg_number, sort_info):
     """ Performs Wiener filter over data across all channels in voltage at once
     using the same filter for every channel. The idea is to help avoid
     potential pitfalls of using a very small/noisy "signal" on channels without
@@ -76,9 +112,34 @@ def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth=1):
     ov = original_voltage.ravel(order="C")
     sv = signal_voltage.ravel(order="C")
     nv = noise_voltage.ravel(order="C")
-    original_ft = np.fft.rfft(ov) # Input in frequency domain
-    S = abs2(np.fft.rfft(sv)) # Signal power spectrum
-    N = abs2(np.fft.rfft(nv)) # Noise power spectrum
+    # Get FFTs and memmap them
+    original_mem = np.fft.rfft(ov) # Input in frequency domain
+    o_ft_fname = os.path.join(sort_info['memmap_dir'], "orig_ft{0}.bin".format(str(seg_number)))
+    original_ft = np.memmap(o_ft_fname,
+                            dtype=original_mem.dtype,
+                            mode='w+', shape=original_mem.shape)
+    original_ft[:] = original_mem[:]
+    original_ft.flush()
+    del original_mem
+
+    S_mem = abs2(np.fft.rfft(sv)) # Signal power spectrum
+    S_ft_fname = os.path.join(sort_info['memmap_dir'], "S_ft{0}.bin".format(str(seg_number)))
+    S = np.memmap(S_ft_fname,
+                  dtype=S_mem.dtype,
+                  mode='w+', shape=S_mem.shape)
+    S[:] = S_mem[:]
+    S.flush()
+    del S_mem
+
+    N_mem = abs2(np.fft.rfft(nv)) # Noise power spectrum
+    N_ft_fname = os.path.join(sort_info['memmap_dir'], "N_ft{0}.bin".format(str(seg_number)))
+    N = np.memmap(N_ft_fname,
+                  dtype=N_mem.dtype,
+                  mode='w+', shape=N_mem.shape)
+    N[:] = N_mem[:]
+    N.flush()
+    del N_mem
+
     smooth = int(smooth)
     if smooth > 1:
         S_smoothed = np.zeros(S.shape[0])
@@ -105,6 +166,15 @@ def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth=1):
 
     filtered_signal = np.fft.irfft(original_ft * wiener_optimal_filter(S, N))
     filtered_signal = np.reshape(filtered_signal, voltage_shape, order="C")
+
+    # Cleanup memmaps
+    del original_ft
+    os.remove(o_ft_fname)
+    del S
+    os.remove(S_ft_fname)
+    del N
+    os.remove(N_ft_fname)
+
     return filtered_signal
 
 
@@ -119,12 +189,21 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
     """ Does the Wiener filter on the segment voltage provided. The new filtered
     voltage OVERWRITES the input segment voltage! """
 
-    # Get numpy view of voltage for clips and binary pursuit
-    seg_volts_buffer = data_dict['segment_voltages'][seg_number][0]
-    seg_volts_shape = data_dict['segment_voltages'][seg_number][1]
-    voltage = np.frombuffer(seg_volts_buffer, dtype=v_dtype).reshape(seg_volts_shape)
-    volt_noise = np.copy(voltage)
-    volt_signal = np.zeros(seg_volts_shape, dtype=v_dtype)
+    # Initialize voltages
+    voltage = np.memmap(data_dict['seg_v_files'][seg_number][0],
+                        dtype=data_dict['seg_v_files'][seg_number][1],
+                        mode='r+',
+                        shape=data_dict['seg_v_files'][seg_number][2])
+    v_noise_fname = os.path.join(sort_info['memmap_dir'], "volt_noise{0}.bin".format(str(seg_number)))
+    volt_noise = np.memmap(v_noise_fname,
+                           dtype=data_dict['seg_v_files'][seg_number][1],
+                           mode='w+', shape=data_dict['seg_v_files'][seg_number][2])
+    volt_noise[:] = voltage[:]
+    volt_noise.flush()
+    v_signal_fname = os.path.join(sort_info['memmap_dir'], "volt_signal{0}.bin".format(str(seg_number)))
+    volt_signal = np.memmap(v_signal_fname,
+                           dtype=data_dict['seg_v_files'][seg_number][1],
+                           mode='w+', shape=data_dict['seg_v_files'][seg_number][2])
 
     # Determine the set of work items for this segment
     seg_w_items = [w for w in work_items if w['seg_number'] == seg_number]
@@ -198,6 +277,8 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
         if w_item['ID'] in data_dict['results_dict'].keys():
             w_item['neighbors'] = original_neighbors[w_item_ind]
 
+    volt_noise.flush()
+    volt_signal.flush()
     print("Starting Wiener filter")
     if ( (sort_info['wiener_filter_smoothing'] is None) or
          (sort_info['wiener_filter_smoothing'] < 1) ):
@@ -206,17 +287,27 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
         # Use the same Wiener filter for all channels computed over all data
         wiener_filter_smooth_indices = ( (sort_info['wiener_filter_smoothing'] * voltage.size)
                                         / (sort_info['sampling_rate'] // 2) )
-        filtered_voltage = wiener_all(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
+        filtered_voltage = wiener_all(voltage, volt_signal, volt_noise,
+                                      wiener_filter_smooth_indices, data_dict,
+                                      seg_number, sort_info)
     else:
         wiener_filter_smooth_indices = ( (sort_info['wiener_filter_smoothing'] * voltage.shape[1])
                                         / (sort_info['sampling_rate'] // 2) )
-        filtered_voltage = wiener(voltage, volt_signal, volt_noise, wiener_filter_smooth_indices)
+        filtered_voltage = wiener(voltage, volt_signal, volt_noise,
+                                  wiener_filter_smooth_indices, data_dict,
+                                  seg_number, sort_info)
 
     # Rescale filtered voltage to original space and Copy Winer filter segment
     # voltage to the raw array buffer so we can re-use it for sorting
     wiener_scale = (np.std(voltage, axis=1) / np.std(filtered_voltage, axis=1))
     filtered_voltage = filtered_voltage * wiener_scale[:, None]
     np.copyto(voltage, filtered_voltage)
+
+    # Delete memmap references and files made for Wiener filter
+    del volt_noise
+    os.remove(v_noise_fname)
+    del volt_signal
+    os.remove(v_signal_fname)
 
     return None
 

@@ -42,6 +42,10 @@ implemented for the storage of the voltage arrays. The arrays of spike clips
 can become similarly large and should likely be memory mapped unless large
 amounts of memory are available (probably at least on the order of 200 GB ram).
 
+Assumes you can hold at least more than the array of all multichannel clips for
+one segment and/or the number of segments by number of simultaneously running
+clustering processes in the worst case.
+
 The most recent version of pyopencl can be installed with conda using:  
 ```
 conda install -c conda-forge pyopencl

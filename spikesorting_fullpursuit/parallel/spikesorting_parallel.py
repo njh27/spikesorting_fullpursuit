@@ -43,13 +43,13 @@ def spike_sorting_settings_parallel(**kwargs):
         'sigma_bp_noise': 2.326, # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
         'sigma_bp_CI': None, # Number of noise standard deviations a template match must fall within for a spike to be added. np.inf or None ignores this parameter.
         'absolute_refractory_period': 10e-4, # Absolute refractory period expected between spikes of a single neuron. This is used in postprocesing.
-        'get_adjusted_clips': False, # Returns spike clips after the waveforms of any potentially overlapping spikes have been removed
+        'get_adjusted_clips': False, # Probably outdated and should be left as False. Returns spike clips after the waveforms of any potentially overlapping spikes have been removed.
         'max_binary_pursuit_clip_width_factor': 1.0, # The factor by which binary pursuit template matching can be increased relative to clip width for clustering. The best values for clustering and template matching are not always the same.
                                                      # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
         'verbose': False, # Set to true for more things to be printed while the sorter runs
         'test_flag': False, # Indicates a test run of parallel code that does NOT spawn multiple processes
         'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
-        'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd()
+        'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running
         'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
         'wiener_filter': True, # Use wiener filter on data before binary pursuit. MUST use sort_peak_clips_only!
         'wiener_filter_smoothing': 150, # Hz or None for no smoothing
@@ -748,12 +748,12 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
             print("finished sort one item")
 
         # Delete voltage arrays not in use to try to save memory
-        # for seg_n, seg_u in enumerate(seg_voltage_users):
-        #     if len(seg_u) == 0:
-        #         # No users for this segment
-        #         if seg_n in data_dict['segment_voltages']:
-        #             # But seg is still holding voltage mempory
-        #             del data_dict['segment_voltages'][seg_n]
+        for seg_n, seg_u in enumerate(seg_voltage_users):
+            if len(seg_u) == 0:
+                # No users for this segment
+                if seg_n in data_dict['segment_voltages']:
+                    # But seg is still holding voltage mempory
+                    del data_dict['segment_voltages'][seg_n]
 
     if not settings['test_flag']:
         # Wait here a bit to print out items as they complete and to ensure
@@ -791,12 +791,12 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
         del p
 
     # Delete voltage arrays not in use to try to save memory
-    # for seg_n, seg_u in enumerate(seg_voltage_users):
-    #     if len(seg_u) == 0:
-    #         # No users for this segment
-    #         if seg_n in data_dict['segment_voltages']:
-    #             # But seg is still holding voltage mempory
-    #             del data_dict['segment_voltages'][seg_n]
+    for seg_n, seg_u in enumerate(seg_voltage_users):
+        if len(seg_u) == 0:
+            # No users for this segment
+            if seg_n in data_dict['segment_voltages']:
+                # But seg is still holding voltage mempory
+                del data_dict['segment_voltages'][seg_n]
 
     # Return possible errors during processes for display later
     return process_errors_list
@@ -1057,12 +1057,14 @@ def spike_sort_parallel(Probe, **kwargs):
         if settings['verbose']: print("Starting segment-wise Wiener filter")
         for seg_number in range(0, len(segment_onsets)):
             if settings['verbose']: print("Start Winer filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
-            # This will overwrite the segment voltage buffer!
-            wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
-                                    Probe.v_dtype)
+            # This will overwrite the segment voltage data!
+            wiener_filter_segment(work_items, data_dict, seg_number,
+                                  sort_info, Probe.v_dtype)
             # Need to recompute the thresholds for the Wiener filtered data
-            seg_voltage = np.frombuffer(data_dict['segment_voltages'][seg_number][0],
-                                        dtype=Probe.v_dtype).reshape(data_dict['segment_voltages'][seg_number][1])
+            seg_voltage = np.memmap(data_dict['seg_v_files'][seg_number][0],
+                                    dtype=data_dict['seg_v_files'][seg_number][1],
+                                    mode='r',
+                                    shape=data_dict['seg_v_files'][seg_number][2])
             thresholds = single_thresholds(seg_voltage, settings['sigma'])
             for wi in work_items:
                 if wi['seg_number'] == seg_number:

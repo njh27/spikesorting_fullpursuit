@@ -98,9 +98,10 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     segment sorted data. Then the templates are input to binary pursuit. Output
     is finally formatted for final output. """
     # Get numpy view of voltage for clips and binary pursuit
-    seg_volts_buffer = data_dict['segment_voltages'][seg_number][0]
-    seg_volts_shape = data_dict['segment_voltages'][seg_number][1]
-    voltage = np.frombuffer(seg_volts_buffer, dtype=v_dtype).reshape(seg_volts_shape)
+    voltage = np.memmap(data_dict['seg_v_files'][seg_number][0],
+                            dtype=data_dict['seg_v_files'][seg_number][1],
+                            mode='r',
+                            shape=data_dict['seg_v_files'][seg_number][2])
     original_clip_width = [s for s in sort_info['clip_width']]
     original_n_samples_per_chan = copy(sort_info['n_samples_per_chan'])
     # Max shift indices to check for binary pursuit overlaps

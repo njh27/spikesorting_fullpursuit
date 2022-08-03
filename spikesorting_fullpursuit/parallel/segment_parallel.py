@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import signal
 import copy
+from os import path
 from spikesorting_fullpursuit import sort
 
 
@@ -369,7 +370,7 @@ threshold crossing indices for the corresponding channel in the Probe object.
 event_indices that yield a clip width beyond data boundaries are ignored.
 event_indices MUST BE ORDERED or else edge cases will not correctly be
 accounted for and an error may result. """
-def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width):
+def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width, use_memmap=False):
 
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
@@ -394,9 +395,17 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width)
             valid_event_indices[:] = False
             return None, valid_event_indices
         n = event_indices[stop_ind]
-    spike_clips = np.empty((np.count_nonzero(valid_event_indices), window[1] - window[0]), dtype=probe_dict['v_dtype'])
+
+    if use_memmap:
+        clip_fname = path.join(probe_dict['memmap_dir'], "clips_{0}.bin".format(str(probe_dict['ID'])))
+        spike_clips = np.memmap(clip_fname, dtype=probe_dict['v_dtype'], mode='w+', shape=(np.count_nonzero(valid_event_indices), window[1] - window[0]))
+    else:
+        spike_clips = np.empty((np.count_nonzero(valid_event_indices), window[1] - window[0]), dtype=probe_dict['v_dtype'])
     for out_ind, spk in enumerate(range(start_ind, stop_ind+1)): # Add 1 to index through last valid index
         spike_clips[out_ind, :] = chan_voltage[event_indices[spk]+window[0]:event_indices[spk]+window[1]]
+
+    if use_memmap:
+        spike_clips.flush()
 
     return spike_clips, valid_event_indices
 
@@ -409,7 +418,7 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width)
     is a single one dimensional array of indices over which clips from all input
     channels will be aligned. event_indices MUST BE ORDERED or else edge cases
     will not correctly be accounted for and an error may result. """
-def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width):
+def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width, use_memmap=False):
 
     if event_indices.ndim > 1:
         raise ValueError("Event_indices must be one dimensional array of indices")
@@ -438,7 +447,13 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
             valid_event_indices[:] = False
             return None, valid_event_indices
         n = event_indices[stop_ind]
-    spike_clips = np.empty((np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]), dtype=probe_dict['v_dtype'])
+
+    if use_memmap:
+        clip_fname = path.join(probe_dict['memmap_dir'], "clips_{0}.bin".format(str(probe_dict['ID'])))
+        spike_clips = np.memmap(clip_fname, dtype=probe_dict['v_dtype'], mode='w+', shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]))
+    else:
+        spike_clips = np.empty((np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]), dtype=probe_dict['v_dtype'])
+
     for out_ind, spk in enumerate(range(start_ind, stop_ind+1)): # Add 1 to index through last valid index
         chan_ind = 0
         start = 0
@@ -448,5 +463,8 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
             spike_clips[out_ind, start:stop] = neighbor_voltage[chan, event_indices[spk]+window[0]:event_indices[spk]+window[1]]
             # Subtract start ind above to adjust for discarded events
             start = stop
+
+    if use_memmap:
+        spike_clips.flush()
 
     return spike_clips, valid_event_indices

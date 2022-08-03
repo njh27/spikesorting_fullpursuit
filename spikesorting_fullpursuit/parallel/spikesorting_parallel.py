@@ -107,9 +107,11 @@ def spike_sorting_settings_parallel(**kwargs):
 def bytes_to_GiB_MiB(n_bytes):
     return n_bytes/2**30, (n_bytes%(2**30))/2**20
 
-def print_mem_usage():
+def print_mem_usage(num=None):
+    if num is None:
+        num = ""
     process = psutil.Process(os.getpid())
-    print("Mem Usage {:} GiB {:} MiB".format(*bytes_to_GiB_MiB(process.memory_info().rss)), flush=True)
+    print("Mem Usage num {0} is {1} GiB {2} MiB".format(num, bytes_to_GiB_MiB(process.memory_info().rss)[0], bytes_to_GiB_MiB(process.memory_info().rss)[1]), flush=True)
     return process.memory_info().rss
 
 ########################################################
@@ -383,12 +385,18 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
     crossings, neuron_labels = [], []
     exit_type = None
     def wrap_up():
+        delete_clip_memmap()
         data_dict['results_dict'][work_item['ID']] = [crossings, neuron_labels]
         data_dict['completed_items'].append(work_item['ID'])
         data_dict['exits_dict'][work_item['ID']] = exit_type
         data_dict['completed_items_queue'].put(work_item['ID'])
         for cpu in use_cpus:
             data_dict['cpu_queue'].put(cpu)
+        return
+    def delete_clip_memmap():
+        clip_fname = os.path.join(settings['memmap_dir'], "clips_{0}.bin".format(str(work_item['ID'])))
+        if os.path.exists(clip_fname):
+            os.remove(clip_fname)
         return
     try:
         # Print this process' errors and output to a file
@@ -417,7 +425,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         item_dict = {'sampling_rate': data_dict['sampling_rate'],
                      'n_samples': work_item['n_samples'],
                      'thresholds': work_item['thresholds'],
-                     'v_dtype': data_dict['v_dtype']}
+                     'v_dtype': data_dict['v_dtype'],
+                     'ID': work_item['ID'],
+                     'memmap_dir': settings['memmap_dir']}
         chan = work_item['channel']
         seg_volts_buffer = data_dict['segment_voltages'][work_item['seg_number']][0]
         seg_volts_shape = data_dict['segment_voltages'][work_item['seg_number']][1]
@@ -426,7 +436,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
 
         if settings['verbose']:
             print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']+1))
-            print_mem_usage()
+            print_mem_usage(1)
 
         skip = np.amax(np.abs(settings['clip_width'])) / 2
         align_window = [skip, skip]
@@ -455,7 +465,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                             settings['clip_width'],
                             settings['filter_band'])
 
-        clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'])
+        clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict, voltage[neighbors, :], crossings, clip_width=settings['clip_width'], use_memmap=True)
         crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
 
         if settings['sort_peak_clips_only']:
@@ -501,7 +511,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
 
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                                 item_dict, voltage[neighbors, :],
-                                                crossings, clip_width=settings['clip_width'])
+                                                crossings, clip_width=settings['clip_width'],
+                                                use_memmap=True)
                 crossings, neuron_labels = segment_parallel.keep_valid_inds(
                         [crossings, neuron_labels], valid_event_indices)
 
@@ -524,7 +535,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 if settings['verbose']: print("Re-sorting after check spike alignment")
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                                 item_dict, voltage[neighbors, :],
-                                                crossings, clip_width=settings['clip_width'])
+                                                crossings, clip_width=settings['clip_width'],
+                                                use_memmap=True)
                 crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
                 scores = preprocessing.compute_pca(clips[:, curr_chan_inds],
                             settings['check_components'], settings['max_components'], add_peak_valley=settings['add_peak_valley'],
@@ -546,7 +558,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                         clip_width=settings['clip_width'])
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                         item_dict, voltage[neighbors, :],
-                                        crossings, clip_width=settings['clip_width'])
+                                        crossings, clip_width=settings['clip_width'],
+                                        use_memmap=True)
         crossings, neuron_labels = segment_parallel.keep_valid_inds(
                 [crossings, neuron_labels], valid_event_indices)
 
@@ -623,18 +636,21 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
 
         # Realign spikes based on correlation with current cluster templates before doing binary pursuit
         crossings, neuron_labels, valid_inds = segment_parallel.align_events_with_template(item_dict, voltage[chan, :], neuron_labels, crossings, clip_width=settings['clip_width'])
-        clips = clips[valid_inds, :]
 
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
         # Map labels starting at zero and put labels in order
         sort.reorder_labels(neuron_labels)
         if settings['verbose']: print("Successfully completed item ", str(work_item['ID']), flush=True)
         exit_type = "Success"
+        if settings['verbose']:
+            print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']+1))
+            print_mem_usage("END")
     except NoSpikesError:
         if settings['verbose']: print("No spikes to sort.")
         if settings['verbose']: print("Successfully completed item ", str(work_item['ID']), flush=True)
         exit_type = "Success"
     except Exception as err:
+        delete_clip_memmap()
         exit_type = err
         print_tb(err.__traceback__)
         if settings['test_flag']:
@@ -732,12 +748,12 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
             print("finished sort one item")
 
         # Delete voltage arrays not in use to try to save memory
-        for seg_n, seg_u in enumerate(seg_voltage_users):
-            if len(seg_u) == 0:
-                # No users for this segment
-                if seg_n in data_dict['segment_voltages']:
-                    # But seg is still holding voltage mempory
-                    del data_dict['segment_voltages'][seg_n]
+        # for seg_n, seg_u in enumerate(seg_voltage_users):
+        #     if len(seg_u) == 0:
+        #         # No users for this segment
+        #         if seg_n in data_dict['segment_voltages']:
+        #             # But seg is still holding voltage mempory
+        #             del data_dict['segment_voltages'][seg_n]
 
     if not settings['test_flag']:
         # Wait here a bit to print out items as they complete and to ensure
@@ -775,12 +791,12 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
         del p
 
     # Delete voltage arrays not in use to try to save memory
-    for seg_n, seg_u in enumerate(seg_voltage_users):
-        if len(seg_u) == 0:
-            # No users for this segment
-            if seg_n in data_dict['segment_voltages']:
-                # But seg is still holding voltage mempory
-                del data_dict['segment_voltages'][seg_n]
+    # for seg_n, seg_u in enumerate(seg_voltage_users):
+    #     if len(seg_u) == 0:
+    #         # No users for this segment
+    #         if seg_n in data_dict['segment_voltages']:
+    #             # But seg is still holding voltage mempory
+    #             del data_dict['segment_voltages'][seg_n]
 
     # Return possible errors during processes for display later
     return process_errors_list
@@ -1078,6 +1094,10 @@ def spike_sort_parallel(Probe, **kwargs):
     for pe in process_errors_list:
         print("Item number", pe[0], "had the following error:")
         print("            ", pe[1])
+
+    # Delete voltage memmap files
+    for x in range(0, len(seg_voltages)):
+        os.remove(seg_voltages[x][0])
 
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info

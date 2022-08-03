@@ -141,15 +141,14 @@ def single_thresholds_and_samples(voltage, sigma):
     return thresholds, samples_over_thresh
 
 
-def init_zca_voltage(seg_voltages_to_share, shapes_to_share, v_dtype):
+def init_zca_voltage(seg_voltages):
     # Make voltages global so they don't need to be pickled to share with processes
     global zca_pool_dict
     zca_pool_dict = {}
     zca_pool_dict['share_voltage'] = []
-    zca_pool_dict['voltage_dtype'] = v_dtype
 
-    for seg in range(0, len(seg_voltages_to_share)):
-        zca_pool_dict['share_voltage'].append([seg_voltages_to_share[seg], shapes_to_share[seg]])
+    for seg in range(0, len(seg_voltages)):
+        zca_pool_dict['share_voltage'].append(seg_voltages[seg])
 
     return
 
@@ -160,22 +159,26 @@ def parallel_zca_and_threshold(seg_num, sigma, zca_cushion, n_samples):
     segment in parallel. """
     mkl.set_num_threads(1) # Only 1 thread per process
     # Get shared raw array voltage as numpy view
-    seg_voltage = np.frombuffer(zca_pool_dict['share_voltage'][seg_num][0],
-                    dtype=zca_pool_dict['voltage_dtype']).reshape(zca_pool_dict['share_voltage'][seg_num][1])
+    seg_voltage = np.memmap(zca_pool_dict['share_voltage'][seg_num][0],
+                            dtype=zca_pool_dict['share_voltage'][seg_num][1],
+                            mode='w+',
+                            shape=zca_pool_dict['share_voltage'][seg_num][2])
 
-    # Plug numpy view into required functions
+    # Plug numpy memmap view into required functions
     thresholds = single_thresholds(seg_voltage, sigma)
     zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                     thresholds, sigma, zca_cushion, n_samples)
 
     # @ makes new copy
-    zca_seg_voltage = (zca_matrix @ seg_voltage).astype(zca_pool_dict['voltage_dtype'])
+    zca_seg_voltage = (zca_matrix @ seg_voltage).astype(zca_pool_dict['share_voltage'][seg_num][1])
     # Get thresholds for newly ZCA'ed voltage
     thresholds, seg_over_thresh = single_thresholds_and_samples(zca_seg_voltage, sigma)
 
-    # Copy ZCA'ed segment voltage to the raw array buffer so we can re-use it for sorting
+    # Copy ZCA'ed segment voltage to the memmap array buffer so we can re-use it for sorting
     # Doesn't need to be returned since its written to shared dictionary buffer
-    np.copyto(seg_voltage, zca_seg_voltage)
+    seg_voltage[:] = zca_seg_voltage[:]
+    seg_voltage.flush()
+    del seg_voltage
 
     return thresholds, seg_over_thresh
 
@@ -186,21 +189,11 @@ def threshold_and_zca_voltage_parallel(seg_voltages, sigma, zca_cushion, n_sampl
     n_threads = mkl.get_max_threads() # Incoming number of threads
     n_processes = psutil.cpu_count(logical=True) # Use maximum processors
 
-    # Copy segment voltages to shared multiprocessing array
-    seg_voltages_to_share = []
-    shapes_to_share = []
-    for seg in range(0, len(seg_voltages)):
-        share_voltage = mp.RawArray(np.ctypeslib.as_ctypes_type(seg_voltages[seg].dtype), seg_voltages[seg].size)
-        share_voltage_np = np.frombuffer(share_voltage, dtype=seg_voltages[seg].dtype).reshape(seg_voltages[seg].shape)
-        np.copyto(share_voltage_np, seg_voltages[seg])
-        seg_voltages_to_share.append(share_voltage)
-        shapes_to_share.append(seg_voltages[seg].shape)
-
     # Run in main process so available in main
-    init_zca_voltage(seg_voltages_to_share, shapes_to_share, seg_voltages[0].dtype)
+    init_zca_voltage(seg_voltages)
 
     order_results = []
-    with mp.Pool(processes=n_processes, initializer=init_zca_voltage, initargs=(seg_voltages_to_share, shapes_to_share, seg_voltages[0].dtype)) as pool:
+    with mp.Pool(processes=n_processes, initializer=init_zca_voltage, initargs=(seg_voltages, )) as pool:
         try:
             for seg in range(0, len(seg_voltages)):
                 order_results.append(pool.apply_async(parallel_zca_and_threshold, args=(seg, sigma, zca_cushion, n_samples)))
@@ -675,6 +668,8 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
     processes = []
     proc_item_index = []
     completed_items_index = 0
+    # Attempt some memory management
+    seg_voltage_users = [[] for x in range(0, len(data_dict['seg_v_files']))]
     process_errors_list = []
     print("Starting sorting pool")
     # Put the work items through the sorter
@@ -702,14 +697,25 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
                     if data_dict['exits_dict'][data_dict['completed_items'][ci]] != "Success":
                         process_errors_list.append([work_items[data_dict['completed_items'][ci]]['ID'], data_dict['exits_dict'][data_dict['completed_items'][ci]]])
 
+                # Can first check if next item to deply needs same voltage?
+
         if not settings['test_flag']:
             print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']+1))
             time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
+
+            proc_item_index.append(wi_ind)
+            seg_voltage_users[w_item['seg_number']].append(wi_ind)
+            # Make sure voltage buffer is available for this process
+            if w_item['seg_number'] not in data_dict['segment_voltages'].keys():
+                seg_voltage = np.memmap(data_dict['seg_v_files'][w_item['seg_number']][0],
+                                        dtype=data_dict['seg_v_files'][w_item['seg_number']][1],
+                                        mode='w+',
+                                        shape=data_dict['seg_v_files'][w_item['seg_number']][2])
+                data_dict['segment_voltages'][w_item['seg_number']] =
             proc = mp.Process(target=spike_sort_item_parallel,
                               args=(data_dict, use_cpus, w_item, settings))
-            proc.start()
             processes.append(proc)
-            proc_item_index.append(wi_ind)
+            proc.start()
         else:
             print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']+1))
             spike_sort_item_parallel(data_dict, use_cpus, w_item, settings)
@@ -754,7 +760,8 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
 def init_data_dict(init_dict=None):
     global data_dict
     data_dict = {}
-    data_dict['segment_voltages'] = init_dict['segment_voltages']
+    data_dict['segment_voltages'] = {}
+    data_dict['seg_v_files'] = init_dict['segment_voltages']
     if init_dict is not None:
         for k in init_dict.keys():
             data_dict[k] = init_dict[k]
@@ -868,6 +875,7 @@ def spike_sort_parallel(Probe, **kwargs):
 
     # Build the sorting work items
     seg_voltages = []
+    init_dict['segment_voltages'] = []
     for x in range(0, len(segment_onsets)):
         # Slice over num_channels should keep same shape
         # Build list in segment order
@@ -876,6 +884,7 @@ def spike_sort_parallel(Probe, **kwargs):
                      Probe.v_dtype,
                      (Probe.num_channels, segment_offsets[x]-segment_onsets[x])]
         seg_voltages.append(file_info)
+        init_dict['segment_voltages'].append(file_info)
         v_mmap = np.memmap(file_info[0], dtype=file_info[1], mode='w+', shape=file_info[2])
         v_mmap[:] = Probe.voltage[:, segment_onsets[x]:segment_offsets[x]]
         # Save memmap changes to disk
@@ -890,15 +899,16 @@ def spike_sort_parallel(Probe, **kwargs):
                     seg_voltages, settings['sigma'], zca_cushion, n_samples=1e6)
         for x in seg_over_thresh_list:
             samples_over_thresh.extend(x)
-        init_dict['segment_voltages'] = zca_pool_dict['share_voltage']
     else:
-        init_dict['segment_voltages'] = []
         thresholds_list = []
         seg_over_thresh_list = []
         for x in range(0, len(segment_onsets)):
             # Need to copy or else ZCA transforms will duplicate in overlapping
             # time segments. Copy happens during matrix multiplication
-            seg_voltage = seg_voltages[x]
+            seg_voltage = np.memmap(seg_voltages[x][0],
+                                    dtype=seg_voltages[x][1],
+                                    mode='w+',
+                                    shape=seg_voltages[x][2])
             if settings['do_ZCA_transform']:
                 if settings['verbose']: print("Finding voltage and thresholds for segment", x+1, "of", len(segment_onsets))
                 if settings['verbose']: print("Doing ZCA transform")
@@ -907,14 +917,14 @@ def spike_sort_parallel(Probe, **kwargs):
                                 thresholds, settings['sigma'],
                                 zca_cushion, n_samples=1e6)
                 # @ makes new copy
-                seg_voltage = (zca_matrix @ seg_voltage).astype(Probe.v_dtype)
+                zca_seg_voltage = (zca_matrix @ seg_voltage).astype(seg_voltages[x][1])
+                # copy ZCA voltage to voltage memmap file
+                seg_voltage[:] = zca_seg_voltage[:]
+                seg_voltage.flush()
             thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
             thresholds_list.append(thresholds)
             samples_over_thresh.extend(seg_over_thresh)
-            # Allocate shared voltage buffer. List is appended in SEGMENT ORDER
-            init_dict['segment_voltages'].append([mp.RawArray(np.ctypeslib.as_ctypes_type(Probe.v_dtype), seg_voltage.size), seg_voltage.shape])
-            np_view = np.frombuffer(init_dict['segment_voltages'][x][0], dtype=Probe.v_dtype).reshape(seg_voltage.shape) # Create numpy view
-            np.copyto(np_view, seg_voltage) # Copy segment voltage to voltage buffer
+            del seg_voltage
 
     work_items = []
     chan_neighbors = []

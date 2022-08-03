@@ -161,14 +161,13 @@ def parallel_zca_and_threshold(seg_num, sigma, zca_cushion, n_samples):
     # Get shared raw array voltage as numpy view
     seg_voltage = np.memmap(zca_pool_dict['share_voltage'][seg_num][0],
                             dtype=zca_pool_dict['share_voltage'][seg_num][1],
-                            mode='w+',
+                            mode='r+',
                             shape=zca_pool_dict['share_voltage'][seg_num][2])
 
     # Plug numpy memmap view into required functions
     thresholds = single_thresholds(seg_voltage, sigma)
     zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                     thresholds, sigma, zca_cushion, n_samples)
-
     # @ makes new copy
     zca_seg_voltage = (zca_matrix @ seg_voltage).astype(zca_pool_dict['share_voltage'][seg_num][1])
     # Get thresholds for newly ZCA'ed voltage
@@ -697,21 +696,32 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
                     if data_dict['exits_dict'][data_dict['completed_items'][ci]] != "Success":
                         process_errors_list.append([work_items[data_dict['completed_items'][ci]]['ID'], data_dict['exits_dict'][data_dict['completed_items'][ci]]])
 
-                # Can first check if next item to deply needs same voltage?
+                # Remove completed items from voltage users
+                seg_voltage_users[work_items[data_dict['completed_items'][ci]]['seg_number']].remove(work_items[data_dict['completed_items'][ci]]['ID'])
+
+        # Check if shared voltage array exists for next worker and create if needed
+        seg_voltage_users[w_item['seg_number']].append(wi_ind)
+        # Make sure voltage buffer is available for this process
+        if w_item['seg_number'] not in data_dict['segment_voltages'].keys():
+            # Get memmap segment voltage
+            seg_voltage = np.memmap(data_dict['seg_v_files'][w_item['seg_number']][0],
+                                    dtype=data_dict['seg_v_files'][w_item['seg_number']][1],
+                                    mode='r',
+                                    shape=data_dict['seg_v_files'][w_item['seg_number']][2])
+            # Create shared raw voltage array
+            data_dict['segment_voltages'][w_item['seg_number']] = [
+                    mp.RawArray(np.ctypeslib.as_ctypes_type(data_dict['seg_v_files'][w_item['seg_number']][1]),
+                    seg_voltage.size), seg_voltage.shape]
+            np_view = np.frombuffer(data_dict['segment_voltages'][w_item['seg_number']][0],
+                                    dtype=data_dict['seg_v_files'][w_item['seg_number']][1]).reshape(seg_voltage.shape) # Create numpy view
+            np.copyto(np_view, seg_voltage) # Copy segment voltage to voltage buffer
+            del seg_voltage
 
         if not settings['test_flag']:
             print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']+1))
             time.sleep(.5) # NEED SLEEP SO PROCESSES AREN'T MADE TOO FAST AND FAIL!!!
 
             proc_item_index.append(wi_ind)
-            seg_voltage_users[w_item['seg_number']].append(wi_ind)
-            # Make sure voltage buffer is available for this process
-            if w_item['seg_number'] not in data_dict['segment_voltages'].keys():
-                seg_voltage = np.memmap(data_dict['seg_v_files'][w_item['seg_number']][0],
-                                        dtype=data_dict['seg_v_files'][w_item['seg_number']][1],
-                                        mode='w+',
-                                        shape=data_dict['seg_v_files'][w_item['seg_number']][2])
-                data_dict['segment_voltages'][w_item['seg_number']] =
             proc = mp.Process(target=spike_sort_item_parallel,
                               args=(data_dict, use_cpus, w_item, settings))
             processes.append(proc)
@@ -720,6 +730,14 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
             print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']+1))
             spike_sort_item_parallel(data_dict, use_cpus, w_item, settings)
             print("finished sort one item")
+
+        # Delete voltage arrays not in use to try to save memory
+        for seg_n, seg_u in enumerate(seg_voltage_users):
+            if len(seg_u) == 0:
+                # No users for this segment
+                if seg_n in data_dict['segment_voltages']:
+                    # But seg is still holding voltage mempory
+                    del data_dict['segment_voltages'][seg_n]
 
     if not settings['test_flag']:
         # Wait here a bit to print out items as they complete and to ensure
@@ -745,6 +763,9 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
             if data_dict['exits_dict'][finished_item] != "Success":
                 process_errors_list.append([finished_item, data_dict['exits_dict'][finished_item]])
 
+            # Remove completed items from voltage users
+            seg_voltage_users[work_items[finished_item]['seg_number']].remove(finished_item)
+
     # Make sure all the processes finish up and close even though they should
     # have finished above
     while len(processes) > 0:
@@ -752,6 +773,14 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
         p.join()
         p.close()
         del p
+
+    # Delete voltage arrays not in use to try to save memory
+    for seg_n, seg_u in enumerate(seg_voltage_users):
+        if len(seg_u) == 0:
+            # No users for this segment
+            if seg_n in data_dict['segment_voltages']:
+                # But seg is still holding voltage mempory
+                del data_dict['segment_voltages'][seg_n]
 
     # Return possible errors during processes for display later
     return process_errors_list
@@ -764,6 +793,9 @@ def init_data_dict(init_dict=None):
     data_dict['seg_v_files'] = init_dict['segment_voltages']
     if init_dict is not None:
         for k in init_dict.keys():
+            if k in ['segment_voltages', 'seg_v_files']:
+                # Cannot overwrite these
+                continue
             data_dict[k] = init_dict[k]
     return
 
@@ -907,7 +939,7 @@ def spike_sort_parallel(Probe, **kwargs):
             # time segments. Copy happens during matrix multiplication
             seg_voltage = np.memmap(seg_voltages[x][0],
                                     dtype=seg_voltages[x][1],
-                                    mode='w+',
+                                    mode='r+',
                                     shape=seg_voltages[x][2])
             if settings['do_ZCA_transform']:
                 if settings['verbose']: print("Finding voltage and thresholds for segment", x+1, "of", len(segment_onsets))

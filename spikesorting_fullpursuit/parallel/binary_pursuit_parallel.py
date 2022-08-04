@@ -6,7 +6,6 @@ import time
 from spikesorting_fullpursuit.sort import reorder_labels
 from spikesorting_fullpursuit import neuron_separability
 from spikesorting_fullpursuit.parallel import segment_parallel
-from scipy.signal import fftconvolve
 
 
 
@@ -535,13 +534,12 @@ def binary_pursuit(voltage, v_dtype, sort_info,
                     print("Starting loop", n_loops, "for this chunk")
                     print("Next round has", new_window_indices.shape[0], "windows to check")
 
-
-
                 n_to_enqueue = total_work_size_likelihood #np.amin([total_work_size_likelihood, max_enqueue_likelihood])
                 for enqueue_step in np.arange(np.int64(0), total_work_size_likelihood, n_to_enqueue, dtype=np.int64):
                     # Avoid enqueueing potentially billions of workers to do nothing
                     if enqueue_step + n_to_enqueue > total_work_size_likelihood:
                         n_to_enqueue = likelihood_local_work_size * np.int64(np.ceil((total_work_size_likelihood - enqueue_step) / likelihood_local_work_size))
+                    print("Enqueueing {0} full likelihood kernels with {1} local workers on step {2}".format(n_to_enqueue, likelihood_local_work_size, enqueue_step))
                     temp_ml_event = cl.enqueue_nd_range_kernel(queue,
                                           compute_full_likelihood_kernel,
                                           (n_to_enqueue, ), (likelihood_local_work_size, ),
@@ -550,12 +548,12 @@ def binary_pursuit(voltage, v_dtype, sort_info,
                     queue.finish()
                     next_wait_event = [temp_ml_event]
 
-                # n_to_enqueue = np.amin([total_work_size_max_likelihood, max_enqueue_pursuit])
                 n_to_enqueue = total_work_size_max_likelihood
                 for template_index in range(0, templates.shape[0]):
                     # Run one template at a time to avoid race
                     compute_template_maximum_likelihood_kernel.set_arg(2, np.uint32(template_index)) # Template number
                     for enqueue_step in np.arange(np.int64(0), total_work_size_max_likelihood, n_to_enqueue, dtype=np.int64):
+                        print("Enqueueing {0} full likelihood kernels with {1} local workers on step {2} for template {3}".format(n_to_enqueue, max_likelihood_local_work_size, enqueue_step, template_index))
                         temp_ml_event = cl.enqueue_nd_range_kernel(queue,
                                               compute_template_maximum_likelihood_kernel,
                                               (n_to_enqueue, ), (max_likelihood_local_work_size, ),

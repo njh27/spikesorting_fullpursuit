@@ -553,7 +553,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
                     # Run one template at a time to avoid race
                     compute_template_maximum_likelihood_kernel.set_arg(2, np.uint32(template_index)) # Template number
                     for enqueue_step in np.arange(np.int64(0), total_work_size_max_likelihood, n_to_enqueue, dtype=np.int64):
-                        print("Enqueueing {0} full likelihood kernels with {1} local workers on step {2} for template {3}".format(n_to_enqueue, max_likelihood_local_work_size, enqueue_step, template_index))
+                        print("Enqueueing {0} maximum likelihood kernels with {1} local workers on step {2} for template {3}".format(n_to_enqueue, max_likelihood_local_work_size, enqueue_step, template_index))
                         temp_ml_event = cl.enqueue_nd_range_kernel(queue,
                                               compute_template_maximum_likelihood_kernel,
                                               (n_to_enqueue, ), (max_likelihood_local_work_size, ),

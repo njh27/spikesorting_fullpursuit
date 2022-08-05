@@ -341,7 +341,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
         num_indices_per_chunk = int(np.floor(num_seconds_per_chunk * sampling_rate))
 
         if num_indices_per_chunk < 4 * template_samples_per_chan:
-            raise ValueError("Cannot fit enough data on GPU to run binary pursuit. Decrease channels or get a new GPU.")
+            raise ValueError("Cannot fit enough data on GPU to run binary pursuit. Decrease template samples or get a new GPU.")
 
         # Set up our final outputs
         num_additional_spikes = np.zeros(1, dtype=np.uint32)

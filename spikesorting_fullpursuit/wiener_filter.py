@@ -168,7 +168,10 @@ def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth,
         S_smoothed = S
         N_smoothed = N
 
-    # Cleanup memmaps since using "smoothed" array now
+    filtered_signal = np.fft.irfft(original_ft * wiener_optimal_filter(S_smoothed, N_smoothed))
+    filtered_signal = np.reshape(filtered_signal, voltage_shape, order="C")
+
+    # Cleanup memmaps 
     original_ft._mmap.close()
     del original_ft
     os.remove(o_ft_fname)
@@ -178,9 +181,6 @@ def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth,
     N._mmap.close()
     del N
     os.remove(N_ft_fname)
-
-    filtered_signal = np.fft.irfft(original_ft * wiener_optimal_filter(S_smoothed, N_smoothed))
-    filtered_signal = np.reshape(filtered_signal, voltage_shape, order="C")
 
     return filtered_signal
 

@@ -49,11 +49,12 @@ def spike_sorting_settings_parallel(**kwargs):
         'verbose': False, # Set to true for more things to be printed while the sorter runs
         'test_flag': False, # Indicates a test run of parallel code that does NOT spawn multiple processes
         'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
-        'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running
         'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
         'wiener_filter': True, # Use wiener filter on data before binary pursuit. MUST use sort_peak_clips_only!
         'wiener_filter_smoothing': 150, # Hz or None for no smoothing
-        'same_wiener': True # If true, compute Wiener filter over all channels at once, using the same filter for every channel
+        'same_wiener': True, # If true, compute Wiener filter over all channels at once, using the same filter for every channel
+        'use_memmap': True, # Will keep clips and voltages stored in memmap files (voltage is preloaded as needed into ram for faster processing)
+        'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running
         }
 
     for k in kwargs.keys():
@@ -179,6 +180,7 @@ def parallel_zca_and_threshold(seg_num, sigma, zca_cushion, n_samples):
     # Doesn't need to be returned since its written to shared dictionary buffer
     seg_voltage[:] = zca_seg_voltage[:]
     seg_voltage.flush()
+    seg_voltage._mmap.close()
     del seg_voltage
 
     return thresholds, seg_over_thresh
@@ -509,6 +511,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                                 item_dict, voltage[chan, :], neuron_labels, crossings,
                                 clip_width=settings['clip_width'])
 
+                # Getting new clips so remove old reference
+                clips._mmap.close()
+                del clips
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                                 item_dict, voltage[neighbors, :],
                                                 crossings, clip_width=settings['clip_width'],
@@ -533,6 +538,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             if any_merged:
                 # Resort based on new clip alignment
                 if settings['verbose']: print("Re-sorting after check spike alignment")
+                # Getting new clips so remove old reference
+                clips._mmap.close()
+                del clips
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                                 item_dict, voltage[neighbors, :],
                                                 crossings, clip_width=settings['clip_width'],
@@ -556,6 +564,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings, neuron_labels, _ = segment_parallel.align_events_with_template(
                         item_dict, voltage[chan, :], neuron_labels, crossings,
                         clip_width=settings['clip_width'])
+        # Getting new clips so remove old reference
+        clips._mmap.close()
+        del clips
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                         item_dict, voltage[neighbors, :],
                                         crossings, clip_width=settings['clip_width'],
@@ -640,6 +651,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
         # Map labels starting at zero and put labels in order
         sort.reorder_labels(neuron_labels)
+        # Done with clips so remove old reference
+        clips._mmap.close()
+        del clips
         if settings['verbose']: print("Successfully completed item ", str(work_item['ID']), flush=True)
         exit_type = "Success"
         if settings['verbose']:
@@ -731,6 +745,8 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
             np_view = np.frombuffer(data_dict['segment_voltages'][w_item['seg_number']][0],
                                     dtype=data_dict['seg_v_files'][w_item['seg_number']][1]).reshape(seg_voltage.shape) # Create numpy view
             np.copyto(np_view, seg_voltage) # Copy segment voltage to voltage buffer
+            seg_voltage.flush()
+            seg_voltage._mmap.close()
             del seg_voltage
 
         if not settings['test_flag']:
@@ -937,6 +953,7 @@ def spike_sort_parallel(Probe, **kwargs):
         v_mmap[:] = Probe.voltage[:, segment_onsets[x]:segment_offsets[x]]
         # Save memmap changes to disk
         v_mmap.flush()
+        v_mmap._mmap.close()
         del v_mmap
 
     samples_over_thresh = []
@@ -972,6 +989,7 @@ def spike_sort_parallel(Probe, **kwargs):
             thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
             thresholds_list.append(thresholds)
             samples_over_thresh.extend(seg_over_thresh)
+            seg_voltage._mmap.close()
             del seg_voltage
 
     work_items = []
@@ -1066,6 +1084,8 @@ def spike_sort_parallel(Probe, **kwargs):
                                     mode='r',
                                     shape=data_dict['seg_v_files'][seg_number][2])
             thresholds = single_thresholds(seg_voltage, settings['sigma'])
+            seg_voltage._mmap.close()
+            del seg_voltage
             for wi in work_items:
                 if wi['seg_number'] == seg_number:
                     wi['thresholds'] = thresholds

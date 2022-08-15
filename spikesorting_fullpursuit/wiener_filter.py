@@ -89,10 +89,13 @@ def wiener(original_voltage, signal_voltage, noise_voltage, smooth,
     filtered_signal = np.fft.irfft(original_ft * wiener_optimal_filter(S, N), axis=1)
 
     # Cleanup memmaps
+    original_ft._mmap.close()
     del original_ft
     os.remove(o_ft_fname)
+    S._mmap.close()
     del S
     os.remove(S_ft_fname)
+    N._mmap.close()
     del N
     os.remove(N_ft_fname)
 
@@ -168,10 +171,13 @@ def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth,
     filtered_signal = np.reshape(filtered_signal, voltage_shape, order="C")
 
     # Cleanup memmaps
+    original_ft._mmap.close()
     del original_ft
     os.remove(o_ft_fname)
+    S._mmap.close()
     del S
     os.remove(S_ft_fname)
+    N._mmap.close()
     del N
     os.remove(N_ft_fname)
 
@@ -304,8 +310,10 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
     np.copyto(voltage, filtered_voltage)
 
     # Delete memmap references and files made for Wiener filter
+    volt_noise._mmap.close()
     del volt_noise
     os.remove(v_noise_fname)
+    volt_signal._mmap.close()
     del volt_signal
     os.remove(v_signal_fname)
 

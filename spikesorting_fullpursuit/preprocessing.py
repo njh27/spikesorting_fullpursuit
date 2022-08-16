@@ -215,31 +215,41 @@ def optimal_reconstruction_pca_order(spikes, check_components=None,
 
 
 def compute_pca(clips, check_components, max_components, add_peak_valley=False,
-                curr_chan_inds=None):
+                curr_chan_inds=None, n_samples=1e6):
     if add_peak_valley and curr_chan_inds is None:
         raise ValueError("Must supply indices for the main channel if using peak valley")
-    # use_components1, _ = optimal_reconstruction_pca_order(clips, check_components, max_components)
-    # PCA order functions use double precision and are compiled that way, so cast
-    # here and convert back afterward instead of carrying two copies. Scores
-    # will then be output as doubles.
-    clip_dtype = clips.dtype
-    clips = clips.astype(np.float64)
-    if clips.flags['C_CONTIGUOUS']:
-        use_components, _ = sort_cython.optimal_reconstruction_pca_order(clips, check_components, max_components)
+    # Get a sample of the current clips for PCA reconstruction so that memory
+    # usage does not explode. Copy from memmap clips to memory
+    # PCA order functions use double precision and are compiled that way
+    mem_order = "F" if clips.flags['F_CONTIGUOUS'] else "C"
+    print("CLIP TYPE 225", type(clips))
+    if n_samples > clips.shape[0]:
+        sample_clips = np.empty(clips.shape, dtype=np.float64, order=mem_order)
+        np.copyto(sample_clips, clips)
     else:
-        use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(clips, check_components, max_components)
-    # print("Automatic component detection chose", use_components, "PCA components.", flush=True)
-    scores = pca_scores(clips, use_components, pcs_as_index=True)
+        sample_clips = np.empty((int(n_samples), clips.shape[1]), dtype=np.float64, order=mem_order)
+        sel_inds = np.random.choice(clips.shape[0], int(n_samples), replace=True)
+        np.copyto(sample_clips, clips[sel_inds, :])
+    print("CLIP TYPE 233", type(clips))
+    if mem_order == "C":
+        use_components, _ = sort_cython.optimal_reconstruction_pca_order(sample_clips, check_components, max_components)
+    else:
+        use_components, _ = sort_cython.optimal_reconstruction_pca_order_F(sample_clips, check_components, max_components)
+    # Return the PC matrix computed over sampled data
+    scores, V = pca_scores(sample_clips, use_components, pcs_as_index=True, return_V=True)
+    print("CLIP TYPE 240", type(clips))
     if scores is None:
         # Usually means all clips were the same or there was <= 1, so PCs can't
         # be computed. Just return everything as the same score
         return np.zeros((clips.shape[0], 1))
+    else:
+        # Convert ALL clips to scores
+        scores = np.matmul(clips, V)
     if add_peak_valley:
         peak_valley = (np.amax(clips[:, curr_chan_inds], axis=1) - np.amin(clips[:, curr_chan_inds], axis=1)).reshape(clips.shape[0], -1)
         peak_valley /= np.amax(np.abs(peak_valley)) # Normalized from -1 to 1
         peak_valley *= np.amax(np.amax(np.abs(scores))) # Normalized to same range as PC scores
         scores = np.hstack((scores, peak_valley))
-    clips = clips.astype(clip_dtype)
 
     return scores
 

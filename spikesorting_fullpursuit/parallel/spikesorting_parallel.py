@@ -166,13 +166,14 @@ def parallel_zca_and_threshold(seg_num, sigma, zca_cushion, n_samples):
                             dtype=zca_pool_dict['share_voltage'][seg_num][1],
                             mode='r+',
                             shape=zca_pool_dict['share_voltage'][seg_num][2])
-
+    # Copy to memory cause ZCA selction/indexing is crazy
+    mem_seg_voltage = segment_parallel.mmap_to_mem(seg_voltage)
     # Plug numpy memmap view into required functions
-    thresholds = single_thresholds(seg_voltage, sigma)
-    zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
+    thresholds = single_thresholds(mem_seg_voltage, sigma)
+    zca_matrix = preprocessing.get_noise_sampled_zca_matrix(mem_seg_voltage,
                     thresholds, sigma, zca_cushion, n_samples)
     # @ makes new copy
-    zca_seg_voltage = (zca_matrix @ seg_voltage).astype(zca_pool_dict['share_voltage'][seg_num][1])
+    zca_seg_voltage = (zca_matrix @ mem_seg_voltage).astype(zca_pool_dict['share_voltage'][seg_num][1])
     # Get thresholds for newly ZCA'ed voltage
     thresholds, seg_over_thresh = single_thresholds_and_samples(zca_seg_voltage, sigma)
 
@@ -245,7 +246,8 @@ def print_process_info(title):
 
 """
     Wavelet alignment can bounce back and forth based on noise blips if
-    the spike waveform is nearly symmetric in peak/valley. """
+    the spike waveform is nearly symmetric in peak/valley. This is all done
+    in memmory without memmaping because selection and copies is complex. """
 def check_spike_alignment(clips, event_indices, neuron_labels, curr_chan_inds,
                          settings):
     templates, labels = segment_parallel.calculate_templates(clips[:, curr_chan_inds[0]:curr_chan_inds[1]+1], neuron_labels)
@@ -436,9 +438,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         voltage = np.frombuffer(seg_volts_buffer, dtype=item_dict['v_dtype']).reshape(seg_volts_shape)
         neighbors = work_item['neighbors']
 
-        if settings['verbose']:
-            print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']+1))
-            print_mem_usage(1)
+        # if settings['verbose']:
+        #     print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']+1))
+        #     print_mem_usage(1)
 
         skip = np.amax(np.abs(settings['clip_width'])) / 2
         align_window = [skip, skip]
@@ -465,7 +467,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings = segment_parallel.wavelet_align_events(
                             item_dict, voltage[chan, :], crossings,
                             settings['clip_width'],
-                            settings['filter_band'])
+                            settings['filter_band'],
+                            use_memmap=settings['use_memmap'])
 
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict,
                         voltage[neighbors, :], crossings,
@@ -519,10 +522,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 crossings, neuron_labels, _ = segment_parallel.align_templates(
                                 item_dict, voltage[chan, :], neuron_labels, crossings,
                                 clip_width=settings['clip_width'])
-                if settings['use_memmap']:
-                    # Getting new clips so remove old reference
-                    clips._mmap.close()
-                    del clips
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                                 item_dict, voltage[neighbors, :],
                                                 crossings, clip_width=settings['clip_width'],
@@ -547,10 +546,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             if any_merged:
                 # Resort based on new clip alignment
                 if settings['verbose']: print("Re-sorting after check spike alignment")
-                if settings['use_memmap']:
-                    # Getting new clips so remove old reference
-                    clips._mmap.close()
-                    del clips
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                                 item_dict, voltage[neighbors, :],
                                                 crossings, clip_width=settings['clip_width'],
@@ -574,10 +569,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings, neuron_labels, _ = segment_parallel.align_events_with_template(
                         item_dict, voltage[chan, :], neuron_labels, crossings,
                         clip_width=settings['clip_width'])
-        if settings['use_memmap']:
-            # Getting new clips so remove old reference
-            clips._mmap.close()
-            del clips
+
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                         item_dict, voltage[neighbors, :],
                                         crossings, clip_width=settings['clip_width'],
@@ -600,7 +592,7 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
 
         # Single channel branch
         if curr_num_clusters.size > 1 and settings['do_branch_PCA']:
-            neuron_labels = branch_pca_2_0(neuron_labels, clips[:, curr_chan_inds],
+            neuron_labels = branch_pca_2_0(neuron_labels, clips[:, curr_chan_inds[0]:curr_chan_inds[-1]+1],
                                 np.arange(0, curr_chan_inds.size),
                                 p_value_cut_thresh=settings['p_value_cut_thresh'],
                                 add_peak_valley=settings['add_peak_valley'],
@@ -610,14 +602,19 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                                 method='pca')
             curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
             if settings['verbose']: print("After SINGLE BRANCH", curr_num_clusters.size, "different clusters", flush=True)
-
         if settings['do_branch_PCA']:
             # Remove deviant clips before doing branch PCA to avoid getting clusters
             # of overlaps or garbage, this time on full neighborhood
             keep_clips = preprocessing.cleanup_clusters(clips, neuron_labels)
             crossings, neuron_labels = segment_parallel.keep_valid_inds(
                     [crossings, neuron_labels], keep_clips)
-            clips = clips[keep_clips, :]
+            if settings['use_memmap']:
+                # Need to recompute clips here because we can't get a memmap view
+                clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict,
+                                voltage[neighbors, :], crossings,
+                                clip_width=settings['clip_width'], use_memmap=settings['use_memmap'])
+            else:
+                clips = clips[keep_clips, :]
 
         # Multi channel branch
         if data_dict['num_channels'] > 1 and settings['do_branch_PCA']:
@@ -630,7 +627,6 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                                 method='pca')
             curr_num_clusters, n_per_cluster = np.unique(neuron_labels, return_counts=True)
             if settings['verbose']: print("After MULTI BRANCH", curr_num_clusters.size, "different clusters", flush=True)
-
         # Multi channel branch by channel
         if data_dict['num_channels'] > 1 and settings['do_branch_PCA_by_chan'] and settings['do_branch_PCA']:
             neuron_labels = branch_pca_2_0(neuron_labels, clips, curr_chan_inds,
@@ -651,8 +647,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                     keep_inds = ~(neuron_labels == curr_num_clusters[l_ind])
                     crossings = crossings[keep_inds]
                     neuron_labels = neuron_labels[keep_inds]
-                    clips = clips[keep_inds, :]
-                    print("Deleted cluster", curr_num_clusters[l_ind], "with", n_per_cluster[l_ind], "spikes", flush=True)
+                    # We don't use clips after this point so only update crossings and labels
+                    if settings['verbose']: print("Deleted cluster", curr_num_clusters[l_ind], "with", n_per_cluster[l_ind], "spikes", flush=True)
 
         if neuron_labels.size == 0:
             exit_type = "No clusters over min_firing_rate."
@@ -668,21 +664,16 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if settings['verbose']: print("currently", np.unique(neuron_labels).size, "different clusters", flush=True)
         # Map labels starting at zero and put labels in order
         sort.reorder_labels(neuron_labels)
-        if settings['use_memmap']:
-            # Done with clips so remove old reference
-            clips._mmap.close()
-            del clips
         if settings['verbose']: print("Successfully completed item ", str(work_item['ID']), flush=True)
         exit_type = "Success"
-        if settings['verbose']:
-            print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']+1))
-            print_mem_usage("END")
+        # if settings['verbose']:
+        #     print_process_info("spike_sort_item_parallel item {0}, channel {1}, segment {2}.".format(work_item['ID'], work_item['channel'], work_item['seg_number']+1))
+        #     print_mem_usage("END")
     except NoSpikesError:
         if settings['verbose']: print("No spikes to sort.")
         if settings['verbose']: print("Successfully completed item ", str(work_item['ID']), flush=True)
         exit_type = "Success"
     except Exception as err:
-        delete_clip_memmap()
         exit_type = err
         print_tb(err.__traceback__)
         if settings['test_flag']:
@@ -898,12 +889,6 @@ def spike_sort_parallel(Probe, **kwargs):
             rmtree(settings['log_dir'])
             time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
         os.makedirs(settings['log_dir'])
-    # if settings['tmp_clips_dir'] is None:
-    #     settings['tmp_clips_dir'] = os.getcwd() + '/tmp_clips'
-    # # Clear out room for temp clips in current directory
-    # if os.path.exists(settings['tmp_clips_dir']):
-    #     rmtree(settings['tmp_clips_dir'])
-    # os.mkdir(settings['tmp_clips_dir'])
 
     # Convert segment duration and overlaps to indices from their values input
     # in seconds and adjust as needed

@@ -14,7 +14,7 @@ class MemMapClose(np.memmap):
                                 offset=offset, shape=shape, order=order)
 
     def __del__(self):
-        if self._mmap is self.base:
+        if (self._mmap is self.base) and (self._mmap is not None):
             try:
                 # First run tell() to see whether file is open
                 self._mmap.tell()

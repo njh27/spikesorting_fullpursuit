@@ -3,6 +3,7 @@ from scipy import signal
 import copy
 from os import path
 from spikesorting_fullpursuit import sort
+from spikesorting_fullpursuit.utils.memmap_close import MemMapClose
 
 
 
@@ -96,6 +97,18 @@ def time_window_to_samples(time_window, sampling_rate):
     sample_window[1] = max(int(round(new_time_window[1] * sampling_rate)), 1) + 1 # Add one so that last element is included
 
     return sample_window, new_time_window
+
+
+def memmap_to_mem(memmap):
+    """ Helpful function that takes a numpy memmap as input and copies it to a
+    numpy array in memory as output. """
+    if not isinstance(memmap, np.memmap):
+        raise ValueError("Input object is not instance of numpy.memmap")
+    use_order = "F" if memmap.flags['F_CONTIGUOUS'] else "C"
+    mem = np.empty(memmap.shape, dtype=memmap.dtype, order=use_order)
+    np.copyto(mem, memmap)
+
+    return mem
 
 
 def get_windows_and_indices(clip_width, sampling_rate, channel, neighbors):
@@ -220,7 +233,8 @@ def align_templates(probe_dict, chan_voltage, neuron_labels, event_indices, clip
     return event_indices, neuron_labels, valid_inds
 
 
-def wavelet_align_events(probe_dict, chan_voltage, event_indices,clip_width, band_width):
+def wavelet_align_events(probe_dict, chan_voltage, event_indices,clip_width,
+                            band_width, use_memmap=False):
     """ Takes the input data for ONE channel and computes the cross correlation
         of each spike with each template on the channel USING SINGLE CHANNEL CLIPS
         ONLY.  The spike time is then aligned with the peak cross correlation lag.
@@ -228,7 +242,8 @@ def wavelet_align_events(probe_dict, chan_voltage, event_indices,clip_width, ban
         used to input into final sorting, as in cluster sharpening. """
 
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
-    clips, valid_inds = get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width=clip_width)
+    clips, valid_inds = get_singlechannel_clips(probe_dict, chan_voltage,
+                            event_indices, clip_width=clip_width, use_memmap=use_memmap)
     event_indices = event_indices[valid_inds]
     overlaps = np.zeros(event_indices.size, dtype="bool")
     # Create a mexican hat central template, centered on the current clip width
@@ -398,18 +413,15 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width,
 
     if use_memmap:
         clip_fname = path.join(probe_dict['memmap_dir'], "clips_{0}.bin".format(str(probe_dict['ID'])))
-        spike_clips = np.memmap(clip_fname, dtype=probe_dict['v_dtype'], mode='w+', shape=(np.count_nonzero(valid_event_indices), window[1] - window[0]))
+        spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='w+', shape=(np.count_nonzero(valid_event_indices), window[1] - window[0]))
     else:
         spike_clips = np.empty((np.count_nonzero(valid_event_indices), window[1] - window[0]), dtype=probe_dict['v_dtype'])
     for out_ind, spk in enumerate(range(start_ind, stop_ind+1)): # Add 1 to index through last valid index
         spike_clips[out_ind, :] = chan_voltage[event_indices[spk]+window[0]:event_indices[spk]+window[1]]
 
     if use_memmap:
-        spike_clips.flush()
-        spike_clips._mmap.close()
-        del spike_clips
         # Make output read only
-        spike_clips = np.memmap(clip_fname, dtype=probe_dict['v_dtype'], mode='r', shape=(np.count_nonzero(valid_event_indices), window[1] - window[0]))
+        spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='r', shape=(np.count_nonzero(valid_event_indices), window[1] - window[0]))
 
     return spike_clips, valid_event_indices
 
@@ -454,7 +466,7 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
 
     if use_memmap:
         clip_fname = path.join(probe_dict['memmap_dir'], "clips_{0}.bin".format(str(probe_dict['ID'])))
-        spike_clips = np.memmap(clip_fname, dtype=probe_dict['v_dtype'], mode='w+', shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]))
+        spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='w+', shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]))
     else:
         spike_clips = np.empty((np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]), dtype=probe_dict['v_dtype'])
 
@@ -469,10 +481,7 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
             start = stop
 
     if use_memmap:
-        spike_clips.flush()
-        spike_clips._mmap.close()
-        del spike_clips
         # Make output read only
-        spike_clips = np.memmap(clip_fname, dtype=probe_dict['v_dtype'], mode='r', shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]))
+        spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='r', shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]))
 
     return spike_clips, valid_event_indices

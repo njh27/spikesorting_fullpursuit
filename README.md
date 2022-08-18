@@ -37,14 +37,27 @@ Memory usage is very high especially for large files and floating point values.
 The opencl GPU code generally only handles up to float32 and so it makes the
 most sense to input numpy voltage arrays as datatype "np.float32". Operations
 such as filtering and especially Wiener filter increase this memory use and
-again mitigates toward float32 being used and so memory mapping has been
-implemented for the storage of the voltage arrays. The arrays of spike clips
-can become similarly large and should likely be memory mapped unless large
-amounts of memory are available (probably at least on the order of 200 GB ram).
+again mitigates toward float32 being used. The arrays of spike clips are often
+copied and can become similarly large. Total processing for 16 channel recording
+running ~14 processes with tens of thousands of spikes can easily consume on
+the order of 200 GB of RAM.
 
-Assumes you can hold at least more than the array of all multichannel clips for
-one segment and/or the number of segments by number of simultaneously running
-clustering processes in the worst case.
+#### UPDATED numpy memmap to reduce memory consumption
+The total memory usage will always depend on the segment duration, number
+of threshold crossings identified in a segment, and the number of simultaneous
+processes that are run. Minimally, with 'use_memmap'=True, all voltage segments
+are held in memory for the processes that are currently clustering them. In the
+worst case, this is [ (num processes) x (bytes in 1 voltage segment) ]. Each
+process holds its own set of clips which can be memory mapped as well. Fitting
+of clips is performed in memory for a subsampling of clips (default 1e5) to
+reduce memory load. These also require copying in memory for PCA compuation.
+All clips are output in memory in PCA space, requiring a [ (num clips) x
+(num principal components selected) ] data matrix in memory for each process.
+Wiener filtering is done 1 segment at a time, but requires creating 5
+additional arrays equal in size to 1 segment of voltage and all the spike clips
+for a single channel discovered in that segment. This step is done
+in memory for improved processing speed because it is unlikely to consume
+more memory than the clustering step across multiple processes.
 
 The most recent version of pyopencl can be installed with conda using:  
 ```
@@ -188,8 +201,11 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 		'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains
 				a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
 		'wiener_filter': True, # Use wiener filter on data before binary pursuit. MUST use sort_peak_clips_only!
-    'wiener_filter_smoothing': 100 # Hz or None for no smoothing. Smooths the signal and noise voltage spectra in the frequency domain so that
-				the filter does not become overly specific to the frequency of discovered templates.
+    'wiener_filter_smoothing': 150 # Hz or None for no smoothing. Smooths the signal and noise voltage spectra in the frequency domain so that the filter does not become overly specific to the frequency of discovered templates. A roughly ideal number will be the max
+		frequency of all events on a channel (combined over all neurons). Probably in the range ~100-200 is good with similar results.
+		'same_wiener': True, # If true, compute Wiener filter over all channels at once, using the same filter for every channel. Otherwise compute separately for each channel
+    'use_memmap': True, # Will keep clips and voltages stored in numpy memmap files (voltage is preloaded as needed into ram for faster processing)
+    'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running
 ```
 
 ### Output

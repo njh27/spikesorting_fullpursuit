@@ -14,6 +14,7 @@ from spikesorting_fullpursuit.parallel import segment_parallel
 from spikesorting_fullpursuit import sort, preprocessing, full_binary_pursuit
 from spikesorting_fullpursuit.wiener_filter import wiener_filter_segment
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
+from spikesorting_fullpursuit.utils.memmap_close import MemMapClose
 
 
 
@@ -50,7 +51,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'test_flag': False, # Indicates a test run of parallel code that does NOT spawn multiple processes
         'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
         'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
-        'wiener_filter': True, # Use wiener filter on data before binary pursuit. MUST use sort_peak_clips_only!
+        'wiener_filter': True, # Use wiener filter on data before binary pursuit.
         'wiener_filter_smoothing': 150, # Hz or None for no smoothing
         'same_wiener': True, # If true, compute Wiener filter over all channels at once, using the same filter for every channel
         'use_memmap': True, # Will keep clips and voltages stored in memmap files (voltage is preloaded as needed into ram for faster processing)
@@ -167,7 +168,7 @@ def parallel_zca_and_threshold(seg_num, sigma, zca_cushion, n_samples):
                             mode='r+',
                             shape=zca_pool_dict['share_voltage'][seg_num][2])
     # Copy to memory cause ZCA selction/indexing is crazy
-    mem_seg_voltage = segment_parallel.mmap_to_mem(seg_voltage)
+    mem_seg_voltage = segment_parallel.memmap_to_mem(seg_voltage)
     # Plug numpy memmap view into required functions
     thresholds = single_thresholds(mem_seg_voltage, sigma)
     zca_matrix = preprocessing.get_noise_sampled_zca_matrix(mem_seg_voltage,
@@ -949,18 +950,19 @@ def spike_sort_parallel(Probe, **kwargs):
         for x in range(0, len(segment_onsets)):
             # Slice over num_channels should keep same shape
             # Build list in segment order
-            # Create list of filename, dtype, shape, for the memmaped voltages
-            file_info = [os.path.join(settings['memmap_dir'], "volt_seg{0}.bin".format(str(x))),
-                         Probe.v_dtype,
-                         (Probe.num_channels, segment_offsets[x]-segment_onsets[x])]
-            seg_voltages.append(file_info)
-            init_dict['segment_voltages'].append(file_info)
-            v_mmap = np.memmap(file_info[0], dtype=file_info[1], mode='w+', shape=file_info[2])
-            v_mmap[:] = Probe.voltage[:, segment_onsets[x]:segment_offsets[x]]
-            # Save memmap changes to disk
-            v_mmap.flush()
-            v_mmap._mmap.close()
-            del v_mmap
+            if settings['use_memmap']:
+                # Create list of filename, dtype, shape, for the memmaped voltages
+                file_info = [os.path.join(settings['memmap_dir'], "volt_seg{0}.bin".format(str(x))),
+                             Probe.v_dtype,
+                             (Probe.num_channels, segment_offsets[x]-segment_onsets[x])]
+                seg_voltages.append(file_info)
+                init_dict['segment_voltages'].append(file_info)
+                v_mmap = MemMapClose(file_info[0], dtype=file_info[1], mode='w+', shape=file_info[2])
+                np.copyto(v_mmap, Probe.voltage[:, segment_onsets[x]:segment_offsets[x]])
+                # Save memmap changes to disk
+                v_mmap.flush()
+            else:
+                seg_voltages.append(Probe.voltage[:, segment_onsets[x]:segment_offsets[x]])
 
         samples_over_thresh = []
         if not settings['test_flag'] and settings['do_ZCA_transform']:
@@ -1083,7 +1085,8 @@ def spike_sort_parallel(Probe, **kwargs):
                 if settings['verbose']: print("Start Winer filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
                 # This will overwrite the segment voltage data!
                 wiener_filter_segment(work_items, data_dict, seg_number,
-                                      sort_info, Probe.v_dtype)
+                                      sort_info, Probe.v_dtype,
+                                      use_memmap=settings['use_memmap'])
                 # Need to recompute the thresholds for the Wiener filtered data
                 seg_voltage = np.memmap(data_dict['seg_v_files'][seg_number][0],
                                         dtype=data_dict['seg_v_files'][seg_number][1],
@@ -1123,13 +1126,14 @@ def spike_sort_parallel(Probe, **kwargs):
             print("Item number", pe[0], "had the following error:")
             print("            ", pe[1])
     except:
-        pass
+        raise
     finally:
-        # Delete voltage memmap files
-        for x in range(0, len(seg_voltages)):
-            os.remove(seg_voltages[x][0])
-        print("NEED TO DELETE SPIKE CLIP FILES AT LINE 1134!!!!!!!")
-        print("AND CHANGE THEIR FILENAMES SO CLUSTER WON'T OVERWRITE!!!!")
+        if settings['use_memmap']:
+            # Delete voltage memmap files
+            for x in range(0, len(seg_voltages)):
+                os.remove(seg_voltages[x][0])
+            print("NEED TO DELETE SPIKE CLIP FILES AT LINE 1134!!!!!!!")
+            print("AND CHANGE THEIR FILENAMES SO CLUSTER WON'T OVERWRITE!!!!")
 
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info

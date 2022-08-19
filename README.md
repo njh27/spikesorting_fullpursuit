@@ -206,6 +206,7 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 		'same_wiener': True, # If true, compute Wiener filter over all channels at once, using the same filter for every channel. Otherwise compute separately for each channel
     'use_memmap': True, # Will keep clips and voltages stored in numpy memmap files (voltage is preloaded as needed into ram for faster processing)
     'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running
+		'memmap_fID': None # Optional identifier for naming memmap files for this specific file sort. Useful to prevent multiple simultaneous sorts from repeating file names and overwritting each other's data or causing an error
 ```
 
 ### Output

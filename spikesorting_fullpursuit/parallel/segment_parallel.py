@@ -415,7 +415,7 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width,
         n = event_indices[stop_ind]
 
     if use_memmap:
-        clip_fname = path.join(probe_dict['memmap_dir'], "clips_{0}.bin".format(str(probe_dict['ID'])))
+        clip_fname = path.join(probe_dict['memmap_dir'], "{0}clips_{1}.bin".format(probe_dict['memmap_fID'], str(probe_dict['ID'])))
         spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='w+', shape=(np.count_nonzero(valid_event_indices), window[1] - window[0]))
     else:
         spike_clips = np.empty((np.count_nonzero(valid_event_indices), window[1] - window[0]), dtype=probe_dict['v_dtype'])
@@ -468,7 +468,7 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
         n = event_indices[stop_ind]
 
     if use_memmap:
-        clip_fname = path.join(probe_dict['memmap_dir'], "clips_{0}.bin".format(str(probe_dict['ID'])))
+        clip_fname = path.join(probe_dict['memmap_dir'], "{0}clips_{1}.bin".format(probe_dict['memmap_fID'], str(probe_dict['ID'])))
         spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='w+', shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]))
     else:
         spike_clips = np.empty((np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]), dtype=probe_dict['v_dtype'])

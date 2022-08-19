@@ -56,6 +56,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'same_wiener': True, # If true, compute Wiener filter over all channels at once, using the same filter for every channel
         'use_memmap': True, # Will keep clips and voltages stored in memmap files (voltage is preloaded as needed into ram for faster processing)
         'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running
+        'memmap_fID': None, # Optional identifier for naming memmap files for this specific file sort. Useful to prevent multiple simultaneous sorts from repeating file names and overwritting each other's data or causing an error
         }
 
     for k in kwargs.keys():
@@ -102,6 +103,14 @@ def spike_sorting_settings_parallel(**kwargs):
         if key == 'memmap_dir':
             if settings['memmap_dir'] is None:
                 settings['memmap_dir'] = os.getcwd()
+        if key == 'memmap_fID':
+            if settings['memmap_fID'] is None:
+                settings['memmap_fID'] = ""
+            if not isinstance(settings['memmap_fID'], str):
+                settings['memmap_fID'] = str(settings['memmap_fID'])
+            if len(settings['memmap_fID']) > 0:
+                settings['memmap_fID'] = settings['memmap_fID'] + "_"
+
     return settings
 
 
@@ -456,10 +465,14 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             data_dict['cpu_queue'].put(cpu)
         return
     def delete_clip_memmap():
-        clip_fname = os.path.join(settings['memmap_dir'], "clips_{0}.bin".format(str(work_item['ID'])))
-        if os.path.exists(clip_fname):
-            os.remove(clip_fname)
-        return
+        try:
+            clip_fname = os.path.join(settings['memmap_dir'], "{0}clips_{1}.bin".format(settings['memmap_fID'], str(work_item['ID'])))
+            if os.path.exists(clip_fname):
+                os.remove(clip_fname)
+        except:
+            pass
+        finally:
+            return
     try:
         # Print this process' errors and output to a file
         if not settings['test_flag'] and settings['log_dir'] is not None:
@@ -489,7 +502,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                      'thresholds': work_item['thresholds'],
                      'v_dtype': data_dict['v_dtype'],
                      'ID': work_item['ID'],
-                     'memmap_dir': settings['memmap_dir']}
+                     'memmap_dir': settings['memmap_dir'],
+                     'memmap_fID': settings['memmap_fID']}
         chan = work_item['channel']
 
         seg_volts_buffer = data_dict['segment_voltages'][work_item['seg_number']][0]
@@ -1027,7 +1041,7 @@ def spike_sort_parallel(Probe, **kwargs):
             # Build list in segment order
             if settings['use_memmap']:
                 # Create list of filename, dtype, shape, for the memmaped voltages
-                file_info = [os.path.join(settings['memmap_dir'], "volt_seg{0}.bin".format(str(x))),
+                file_info = [os.path.join(settings['memmap_dir'], "{0}volt_seg{1}.bin".format(settings['memmap_fID'], str(x))),
                              Probe.v_dtype,
                              (Probe.num_channels, segment_offsets[x]-segment_onsets[x])]
                 seg_voltages.append(file_info)
@@ -1218,11 +1232,9 @@ def spike_sort_parallel(Probe, **kwargs):
         raise
     finally:
         if settings['use_memmap']:
-            # Delete voltage memmap files
+            # Delete voltage memmap files. Clips should be delete during cluster
             for x in range(0, len(seg_voltages)):
                 os.remove(seg_voltages[x][0])
-            print("NEED TO DELETE SPIKE CLIP FILES AT LINE 1134!!!!!!!")
-            print("AND CHANGE THEIR FILENAMES SO CLUSTER WON'T OVERWRITE!!!!")
 
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info

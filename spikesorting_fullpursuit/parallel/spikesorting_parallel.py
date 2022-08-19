@@ -229,6 +229,10 @@ def parallel_zca_and_threshold_mmap(seg_num, sigma, zca_cushion, n_samples):
     # Copy ZCA'ed segment voltage to the memmap array buffer so we can re-use it for sorting
     # Doesn't need to be returned since its written to shared dictionary buffer
     np.copyto(seg_voltage_mmap, zca_seg_voltage)
+    if isinstance(seg_voltage_mmmap, np.memmap):
+        seg_voltage_mmmap.flush()
+        seg_voltage_mmmap._mmap.close()
+        del seg_voltage_mmmap
 
     return thresholds, seg_over_thresh
 
@@ -552,6 +556,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             crossings = crossings[keep_clips]
             if settings['use_memmap']:
                 # Need to recompute clips here because we can't get a memmap view
+                if isinstance(clips, np.memmap):
+                    clips._mmap.close()
+                    del clips
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict,
                                 voltage[neighbors, :], crossings,
                                 clip_width=settings['clip_width'], use_memmap=settings['use_memmap'])
@@ -595,6 +602,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 crossings, neuron_labels, _ = segment_parallel.align_templates(
                                 item_dict, voltage[chan, :], neuron_labels, crossings,
                                 clip_width=settings['clip_width'])
+                if isinstance(clips, np.memmap):
+                    clips._mmap.close()
+                    del clips
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                                 item_dict, voltage[neighbors, :],
                                                 crossings, clip_width=settings['clip_width'],
@@ -619,6 +629,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             if any_merged:
                 # Resort based on new clip alignment
                 if settings['verbose']: print("Re-sorting after check spike alignment")
+                if isinstance(clips, np.memmap):
+                    clips._mmap.close()
+                    del clips
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                                 item_dict, voltage[neighbors, :],
                                                 crossings, clip_width=settings['clip_width'],
@@ -642,7 +655,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         crossings, neuron_labels, _ = segment_parallel.align_events_with_template(
                         item_dict, voltage[chan, :], neuron_labels, crossings,
                         clip_width=settings['clip_width'])
-
+        if isinstance(clips, np.memmap):
+            clips._mmap.close()
+            del clips
         clips, valid_event_indices = segment_parallel.get_multichannel_clips(
                                         item_dict, voltage[neighbors, :],
                                         crossings, clip_width=settings['clip_width'],
@@ -657,6 +672,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 [crossings, neuron_labels], keep_clips)
         if settings['use_memmap']:
             # Need to recompute clips here because we can't get a memmap view
+            if isinstance(clips, np.memmap):
+                clips._mmap.close()
+                del clips
             clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict,
                             voltage[neighbors, :], crossings,
                             clip_width=settings['clip_width'], use_memmap=settings['use_memmap'])
@@ -683,6 +701,9 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                     [crossings, neuron_labels], keep_clips)
             if settings['use_memmap']:
                 # Need to recompute clips here because we can't get a memmap view
+                if isinstance(clips, np.memmap):
+                    clips._mmap.close()
+                    del clips
                 clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict,
                                 voltage[neighbors, :], crossings,
                                 clip_width=settings['clip_width'], use_memmap=settings['use_memmap'])
@@ -832,7 +853,9 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
                 np_view = np.frombuffer(data_dict['segment_voltages'][w_item['seg_number']][0],
                                         dtype=data_dict['seg_v_files'][w_item['seg_number']][1]).reshape(seg_voltage_mmap.shape) # Create numpy view
                 np.copyto(np_view, seg_voltage_mmap) # Copy segment voltage to voltage buffer
-                del seg_voltage_mmap
+                if isinstance(seg_voltage_mmmap, np.memmap):
+                    seg_voltage_mmmap._mmap.close()
+                    del seg_voltage_mmmap
 
         if not settings['test_flag']:
             print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']+1))
@@ -1049,7 +1072,10 @@ def spike_sort_parallel(Probe, **kwargs):
                 v_mmap = MemMapClose(file_info[0], dtype=file_info[1], mode='w+', shape=file_info[2])
                 np.copyto(v_mmap, Probe.voltage[:, segment_onsets[x]:segment_offsets[x]])
                 # Save memmap changes to disk
-                v_mmap.flush()
+                if isinstance(v_mmap, np.memmap):
+                    v_mmap.flush()
+                    v_mmap._mmap.close()
+                    del v_mmap
             else:
                 seg_voltages.append(Probe.voltage[:, segment_onsets[x]:segment_offsets[x]])
 
@@ -1095,8 +1121,10 @@ def spike_sort_parallel(Probe, **kwargs):
                         zca_seg_voltage = (zca_matrix @ seg_voltage).astype(seg_voltages[x][1])
                         # copy ZCA voltage to voltage memmap file
                         np.copyto(seg_voltage_mmmap, zca_seg_voltage)
-                        seg_voltage_mmmap.flush()
-                        del seg_voltage
+                        if isinstance(seg_voltage_mmmap, np.memmap):
+                            seg_voltage_mmmap.flush()
+                            seg_voltage_mmmap._mmap.close()
+                            del seg_voltage_mmmap
                         thresholds, seg_over_thresh = single_thresholds_and_samples(zca_seg_voltage, settings['sigma'])
                     else:
                         seg_voltage = (zca_matrix @ seg_voltage).astype(Probe.v_dtype)

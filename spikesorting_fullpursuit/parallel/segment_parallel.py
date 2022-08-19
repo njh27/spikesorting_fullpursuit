@@ -423,6 +423,10 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width,
         spike_clips[out_ind, :] = chan_voltage[event_indices[spk]+window[0]:event_indices[spk]+window[1]]
 
     if use_memmap:
+        if isinstance(spike_clips, np.memmap):
+            spike_clips.flush()
+            spike_clips._mmap.close()
+            del spike_clips
         # Make output read only
         spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='r', shape=(np.count_nonzero(valid_event_indices), window[1] - window[0]))
 
@@ -484,6 +488,10 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
             start = stop
 
     if use_memmap:
+        if isinstance(spike_clips, np.memmap):
+            spike_clips.flush()
+            spike_clips._mmap.close()
+            del spike_clips
         # Make output read only
         spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='r', shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]))
 

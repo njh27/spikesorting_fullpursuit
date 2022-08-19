@@ -227,8 +227,10 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
     filtered_voltage = filtered_voltage * wiener_scale[:, None]
     if use_memmap:
         np.copyto(voltage_mmap, filtered_voltage)
-        voltage_mmap.flush()
-        del voltage_mmap
+        if isinstance(voltage_mmap, np.memmap):
+            voltage_mmap.flush()
+            voltage_mmap._mmap.close()
+            del voltage_mmap
     else:
         np.copyto(voltage, filtered_voltage)
 

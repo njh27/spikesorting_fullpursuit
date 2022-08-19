@@ -106,7 +106,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                                 mode='r',
                                 shape=data_dict['seg_v_files'][seg_number][2])
         voltage = memmap_to_mem(voltage_mmap, dtype=data_dict['seg_v_files'][seg_number][1])
-        del voltage_mmap # no longer needed
+        if isinstance(voltage_mmap, np.memmap):
+            spike_clips._mmap.close()
+            del spike_clips
     else:
         seg_volts_buffer = data_dict['segment_voltages'][seg_number][0]
         seg_volts_shape = data_dict['segment_voltages'][seg_number][1]

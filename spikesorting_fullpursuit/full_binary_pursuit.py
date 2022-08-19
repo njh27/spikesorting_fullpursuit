@@ -4,9 +4,10 @@ from scipy.stats import norm
 from spikesorting_fullpursuit import neuron_separability
 from spikesorting_fullpursuit.consolidate import SegSummary
 from spikesorting_fullpursuit.preprocessing import calculate_robust_template
-from spikesorting_fullpursuit.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples
+from spikesorting_fullpursuit.parallel.segment_parallel import get_multichannel_clips, time_window_to_samples, memmap_to_mem
 from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.c_cython import sort_cython
+from spikesorting_fullpursuit.utils.memmap_close import MemMapClose
 
 
 
@@ -91,21 +92,25 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
 def full_binary_pursuit(work_items, data_dict, seg_number,
                         sort_info, v_dtype, overlap_ratio_threshold,
                         absolute_refractory_period,
-                        kernels_path=None, max_gpu_memory=None):
+                        kernels_path=None, max_gpu_memory=None,
+                        use_memmap=False):
     """ This is the main function that runs binary pursuit. It first handles
     the unit and template consolidation and the removal of noise templates to
     create the final template set for binary pursuit derived from the input
     segment sorted data. Then the templates are input to binary pursuit. Output
     is finally formatted for final output. """
     # Get numpy view of voltage for clips and binary pursuit
-    voltage_mmap = np.memmap(data_dict['seg_v_files'][seg_number][0],
-                            dtype=data_dict['seg_v_files'][seg_number][1],
-                            mode='r',
-                            shape=data_dict['seg_v_files'][seg_number][2])
-    print("VOLTAGE MEMMAP FILE SIZE IS", voltage_mmap.size, voltage_mmap.shape, voltage_mmap.dtype)
-    voltage = np.zeros(data_dict['seg_v_files'][seg_number][2], dtype=data_dict['seg_v_files'][seg_number][1])
-    voltage[:] = voltage_mmap[:]
-    print("NEW VOLTAGE ARRAY", voltage.size, voltage.shape, voltage.dtype, voltage.nbytes/1024)
+    if use_memmap:
+        voltage_mmap = MemMapClose(data_dict['seg_v_files'][seg_number][0],
+                                dtype=data_dict['seg_v_files'][seg_number][1],
+                                mode='r',
+                                shape=data_dict['seg_v_files'][seg_number][2])
+        voltage = memmap_to_mem(voltage_mmap, dtype=data_dict['seg_v_files'][seg_number][1])
+        del voltage_mmap # no longer needed
+    else:
+        seg_volts_buffer = data_dict['segment_voltages'][seg_number][0]
+        seg_volts_shape = data_dict['segment_voltages'][seg_number][1]
+        voltage = np.frombuffer(seg_volts_buffer, dtype=v_dtype).reshape(seg_volts_shape)
     original_clip_width = [s for s in sort_info['clip_width']]
     original_n_samples_per_chan = copy(sort_info['n_samples_per_chan'])
     # Max shift indices to check for binary pursuit overlaps

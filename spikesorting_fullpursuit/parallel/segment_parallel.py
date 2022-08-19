@@ -99,13 +99,16 @@ def time_window_to_samples(time_window, sampling_rate):
     return sample_window, new_time_window
 
 
-def memmap_to_mem(memmap):
+def memmap_to_mem(memmap, dtype=None, order=None):
     """ Helpful function that takes a numpy memmap as input and copies it to a
     numpy array in memory as output. """
     if not isinstance(memmap, np.memmap):
         raise ValueError("Input object is not instance of numpy.memmap")
-    use_order = "F" if memmap.flags['F_CONTIGUOUS'] else "C"
-    mem = np.empty(memmap.shape, dtype=memmap.dtype, order=use_order)
+    if dtype is None:
+        dtype = memmap.dtype
+    if order is None:
+        order = "F" if memmap.flags['F_CONTIGUOUS'] else "C"
+    mem = np.empty(memmap.shape, dtype=dtype, order=order)
     np.copyto(mem, memmap)
 
     return mem

@@ -119,7 +119,7 @@ def wiener_optimal_filter(signal_power, noise_power, epsilon=1e-9):
 def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
                             v_dtype, use_memmap):
     """ Does the Wiener filter on the segment voltage provided. The new filtered
-    voltage OVERWRITES the input segment voltage! """
+    voltage OVERWRITES the input segment voltage buffers/memmaps! """
 
     # Initialize voltages
     if use_memmap:
@@ -225,8 +225,13 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
     # voltage to the raw array buffer so we can re-use it for sorting
     wiener_scale = (np.std(voltage, axis=1) / np.std(filtered_voltage, axis=1))
     filtered_voltage = filtered_voltage * wiener_scale[:, None]
-    np.copyto(voltage, filtered_voltage)
+    if use_memmap:
+        np.copyto(voltage_mmap, filtered_voltage)
+        voltage_mmap.flush()
+        del voltage_mmap
+    else:
+        np.copyto(voltage, filtered_voltage)
 
-    return None
+    return filtered_voltage
 
 #

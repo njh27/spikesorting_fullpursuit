@@ -229,10 +229,10 @@ def parallel_zca_and_threshold_mmap(seg_num, sigma, zca_cushion, n_samples):
     # Copy ZCA'ed segment voltage to the memmap array buffer so we can re-use it for sorting
     # Doesn't need to be returned since its written to shared dictionary buffer
     np.copyto(seg_voltage_mmap, zca_seg_voltage)
-    if isinstance(seg_voltage_mmmap, np.memmap):
-        seg_voltage_mmmap.flush()
-        seg_voltage_mmmap._mmap.close()
-        del seg_voltage_mmmap
+    if isinstance(seg_voltage_mmap, np.memmap):
+        seg_voltage_mmap.flush()
+        seg_voltage_mmap._mmap.close()
+        del seg_voltage_mmap
 
     return thresholds, seg_over_thresh
 
@@ -853,9 +853,9 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
                 np_view = np.frombuffer(data_dict['segment_voltages'][w_item['seg_number']][0],
                                         dtype=data_dict['seg_v_files'][w_item['seg_number']][1]).reshape(seg_voltage_mmap.shape) # Create numpy view
                 np.copyto(np_view, seg_voltage_mmap) # Copy segment voltage to voltage buffer
-                if isinstance(seg_voltage_mmmap, np.memmap):
-                    seg_voltage_mmmap._mmap.close()
-                    del seg_voltage_mmmap
+                if isinstance(seg_voltage_mmap, np.memmap):
+                    seg_voltage_mmap._mmap.close()
+                    del seg_voltage_mmap
 
         if not settings['test_flag']:
             print("Starting item {0}/{1} on CPUs {2} for channel {3} segment {4}".format(wi_ind+1, len(work_items), use_cpus, w_item['channel'], w_item['seg_number']+1))
@@ -1120,11 +1120,11 @@ def spike_sort_parallel(Probe, **kwargs):
                     if settings['use_memmap']:
                         zca_seg_voltage = (zca_matrix @ seg_voltage).astype(seg_voltages[x][1])
                         # copy ZCA voltage to voltage memmap file
-                        np.copyto(seg_voltage_mmmap, zca_seg_voltage)
-                        if isinstance(seg_voltage_mmmap, np.memmap):
-                            seg_voltage_mmmap.flush()
-                            seg_voltage_mmmap._mmap.close()
-                            del seg_voltage_mmmap
+                        np.copyto(seg_voltage_mmap, zca_seg_voltage)
+                        if isinstance(seg_voltage_mmap, np.memmap):
+                            seg_voltage_mmap.flush()
+                            seg_voltage_mmap._mmap.close()
+                            del seg_voltage_mmap
                         thresholds, seg_over_thresh = single_thresholds_and_samples(zca_seg_voltage, settings['sigma'])
                     else:
                         seg_voltage = (zca_matrix @ seg_voltage).astype(Probe.v_dtype)
@@ -1133,6 +1133,8 @@ def spike_sort_parallel(Probe, **kwargs):
                         init_dict['segment_voltages'].append([mp.RawArray(np.ctypeslib.as_ctypes_type(Probe.v_dtype), seg_voltage.size), seg_voltage.shape])
                         np_view = np.frombuffer(init_dict['segment_voltages'][x][0], dtype=Probe.v_dtype).reshape(seg_voltage.shape) # Create numpy view
                         np.copyto(np_view, seg_voltage) # Copy segment voltage to voltage buffer
+                else:
+                    thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
                 thresholds_list.append(thresholds)
                 samples_over_thresh.extend(seg_over_thresh)
 

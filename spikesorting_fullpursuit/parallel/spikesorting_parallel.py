@@ -1116,27 +1116,27 @@ def spike_sort_parallel(Probe, **kwargs):
                     zca_matrix = preprocessing.get_noise_sampled_zca_matrix(seg_voltage,
                                     thresholds, settings['sigma'],
                                     zca_cushion, n_samples=1e6)
+                    # Set seg_voltage to ZCA transformed voltage
                     # @ makes new copy
-                    if settings['use_memmap']:
-                        zca_seg_voltage = (zca_matrix @ seg_voltage).astype(seg_voltages[x][1])
-                        # copy ZCA voltage to voltage memmap file
-                        np.copyto(seg_voltage_mmap, zca_seg_voltage)
-                        if isinstance(seg_voltage_mmap, np.memmap):
-                            seg_voltage_mmap.flush()
-                            seg_voltage_mmap._mmap.close()
-                            del seg_voltage_mmap
-                        thresholds, seg_over_thresh = single_thresholds_and_samples(zca_seg_voltage, settings['sigma'])
-                    else:
-                        seg_voltage = (zca_matrix @ seg_voltage).astype(Probe.v_dtype)
-                        thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
-                        # Allocate shared voltage buffer. List is appended in SEGMENT ORDER
-                        init_dict['segment_voltages'].append([mp.RawArray(np.ctypeslib.as_ctypes_type(Probe.v_dtype), seg_voltage.size), seg_voltage.shape])
-                        np_view = np.frombuffer(init_dict['segment_voltages'][x][0], dtype=Probe.v_dtype).reshape(seg_voltage.shape) # Create numpy view
-                        np.copyto(np_view, seg_voltage) # Copy segment voltage to voltage buffer
+                    seg_voltage = (zca_matrix @ seg_voltage).astype(Probe.v_dtype)
+                if settings['use_memmap'] and settings['do_ZCA_transform']:
+                    # copy ZCA voltage to voltage memmap file if we changed it
+                    np.copyto(seg_voltage_mmap, seg_voltage)
+                elif settings['use_memmap'] and not settings['do_ZCA_transform']:
+                    pass # Memmap data files already set and unchanged, do nothing
                 else:
-                    thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
+                    # Allocate shared voltage buffer. List is appended in SEGMENT ORDER
+                    init_dict['segment_voltages'].append([mp.RawArray(np.ctypeslib.as_ctypes_type(Probe.v_dtype), seg_voltage.size), seg_voltage.shape])
+                    np_view = np.frombuffer(init_dict['segment_voltages'][x][0], dtype=Probe.v_dtype).reshape(seg_voltage.shape) # Create numpy view
+                    np.copyto(np_view, seg_voltage) # Copy segment voltage to voltage buffer
+                thresholds, seg_over_thresh = single_thresholds_and_samples(seg_voltage, settings['sigma'])
                 thresholds_list.append(thresholds)
                 samples_over_thresh.extend(seg_over_thresh)
+                if settings['use_memmap']:
+                    if isinstance(seg_voltage_mmap, np.memmap):
+                        seg_voltage_mmap.flush()
+                        seg_voltage_mmap._mmap.close()
+                        del seg_voltage_mmap
 
         work_items = []
         chan_neighbors = []

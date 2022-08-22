@@ -1271,7 +1271,11 @@ def spike_sort_parallel(Probe, **kwargs):
         if settings['use_memmap']:
             # Delete voltage memmap files. Clips should be delete during cluster
             for x in range(0, len(seg_voltages)):
-                os.remove(seg_voltages[x][0])
+                try:
+                    if os.path.exists(seg_voltages[x][0]):
+                        os.remove(seg_voltages[x][0])
+                except:
+                    pass
 
     if settings['verbose']: print("Done.")
     return sort_data, work_items, sort_info

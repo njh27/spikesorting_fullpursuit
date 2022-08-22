@@ -207,6 +207,7 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
     'use_memmap': True, # Will keep clips and voltages stored in numpy memmap files (voltage is preloaded as needed into ram for faster processing)
     'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running
 		'memmap_fID': None # Optional identifier for naming memmap files for this specific file sort. Useful to prevent multiple simultaneous sorts from repeating file names and overwritting each other's data or causing an error
+		'save_clips': True, # Saves all discovered clips in output file. These can get VERY large, so it's optional. Can be recomputed from voltage for postprocessing.
 ```
 
 ### Output

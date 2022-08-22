@@ -57,6 +57,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'use_memmap': True, # Will keep clips and voltages stored in memmap files (voltage is preloaded as needed into ram for faster processing)
         'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running
         'memmap_fID': None, # Optional identifier for naming memmap files for this specific file sort. Useful to prevent multiple simultaneous sorts from repeating file names and overwritting each other's data or causing an error
+        'save_clips': True, # Saves all discovered clips in output file. These can get VERY large, so it's optional. Can be recomputed from voltage for postprocessing.
         }
 
     for k in kwargs.keys():
@@ -1247,7 +1248,8 @@ def spike_sort_parallel(Probe, **kwargs):
                         absolute_refractory_period=settings['absolute_refractory_period'],
                         kernels_path=None,
                         max_gpu_memory=settings['max_gpu_memory'],
-                        use_memmap=settings['use_memmap'])
+                        use_memmap=settings['use_memmap'],
+                        output_clips=settings['save_clips'])
             sort_data.extend(seg_data)
 
         # Re-print any errors so more visible at the end of sorting

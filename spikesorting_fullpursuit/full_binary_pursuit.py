@@ -93,7 +93,7 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                         sort_info, v_dtype, overlap_ratio_threshold,
                         absolute_refractory_period,
                         kernels_path=None, max_gpu_memory=None,
-                        use_memmap=False):
+                        use_memmap=False, output_clips=False):
     """ This is the main function that runs binary pursuit. It first handles
     the unit and template consolidation and the removal of noise templates to
     create the final template set for binary pursuit derived from the input
@@ -374,18 +374,20 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                 chan_labels.append(neuron_labels[select])
                 chan_bp_bool.append(bp_bool[select])
 
-
-                # Get clips for this unit over all channels
-                unit_clips = np.zeros((np.count_nonzero(select),
-                                       curr_item['neighbors'].shape[0] * \
-                                       sort_info['n_samples_per_chan']),
-                                       dtype=v_dtype)
-                # Map clips from all channels to current channel neighborhood
-                for neigh in range(0, curr_item['neighbors'].shape[0]):
-                    chan_ind = curr_item['neighbors'][neigh]
-                    unit_clips[:, neigh*sort_info['n_samples_per_chan']:(neigh+1)*sort_info['n_samples_per_chan']] = \
-                            clips[select, original_clip_starts[chan_ind]:original_clip_stops[chan_ind]]
-                chan_clips.append(unit_clips)
+                if output_clips:
+                    # Get clips for this unit over all channels
+                    unit_clips = np.zeros((np.count_nonzero(select),
+                                           curr_item['neighbors'].shape[0] * \
+                                           sort_info['n_samples_per_chan']),
+                                           dtype=v_dtype)
+                    # Map clips from all channels to current channel neighborhood
+                    for neigh in range(0, curr_item['neighbors'].shape[0]):
+                        chan_ind = curr_item['neighbors'][neigh]
+                        unit_clips[:, neigh*sort_info['n_samples_per_chan']:(neigh+1)*sort_info['n_samples_per_chan']] = \
+                                clips[select, original_clip_starts[chan_ind]:original_clip_stops[chan_ind]]
+                    chan_clips.append(unit_clips)
+                else:
+                    chan_clips.append([])
 
             # Adjust crossings for seg start time
             chan_events = np.hstack(chan_events)

@@ -203,7 +203,7 @@ def parallel_zca_and_threshold(seg_num, sigma, zca_cushion, n_samples):
     # Doesn't need to be returned since its written to shared dictionary buffer
     np.copyto(seg_voltage, zca_seg_voltage)
 
-    return thresholds, seg_over_thresh
+    return thresholds, seg_over_thresh, zca_matrix
 
 
 def parallel_zca_and_threshold_mmap(seg_num, sigma, zca_cushion, n_samples):
@@ -235,7 +235,7 @@ def parallel_zca_and_threshold_mmap(seg_num, sigma, zca_cushion, n_samples):
         seg_voltage_mmap._mmap.close()
         del seg_voltage_mmap
 
-    return thresholds, seg_over_thresh
+    return thresholds, seg_over_thresh, zca_matrix
 
 
 def threshold_and_zca_voltage_parallel(seg_voltages, sigma, zca_cushion,
@@ -281,10 +281,11 @@ def threshold_and_zca_voltage_parallel(seg_voltages, sigma, zca_cushion,
     results_tuple = [x.get() for x in order_results]
     thresholds_list = [x[0] for x in results_tuple]
     seg_over_thresh_list = [x[1] for x in results_tuple]
+    seg_zca_mats = [x[2] for x in results_tuple]
 
     mkl.set_num_threads(n_threads) # Reset threads back
 
-    return thresholds_list, seg_over_thresh_list
+    return thresholds_list, seg_over_thresh_list, seg_zca_mats
 
 
 def allocate_cpus_by_chan(samples_over_thresh):
@@ -1088,7 +1089,7 @@ def spike_sort_parallel(Probe, **kwargs):
             # making twice
             # Use parallel processing to get zca voltage and thresholds
             if settings['verbose']: print("Doing parallel ZCA transform and thresholding for", len(segment_onsets), "segments")
-            thresholds_list, seg_over_thresh_list = threshold_and_zca_voltage_parallel(
+            thresholds_list, seg_over_thresh_list, seg_zca_mats = threshold_and_zca_voltage_parallel(
                                 seg_voltages, settings['sigma'], zca_cushion,
                                 n_samples=1e6, use_memmap=settings['use_memmap'])
             for x in seg_over_thresh_list:
@@ -1098,6 +1099,7 @@ def spike_sort_parallel(Probe, **kwargs):
         else:
             thresholds_list = []
             seg_over_thresh_list = []
+            seg_zca_mats = []
             for x in range(0, len(segment_onsets)):
                 # Need to copy or else ZCA transforms will duplicate in overlapping
                 # time segments. Copy happens during matrix multiplication
@@ -1120,6 +1122,7 @@ def spike_sort_parallel(Probe, **kwargs):
                     # Set seg_voltage to ZCA transformed voltage
                     # @ makes new copy
                     seg_voltage = (zca_matrix @ seg_voltage).astype(Probe.v_dtype)
+                    seg_zca_mats.append(zca_matrix)
                 if settings['use_memmap'] and settings['do_ZCA_transform']:
                     # copy ZCA voltage to voltage memmap file if we changed it
                     np.copyto(seg_voltage_mmap, seg_voltage)
@@ -1193,7 +1196,9 @@ def spike_sort_parallel(Probe, **kwargs):
                           'n_channels': Probe.num_channels,
                           'n_samples_per_chan': curr_chan_win[1] - curr_chan_win[0],
                           'sampling_rate': Probe.sampling_rate,
-                          'n_segments': len(segment_onsets)})
+                          'n_segments': len(segment_onsets),
+                          'seg_zca_mats': seg_zca_mats,
+                          })
         if sort_info['output_separability_metrics']:
             # Initialize elements for separability metrics from each segment
             sort_info['separability_metrics'] = [[] for x in range(0, sort_info['n_segments'])]

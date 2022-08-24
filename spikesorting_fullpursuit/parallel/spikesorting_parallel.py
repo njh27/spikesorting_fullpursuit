@@ -1065,6 +1065,7 @@ def spike_sort_parallel(Probe, **kwargs):
             # Slice over num_channels should keep same shape
             # Build list in segment order
             if settings['use_memmap']:
+                if settings['verbose']: print("Attempting Memmap in directory {0}.".format(settings['memmap_dir']))
                 # Create list of filename, dtype, shape, for the memmaped voltages
                 file_info = [os.path.join(settings['memmap_dir'], "{0}volt_seg{1}.bin".format(settings['memmap_fID'], str(x))),
                              Probe.v_dtype,

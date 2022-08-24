@@ -162,7 +162,7 @@ neurons. A brief description of the optional arguments and their default values 
 to the call to spikesorting_parallel via a settings dictionary argument, e.g.  
 ```
 		'sigma': 4.0, # Threshold based on noise level for discovering spikes
-		'clip_width': [-8e-4, 8e-4], # Width of clip in seconds
+		'clip_width': [-8e-4, 8e-4], # Width of clip in seconds, used for clustering. Made symmetric with largest value for binary pursuit!
 		'p_value_cut_thresh': 0.01, # Statistical criterion for splitting clusters during iso-cut
 		segment_duration': 300, # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
 		'segment_overlap': 150, # Seconds of overlap between adjacent segments

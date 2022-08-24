@@ -22,7 +22,7 @@ def spike_sorting_settings_parallel(**kwargs):
     settings = {
         'filename': None, # Not used by the sorter, but will store the desired name of the sorted file with the output neurons for user reference
         'sigma': 4.0, # Threshold based on noise level
-        'clip_width': [-10e-4, 10e-4], # Width of clip in seconds
+        'clip_width': [-10e-4, 10e-4], # Width of clip in seconds, used for clustering. Made symmetric with largest value for binary pursuit!
         'p_value_cut_thresh': 0.01, # Statistical criterion for splitting clusters during iso-cut
         'segment_duration': 300, # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
         'segment_overlap': 150, # Seconds of overlap between adjacent segments

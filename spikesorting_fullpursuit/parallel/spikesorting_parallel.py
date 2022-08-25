@@ -58,6 +58,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running
         'memmap_fID': None, # Optional identifier for naming memmap files for this specific file sort. Useful to prevent multiple simultaneous sorts from repeating file names and overwritting each other's data or causing an error
         'save_clips': True, # Saves all discovered clips in output file. These can get VERY large, so it's optional. Can be recomputed from voltage for postprocessing.
+        'serial_zca': True, # Do ZCA serially instead of parallel. Parallel can load a LOT of voltage arrays/copies into memory
         }
 
     for k in kwargs.keys():
@@ -1061,11 +1062,12 @@ def spike_sort_parallel(Probe, **kwargs):
         ############ THE VOLTAGE MEMMAP FILES ARE MADE HERE! #################
         seg_voltages = []
         init_dict['segment_voltages'] = [] # built differently below depending on use_memmap
+        if settings['use_memmap']:
+            if settings['verbose']: print("Attempting Memmap in directory {0}.".format(settings['memmap_dir']))
         for x in range(0, len(segment_onsets)):
             # Slice over num_channels should keep same shape
             # Build list in segment order
             if settings['use_memmap']:
-                if settings['verbose']: print("Attempting Memmap in directory {0}.".format(settings['memmap_dir']))
                 # Create list of filename, dtype, shape, for the memmaped voltages
                 file_info = [os.path.join(settings['memmap_dir'], "{0}volt_seg{1}.bin".format(settings['memmap_fID'], str(x))),
                              Probe.v_dtype,
@@ -1084,7 +1086,7 @@ def spike_sort_parallel(Probe, **kwargs):
 
         ############ THE VOLTAGE ARRAY BUFFERS IN MEMORY ARE MADE HERE! #################
         samples_over_thresh = []
-        if not settings['test_flag'] and settings['do_ZCA_transform']:
+        if (not settings['test_flag']) and (settings['do_ZCA_transform']) and (settings['serial_zca']):
             # If doing ZCA, voltage array buffers are made in
             # "threshold_and_zca_voltage_parallel" to update data and avoid
             # making twice

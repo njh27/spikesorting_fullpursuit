@@ -112,7 +112,7 @@ def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth=1):
     original_ft *= wiener_filt # Filtered FFT
     filtered_signal = np.fft.irfft(original_ft, n=original_ft.shape[1], axis=1)
     filtered_signal = np.reshape(filtered_signal, voltage_shape, order="C")
-    
+
     return filtered_signal
 
 
@@ -230,7 +230,7 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
     # Rescale filtered voltage to original space and Copy Winer filter segment
     # voltage to the raw array buffer so we can re-use it for sorting
     wiener_scale = (np.std(voltage, axis=1) / np.std(filtered_voltage, axis=1))
-    for chan in voltage.shape[0]:
+    for chan in range(0, voltage.shape[0]):
         filtered_voltage[chan, :] *= wiener_scale[chan]
     if use_memmap:
         np.copyto(voltage_mmap, filtered_voltage)

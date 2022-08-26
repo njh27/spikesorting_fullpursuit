@@ -59,6 +59,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'memmap_fID': None, # Optional identifier for naming memmap files for this specific file sort. Useful to prevent multiple simultaneous sorts from repeating file names and overwritting each other's data or causing an error
         'save_clips': True, # Saves all discovered clips in output file. These can get VERY large, so it's optional. Can be recomputed from voltage for postprocessing.
         'parallel_zca': True, # Do ZCA serially instead of parallel. Parallel can load a LOT of voltage arrays/copies into memory
+        'seg_work_order': True, # Workers will be deployed in segment order to minimize memory usage. Otherwise they are in order of most crossings for greatest speed
         }
 
     for k in kwargs.keys():
@@ -1167,7 +1168,7 @@ def spike_sort_parallel(Probe, **kwargs):
                                    'thresholds': thresholds_list[x],
                                    })
 
-        if not settings['test_flag']:
+        if (not settings['test_flag']) and (not settings['seg_work_order']):
             if settings['log_dir'] is None:
                 print("No log dir specified. Won't be able to see output from processes")
             # Sort  work_items and samples_over_thresh by descending order of

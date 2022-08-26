@@ -882,6 +882,7 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
                     # No users for this segment
                     if seg_n in data_dict['segment_voltages']:
                         # But seg is still holding voltage mempory
+                        data_dict['segment_voltages'][seg_n] = None
                         del data_dict['segment_voltages'][seg_n]
 
     if not settings['test_flag']:
@@ -911,6 +912,14 @@ def deploy_parallel_sort(manager, cpu_queue, cpu_alloc, work_items, init_dict, s
             if settings['use_memmap']:
                 # Remove completed items from voltage users
                 seg_voltage_users[work_items[finished_item]['seg_number']].remove(finished_item)
+                # Delete voltage arrays not in use to try to save memory
+                for seg_n, seg_u in enumerate(seg_voltage_users):
+                    if len(seg_u) == 0:
+                        # No users for this segment
+                        if seg_n in data_dict['segment_voltages']:
+                            # But seg is still holding voltage mempory
+                            data_dict['segment_voltages'][seg_n] = None
+                            del data_dict['segment_voltages'][seg_n]
 
     # Make sure all the processes finish up and close even though they should
     # have finished above

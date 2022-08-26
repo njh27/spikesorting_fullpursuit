@@ -62,7 +62,10 @@ def wiener(original_voltage, signal_voltage, noise_voltage, smooth=1):
             S_smoothed[:] = 0.
             N_smoothed[:] = 0.
 
-    filtered_signal = np.fft.irfft(original_ft * wiener_optimal_filter(S, N), axis=1)
+    wiener_filt = wiener_optimal_filter(S, N)
+    original_ft *= wiener_filt # Filtered FFT
+    filtered_signal = np.fft.irfft(original_ft, n=original_ft.shape[1], axis=1)
+
     return filtered_signal
 
 
@@ -105,8 +108,11 @@ def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth=1):
         S = S_smoothed
         N = N_smoothed
 
-    filtered_signal = np.fft.irfft(original_ft * wiener_optimal_filter(S, N))
+    wiener_filt = wiener_optimal_filter(S, N)
+    original_ft *= wiener_filt # Filtered FFT
+    filtered_signal = np.fft.irfft(original_ft, n=original_ft.shape[1], axis=1)
     filtered_signal = np.reshape(filtered_signal, voltage_shape, order="C")
+    
     return filtered_signal
 
 
@@ -208,8 +214,8 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
     print("Starting Wiener filter")
     if ( (sort_info['wiener_filter_smoothing'] is None) or
          (sort_info['wiener_filter_smoothing'] < 1) ):
-        wiener_filter_smooth_indices = 0
-    elif sort_info['same_wiener']:
+        sort_info['wiener_filter_smoothing'] = 0
+    if sort_info['same_wiener']:
         # Use the same Wiener filter for all channels computed over all data
         wiener_filter_smooth_indices = ( (sort_info['wiener_filter_smoothing'] * voltage.size)
                                         / (sort_info['sampling_rate'] // 2) )
@@ -224,7 +230,8 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
     # Rescale filtered voltage to original space and Copy Winer filter segment
     # voltage to the raw array buffer so we can re-use it for sorting
     wiener_scale = (np.std(voltage, axis=1) / np.std(filtered_voltage, axis=1))
-    filtered_voltage = filtered_voltage * wiener_scale[:, None]
+    for chan in voltage.shape[0]:
+        filtered_voltage[chan, :] *= wiener_scale[chan]
     if use_memmap:
         np.copyto(voltage_mmap, filtered_voltage)
         if isinstance(voltage_mmap, np.memmap):

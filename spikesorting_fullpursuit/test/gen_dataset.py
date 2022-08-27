@@ -185,8 +185,8 @@ class TestDataset(object):
         noise in a given bandwidth. Within this bandwidth, the amplitude of each frequency is approximately
         constant (i.e., white), but the phase is random. The amplitude of the output signal is scaled so that
         99% of the values fall within the amplitude criteron (3 standard deviations of zero mean)."""
-        freqs = np.abs(np.fft.fftfreq(self.samples_per_second * self.duration, 1/self.samples_per_second))
-        f = np.zeros(self.samples_per_second * self.duration)
+        freqs = np.abs(np.fft.fftfreq(int(self.samples_per_second * self.duration), 1/self.samples_per_second))
+        f = np.zeros(int(self.samples_per_second * self.duration))
         idx = np.where(np.logical_and(freqs>=self.frequency_range[0], freqs<=self.frequency_range[1]))[0]
         f[idx] = 1
         f = np.array(f, dtype='complex')

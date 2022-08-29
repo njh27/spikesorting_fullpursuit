@@ -382,9 +382,8 @@ def calc_ccg_overlap_ratios(spike_inds_1, spike_inds_2, overlap_time, sampling_r
     return expected_overlap_ratio, actual_overlap_ratio, delta_max
 
 
-def calc_spike_half_width(clips):
+def calc_spike_half_width(template):
     """ Computes half width of spike as number of indices between peak and valley. """
-    template = np.mean(clips, axis=0)
     peak_ind = np.argmax(template)
     valley_ind = np.argmin(template)
     if peak_ind >= valley_ind:

@@ -2,6 +2,7 @@ import numpy as np
 from spikesorting_fullpursuit.sort import merge_clusters
 from spikesorting_fullpursuit import preprocessing
 from spikesorting_fullpursuit import analyze_spike_timing
+from spikesorting_fullpursuit.parallel.segment_parallel import get_clips
 
 import warnings
 
@@ -303,11 +304,14 @@ class WorkItemSummary(object):
             # Load voltage into memory
             if self.voltage_file[-4:] == ".bin":
                 self.voltage = np.fromfile(self.voltage_file, dtype=voltage_dtype)
-                self.voltage = np.reshape(voltage, (sort_info['n_channels'], sort_info['n_samples']))
+                self.voltage = np.reshape(self.voltage, (sort_info['n_channels'], sort_info['n_samples']))
             elif self.voltage_file[-4:] == ".npy":
                 self.voltage = np.load(self.voltage_file)
             else:
                 raise ValueError("Unrecognized voltage file type. Accepted types are '.bin' and '.npy'.")
+            self.clip_dict = {'sampling_rate': sort_info['sampling_rate'],
+                         'n_samples': sort_info['n_samples'],
+                         'v_dtype': self.voltage.dtype}
         else:
             self.voltage = None
         if not skip_organization:
@@ -447,7 +451,16 @@ class WorkItemSummary(object):
             for seg in range(0, self.n_segments):
                 # NOTE: This will just skip if no data in segment
                 for l in np.unique(self.sort_data[chan][seg][1]):
-                    mua_ratio = self.get_fraction_mua_to_peak(chan, seg, l)
+                    select = self.sort_data[chan][seg][1] == l
+                    if self.voltage is None:
+                        curr_template = np.mean(self.sort_data[chan][seg][2][select, :], axis=0)
+                    else:
+                        curr_template, _ = get_clips(self.clip_dict, self.voltage,
+                            self.work_items[chan][seg]['neighbors'],
+                            self.sort_data[chan][seg][0][select],
+                            self.sort_info['clip_width'])
+                        curr_template = np.mean(curr_template, axis=0)
+                    mua_ratio = self.get_fraction_mua_to_peak(chan, seg, l, curr_template)
                     if mua_ratio > self.max_mua_ratio:
                         self.delete_label(chan, seg, l)
                         if mua_ratio < min_removed_mua:
@@ -457,8 +470,8 @@ class WorkItemSummary(object):
                         # Will skip computing SNR, but will not track max
                         # removed accurately
                         continue
-                    select = self.sort_data[chan][seg][1] == l
-                    snr = self.get_snr(chan, seg, np.mean(self.sort_data[chan][seg][2][select, :], axis=0))
+
+                    snr = self.get_snr(chan, seg, curr_template)
                     if snr < self.min_snr:
                         self.delete_label(chan, seg, l)
                         if snr > max_removed_snr:
@@ -517,7 +530,7 @@ class WorkItemSummary(object):
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
         # Within channel alignment shouldn't be off by more than about half spike width
         duplicate_tol_inds = analyze_spike_timing.calc_spike_half_width(
-                                self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]]) + 1
+                                np.mean(self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]], axis=0)) + 1
         refractory_adjustment = duplicate_tol_inds / self.sort_info['sampling_rate']
         if self.absolute_refractory_period - refractory_adjustment <= 0:
             print("LINE 874: duplicate_tol_inds encompasses absolute_refractory_period. MUA can't be calculated for this unit.")
@@ -560,19 +573,15 @@ class WorkItemSummary(object):
         else:
             return (isi_violation_rate / mean_rate)
 
-    def get_fraction_mua_to_peak(self, chan, seg, label, check_window=0.5):
+    def get_fraction_mua_to_peak(self, chan, seg, l, template, check_window=0.5):
         """
         """
-        select_unit = self.sort_data[chan][seg][1] == label
-        if ~np.any(select_unit):
-            # There are no spikes that match this label
-            raise ValueError("There are no spikes for label", label, ".")
-        unit_spikes = self.sort_data[chan][seg][0][select_unit]
         main_win = [self.sort_info['n_samples_per_chan'] * self.work_items[chan][seg]['chan_neighbor_ind'],
                     self.sort_info['n_samples_per_chan'] * (self.work_items[chan][seg]['chan_neighbor_ind'] + 1)]
         # Within channel alignment shouldn't be off by more than about half spike width
         duplicate_tol_inds = analyze_spike_timing.calc_spike_half_width(
-                                self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]]) + 1
+                                        template[main_win[0]:main_win[1]]) + 1
+        unit_spikes = self.sort_data[chan][seg][0][self.sort_data[chan][seg][1] == l]
         all_isis = np.diff(unit_spikes)
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
         bin_width = refractory_inds - duplicate_tol_inds
@@ -806,7 +815,7 @@ class WorkItemSummary(object):
                         # We are unioning spikes that may need sharpened due
                         # to alignment problem so use full spike width tol inds
                         spike_half_width = analyze_spike_timing.calc_spike_half_width(
-                            union_clips[:, curr_chan_inds]) + 1
+                            np.mean(union_clips[:, curr_chan_inds], axis=0)) + 1
                         keep_bool = remove_spike_event_duplicates(union_spikes,
                                         union_clips, union_template,
                                         tol_inds=2*spike_half_width)
@@ -1114,7 +1123,7 @@ class WorkItemSummary(object):
                     # Set duplicate tolerance as half spike width since within
                     # channel summary shouldn't be off by this
                     neuron['duplicate_tol_inds'] = analyze_spike_timing.calc_spike_half_width(
-                        neuron['clips'][:, neuron['main_win'][0]:neuron['main_win'][1]]) + 1
+                        np.mean(neuron['clips'][:, neuron['main_win'][0]:neuron['main_win'][1]], axis=0)) + 1
 
                     # Recompute template and store output
                     neuron["template"] = np.mean(neuron['clips'], axis=0).astype(neuron['clips'].dtype)
@@ -1680,7 +1689,7 @@ class WorkItemSummary(object):
         for c in combined_neuron['channel']:
             c_main_win = combined_neuron['main_windows'][c]
             curr_spike_width = analyze_spike_timing.calc_spike_half_width(
-                combined_neuron['clips'][:, c_main_win[0]:c_main_win[1]]) + 1
+                np.mean(combined_neuron['clips'][:, c_main_win[0]:c_main_win[1]], axis=0)) + 1
             if curr_spike_width > combined_neuron['duplicate_tol_inds']:
                 combined_neuron['duplicate_tol_inds'] = curr_spike_width
 

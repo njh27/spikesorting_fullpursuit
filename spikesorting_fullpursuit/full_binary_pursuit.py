@@ -46,7 +46,7 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
     all_events.sort() # Must be sorted for get multichannel clips to work
     # Find the average clip for our max output clip width, double the original
     bp_clip_width = [sort_info['max_binary_pursuit_clip_width_factor']*v for v in sort_info['clip_width']]
-    all_clips, valid_event_indices = get_clips(clips_dict, voltage, np.arange(0, voltage.shape[0])
+    all_clips, valid_event_indices = get_clips(clips_dict, voltage, np.arange(0, voltage.shape[0]),
                                         all_events, clip_width=bp_clip_width)
     if np.count_nonzero(valid_event_indices) == 0:
         original_clip_starts = np.arange(0, sort_info['n_samples_per_chan']*(sort_info['n_channels']), sort_info['n_samples_per_chan'], dtype=np.int64)

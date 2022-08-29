@@ -491,6 +491,7 @@ def get_clips(probe_dict, voltage, neighbors, event_indices, clip_width, use_mem
             spike_clips._mmap.close()
             del spike_clips
         # Make output read only
-        spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='r', shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]))
+        spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='r',
+                        shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * len(neighbors)))
 
     return spike_clips, valid_event_indices

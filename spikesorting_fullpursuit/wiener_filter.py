@@ -163,7 +163,7 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
                 # This work item found nothing (or raised an exception)
                 seg_data.append([[], [], [], [], w_item['ID']])
                 continue
-            clips, _ = get_clips(clips_dict, voltage, w_item['neighbors']
+            clips, _ = get_clips(clips_dict, voltage, w_item['neighbors'],
                                     data_dict['results_dict'][w_item['ID']][0],
                                     clip_width=sort_info['clip_width'])
 

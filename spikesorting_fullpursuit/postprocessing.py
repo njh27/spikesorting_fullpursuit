@@ -241,8 +241,14 @@ class WorkItemSummary(object):
     Really relies on the half clip inds being less than absolute refractory period
     and and that spike alignment shifts do not exceed this value. Should all be
     true for a reasonable choice of clip width.
+
     Inputs for voltage_file should be binary files '.bin', requiring specification
     of the datatype, or numpy array files '.npy' where datatype is already saved.
+    If clips are input, AND a voltage file is given, the voltage file is ignored.
+    It is assumed that the entire voltage file can be read into memory. It is
+    otherwise very slow to randomly index the entire voltage array to find clips.
+    Voltage will be shaped into the n_channels x n_samples as specified in
+    sort_info.
     """
     def __init__(self, sort_data, work_items, sort_info,
                  absolute_refractory_period=12e-4,
@@ -293,6 +299,17 @@ class WorkItemSummary(object):
             self.neuron_summary_seg_inds = []
             for seg in range(0, self.n_segments):
                 self.neuron_summary_seg_inds.append(self.work_items[0][seg]['index_window'])
+        if self.voltage_file is not None:
+            # Load voltage into memory
+            if self.voltage_file[-4:] == ".bin":
+                self.voltage = np.fromfile(self.voltage_file, dtype=voltage_dtype)
+                self.voltage = np.reshape(voltage, (sort_info['n_channels'], sort_info['n_samples']))
+            elif self.voltage_file[-4:] == ".npy":
+                self.voltage = np.load(self.voltage_file)
+            else:
+                raise ValueError("Unrecognized voltage file type. Accepted types are '.bin' and '.npy'.")
+        else:
+            self.voltage = None
         if not skip_organization:
             self.delete_bad_mua_snr_units()
 
@@ -316,6 +333,10 @@ class WorkItemSummary(object):
                 if (s_data[2].size == 0) or (len(s_data[2]) == 0):
                     if self.voltage_file is None:
                         raise ValueError("Spike clips not found and no voltage file specified. Must include a voltage file to continue!")
+                else:
+                    if (self.voltage_file is not None) and (s_data[2].shape[0] == n_spikes):
+                        print("Both clips and voltage file given. Ignoring voltage file.")
+                        self.voltage_file = None
             for di in range(0, 4):
                 if len(s_data[di]) == 0:
                     empty_count += 1
@@ -393,7 +414,8 @@ class WorkItemSummary(object):
                 spike_order = np.argsort(self.sort_data[chan][seg][0], kind='stable')
                 self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][spike_order]
                 self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][spike_order]
-                self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][spike_order, :]
+                if self.voltage_file is None:
+                    self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][spike_order, :]
                 self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][spike_order]
 
     def delete_label(self, chan, seg, label):

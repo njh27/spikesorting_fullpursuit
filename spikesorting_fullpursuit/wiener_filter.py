@@ -1,7 +1,7 @@
 import numpy as np
 from copy import deepcopy
 import os
-from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples, get_singlechannel_clips, get_multichannel_clips, memmap_to_mem
+from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples, get_singlechannel_clips, get_clips, memmap_to_mem
 from spikesorting_fullpursuit.consolidate import SegSummary
 from spikesorting_fullpursuit.preprocessing import calculate_robust_template
 from spikesorting_fullpursuit.utils.memmap_close import MemMapClose
@@ -144,7 +144,7 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
 
     # Determine the set of work items for this segment
     seg_w_items = [w for w in work_items if w['seg_number'] == seg_number]
-    # Make a dictionary with all info needed for get_multichannel_clips
+    # Make a dictionary with all info needed for get_clips
     clips_dict = {'sampling_rate': sort_info['sampling_rate'],
                   'n_samples': seg_w_items[0]['n_samples'],
                   'v_dtype': v_dtype}
@@ -163,7 +163,7 @@ def wiener_filter_segment(work_items, data_dict, seg_number, sort_info,
                 # This work item found nothing (or raised an exception)
                 seg_data.append([[], [], [], [], w_item['ID']])
                 continue
-            clips, _ = get_multichannel_clips(clips_dict, voltage,
+            clips, _ = get_clips(clips_dict, voltage, w_item['neighbors']
                                     data_dict['results_dict'][w_item['ID']][0],
                                     clip_width=sort_info['clip_width'])
 

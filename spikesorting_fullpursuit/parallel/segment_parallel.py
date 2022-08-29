@@ -377,7 +377,7 @@ def get_zero_phase_kernel(x, x_center):
 
 
 """
-    get_clips(Probe, event_indices, clip_width)
+    get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width, use_memmap=False)
 
 Given a probe and the threshold crossings, return a matrix of clips for a
 given set of threshold crossings. We center the clip on the threshold crossing
@@ -434,14 +434,15 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width,
 
 
 """
-    get_multichannel_clips(Probe, channels, event_indices, clip_width)
+    get_clips(probe_dict, voltage, neighbors, event_indices,
+                        clip_width, use_memmap=False)
 
     This is like get_clips except it concatenates the clips for each channel
     input in the list 'channels' in the order that they appear.  Event indices
     is a single one dimensional array of indices over which clips from all input
-    channels will be aligned. event_indices MUST BE ORDERED or else edge cases
-    will not correctly be accounted for and an error may result. """
-def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_width, use_memmap=False):
+    channels given by neighbors will be aligned. event_indices MUST BE ORDERED
+    or else edge cases will not correctly be accounted for and an error may result. """
+def get_clips(probe_dict, voltage, neighbors, event_indices, clip_width, use_memmap=False):
 
     if event_indices.ndim > 1:
         raise ValueError("Event_indices must be one dimensional array of indices")
@@ -473,18 +474,15 @@ def get_multichannel_clips(probe_dict, neighbor_voltage, event_indices, clip_wid
 
     if use_memmap:
         clip_fname = path.join(probe_dict['memmap_dir'], "{0}clips_{1}.bin".format(probe_dict['memmap_fID'], str(probe_dict['ID'])))
-        spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='w+', shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]))
+        spike_clips = MemMapClose(clip_fname, dtype=probe_dict['v_dtype'], mode='w+', shape=(np.count_nonzero(valid_event_indices), (window[1] - window[0]) * len(neighbors)))
     else:
-        spike_clips = np.empty((np.count_nonzero(valid_event_indices), (window[1] - window[0]) * neighbor_voltage.shape[0]), dtype=probe_dict['v_dtype'])
+        spike_clips = np.empty((np.count_nonzero(valid_event_indices), (window[1] - window[0]) * len(neighbors)), dtype=probe_dict['v_dtype'])
 
     for out_ind, spk in enumerate(range(start_ind, stop_ind+1)): # Add 1 to index through last valid index
-        chan_ind = 0
         start = 0
-        for chan in range(0, neighbor_voltage.shape[0]):
-            chan_ind += 1
-            stop = chan_ind * (window[1] - window[0])
-            spike_clips[out_ind, start:stop] = neighbor_voltage[chan, event_indices[spk]+window[0]:event_indices[spk]+window[1]]
-            # Subtract start ind above to adjust for discarded events
+        for n_ind, chan in enumerate(neighbors):
+            stop = (n_ind + 1) * (window[1] - window[0])
+            spike_clips[out_ind, start:stop] = voltage[chan, event_indices[spk]+window[0]:event_indices[spk]+window[1]]
             start = stop
 
     if use_memmap:

@@ -551,8 +551,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                             settings['filter_band'],
                             use_memmap=settings['use_memmap'])
 
-        clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict,
-                        voltage[neighbors, :], crossings,
+        clips, valid_event_indices = segment_parallel.get_clips(item_dict,
+                        voltage, neighbors, crossings,
                         clip_width=settings['clip_width'], use_memmap=settings['use_memmap'])
         crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
         if settings['sort_peak_clips_only']:
@@ -563,8 +563,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 if isinstance(clips, np.memmap):
                     clips._mmap.close()
                     del clips
-                clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict,
-                                voltage[neighbors, :], crossings,
+                clips, valid_event_indices = segment_parallel.get_clips(item_dict,
+                                voltage, neighbors, crossings,
                                 clip_width=settings['clip_width'], use_memmap=settings['use_memmap'])
                 crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
             else:
@@ -609,8 +609,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 if isinstance(clips, np.memmap):
                     clips._mmap.close()
                     del clips
-                clips, valid_event_indices = segment_parallel.get_multichannel_clips(
-                                                item_dict, voltage[neighbors, :],
+                clips, valid_event_indices = segment_parallel.get_clips(
+                                                item_dict, voltage, neighbors,
                                                 crossings, clip_width=settings['clip_width'],
                                                 use_memmap=settings['use_memmap'])
                 crossings, neuron_labels = segment_parallel.keep_valid_inds(
@@ -636,8 +636,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 if isinstance(clips, np.memmap):
                     clips._mmap.close()
                     del clips
-                clips, valid_event_indices = segment_parallel.get_multichannel_clips(
-                                                item_dict, voltage[neighbors, :],
+                clips, valid_event_indices = segment_parallel.get_clips(
+                                                item_dict, voltage, neighbors,
                                                 crossings, clip_width=settings['clip_width'],
                                                 use_memmap=settings['use_memmap'])
                 crossings = segment_parallel.keep_valid_inds([crossings], valid_event_indices)
@@ -662,8 +662,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
         if isinstance(clips, np.memmap):
             clips._mmap.close()
             del clips
-        clips, valid_event_indices = segment_parallel.get_multichannel_clips(
-                                        item_dict, voltage[neighbors, :],
+        clips, valid_event_indices = segment_parallel.get_clips(
+                                        item_dict, voltage, neighbors,
                                         crossings, clip_width=settings['clip_width'],
                                         use_memmap=settings['use_memmap'])
         crossings, neuron_labels = segment_parallel.keep_valid_inds(
@@ -679,8 +679,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
             if isinstance(clips, np.memmap):
                 clips._mmap.close()
                 del clips
-            clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict,
-                            voltage[neighbors, :], crossings,
+            clips, valid_event_indices = segment_parallel.get_clips(item_dict,
+                            voltage, neighbors, crossings,
                             clip_width=settings['clip_width'], use_memmap=settings['use_memmap'])
         else:
             clips = clips[keep_clips, :]
@@ -708,8 +708,8 @@ def spike_sort_item_parallel(data_dict, use_cpus, work_item, settings):
                 if isinstance(clips, np.memmap):
                     clips._mmap.close()
                     del clips
-                clips, valid_event_indices = segment_parallel.get_multichannel_clips(item_dict,
-                                voltage[neighbors, :], crossings,
+                clips, valid_event_indices = segment_parallel.get_clips(item_dict,
+                                voltage, neighbors, crossings,
                                 clip_width=settings['clip_width'], use_memmap=settings['use_memmap'])
             else:
                 clips = clips[keep_clips, :]

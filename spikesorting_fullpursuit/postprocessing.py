@@ -240,13 +240,19 @@ class WorkItemSummary(object):
         spike sorter shift error
     Really relies on the half clip inds being less than absolute refractory period
     and and that spike alignment shifts do not exceed this value. Should all be
-    true for a reasonable choice of clip width
+    true for a reasonable choice of clip width.
+    Inputs for voltage_file should be binary files '.bin', requiring specification
+    of the datatype, or numpy array files '.npy' where datatype is already saved.
     """
     def __init__(self, sort_data, work_items, sort_info,
                  absolute_refractory_period=12e-4,
                  max_mua_ratio=0.2, min_snr=1.5, min_overlapping_spikes=.75,
                  stitch_overlap_only=True, skip_organization=False,
-                 n_segments=None, verbose=False):
+                 n_segments=None, verbose=False,
+                 voltage_file=None, voltage_dtype=None):
+        if (voltage_file is not None) and (voltage_dtype is None) and (voltage_file[-4:] != ".npy"):
+            raise ValueError("Must specify the voltage data type for input voltage files of type '{0}'.".format(voltage_file[-4:]))
+        self.voltage_file = voltage_file
         if not skip_organization:
             self.check_input_data(sort_data, work_items)
         else:
@@ -306,6 +312,10 @@ class WorkItemSummary(object):
                 raise ValueError("Could not match work order of sort data and work items. First failure on sort_data", s_data[4], "work item ID", w_item['ID'])
             empty_count = 0
             n_spikes = len(s_data[0])
+            if n_spikes > 1:
+                if (s_data[2].size == 0) or (len(s_data[2]) == 0):
+                    if self.voltage_file is None:
+                        raise ValueError("Spike clips not found and no voltage file specified. Must include a voltage file to continue!")
             for di in range(0, 4):
                 if len(s_data[di]) == 0:
                     empty_count += 1

@@ -387,7 +387,9 @@ event_indices must be a list where each element contains a numpy array of
 threshold crossing indices for the corresponding channel in the Probe object.
 event_indices that yield a clip width beyond data boundaries are ignored.
 event_indices MUST BE ORDERED or else edge cases will not correctly be
-accounted for and an error may result. """
+accounted for and an error may result.
+'get_cips' below should be preferred as it is more versatile but this function
+is kept for ease and backward compatibility. """
 def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width, use_memmap=False):
 
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
@@ -435,42 +437,54 @@ def get_singlechannel_clips(probe_dict, chan_voltage, event_indices, clip_width,
 
 """
     get_clips(probe_dict, voltage, neighbors, event_indices,
-                        clip_width, use_memmap=False)
+                        clip_width, use_memmap=False, check_valid=True)
 
-    This is like get_clips except it concatenates the clips for each channel
-    input in the list 'channels' in the order that they appear.  Event indices
+    This is like get_singlechannel_clips except it concatenates the clips for
+    each channel input in the list 'neighbors' in the order that they appear.
+    Also works for single channel clips. Event indices
     is a single one dimensional array of indices over which clips from all input
     channels given by neighbors will be aligned. event_indices MUST BE ORDERED
-    or else edge cases will not correctly be accounted for and an error may result. """
-def get_clips(probe_dict, voltage, neighbors, event_indices, clip_width, use_memmap=False):
+    or else edge cases will not correctly be accounted for and an error may
+    result. If no edge cases are present, check_valid can be set False and
+    edges will not be checked (an indexing error will occur if this assumption
+    is incorrect). Spike clips are output in the order of the input event
+    indices. """
+def get_clips(probe_dict, voltage, neighbors, event_indices, clip_width,
+                use_memmap=False, check_valid=True):
 
     if event_indices.ndim > 1:
         raise ValueError("Event_indices must be one dimensional array of indices")
 
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
+    if len(event_indices) == 0:
+        # No indices input
+        print("EVENTS ARE ZERO!")
+        return np.zeros((0, (window[1] - window[0]) * len(neighbors)), dtype=probe_dict['v_dtype']), np.ones(0, dtype="bool")
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
     valid_event_indices = np.ones(event_indices.shape[0], dtype="bool")
     start_ind = 0
-    n = event_indices[start_ind]
-
-    while (n + window[0]) < 0:
-        valid_event_indices[start_ind] = False
-        start_ind += 1
-        if start_ind == event_indices.size:
-            # There are no valid indices
-            valid_event_indices[:] = False
-            return None, valid_event_indices
+    if check_valid:
         n = event_indices[start_ind]
-    stop_ind = event_indices.shape[0] - 1
-    n = event_indices[stop_ind]
-    while (n + window[1]) >= probe_dict['n_samples']:
-        valid_event_indices[stop_ind] = False
-        stop_ind -= 1
-        if stop_ind < 0:
-            # There are no valid indices
-            valid_event_indices[:] = False
-            return None, valid_event_indices
+        while (n + window[0]) < 0:
+            valid_event_indices[start_ind] = False
+            start_ind += 1
+            if start_ind == event_indices.size:
+                # There are no valid indices
+                valid_event_indices[:] = False
+                return None, valid_event_indices
+            n = event_indices[start_ind]
+        stop_ind = event_indices.shape[0] - 1
         n = event_indices[stop_ind]
+        while (n + window[1]) >= probe_dict['n_samples']:
+            valid_event_indices[stop_ind] = False
+            stop_ind -= 1
+            if stop_ind < 0:
+                # There are no valid indices
+                valid_event_indices[:] = False
+                return None, valid_event_indices
+            n = event_indices[stop_ind]
+    else:
+        stop_ind = len(event_indices) - 1
 
     if use_memmap:
         clip_fname = path.join(probe_dict['memmap_dir'], "{0}clips_{1}.bin".format(probe_dict['memmap_fID'], str(probe_dict['ID'])))

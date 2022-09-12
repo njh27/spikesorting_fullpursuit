@@ -429,7 +429,8 @@ class WorkItemSummary(object):
         keep_indices = self.sort_data[chan][seg][1] != label
         self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][keep_indices]
         self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][keep_indices]
-        self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][keep_indices, :]
+        if self.voltage is None:
+            self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][keep_indices, :]
         self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][keep_indices]
         return keep_indices
 
@@ -458,7 +459,8 @@ class WorkItemSummary(object):
                         curr_template, _ = get_clips(self.clip_dict, self.voltage,
                             self.work_items[chan][seg]['neighbors'],
                             self.sort_data[chan][seg][0][select],
-                            self.sort_info['clip_width'])
+                            self.sort_info['clip_width'],
+                            check_valid=False)
                         curr_template = np.mean(curr_template, axis=0)
                     mua_ratio = self.get_fraction_mua_to_peak(chan, seg, l, curr_template)
                     if mua_ratio > self.max_mua_ratio:
@@ -664,7 +666,14 @@ class WorkItemSummary(object):
         for l1 in labels1:
             # Choose seg1 template
             l1_select = self.sort_data[chan][seg1][1] == l1
-            clips_1 = self.sort_data[chan][seg1][2][l1_select, :]
+            if self.voltage is None:
+                clips_1 = self.sort_data[chan][seg1][2][l1_select, :]
+            else:
+                clips_1, _ = get_clips(self.clip_dict, self.voltage,
+                    self.work_items[chan][seg1]['neighbors'],
+                    self.sort_data[chan][seg1][0][l1_select],
+                    self.sort_info['clip_width'],
+                    check_valid=False)
             # Only compare clips within specified overlap, if these are in a
             # different segment. If same segment use all clips
             if seg1 != seg2:
@@ -685,7 +694,14 @@ class WorkItemSummary(object):
                 if [l1, l2] in previously_compared_pairs:
                     continue
                 l2_select = l2_workspace == l2
-                clips_2 = self.sort_data[chan][seg2][2][l2_select, :]
+                if self.voltage is None:
+                    clips_2 = self.sort_data[chan][seg2][2][l2_select, :]
+                else:
+                    clips_2, _ = get_clips(self.clip_dict, self.voltage,
+                        self.work_items[chan][seg2]['neighbors'],
+                        self.sort_data[chan][seg2][0][l2_select],
+                        self.sort_info['clip_width'],
+                        check_valid=False)
                 if seg1 != seg2:
                     if self.stitch_overlap_only:
                         # Stop at end of seg1 as this is end of overlap!
@@ -1107,7 +1123,6 @@ class WorkItemSummary(object):
 
                     select_label = self.sort_data[chan][seg][1] == neuron_label
                     neuron["spike_indices"] = self.sort_data[chan][seg][0][select_label]
-                    neuron['clips'] = self.sort_data[chan][seg][2][select_label, :]
                     neuron["binary_pursuit_bool"] = self.sort_data[chan][seg][3][select_label]
 
                     # NOTE: This still needs to be done even though segments
@@ -1117,7 +1132,15 @@ class WorkItemSummary(object):
                     # binary pursuit can return slightly different dupliate spikes
                     spike_order = np.argsort(neuron["spike_indices"], kind='stable')
                     neuron["spike_indices"] = neuron["spike_indices"][spike_order]
-                    neuron['clips'] = neuron['clips'][spike_order, :]
+                    if self.voltage is None:
+                        neuron['clips'] = self.sort_data[chan][seg][2][select_label, :]
+                        neuron['clips'] = neuron['clips'][spike_order, :]
+                    else:
+                        neuron['clips'], _ = get_clips(self.clip_dict, self.voltage,
+                                                neuron['neighbors'],
+                                                neuron["spike_indices"],
+                                                self.sort_info['clip_width'],
+                                                check_valid=False)
                     neuron["binary_pursuit_bool"] = neuron["binary_pursuit_bool"][spike_order]
 
                     # Set duplicate tolerance as half spike width since within

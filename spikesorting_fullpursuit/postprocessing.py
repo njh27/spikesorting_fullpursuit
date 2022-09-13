@@ -408,8 +408,10 @@ class WorkItemSummary(object):
         because overlapping segments and binary pursuit can return identical
         dupliate spikes that become sorted in different orders. """
         self.neuron_summary_seg_inds = []
-        for chan in range(0, self.n_chans):
-            for seg in range(0, self.n_segments):
+        min_seg_label = 0
+        max_seg_label = 0
+        for seg in range(0, self.n_segments):
+            for chan in range(0, self.n_chans):
                 if chan == 0:
                     # This is the same for every channel so only do once
                     self.neuron_summary_seg_inds.append(self.work_items[0][seg]['index_window'])
@@ -418,9 +420,14 @@ class WorkItemSummary(object):
                 spike_order = np.argsort(self.sort_data[chan][seg][0], kind='stable')
                 self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][spike_order]
                 self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][spike_order]
+                self.sort_data[chan][seg][1] += min_seg_label # Increment to get unique labels for each segment
+                curr_max_label = np.amax(self.sort_data[chan][seg][1])
+                if curr_max_label > max_seg_label:
+                    max_seg_label = curr_max_label
                 if self.voltage_file is None:
                     self.sort_data[chan][seg][2] = self.sort_data[chan][seg][2][spike_order, :]
                 self.sort_data[chan][seg][3] = self.sort_data[chan][seg][3][spike_order]
+            min_seg_label = max_seg_label + 1
 
     def delete_label(self, chan, seg, label):
         """ Remove the unit corresponding to label from input segment and channel. """
@@ -1782,13 +1789,17 @@ class WorkItemSummary(object):
             summary_message = "Summarizing neurons for multiple data segments" \
                                 "with less than 1 second of overlapping data."
             warnings.warn(summary_message, RuntimeWarning, stacklevel=2)
-        if not self.is_stitched and self.n_segments > 1:
-            summary_message = "Summarizing neurons for multiple data segments" \
-                                "without first stitching will result in" \
-                                "duplicate units discontinuous throughout the" \
-                                "sorting time period. Call 'stitch_segments()' " \
-                                "first to combine data across time segments."
-            warnings.warn(summary_message, RuntimeWarning, stacklevel=2)
+        # if not self.is_stitched and self.n_segments > 1:
+        #     summary_message = "Summarizing neurons for multiple data segments " \
+        #                         "without first stitching will result in " \
+        #                         "duplicate units discontinuous throughout the " \
+        #                         "sorting time period. Call 'stitch_segments()' " \
+        #                         "first to combine data across time segments."
+        #     warnings.warn(summary_message, RuntimeWarning, stacklevel=2)
+            # neuron_summary = []
+            # for n in work_summary.neuron_summary_by_seg:
+            #     neuron_summary.extend(n)
+            # return neuron_summary
 
         # Start with neurons as those in the first segment with data
         start_seg = 0
@@ -1877,6 +1888,10 @@ class WorkItemSummary(object):
                                 "sorting time period. Call 'stitch_segments()' " \
                                 "first to combine data across time segments."
             warnings.warn(summary_message, RuntimeWarning, stacklevel=2)
+            # neuron_summary = []
+            # for n in work_summary.neuron_summary_by_seg:
+            #     neuron_summary.extend(n)
+            # return neuron_summary
 
         # Start with neurons as those in the first segment with data
         start_seg = 0

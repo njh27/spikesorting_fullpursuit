@@ -1837,6 +1837,7 @@ class WorkItemSummary(object):
             for prev_ind, n in enumerate(self.neuron_summary_by_seg[seg]):
                 for next_ind, next_n in enumerate(self.neuron_summary_by_seg[next_seg]):
                     if n['label'] == next_n['label'] and n['channel'] == next_n['channel']:
+                        print("FOUND A LINK!")
                         n['next_seg_link'] = next_ind
                         next_n['prev_seg_link'] = prev_ind
 

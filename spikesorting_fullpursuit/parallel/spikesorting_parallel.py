@@ -1239,7 +1239,7 @@ def spike_sort_parallel(Probe, **kwargs):
             mkl.set_num_threads(n_threads)
             if settings['verbose']: print("Starting segment-wise Wiener filter")
             for seg_number in range(0, len(segment_onsets)):
-                if settings['verbose']: print("Start Winer filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
+                if settings['verbose']: print("Start Wiener filter on segment {0}/{1}".format(seg_number+1, len(segment_onsets)))
                 # This will overwrite the segment voltage data!
                 filtered_voltage = wiener_filter_segment(work_items, data_dict, seg_number,
                                       sort_info, Probe.v_dtype,

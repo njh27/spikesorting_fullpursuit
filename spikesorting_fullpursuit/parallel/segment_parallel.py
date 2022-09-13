@@ -458,7 +458,6 @@ def get_clips(probe_dict, voltage, neighbors, event_indices, clip_width,
     window, clip_width = time_window_to_samples(clip_width, probe_dict['sampling_rate'])
     if len(event_indices) == 0:
         # No indices input
-        print("EVENTS ARE ZERO!")
         return np.zeros((0, (window[1] - window[0]) * len(neighbors)), dtype=probe_dict['v_dtype']), np.ones(0, dtype="bool")
     # Ignore spikes whose clips extend beyond the data and create mask for removing them
     valid_event_indices = np.ones(event_indices.shape[0], dtype="bool")

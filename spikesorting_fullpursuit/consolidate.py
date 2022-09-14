@@ -410,7 +410,13 @@ class SegSummary(object):
                         self.sort_info['check_components'],
                         self.sort_info['max_components'],
                         add_peak_valley=self.sort_info['add_peak_valley'],
-                        curr_chan_inds=curr_chan_inds)
+                        curr_chan_inds=curr_chan_inds, n_samples=1e6)
+        elif method.lower() == 'pca_by_channel':
+            scores = preprocessing.compute_pca_by_channel(clips, curr_chan_inds,
+                            self.sort_info['check_components'],
+                            self.sort_info['max_components'],
+                            add_peak_valley=self.sort_info['add_peak_valley'],
+                            n_samples=1e6)
         elif method.lower() == 'template_pca':
             scores = preprocessing.compute_template_pca(clips, neuron_labels,
                         curr_chan_inds, self.sort_info['check_components'],
@@ -489,11 +495,27 @@ class SegSummary(object):
             if clips_1.shape[0] == 1 or clips_2.shape[0] == 1:
                 # Don't mess around with only 1 spike, if they are
                 # nearest each other they can merge
-                ismerged = True
+                is_merged = True
             else:
-                is_merged = self.re_sort_two_units(clips_1, clips_2, use_weights=False)
-            if not is_merged and chan_covariance_mats is not None:
-                is_merged = self.confusion_test_two_units(best_pair[0], best_pair[1], chan_covariance_mats)
+                curr_chan_inds = np.arange(0, shift_samples_per_chan, dtype=np.int64)
+                is_merged_chan = self.merge_test_two_units(clips_1, clips_2,
+                                self.sort_info['p_value_cut_thresh'],
+                                method='pca_by_channel',
+                                split_only=False, merge_only=False,
+                                use_weights=False,
+                                curr_chan_inds=curr_chan_inds)
+                is_merged_all = self.merge_test_two_units(clips_1, clips_2,
+                                self.sort_info['p_value_cut_thresh'],
+                                method='pca',
+                                split_only=False, merge_only=False,
+                                use_weights=False,
+                                curr_chan_inds=None)
+                if is_merged_chan and is_merged_all:
+                    is_merged = True
+                else:
+                    is_merged = False
+            # if not is_merged and chan_covariance_mats is not None:
+            #     is_merged = self.confusion_test_two_units(best_pair[0], best_pair[1], chan_covariance_mats)
             if is_merged:
                 # Delete the unit with the fewest spikes
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:

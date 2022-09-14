@@ -1837,7 +1837,6 @@ class WorkItemSummary(object):
             for prev_ind, n in enumerate(self.neuron_summary_by_seg[seg]):
                 for next_ind, next_n in enumerate(self.neuron_summary_by_seg[next_seg]):
                     if n['label'] == next_n['label'] and n['channel'] == next_n['channel']:
-                        print("FOUND A LINK!")
                         n['next_seg_link'] = next_ind
                         next_n['prev_seg_link'] = prev_ind
 
@@ -1850,7 +1849,8 @@ class WorkItemSummary(object):
         self.remove_redundant_neurons_by_seg(overlap_ratio_threshold)
         # NOTE: This MUST run AFTER remove redundant by seg or else you can
         # end up linking a redundant mixture to a good unit with broken link!
-        self.make_overlapping_links(ol_verbose)
+        if self.is_stitched:
+            self.make_overlapping_links(ol_verbose)
 
         neurons = self.stitch_neurons()
         # Delete any redundant segs. These shouldn't really be in here anyways

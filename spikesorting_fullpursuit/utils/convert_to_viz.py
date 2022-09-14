@@ -12,12 +12,18 @@ if __name__ == '__main__':
 
     fname_neurons = sys.argv[1]
     fname_neurons = fname_neurons.rsplit(".")
-    if fname_neurons[-4:] != ".pkl" and fname_neurons[-7:] != ".pickle":
+    if len(fname_neurons) == 2:
+        if fname_neurons[1] != "pkl" and fname_neurons[1] != "pickle":
+            fname_neurons = fname_neurons[0] + ".pkl"
+        else:
+            fname_neurons = fname_neurons[0] + "." + fname_neurons[1]
+    elif len(fname_neurons) == 1:
         fname_neurons = fname_neurons + ".pkl"
+    else:
+        raise ValueError("Cannot parse multiple file extensions on input neurons filename")
     if len(sys.argv) == 2:
-        save_fname = fname_neurons.split("neurons_")[1]
-        save_fname = save_fname.split(".")[0]
-        save_fname = save_fname + "_viz"
+        save_fname = fname_neurons.split(".")[0]
+        save_fname = save_fname + "_viz.pkl"
     elif len(sys.argv) >= 3:
         save_fname = sys.argv[2]
         if save_fname[-4:] == ".pkl" or save_fname[-7:] == ".pickle":

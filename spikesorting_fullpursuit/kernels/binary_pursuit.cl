@@ -729,10 +729,10 @@ __kernel void parse_overlap_recheck_indices(
     __private const signed int template_shift_ref_ind = (unsigned int) ((best_template_shifts_id / (num_shifts * (size_t) num_templates)) % num_shifts);
 
     if ( (best_group_likelihood < likelihood_lower_thresholds[best_spike_label_private])
-        && (best_group_likelihood < likelihood_lower_thresholds[template_number]) )
+        || (best_group_likelihood < likelihood_lower_thresholds[template_number]) )
     {
         overlap_recheck[id] = 0;
-        return; /* Even combined template doesn't exceed either unit's threshold */
+        return; /* Combined template doesn't exceed both units' thresholds */
     }
 
     /* These should all be in bounds or overlap_recheck_indices wouldn't have */

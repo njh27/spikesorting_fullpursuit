@@ -110,7 +110,7 @@ def wiener_all(original_voltage, signal_voltage, noise_voltage, smooth=1):
 
     wiener_filt = wiener_optimal_filter(S, N)
     original_ft *= wiener_filt # Filtered FFT
-    filtered_signal = np.fft.irfft(original_ft, n=original_voltage.shape[1], axis=1)
+    filtered_signal = np.fft.irfft(original_ft, n=original_voltage.size)
     filtered_signal = np.reshape(filtered_signal, voltage_shape, order="C")
 
     return filtered_signal

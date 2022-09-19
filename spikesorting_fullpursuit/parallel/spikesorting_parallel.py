@@ -22,16 +22,16 @@ def spike_sorting_settings_parallel(**kwargs):
     settings = {
         'filename': None, # Not used by the sorter, but will store the desired name of the sorted file with the output neurons for user reference
         'sigma': 4.0, # Threshold based on noise level
-        'clip_width': [-10e-4, 10e-4], # Width of clip in seconds, used for clustering. Made symmetric with largest value for binary pursuit!
+        'clip_width': [-15e-4, 15e-4], # Width of clip in seconds, used for clustering. Made symmetric with largest value for binary pursuit!
         'p_value_cut_thresh': 0.01, # Statistical criterion for splitting clusters during iso-cut
-        'segment_duration': 300, # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
-        'segment_overlap': 150, # Seconds of overlap between adjacent segments
+        'segment_duration': 600, # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
+        'segment_overlap': 120, # Seconds of overlap between adjacent segments
         'do_branch_PCA': True, # Use branch PCA method to split clusters
         'do_branch_PCA_by_chan': True, # Repeat branch PCA on each single channel separately
         'do_overlap_recheck': True, # Explicitly check if each spike is better accounted for as a sum of 2 spikes (templates)
-        'filter_band': (300, 6000), # Sorting DOES NOT FILTER THE DATA! This is information for the sorter to use. Filter voltage as desired BEFORE sorting
+        'filter_band': (300, 8000), # Sorting DOES NOT FILTER THE DATA! This is information for the sorter to use. Filter voltage as desired BEFORE sorting
         'do_ZCA_transform': True, # Whether to perform ZCA whitening on voltage before sorting
-        'check_components': 20, # Number of PCs to check for clustering. None means all
+        'check_components': 40, # Number of PCs to check for clustering. None means all
         'max_components': 5, # Max number of PCs to use to form the clustering space, out of those checked
         'min_firing_rate': 0.1, # Neurons with fewer threshold crossings than satisfy this rate are removed
         'use_rand_init': True, # If true, initial clustering uses at least some randomly chosen centers
@@ -39,13 +39,13 @@ def spike_sorting_settings_parallel(**kwargs):
         'max_gpu_memory': None, # Maximum bytes to tryto store on GPU during sorting. None means use as much memory as possible
         'save_1_cpu': True, # If true, leaves one CPU not in use during parallel clustering
         'sort_peak_clips_only': True, # If True, each sort only uses clips with peak on the main channel. Improves speed and accuracy but can miss clusters for low firing rate units on multiple channels
-        'n_cov_samples': 20000, # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
-        # e.g., sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; NOTE: these are one sided
-        'sigma_bp_noise': 2.326, # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
+        'n_cov_samples': 100000, # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
+        # e.g., sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; 99.9%: 3.090 NOTE: these are one sided
+        'sigma_bp_noise': 3.090, # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
         'sigma_bp_CI': None, # Number of noise standard deviations a template match must fall within for a spike to be added. np.inf or None ignores this parameter.
         'absolute_refractory_period': 10e-4, # Absolute refractory period expected between spikes of a single neuron. This is used in postprocesing.
         'get_adjusted_clips': False, # Probably outdated and should be left as False. Returns spike clips after the waveforms of any potentially overlapping spikes have been removed.
-        'max_binary_pursuit_clip_width_factor': 1.0, # The factor by which binary pursuit template matching can be increased relative to clip width for clustering. The best values for clustering and template matching are not always the same.
+        'max_binary_pursuit_clip_width_factor': 2.0, # The factor by which binary pursuit template matching can be increased relative to clip width for clustering. The best values for clustering and template matching are not always the same.
                                                      # Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.
         'verbose': False, # Set to true for more things to be printed while the sorter runs
         'test_flag': False, # Indicates a test run of parallel code that does NOT spawn multiple processes
@@ -53,13 +53,13 @@ def spike_sorting_settings_parallel(**kwargs):
         'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
         'wiener_filter': True, # Use wiener filter on data before binary pursuit.
         'wiener_filter_smoothing': 150, # Hz or None for no smoothing
-        'same_wiener': True, # If true, compute Wiener filter over all channels at once, using the same filter for every channel
-        'use_memmap': True, # Will keep clips and voltages stored in memmap files (voltage is preloaded as needed into ram for faster processing)
+        'same_wiener': False, # If true, compute Wiener filter over all channels at once, using the same filter for every channel
+        'use_memmap': False, # Will keep clips and voltages stored in memmap files (voltage is preloaded as needed into ram for faster processing)
         'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running
         'memmap_fID': None, # Optional identifier for naming memmap files for this specific file sort. Useful to prevent multiple simultaneous sorts from repeating file names and overwritting each other's data or causing an error
         'save_clips': True, # Saves all discovered clips in output file. These can get VERY large, so it's optional. Can be recomputed from voltage for postprocessing.
         'parallel_zca': True, # Do ZCA serially instead of parallel. Parallel can load a LOT of voltage arrays/copies into memory
-        'seg_work_order': True, # Workers will be deployed in segment order to minimize memory usage. Otherwise they are in order of most crossings for greatest speed
+        'seg_work_order': False, # Workers will be deployed in segment order to minimize memory usage. Otherwise they are in order of most crossings for greatest speed
         }
 
     for k in kwargs.keys():

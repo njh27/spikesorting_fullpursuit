@@ -542,9 +542,10 @@ class WorkItemSummary(object):
         duplicate_tol_inds = analyze_spike_timing.calc_spike_half_width(
                                 np.mean(self.sort_data[chan][seg][2][select_unit][:, main_win[0]:main_win[1]], axis=0)) + 1
         refractory_adjustment = duplicate_tol_inds / self.sort_info['sampling_rate']
-        if ( (self.absolute_refractory_period - refractory_adjustment) <= 0) and (self.print_duplicate_tol_fail):
-            print("Duplicate_tol_inds encompasses absolute_refractory_period. MUA can't be calculated for this unit.")
-            self.print_duplicate_tol_fail = False
+        if (self.absolute_refractory_period - refractory_adjustment) <= 0:
+            if self.print_duplicate_tol_fail:
+                print("Duplicate_tol_inds encompasses absolute_refractory_period. MUA can't be calculated for this unit.")
+                self.print_duplicate_tol_fail = False
             return np.nan
         index_isi = np.diff(unit_spikes)
         num_isi_violations = np.count_nonzero(
@@ -596,9 +597,10 @@ class WorkItemSummary(object):
         all_isis = np.diff(unit_spikes)
         refractory_inds = int(round(self.absolute_refractory_period * self.sort_info['sampling_rate']))
         bin_width = refractory_inds - duplicate_tol_inds
-        if ( (bin_width <= 0) and (self.print_duplicate_tol_fail) ):
-            print("Duplicate_tol_inds encompasses absolute_refractory_period so fraction MUA cannot be computed.")
-            self.print_duplicate_tol_fail = False
+        if bin_width <= 0:
+            if self.print_duplicate_tol_fail:
+                print("Duplicate_tol_inds encompasses absolute_refractory_period so fraction MUA cannot be computed.")
+                self.print_duplicate_tol_fail = False
             return np.nan
         check_inds = int(round(check_window * self.sort_info['sampling_rate']))
         bin_edges = np.arange(duplicate_tol_inds, check_inds + bin_width, bin_width)

@@ -124,22 +124,22 @@ class AbstractProbe(object):
 
 class SProbe16by2(AbstractProbe):
 
-    def __init__(self, sampling_rate, voltage_array=None):
+    def __init__(self, sampling_rate, voltage_array=None, stereo_rad=1):
         AbstractProbe.__init__(self, sampling_rate, 32, voltage_array=voltage_array, voltage_dtype=None)
+        self.stereo_rad = stereo_rad # Selects neighborhood radius in steroetrodes
+        self.total_stereotrodes = 16 # Definition of 16x2 probe
 
     def get_neighbors(self, channel):
         # These are organized into stereotrodes. Our neighbors are the channels on
-        # our same stereotrode, the two stereotrodes above us, and the two
-        # stereotrodes below us.
+        # our same stereotrode, and the 'stereo_rad' stereotrodes above and
+        # below us.
 
         if channel > self.num_channels - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
 
-        stereo_rad = 1 # Radius in stereotrodes
         stereotrode_number = (channel) // 2
-        total_stereotrodes = (32) // 2
-        start_stereotrode = max(0, stereotrode_number - stereo_rad)
-        end_stereotrode = min(total_stereotrodes, stereotrode_number + stereo_rad + 1)
+        start_stereotrode = max(0, stereotrode_number - self.stereo_rad)
+        end_stereotrode = min(self.total_stereotrodes, stereotrode_number + self.stereo_rad + 1)
         neighbors = np.arange(start_stereotrode * 2, end_stereotrode * 2, 1)
 
         return np.int64(neighbors)
@@ -147,21 +147,22 @@ class SProbe16by2(AbstractProbe):
 
 class SProbe8by2(AbstractProbe):
 
-    def __init__(self, sampling_rate, voltage_array=None):
+    def __init__(self, sampling_rate, voltage_array=None, stereo_rad=1):
         AbstractProbe.__init__(self, sampling_rate, 16, voltage_array=voltage_array, voltage_dtype=None)
+        self.stereo_rad = stereo_rad # Selects neighborhood radius in steroetrodes
+        self.total_stereotrodes = 8 # Definition of 8x2 probe
 
     def get_neighbors(self, channel):
         # These are organized into stereotrodes. Our neighbors are the channels on
-        # our same stereotrode, the two stereotrodes above us, and the two
-        # stereotrodes below us.
+        # our same stereotrode, and the 'stereo_rad' stereotrodes above and
+        # below us.
 
         if channel > self.num_channels - 1 or channel < 0:
             raise ValueError("Invalid electrode channel")
 
         stereotrode_number = (channel) // 2
-        total_stereotrodes = (16) // 2
-        start_stereotrode = max(0, stereotrode_number - 2)
-        end_stereotrode = min(total_stereotrodes, stereotrode_number + 3)
+        start_stereotrode = max(0, stereotrode_number - self.stereo_rad)
+        end_stereotrode = min(self.total_stereotrodes, stereotrode_number + self.stereo_rad + 1)
         neighbors = np.arange(start_stereotrode * 2, end_stereotrode * 2, 1)
 
         return np.int64(neighbors)

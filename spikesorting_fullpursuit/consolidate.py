@@ -351,14 +351,16 @@ class SegSummary(object):
             best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan = self.find_nearest_shifted_pair(remaining_inds, previously_compared_pairs)
             return best_pair, best_shift, clips_1, clips_2, chans_used_for_clips, shift_samples_per_chan
 
-    def confusion_test_two_units(self, n1_ind, n2_ind, chan_covariance_mats):
+    def confusion_test_two_units(self, n1_ind, n2_ind, chan_covariance_mats,
+                                    max_shift=None):
         shift_temp1, shift_temp2, _, _ = optimal_align_templates(
                 self.summaries[n1_ind]['bp_template'],
                 self.summaries[n2_ind]['bp_template'],
-                self.sort_info['n_channels'], max_shift=None,
+                self.sort_info['n_channels'], max_shift=max_shift,
                 align_abs=False, zero_pad=True)
 
-        confusion_threshold = self.sort_info['p_value_cut_thresh']
+        # Hard coded at 10% errors which is roughly useful without being too strict
+        confusion_threshold = 0.1
         p_confusion = check_template_pair(shift_temp1, shift_temp2,
                         chan_covariance_mats, self.sort_info)
         if p_confusion > confusion_threshold:
@@ -481,6 +483,10 @@ class SegSummary(object):
 
     def sharpen_across_chans(self, chan_covariance_mats=None):
         """
+        Decides pairwise whether templates should be combined and treated as the
+        same unit. If chan_covariance_mats is given, the test is done using
+        the binary pursuit statistics, otherwise a cluster merge test using
+        pca is performed.
         """
         inds_to_delete = []
         remaining_inds = [x for x in range(0, len(self.summaries))]
@@ -496,6 +502,9 @@ class SegSummary(object):
                 # Don't mess around with only 1 spike, if they are
                 # nearest each other they can merge
                 is_merged = True
+            elif chan_covariance_mats is not None:
+                is_merged = self.confusion_test_two_units(best_pair[0], best_pair[1],
+                                    chan_covariance_mats, max_shift=None)
             else:
                 curr_chan_inds = np.arange(0, shift_samples_per_chan, dtype=np.int64)
                 is_merged_chan = self.merge_test_two_units(clips_1, clips_2,
@@ -506,7 +515,7 @@ class SegSummary(object):
                                 curr_chan_inds=curr_chan_inds)
                 is_merged_all = self.merge_test_two_units(clips_1, clips_2,
                                 self.sort_info['p_value_cut_thresh'],
-                                method='pca',
+                                method='template_pca',
                                 split_only=False, merge_only=False,
                                 use_weights=False,
                                 curr_chan_inds=None)
@@ -514,8 +523,7 @@ class SegSummary(object):
                     is_merged = True
                 else:
                     is_merged = False
-            # if not is_merged and chan_covariance_mats is not None:
-            #     is_merged = self.confusion_test_two_units(best_pair[0], best_pair[1], chan_covariance_mats)
+
             if is_merged:
                 # Delete the unit with the fewest spikes
                 if self.summaries[best_pair[0]]['spike_indices'].shape[0] > self.summaries[best_pair[1]]['spike_indices'].shape[0]:

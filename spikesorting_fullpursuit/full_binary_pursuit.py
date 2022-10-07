@@ -208,8 +208,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     if sort_info['verbose']: print("Binary pursuit clip width is", sort_info['clip_width'], "from", original_clip_width)
     if sort_info['verbose']: print("Binary pursuit samples per chan", sort_info['n_samples_per_chan'], "from", original_n_samples_per_chan)
 
-    seg_summary.sharpen_across_chans()
-    if sort_info['verbose']: print("Sharpening reduced number of templates to", len(seg_summary.summaries))
+    # seg_summary.sharpen_across_chans()
+    # if sort_info['verbose']: print("Sharpening reduced number of templates to", len(seg_summary.summaries))
     if sort_info['verbose']: print("Checking", len(seg_summary.summaries), "neurons for potential sums")
 
     # Gather the bp_templates for each unit and the clip-template residuals for
@@ -299,7 +299,8 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
     # pursuit templates is accounted for
     seg_summary.set_bp_templates(bp_templates)
     seg_summary.sharpen_across_chans(chan_covariance_mats)
-    if sort_info['verbose']: print("Removing confused pairs reduced number of templates to", len(seg_summary.summaries))
+    bp_templates = [n['bp_template'] for n in seg_summary.summaries]
+    if sort_info['verbose']: print("Removing confused pairs reduced number of templates to", len(bp_templates))
     del seg_summary # No longer needed so clear memory
 
     separability_metrics = neuron_separability.compute_separability_metrics(

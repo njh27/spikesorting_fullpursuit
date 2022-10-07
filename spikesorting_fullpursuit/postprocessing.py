@@ -272,6 +272,7 @@ class WorkItemSummary(object):
             self.n_segments = self.sort_info['n_segments']
         else:
             self.n_segments = n_segments
+        self.new2orig_seg_labels = [{} for x in range(0, self.n_segments)]
         self.half_clip_inds = int(round(np.amax(np.abs(self.sort_info['clip_width'])) * self.sort_info['sampling_rate']))
         self.absolute_refractory_period = absolute_refractory_period
         self.max_mua_ratio = max_mua_ratio
@@ -422,6 +423,9 @@ class WorkItemSummary(object):
                 self.sort_data[chan][seg][0] = self.sort_data[chan][seg][0][spike_order]
                 self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][spike_order]
                 self.sort_data[chan][seg][1] += min_seg_label # Increment to get unique labels for each segment
+                # Update segment label tracking
+                for n_label in np.unqiue(self.sort_data[chan][seg][1]):
+                    self.new2orig_seg_labels[seg][n_label] = n_label - min_seg_label
                 curr_max_label = np.amax(self.sort_data[chan][seg][1])
                 if curr_max_label > max_seg_label:
                     max_seg_label = curr_max_label

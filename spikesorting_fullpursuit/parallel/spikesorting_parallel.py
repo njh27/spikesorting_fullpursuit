@@ -31,9 +31,9 @@ def spike_sorting_settings_parallel(**kwargs):
         'do_overlap_recheck': True, # Explicitly check if each spike is better accounted for as a sum of 2 spikes (templates)
         'filter_band': (300, 8000), # Sorting DOES NOT FILTER THE DATA! This is information for the sorter to use. Filter voltage as desired BEFORE sorting
         'do_ZCA_transform': True, # Whether to perform ZCA whitening on voltage before sorting
-        'check_components': 40, # Number of PCs to check for clustering. None means all
+        'check_components': 100, # Number of PCs to check for clustering. None means all
         'max_components': 5, # Max number of PCs to use to form the clustering space, out of those checked
-        'min_firing_rate': 0.1, # Neurons with fewer threshold crossings than satisfy this rate are removed
+        'min_firing_rate': 0.0, # Neurons with fewer threshold crossings than satisfy this rate are removed
         'use_rand_init': True, # If true, initial clustering uses at least some randomly chosen centers
         'add_peak_valley': False, # Use peak valley in addition to PCs for clustering space
         'max_gpu_memory': None, # Maximum bytes to tryto store on GPU during sorting. None means use as much memory as possible
@@ -50,7 +50,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'verbose': False, # Set to true for more things to be printed while the sorter runs
         'test_flag': False, # Indicates a test run of parallel code that does NOT spawn multiple processes
         'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
-        'output_separability_metrics': False, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
+        'output_separability_metrics': True, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
         'wiener_filter': True, # Use wiener filter on data before binary pursuit.
         'wiener_filter_smoothing': 150, # Hz or None for no smoothing
         'same_wiener': False, # If true, compute Wiener filter over all channels at once, using the same filter for every channel

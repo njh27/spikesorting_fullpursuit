@@ -302,12 +302,13 @@ def pairwise_separability(separability_metrics, sort_info):
         p_spike_added_given_noise = norm.sf(
                     separability_metrics['neuron_lower_thresholds'][n1],
                     E_L_n1_noise, np.sqrt(separability_metrics['neuron_variances'][n1]))
-        p_spike_added = separability_metrics['n_spikes'][n1] / sort_info['n_samples']
-        # Probability of adding a spike must be at >= conditional probability
-        p_spike_added = max(p_spike_added, p_spike_added_given_noise)
-        noise_contamination[n1] = (p_spike_added_given_noise *
-                separability_metrics['channel_p_noise'][separability_metrics['peak_channel'][n1]]
-                / p_spike_added)
+        # p_spike_added = separability_metrics['n_spikes'][n1] / sort_info['n_samples']
+        # # Probability of adding a spike must be at >= conditional probability
+        # p_spike_added = max(p_spike_added, p_spike_added_given_noise)
+        # noise_contamination[n1] = (p_spike_added_given_noise *
+        #         separability_metrics['channel_p_noise'][separability_metrics['peak_channel'][n1]]
+        #         / p_spike_added)
+        noise_contamination[n1] = p_spike_added_given_noise
 
         for n2 in range(0, separability_metrics['templates'].shape[0]):
             # if separability_metrics['peak_channel'][n1] != separability_metrics['peak_channel'][n2]:

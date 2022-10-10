@@ -3,6 +3,7 @@ from spikesorting_fullpursuit.sort import merge_clusters
 from spikesorting_fullpursuit import preprocessing
 from spikesorting_fullpursuit import analyze_spike_timing
 from spikesorting_fullpursuit.parallel.segment_parallel import get_clips
+from spikesorting_fullpursuit import neuron_separability
 
 import warnings
 
@@ -366,7 +367,8 @@ class WorkItemSummary(object):
 
     def organize_sort_data(self):
         """Takes the output of the spike sorting algorithms and organizes is by
-        channel in segment order.
+        channel in segment order. Also organizes the labels of units within
+        segments and maps to original label indices from 0-N within each segment.
         Parameters
         ----------
         sort_data: list
@@ -404,19 +406,40 @@ class WorkItemSummary(object):
         self.sort_data = organized_data
         self.work_items = organized_items
 
+        self.neuron_summary_seg_inds = []
+        for seg in range(0, self.n_segments):
+            self.neuron_summary_seg_inds.append(self.work_items[0][seg]['index_window'])
+            all_seg_labels = []
+            # First find all the seg labels
+            for chan in range(0, self.n_chans):
+                if len(self.sort_data[chan][seg][0]) == 0:
+                    continue # No spikes in this segment
+                all_seg_labels = np.hstack((all_seg_labels, np.unique(self.sort_data[chan][seg][1])))
+            if len(all_seg_labels) == 0:
+                continue
+            # Go through labels and reassign to lowest label starting with 0
+            next_new_label = 0
+            # Unique sorts so going through lowest to highest
+            for curr_label in np.unique(all_seg_labels):
+                for chan in range(0, self.n_chans):
+                    if np.any(self.sort_data[chan][seg][1] == curr_label):
+                        # We found the channel with current lowest label, reassign
+                        curr_select = self.sort_data[chan][seg][1] == curr_label
+                        self.sort_data[chan][seg][1][curr_select] = next_new_label
+                        next_new_label += 1
+                        break
+
     def temporal_order_sort_data(self):
         """ Places all data within each segment in temporal order according to
         the spike event times. Use 'stable' sort for output to be repeatable
         because overlapping segments and binary pursuit can return identical
-        dupliate spikes that become sorted in different orders. """
-        self.neuron_summary_seg_inds = []
+        dupliate spikes that become sorted in different orders. Moves labels
+        to be non-overlapping across segments and updates dict tracking of this. """
+
         min_seg_label = 0
         max_seg_label = 0
         for seg in range(0, self.n_segments):
             for chan in range(0, self.n_chans):
-                if chan == 0:
-                    # This is the same for every channel so only do once
-                    self.neuron_summary_seg_inds.append(self.work_items[0][seg]['index_window'])
                 if len(self.sort_data[chan][seg][0]) == 0:
                     continue # No spikes in this segment
                 spike_order = np.argsort(self.sort_data[chan][seg][0], kind='stable')
@@ -424,7 +447,7 @@ class WorkItemSummary(object):
                 self.sort_data[chan][seg][1] = self.sort_data[chan][seg][1][spike_order]
                 self.sort_data[chan][seg][1] += min_seg_label # Increment to get unique labels for each segment
                 # Update segment label tracking
-                for n_label in np.unqiue(self.sort_data[chan][seg][1]):
+                for n_label in np.unique(self.sort_data[chan][seg][1]):
                     self.new2orig_seg_labels[seg][n_label] = n_label - min_seg_label
                 curr_max_label = np.amax(self.sort_data[chan][seg][1])
                 if curr_max_label > max_seg_label:
@@ -968,9 +991,15 @@ class WorkItemSummary(object):
                     if self.verbose: print("skipping seg", curr_seg, "with no spikes")
                     continue
                 if start_new_seg:
+                    # Update new labels dictionary FOR THIS CHANNEL ONLY!
+                    old_n_labels = np.unique(self.sort_data[chan][curr_seg][1])
+                    for n_label_key in old_n_labels:
+                        self.new2orig_seg_labels[curr_seg][n_label_key + next_real_label] = self.new2orig_seg_labels[curr_seg][n_label_key]
+                        del self.new2orig_seg_labels[curr_seg][n_label_key]
                     # Map all units in this segment to new real labels
                     self.sort_data[chan][curr_seg][1] += next_real_label # Keep out of range
-                    for nl in np.unique(self.sort_data[chan][curr_seg][1]):
+                    old_n_labels += next_real_label
+                    for nl in old_n_labels:
                         # Add these new labels to real_labels for tracking
                         real_labels.append(nl)
                         if self.verbose: print("In NEXT SEG NEW (531) added real label", nl, chan, curr_seg)
@@ -1021,9 +1050,17 @@ class WorkItemSummary(object):
                     if is_merged:
                         # Choose next seg spikes based on original fake label workspace
                         fake_select = next_label_workspace == best_pair[1]
+                        # Update new labels dictionary
+                        old_label = np.unique(self.sort_data[chan][next_seg][1][fake_select])
                         # Update actual next segment label data with same labels
                         # used in curr_seg
                         self.sort_data[chan][next_seg][1][fake_select] = best_pair[0]
+                        if old_label.size > 1:
+                            raise RuntimeError("Found too many labels to update label dictionary!")
+                        else:
+                            old_label = old_label[0]
+                        self.new2orig_seg_labels[next_seg][best_pair[0]] = self.new2orig_seg_labels[next_seg][old_label]
+                        del self.new2orig_seg_labels[next_seg][old_label]
                         leftover_labels.remove(best_pair[1])
                         main_labels.remove(best_pair[0])
                     else:
@@ -1035,7 +1072,15 @@ class WorkItemSummary(object):
                 # current segment a new real label
                 for ll in leftover_labels:
                     ll_select = next_label_workspace == ll
+                    # Update new labels dictionary
+                    old_label = np.unique(self.sort_data[chan][next_seg][1][ll_select])
                     self.sort_data[chan][next_seg][1][ll_select] = next_real_label
+                    if old_label.size > 1:
+                        raise RuntimeError("Found too many labels to update label dictionary!")
+                    else:
+                        old_label = old_label[0]
+                    self.new2orig_seg_labels[next_seg][next_real_label] = self.new2orig_seg_labels[next_seg][old_label]
+                    del self.new2orig_seg_labels[next_seg][old_label]
                     real_labels.append(next_real_label)
                     if self.verbose: print("In leftover labels (882) added real label", next_real_label, chan, curr_seg)
                     next_real_label += 1
@@ -1049,11 +1094,16 @@ class WorkItemSummary(object):
             # It is possible to leave loop without checking last seg in the
             # event it is a new seg
             if start_new_seg and len(self.sort_data[chan][-1][0]) > 0:
+                # Update new labels dictionary FOR THIS CHANNEL ONLY!
+                old_n_labels = np.unique(self.sort_data[-1][-1][1])
+                for n_label_key in old_n_labels:
+                    self.new2orig_seg_labels[-1][n_label_key + next_real_label] = self.new2orig_seg_labels[-1][n_label_key]
+                    del self.new2orig_seg_labels[-1][n_label_key]
                 # Map all units in this segment to new real labels
                 # Seg labels start at zero, so just add next_real_label. This
                 # is last segment for this channel so no need to increment
                 self.sort_data[chan][-1][1] += next_real_label
-                real_labels.extend((np.unique(self.sort_data[chan][-1][1]) + next_real_label).tolist())
+                real_labels.extend((old_n_labels + next_real_label).tolist())
                 if self.verbose: print("Last seg is new (747) added real labels", np.unique(self.sort_data[chan][-1][1]) + next_real_label, chan, curr_seg)
             if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels)
             self.is_stitched = True
@@ -1122,6 +1172,8 @@ class WorkItemSummary(object):
         """
         self.neuron_summary_by_seg = [[] for x in range(0, self.n_segments)]
         for seg in range(0, self.n_segments):
+            pair_separability_matrix, noise_contamination, noise_misses = neuron_separability.pairwise_separability(
+                                                                self.sort_info['separability_metrics'][seg], self.sort_info)
             for chan in range(0, self.n_chans):
                 cluster_labels = np.unique(self.sort_data[chan][seg][1])
                 for neuron_label in cluster_labels:
@@ -1140,6 +1192,19 @@ class WorkItemSummary(object):
                     select_label = self.sort_data[chan][seg][1] == neuron_label
                     neuron["spike_indices"] = self.sort_data[chan][seg][0][select_label]
                     neuron["binary_pursuit_bool"] = self.sort_data[chan][seg][3][select_label]
+
+                    # for tracking pairwise separability metrics
+                    if self.sort_info['output_separability_metrics']:
+                        original_label = self.new2orig_seg_labels[seg][neuron_label]
+                        neuron['n_max_confusion'] = np.argmax(pair_separability_matrix[original_label, :])
+                        neuron['max_confusion'] = pair_separability_matrix[original_label, neuron['n_max_confusion']]
+                        neuron['p_noise_added'] = noise_contamination[original_label]
+                        neuron['p_noise_miss'] = noise_misses[original_label]
+                        # Find the current label of max confusion
+                        for n_label in self.new2orig_seg_labels[seg].keys():
+                            if self.new2orig_seg_labels[seg][n_label] == neuron['n_max_confusion']:
+                                neuron['n_max_confusion'] = n_label
+                                break
 
                     # NOTE: This still needs to be done even though segments
                     # were ordered because of overlap!
@@ -1618,6 +1683,10 @@ class WorkItemSummary(object):
         combined_neuron['chan_neighbor_ind'] = {}
         combined_neuron['main_windows'] = {}
         combined_neuron['duplicate_tol_inds'] = 0
+        combined_neuron['max_confusion'] = {}
+        combined_neuron['p_noise_added'] = []
+        combined_neuron['p_noise_miss'] = []
+
         chan_align_peak = {}
         n_total_spikes = 0
         n_peak = 0
@@ -1642,6 +1711,22 @@ class WorkItemSummary(object):
                 > np.amin(x['template'][x['main_win'][0]:x['main_win'][1]]):
                 chan_align_peak[x['channel']][0] += 1
             chan_align_peak[x['channel']][1] += 1
+
+            # for tracking pairwise separability metrics
+            if 'max_confusion' in x:
+                if x['n_max_confusion'] in combined_neuron['max_confusion']:
+                    combined_neuron['max_confusion'][x['n_max_confusion']].append(x['max_confusion'])
+                else:
+                    combined_neuron['max_confusion'][x['n_max_confusion']] = [x['max_confusion']]
+                combined_neuron['p_noise_added'].append(x['p_noise_added'])
+                combined_neuron['p_noise_miss'].append(x['p_noise_miss'])
+
+        for nmc in combined_neuron['max_confusion']:
+            combined_neuron['max_confusion'][nmc] = np.nanmean(combined_neuron['max_confusion'][nmc])
+        if len(combined_neuron['p_noise_added']) > 0:
+            combined_neuron['p_noise_added'] = np.nanmean(combined_neuron['p_noise_added'])
+        if len(combined_neuron['p_noise_miss']) > 0:
+            combined_neuron['p_noise_miss'] = np.nanmean(combined_neuron['p_noise_miss'])
 
         waveform_clip_center = int(round(np.abs(self.sort_info['clip_width'][0] * self.sort_info['sampling_rate']))) + 1
         channel_selector = []
@@ -1676,6 +1761,8 @@ class WorkItemSummary(object):
             # NOTE: redundantly piling this up makes it easy to track and gives
             # a weighted SNR as its final result
             snr_by_unit.append(np.full(n_unit_events, unit['snr']))
+
+
 
         # Now combine everything into one
         channel_selector = np.hstack(channel_selector)

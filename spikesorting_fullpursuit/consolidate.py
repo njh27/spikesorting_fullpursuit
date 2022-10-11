@@ -140,6 +140,20 @@ class SegSummary(object):
         temp_range = np.amax(main_template) - np.amin(main_template)
         return temp_range / (3 * background_noise_std)
 
+    def zero_low_snr_chans(self):
+        """ Sets bp_template values for channels under bp_chan_snr threshold
+        to values of zero. """
+        if (self.sort_info['bp_chan_snr'] is None) or (self.sort_info['bp_chan_snr'] <= 0):
+            return None
+        for n in self.summaries:
+            for chan in range(0, self.sort_info['n_channels']):
+                print("chan snr", chan, n['snr_by_chan'][chan])
+                if n['snr_by_chan'][chan] < self.sort_info['bp_chan_snr']:
+                    chan_win = [self.sort_info['n_samples_per_chan'] * chan,
+                                self.sort_info['n_samples_per_chan'] * (chan + 1)]
+                    n['bp_template'][chan_win[0]:chan_win[1]] = 0
+        return None
+
     def set_bp_templates(self, bp_templates):
         """ Assign the templates in the input bp_templates to the
         corresponding seg summary units.
@@ -156,6 +170,7 @@ class SegSummary(object):
                 bp_templates = templates_list
         for ind, n in enumerate(self.summaries):
             n['bp_template'] = bp_templates[ind]
+        self.zero_low_snr_chans()
 
     def make_summaries(self):
         """ Make a neuron summary for each unit in each segment and add them to

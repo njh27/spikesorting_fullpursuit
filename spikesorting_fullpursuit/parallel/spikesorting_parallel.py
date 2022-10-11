@@ -43,6 +43,7 @@ def spike_sorting_settings_parallel(**kwargs):
         # e.g., sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; 99.9%: 3.090 NOTE: these are one sided
         'sigma_bp_noise': 3.090, # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
         'sigma_bp_CI': None, # Number of noise standard deviations a template match must fall within for a spike to be added. np.inf or None ignores this parameter.
+        'bp_chan_snr': None, # SNR required for a template on a given channel to be used for binary pursuit. Channels lower than this are set to zero template signal.
         'absolute_refractory_period': 10e-4, # Absolute refractory period expected between spikes of a single neuron. This is used in postprocesing.
         'get_adjusted_clips': False, # Probably outdated and should be left as False. Returns spike clips after the waveforms of any potentially overlapping spikes have been removed.
         'max_binary_pursuit_clip_width_factor': 2.0, # The factor by which binary pursuit template matching can be increased relative to clip width for clustering. The best values for clustering and template matching are not always the same.

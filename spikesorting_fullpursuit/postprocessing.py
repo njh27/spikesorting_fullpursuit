@@ -1195,7 +1195,7 @@ class WorkItemSummary(object):
 
                     # for tracking pairwise separability metrics
                     if self.sort_info['output_separability_metrics']:
-                        original_label = self.new2orig_seg_labels[seg][neuron_label]
+                        original_label = self.new2orig_seg_labels[seg][neuron['label']]
                         neuron['n_max_confusion'] = np.argmax(pair_separability_matrix[original_label, :])
                         neuron['max_confusion'] = pair_separability_matrix[original_label, neuron['n_max_confusion']]
                         neuron['p_noise_added'] = noise_contamination[original_label]
@@ -1666,7 +1666,7 @@ class WorkItemSummary(object):
                 neurons.append([self.neuron_summary_by_seg[next_seg][new_neuron]])
         return neurons
 
-    def join_neuron_dicts(self, unit_dicts_list):
+    def join_neuron_dicts(self, unit_dicts_list, n_id=None):
         """
         """
         if len(unit_dicts_list) == 0:
@@ -1683,6 +1683,8 @@ class WorkItemSummary(object):
         combined_neuron['chan_neighbor_ind'] = {}
         combined_neuron['main_windows'] = {}
         combined_neuron['duplicate_tol_inds'] = 0
+        combined_neuron['labels'] = []
+        combined_neuron['id'] = n_id
         combined_neuron['max_confusion'] = {}
         combined_neuron['p_noise_added'] = []
         combined_neuron['p_noise_miss'] = []
@@ -1712,6 +1714,7 @@ class WorkItemSummary(object):
                 chan_align_peak[x['channel']][0] += 1
             chan_align_peak[x['channel']][1] += 1
 
+            combined_neuron['labels'].append(x['label'])
             # for tracking pairwise separability metrics
             if 'max_confusion' in x:
                 if x['n_max_confusion'] in combined_neuron['max_confusion']:
@@ -1721,8 +1724,6 @@ class WorkItemSummary(object):
                 combined_neuron['p_noise_added'].append(x['p_noise_added'])
                 combined_neuron['p_noise_miss'].append(x['p_noise_miss'])
 
-        for nmc in combined_neuron['max_confusion']:
-            combined_neuron['max_confusion'][nmc] = np.nanmean(combined_neuron['max_confusion'][nmc])
         if len(combined_neuron['p_noise_added']) > 0:
             combined_neuron['p_noise_added'] = np.nanmean(combined_neuron['p_noise_added'])
         if len(combined_neuron['p_noise_miss']) > 0:
@@ -1871,6 +1872,35 @@ class WorkItemSummary(object):
 
         return combined_neuron
 
+    def finalize_confusion(self, neuron_summary):
+        """ Updates confusion metrics if output to reflect the indices of the
+        final output neurons for pairwise max confusion averages and alters
+        the dictionaries from neuron_summary in place. """
+
+        if self.sort_info['output_separability_metrics']:
+            # Update confusioin indices to match summary outputs
+            all_new_confusion = []
+            for n1 in neuron_summary:
+                new_confusion = {}
+                for n2 in neuron_summary:
+                    if n1 is n2:
+                        continue
+                    for conf1_label in n1['max_confusion'].keys():
+                        for conf2_label in n2['labels']:
+                            if conf1_label == conf2_label:
+                                if n2['id'] in new_confusion:
+                                    new_confusion[n2['id']].append(n1['max_confusion'][conf1_label])
+                                else:
+                                    new_confusion[n2['id']] = [n1['max_confusion'][conf1_label]]
+                # Now go through and take mean of new confusions
+                for nc in new_confusion.keys():
+                    new_confusion[nc] = np.nanmean(new_confusion[nc])
+                all_new_confusion.append(new_confusion)
+            for n, c in zip(neuron_summary, all_new_confusion):
+                n['max_confusion'] = c
+
+        return None
+
     def summarize_neurons_across_channels(self, overlap_ratio_threshold=5,
                 min_segs_per_unit=1, remove_clips=False, ol_verbose=False):
         """ Creates output neurons list by combining segment-wise neurons across
@@ -1965,12 +1995,14 @@ class WorkItemSummary(object):
             del neurons[d_ind]
         # Use the links to join eveyrthing for final output
         neuron_summary = []
-        for n in neurons:
-            neuron_summary.append(self.join_neuron_dicts(n))
+        for n_ind, n in enumerate(neurons):
+            neuron_summary.append(self.join_neuron_dicts(n, n_id=n_ind))
             # Indicate origin of summary for each neuron
             neuron_summary[-1]['summary_type'] = 'across_channels'
         if remove_clips:
             neuron_summary = delete_spike_clips(neuron_summary)
+        self.finalize_confusion(neuron_summary)
+
         return neuron_summary
 
     def summarize_neurons_within_channel(self, min_segs_per_unit=1,

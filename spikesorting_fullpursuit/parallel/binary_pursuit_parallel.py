@@ -182,10 +182,6 @@ def binary_pursuit(voltage, v_dtype, sort_info,
     if templates.ndim == 1:
         templates = np.reshape(templates, (1, -1))
     templates = np.float32(templates)
-    import matplotlib.pyplot as plt
-    for r in range(0, templates.shape[0]):
-        plt.plot(templates[r, :])
-        plt.show()
     # Reshape our templates so that instead of being an MxN array, this
     # becomes a 1x(M*N) vector. The first template should be in the first N points
     templates_vector = templates.reshape(templates.size).astype(np.float32)

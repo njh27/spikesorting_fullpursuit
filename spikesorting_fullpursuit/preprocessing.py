@@ -40,6 +40,10 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
     if voltage_data.ndim == 1:
         return 1.
     zca_thresholds = np.copy(thresholds)
+    # Use <= 2 STD of noise for ZCA samples, first convert thresholds
+    if sigma > 2:
+        zca_thresholds /= sigma
+        zca_thresholds *= 2.0
     # convert cushion to zero centered window
     thresh_cushion = (thresh_cushion * 2 + 1)
     volt_thresh_bool = np.zeros(voltage_data.shape, dtype="bool")
@@ -55,6 +59,8 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
             out_samples = valid_samples
         else:
             out_samples = np.random.choice(valid_samples, int(n_samples), replace=True)
+        if out_samples.size < 1000:
+            print("WARNING: LESS THAN 1000 SAMPLES FOUND FOR ZCA CALCULATION ON CHANNEL", i)
         sigma[i, i] = np.var(out_samples, ddof=1)
         ij_samples = np.full((2, voltage_data.shape[0]), np.nan)
         for j in range(i+1, voltage_data.shape[0]):

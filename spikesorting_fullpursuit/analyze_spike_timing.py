@@ -422,7 +422,7 @@ def calc_fraction_mua_to_peak(spike_indices, sampling_rate, duplicate_tol_inds,
     refractory_inds = int(round(absolute_refractory_period * sampling_rate))
     bin_width = refractory_inds - duplicate_tol_inds
     if bin_width <= 0:
-        print("LINE 555: duplicate_tol_inds encompasses absolute_refractory_period so fraction MUA cannot be computed.")
+        print("Duplicate_tol_inds encompasses absolute_refractory_period so fraction MUA cannot be computed.")
         return np.nan
     check_inds = int(round(check_window * sampling_rate))
     bin_edges = np.arange(duplicate_tol_inds, check_inds + bin_width, bin_width)

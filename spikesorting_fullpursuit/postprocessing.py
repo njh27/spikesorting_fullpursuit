@@ -995,7 +995,7 @@ class WorkItemSummary(object):
                     old_n_labels = np.unique(self.sort_data[chan][curr_seg][1])
                     for n_label_key in old_n_labels:
                         self.new2orig_seg_labels[curr_seg][n_label_key + next_real_label] = self.new2orig_seg_labels[curr_seg][n_label_key]
-                        del self.new2orig_seg_labels[curr_seg][n_label_key]
+                        # del self.new2orig_seg_labels[curr_seg][n_label_key]
                     # Map all units in this segment to new real labels
                     self.sort_data[chan][curr_seg][1] += next_real_label # Keep out of range
                     old_n_labels += next_real_label
@@ -1095,7 +1095,7 @@ class WorkItemSummary(object):
             # event it is a new seg
             if start_new_seg and len(self.sort_data[chan][-1][0]) > 0:
                 # Update new labels dictionary FOR THIS CHANNEL ONLY!
-                old_n_labels = np.unique(self.sort_data[-1][-1][1])
+                old_n_labels = np.unique(self.sort_data[chan][-1][1])
                 for n_label_key in old_n_labels:
                     self.new2orig_seg_labels[-1][n_label_key + next_real_label] = self.new2orig_seg_labels[-1][n_label_key]
                     del self.new2orig_seg_labels[-1][n_label_key]

@@ -951,6 +951,7 @@ class WorkItemSummary(object):
             print("Skipped stitching")
             return
 
+        update_new2orig_seg_labels = [[] for x in range(0, len(self.sort_data[0]))]
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
             print("Start stitching channel", chan)
@@ -994,7 +995,8 @@ class WorkItemSummary(object):
                     # Update new labels dictionary FOR THIS CHANNEL ONLY!
                     old_n_labels = np.unique(self.sort_data[chan][curr_seg][1])
                     for n_label_key in old_n_labels:
-                        self.new2orig_seg_labels[curr_seg][n_label_key + next_real_label] = self.new2orig_seg_labels[curr_seg][n_label_key]
+                        update_new2orig_seg_labels[curr_seg].append([n_label_key + next_real_label, self.new2orig_seg_labels[curr_seg][n_label_key]])
+                        # self.new2orig_seg_labels[curr_seg][n_label_key + next_real_label] = self.new2orig_seg_labels[curr_seg][n_label_key]
                         # del self.new2orig_seg_labels[curr_seg][n_label_key]
                     # Map all units in this segment to new real labels
                     self.sort_data[chan][curr_seg][1] += next_real_label # Keep out of range
@@ -1059,8 +1061,9 @@ class WorkItemSummary(object):
                             raise RuntimeError("Found too many labels to update label dictionary!")
                         else:
                             old_label = old_label[0]
-                        self.new2orig_seg_labels[next_seg][best_pair[0]] = self.new2orig_seg_labels[next_seg][old_label]
-                        del self.new2orig_seg_labels[next_seg][old_label]
+                        update_new2orig_seg_labels[next_seg].append([best_pair[0], self.new2orig_seg_labels[next_seg][old_label]])
+                        # self.new2orig_seg_labels[next_seg][best_pair[0]] = self.new2orig_seg_labels[next_seg][old_label]
+                        # del self.new2orig_seg_labels[next_seg][old_label]
                         leftover_labels.remove(best_pair[1])
                         main_labels.remove(best_pair[0])
                     else:
@@ -1079,8 +1082,9 @@ class WorkItemSummary(object):
                         raise RuntimeError("Found too many labels to update label dictionary!")
                     else:
                         old_label = old_label[0]
-                    self.new2orig_seg_labels[next_seg][next_real_label] = self.new2orig_seg_labels[next_seg][old_label]
-                    del self.new2orig_seg_labels[next_seg][old_label]
+                    update_new2orig_seg_labels[next_seg].append([next_real_label, self.new2orig_seg_labels[next_seg][old_label]])
+                    # self.new2orig_seg_labels[next_seg][next_real_label] = self.new2orig_seg_labels[next_seg][old_label]
+                    # del self.new2orig_seg_labels[next_seg][old_label]
                     real_labels.append(next_real_label)
                     if self.verbose: print("In leftover labels (882) added real label", next_real_label, chan, curr_seg)
                     next_real_label += 1
@@ -1097,8 +1101,9 @@ class WorkItemSummary(object):
                 # Update new labels dictionary FOR THIS CHANNEL ONLY!
                 old_n_labels = np.unique(self.sort_data[chan][-1][1])
                 for n_label_key in old_n_labels:
-                    self.new2orig_seg_labels[-1][n_label_key + next_real_label] = self.new2orig_seg_labels[-1][n_label_key]
-                    del self.new2orig_seg_labels[-1][n_label_key]
+                    update_new2orig_seg_labels[-1].append([n_label_key + next_real_label, self.new2orig_seg_labels[-1][n_label_key]])
+                    # self.new2orig_seg_labels[-1][n_label_key + next_real_label] = self.new2orig_seg_labels[-1][n_label_key]
+                    # del self.new2orig_seg_labels[-1][n_label_key]
                 # Map all units in this segment to new real labels
                 # Seg labels start at zero, so just add next_real_label. This
                 # is last segment for this channel so no need to increment
@@ -1107,6 +1112,9 @@ class WorkItemSummary(object):
                 if self.verbose: print("Last seg is new (747) added real labels", np.unique(self.sort_data[chan][-1][1]) + next_real_label, chan, curr_seg)
             if self.verbose: print("!!!REAL LABELS ARE !!!", real_labels)
             self.is_stitched = True
+        for seg_ind in range(0, len(update_new2orig_seg_labels)):
+            for key, value in update_new2orig_seg_labels[seg_ind]:
+                self.new2orig_seg_labels[seg_ind][key] = value
 
     def get_shifted_neighborhood_SSE(self, neuron1, neuron2, max_shift_inds):
         """
@@ -1204,6 +1212,7 @@ class WorkItemSummary(object):
                         for n_label in self.new2orig_seg_labels[seg].keys():
                             if self.new2orig_seg_labels[seg][n_label] == neuron['n_max_confusion']:
                                 neuron['n_max_confusion'] = n_label
+                                print(neuron['n_max_confusion'])
                                 break
 
                     # NOTE: This still needs to be done even though segments

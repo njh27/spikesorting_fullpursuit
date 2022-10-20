@@ -188,9 +188,7 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 				Otherwise it is a candidate for deletion or increased threshold.
 		'sigma_bp_CI': None, # Number of noise standard deviations a template match must fall under for a spike to be added. np.inf or None
 				ignores this parameter. Can help with large noise event rejection, but is relatively fickle and can miss real spikes as well.
-		'bp_chan_snr': None, # SNR required for a template on a given channel to be used for binary pursuit. Channels lower than this are set to zero template signal.
-				This is computed as in the output in units of 3x STD of the background noise relative to peak/valley of the template. Thus .33 would indicate removing
-				channels where signal is within 1 STD of the noise. Values of 'None' or <=0 are ignored.
+		'bp_chan_snr': None, # SNR required for a template on a given channel to be used for binary pursuit. Channels lower than this are set to zero template signal. This is computed as in the output in units of 3x STD of the background noise relative to peak/valley of the template. Thus .33 	would indicate removing channels where signal is within 1 STD of the noise. Values of 'None' or <=0 are ignored (all channels included).
 		'absolute_refractory_period': 10e-4, # Absolute refractory period expected between spikes of a single neuron. This is used in
 				postprocesing.
 		'get_adjusted_clips': False, # Returns spike clips after the waveforms of any potentially overlapping spikes have been removed

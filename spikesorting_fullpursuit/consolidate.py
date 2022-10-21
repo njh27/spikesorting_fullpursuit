@@ -147,7 +147,6 @@ class SegSummary(object):
             return None
         for n in self.summaries:
             for chan in range(0, self.sort_info['n_channels']):
-                print("chan snr", chan, n['snr_by_chan'][chan])
                 if n['snr_by_chan'][chan] < self.sort_info['bp_chan_snr']:
                     chan_win = [self.sort_info['n_samples_per_chan'] * chan,
                                 self.sort_info['n_samples_per_chan'] * (chan + 1)]

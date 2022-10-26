@@ -40,6 +40,7 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
     if voltage_data.ndim == 1:
         return 1.
     zca_thresholds = np.copy(thresholds)
+    zca_thresholds *= 2.0
     # Use <= 2 STD of noise for ZCA samples, first convert thresholds
     # if sigma > 2:
     #     zca_thresholds /= sigma

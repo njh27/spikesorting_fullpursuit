@@ -819,7 +819,7 @@ class WorkItemSummary(object):
         return best_pair, best_shift, clips_1, clips_2, curr_chan_inds
 
     def sharpen_segments(self):
-        """
+        """ Not currently called ever because it could be a bad idea.
         """
         for chan in range(0, self.n_chans):
             # Main win is fixed for a given channel

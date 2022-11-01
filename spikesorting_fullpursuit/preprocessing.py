@@ -41,9 +41,10 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
         return 1.
     zca_thresholds = np.copy(thresholds)
     # Use <= 2 STD of noise for ZCA samples, first convert thresholds
-    if sigma > 2:
-        zca_thresholds /= sigma
-        zca_thresholds *= 2.0
+    # if sigma > 2:
+    #     zca_thresholds /= sigma
+    #     zca_thresholds *= 2.0
+    zca_thresholds *= 0.90
     # convert cushion to zero centered window
     thresh_cushion = (thresh_cushion * 2 + 1)
     volt_thresh_bool = np.zeros(voltage_data.shape, dtype="bool")

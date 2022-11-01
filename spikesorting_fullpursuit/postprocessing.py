@@ -1896,7 +1896,6 @@ class WorkItemSummary(object):
                     for conf1_label in n1['max_confusion'].keys():
                         for conf2_label in n2['labels']:
                             if conf1_label == conf2_label:
-                                print("FOUND A LABEL MATCH")
                                 if n2['id'] in new_confusion:
                                     new_confusion[n2['id']].append(n1['max_confusion'][conf1_label])
                                 else:

@@ -6,6 +6,29 @@ from spikesorting_fullpursuit.c_cython import sort_cython
 
 
 
+def remove_artifacts(Probe, probe_dict, threshold, skip=0.,
+                        artifact_tol, artifact_chans, clip_width):
+
+    """ Zero voltage for threshold crossings within artifact_tol samples that
+    cross threshold on >= artifact_chans number of chans. Zero'ing goes from
+    first thresh crossing - clip_width[0] to last threshold
+    crossing + clip_width[1]. The voltage is modified in place for the
+    voltage stored in Probe.voltage and the Probe is returned for clarity.
+    """
+    skip_indices = max(int(round(skip * probe_dict['sampling_rate'])), 1) - 1
+    # Working with ABSOLUTE voltage here
+    voltage = np.abs(chan_voltage)
+    first_thresh_index = np.zeros(voltage.shape[0], dtype="bool")
+    # Find points above threshold where preceeding sample was below threshold (excludes first point)
+    first_thresh_index[1:] = np.logical_and(voltage[1:] > threshold, voltage[0:-1] <= threshold)
+    events = np.nonzero(first_thresh_index)[0]
+    # This is the raw total number of threshold crossings
+    n_crossings = events.shape[0] #np.count_nonzero(voltage > threshold)
+
+    return Probe
+
+
+
 def get_full_zca_matrix(data, rowvar=True):
     """ Computes ZCA matrix for data. rowvar=False means that COLUMNS represent
         variables and ROWS represent observations.  Else the opposite is used.

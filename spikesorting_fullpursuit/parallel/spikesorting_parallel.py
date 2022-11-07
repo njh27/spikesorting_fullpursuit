@@ -38,6 +38,10 @@ def spike_sorting_settings_parallel(**kwargs):
         'add_peak_valley': False, # Use peak valley in addition to PCs for clustering space
         'max_gpu_memory': None, # Maximum bytes to tryto store on GPU during sorting. None means use as much memory as possible
         'save_1_cpu': True, # If true, leaves one CPU not in use during parallel clustering
+        'remove_artifacts': False, # If true the artifact removal settings will be used to detect and zero out artifacts defined by the number of channels with simultaneous threshold crossing
+        'artifact_cushion': None, # Same format as clip_width defining a pre/post window for removal around artifacts. None defaults to same as clip_width
+        'artifact_tol': 0, # +/- tolerance, in samples, for counting an event as "simultaneous" across channels.
+        'n_artifact_chans': 0.90, # Amount of channels event must cross threshold on to be considered an artifact. Numbers <= 1 are treated as proportions of channels. Numbers >= 2 are treated as an absolute number of channels.
         'sort_peak_clips_only': True, # If True, each sort only uses clips with peak on the main channel. Improves speed and accuracy but can miss clusters for low firing rate units on multiple channels
         'n_cov_samples': 100000, # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
         # e.g., sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; 99.9%: 3.090 NOTE: these are one sided
@@ -74,12 +78,24 @@ def spike_sorting_settings_parallel(**kwargs):
         settings['clip_width'][0] *= -1
     if settings['filter_band'][0] < 0 or settings['filter_band'][1] < 0:
         raise ValueError("Input setting 'filter_band' must be a positve numbers")
+    if settings['artifact_cushion'] is None:
+        settings['artifact_cushion'] = settings['clip_width']
+    if settings['artifact_cushion'][0] > 0.0:
+        print("First element of clip width: ", settings['artifact_cushion'][0], " is positive. Using negative value of: ", -1*settings['artifact_cushion'][0])
+        settings['artifact_cushion'][0] *= -1
+    try:
+        settings['artifact_tol'] = np.abs(settings['artifact_tol'])
+    except:
+        raise ValueError("Setting 'artifact_tol' must be convertable to a positive numerical integer, not {0}.".format(settings['artifact_tol']))
 
     # Check validity of most other settings
     for key in settings.keys():
         if key in ['do_branch_PCA', 'do_branch_PCA_by_chan', 'do_ZCA_transform',
                     'use_rand_init', 'add_peak_valley', 'save_1_cpu',
-                    'sort_peak_clips_only', 'get_adjusted_clips']:
+                    'sort_peak_clips_only', 'get_adjusted_clips',
+                    'output_separability_metrics', 'wiener_filter',
+                    'same_wiener', 'use_memmap', 'save_clips', 'parallel_zca',
+                    'seg_work_order', 'remove_artifacts']:
             if type(settings[key]) != bool:
                 if settings[key] != 'False' and settings[key] != 0:
                     settings[key] = True
@@ -1177,6 +1193,9 @@ def spike_sort_parallel(Probe, **kwargs):
                                    'overlap': settings['segment_overlap'],
                                    'thresholds': thresholds_list[x],
                                    })
+                # Check potential threshold problems, especially due to artifact removal
+                if np.any(thresholds_list[x] == 0):
+                    raise RuntimeError("At least 1 work item channel has a voltage threshold value of zero! Either a segment/channel has no data or has been made to have a median value of zero possibly due to inappropriate artifact detection parameters.")
 
         if (not settings['test_flag']) and (not settings['seg_work_order']):
             if settings['log_dir'] is None:

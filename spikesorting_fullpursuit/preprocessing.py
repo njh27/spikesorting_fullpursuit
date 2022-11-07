@@ -6,8 +6,7 @@ from spikesorting_fullpursuit.c_cython import sort_cython
 
 
 
-def remove_artifacts(Probe, probe_dict, threshold, skip=0.,
-                        artifact_tol, artifact_chans, clip_width):
+def remove_artifacts(Probe, sigma, cushion_win, artifact_tol, n_artifact_chans):
 
     """ Zero voltage for threshold crossings within artifact_tol samples that
     cross threshold on >= artifact_chans number of chans. Zero'ing goes from
@@ -15,15 +14,63 @@ def remove_artifacts(Probe, probe_dict, threshold, skip=0.,
     crossing + clip_width[1]. The voltage is modified in place for the
     voltage stored in Probe.voltage and the Probe is returned for clarity.
     """
-    skip_indices = max(int(round(skip * probe_dict['sampling_rate'])), 1) - 1
+    # Catch common input types/errors
+    if not isinstance(cushion_win, list):
+        cushion_win = [cushion_win]
+    if len(cushion_win) == 1:
+        cushion_win[0] = np.abs(cushion_win[0])
+        cushion_win.append(cushion_win[0])
+        cushion_win[0] *= -1
+    elif len(cushion_win) == 2:
+        if cushion_win[0] > 0:
+            cushion_win[0] *= -1
+    else:
+        raise ValueError("cushion_win must be a single number or a list of 1 or 2 numbers, but {0} was given.".format(cushion_win))
+    artifact_tol = int(round(artifact_tol))
+    if n_artifact_chans <= 0:
+        raise ValueError("Invalid value for n_artifact_chans {0}.".format(n_artifact_chans))
+    if n_artifact_chans < 1:
+        n_artifact_chans *= Probe.num_channels
+    n_artifact_chans = int(round(n_artifact_chans))
+    if n_artifact_chans <= 1:
+        raise ValueError("Inalid value of {0} computed for n_artifact_chans. Number must compute to greater than 1 channel.".format(n_artifact_chans))
+    skip_indices = [min(int(round(cushion_win[0] * Probe.sampling_rate)), 0), max(int(round(cushion_win[1] * Probe.sampling_rate)), 0)]
+
+    # need to find thresholds for all channels first
+    thresholds = median_threshold(Probe.voltage, sigma)
+
+    # Try to save some memory here by doing one channel at a time and tracking in one big array
     # Working with ABSOLUTE voltage here
-    voltage = np.abs(chan_voltage)
-    first_thresh_index = np.zeros(voltage.shape[0], dtype="bool")
-    # Find points above threshold where preceeding sample was below threshold (excludes first point)
-    first_thresh_index[1:] = np.logical_and(voltage[1:] > threshold, voltage[0:-1] <= threshold)
-    events = np.nonzero(first_thresh_index)[0]
-    # This is the raw total number of threshold crossings
-    n_crossings = events.shape[0] #np.count_nonzero(voltage > threshold)
+    total_chan_crossings = np.zeros((Probe.n_samples, ), dtype=np.uint16)
+    for chan in range(0, Probe.num_channels):
+        if Probe.num_channels == 1:
+            voltage = np.abs(Probe.voltage)
+        else:
+            voltage = np.abs(Probe.voltage[chan, :])
+        first_thresh_index = np.zeros(voltage.shape[0], dtype="bool")
+        # Find points above threshold where preceeding sample was below threshold (excludes first point)
+        first_thresh_index[1:] = np.logical_and(voltage[1:] > thresholds[chan], voltage[0:-1] <= thresholds[chan])
+        events = np.nonzero(first_thresh_index)[0]
+
+        # Go through each event start on this channel
+        for evt in range(0, events.size):
+            # Add this event +/- artifact_tol to total crossings (+1 for even slicing on either end)
+            total_chan_crossings[max(0, events[evt] - artifact_tol):min(Probe.n_samples, events[evt] + artifact_tol + 1)] += 1
+
+    # Go through all artifacts and zero out their voltage window
+    artifacts = np.nonzero(total_chan_crossings >= n_artifact_chans)[0]
+    print("Found {0} total ARTIFACTS to remove.".format(artifacts.size))
+    for atf in range(0, artifacts.size):
+        # find when this event ends by going under threshold on artifact chans
+        t = artifacts[atf]
+        stop_ind = artifacts[atf]
+        while t < Probe.n_samples:
+            if np.count_nonzero(np.abs(Probe.voltage[:, t]) > thresholds) < n_artifact_chans:
+                stop_ind = t
+                break
+            t += 1
+        # Zero out the voltage in this artifact window
+        Probe.voltage[:, max(0, artifacts[atf] + skip_indices[0]):min(Probe.n_samples, stop_ind + skip_indices[1] + 1)] = 0
 
     return Probe
 
@@ -63,10 +110,7 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
     if voltage_data.ndim == 1:
         return 1.
     zca_thresholds = np.copy(thresholds)
-    # Use <= 2 STD of noise for ZCA samples, first convert thresholds
-    # if sigma > 2:
-    #     zca_thresholds /= sigma
-    #     zca_thresholds *= 2.0
+    # Use threshold for ZCA just under spike threshold
     zca_thresholds *= 0.90
     # convert cushion to zero centered window
     thresh_cushion = (thresh_cushion * 2 + 1)
@@ -78,7 +122,7 @@ def get_noise_sampled_zca_matrix(voltage_data, thresholds, sigma, thresh_cushion
         # Compute i variance for diagonal elements of sigma
         valid_samples = voltage_data[i, :][~volt_thresh_bool[i, :]]
         if valid_samples.size == 0:
-            raise ValueError("No data points under threshold to compute ZCA. Check threshold sigma and clip width.")
+            raise ValueError("No data points under threshold of {0} to compute ZCA. Check threshold sigma, clip width, and artifact detection.".format(thresholds[i]))
         if n_samples > valid_samples.size:
             out_samples = valid_samples
         else:

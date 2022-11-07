@@ -179,7 +179,7 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 		'add_peak_valley': False, # Use peak valley in addition to PCs for clustering space
 		'max_gpu_memory': None, # Maximum bytes to try to store on GPU during sorting. None means use as much memory as possible
 		'save_1_cpu': True, # If true, leaves one CPU not in use during parallel clustering
-		'remove_artifacts': False, # If true the artifact removal settings will be used to detect and zero out artifacts defined by the number of channels with simultaneous threshold crossing
+		'remove_artifacts': False, # If true the artifact removal settings will be used to detect and zero out artifacts defined by the number of channels with simultaneous threshold crossing. Changes Probe.voltage in place! NOTE: This can have catastrophic consequences if inappropriate values are chosen resulting in significant portions of the voltage date being set to 0.
     'artifact_cushion': None, # Same format as clip_width defining a pre/post window for removal around artifacts. None defaults to same as clip_width
     'artifact_tol': 0, # +/- tolerance, in samples, for counting an event as "simultaneous" across channels.
     'n_artifact_chans': 0.90, # Amount of channels event must cross threshold on to be considered an artifact. Numbers <= 1 are treated as proportions of channels. Numbers >= 2 are treated as an absolute number of channels.

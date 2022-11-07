@@ -1,12 +1,12 @@
 import numpy as np
 from numpy import linalg as la
 from scipy import signal, linalg
-from scipy.spatial.distance import pdist
+from spikesorting_fullpursuit.parallel.segment_parallel import median_threshold
 from spikesorting_fullpursuit.c_cython import sort_cython
 
 
 
-def remove_artifacts(Probe, sigma, cushion_win, artifact_tol, n_artifact_chans):
+def remove_artifacts(Probe, sigma, artifact_cushion, artifact_tol, n_artifact_chans):
 
     """ Zero voltage for threshold crossings within artifact_tol samples that
     cross threshold on >= artifact_chans number of chans. Zero'ing goes from
@@ -15,17 +15,17 @@ def remove_artifacts(Probe, sigma, cushion_win, artifact_tol, n_artifact_chans):
     voltage stored in Probe.voltage and the Probe is returned for clarity.
     """
     # Catch common input types/errors
-    if not isinstance(cushion_win, list):
-        cushion_win = [cushion_win]
-    if len(cushion_win) == 1:
-        cushion_win[0] = np.abs(cushion_win[0])
-        cushion_win.append(cushion_win[0])
-        cushion_win[0] *= -1
-    elif len(cushion_win) == 2:
-        if cushion_win[0] > 0:
-            cushion_win[0] *= -1
+    if not isinstance(artifact_cushion, list):
+        artifact_cushion = [artifact_cushion]
+    if len(artifact_cushion) == 1:
+        artifact_cushion[0] = np.abs(artifact_cushion[0])
+        artifact_cushion.append(artifact_cushion[0])
+        artifact_cushion[0] *= -1
+    elif len(artifact_cushion) == 2:
+        if artifact_cushion[0] > 0:
+            artifact_cushion[0] *= -1
     else:
-        raise ValueError("cushion_win must be a single number or a list of 1 or 2 numbers, but {0} was given.".format(cushion_win))
+        raise ValueError("artifact_cushion must be a single number or a list of 1 or 2 numbers, but {0} was given.".format(artifact_cushion))
     artifact_tol = int(round(artifact_tol))
     if n_artifact_chans <= 0:
         raise ValueError("Invalid value for n_artifact_chans {0}.".format(n_artifact_chans))
@@ -34,7 +34,7 @@ def remove_artifacts(Probe, sigma, cushion_win, artifact_tol, n_artifact_chans):
     n_artifact_chans = int(round(n_artifact_chans))
     if n_artifact_chans <= 1:
         raise ValueError("Inalid value of {0} computed for n_artifact_chans. Number must compute to greater than 1 channel.".format(n_artifact_chans))
-    skip_indices = [min(int(round(cushion_win[0] * Probe.sampling_rate)), 0), max(int(round(cushion_win[1] * Probe.sampling_rate)), 0)]
+    skip_indices = [min(int(round(artifact_cushion[0] * Probe.sampling_rate)), 0), max(int(round(artifact_cushion[1] * Probe.sampling_rate)), 0)]
 
     # need to find thresholds for all channels first
     thresholds = median_threshold(Probe.voltage, sigma)

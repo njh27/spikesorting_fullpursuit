@@ -38,7 +38,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'add_peak_valley': False, # Use peak valley in addition to PCs for clustering space
         'max_gpu_memory': None, # Maximum bytes to tryto store on GPU during sorting. None means use as much memory as possible
         'save_1_cpu': True, # If true, leaves one CPU not in use during parallel clustering
-        'remove_artifacts': False, # If true the artifact removal settings will be used to detect and zero out artifacts defined by the number of channels with simultaneous threshold crossing
+        'remove_artifacts': False, # If true the artifact removal settings will be used to detect and zero out artifacts defined by the number of channels with simultaneous threshold crossing. Changes Probe.voltage in place.
         'artifact_cushion': None, # Same format as clip_width defining a pre/post window for removal around artifacts. None defaults to same as clip_width
         'artifact_tol': 0, # +/- tolerance, in samples, for counting an event as "simultaneous" across channels.
         'n_artifact_chans': 0.90, # Amount of channels event must cross threshold on to be considered an artifact. Numbers <= 1 are treated as proportions of channels. Numbers >= 2 are treated as an absolute number of channels.
@@ -1031,7 +1031,11 @@ def spike_sort_parallel(Probe, **kwargs):
             rmtree(settings['log_dir'])
             time.sleep(.5) # NEED SLEEP SO CAN DELETE BEFORE RECREATING!!!
         os.makedirs(settings['log_dir'])
-
+    # Perform artifact removal on input Probe voltage
+    if settings['remove_artifacts']:
+        Probe = preprocessing.remove_artifacts(Probe, settings['sigma'],
+                        settings['artifact_cushion'], settings['artifact_tol'],
+                        settings['n_artifact_chans'])
     # Convert segment duration and overlaps to indices from their values input
     # in seconds and adjust as needed
     if (settings['segment_duration'] is None) or (settings['segment_duration'] == np.inf) \

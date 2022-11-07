@@ -1033,6 +1033,8 @@ def spike_sort_parallel(Probe, **kwargs):
         os.makedirs(settings['log_dir'])
     # Perform artifact removal on input Probe voltage
     if settings['remove_artifacts']:
+        if Probe.num_channels == 1:
+            raise ValueError("Cannot do artifact detection on only 1 channel. Check input settings.")
         Probe = preprocessing.remove_artifacts(Probe, settings['sigma'],
                         settings['artifact_cushion'], settings['artifact_tol'],
                         settings['n_artifact_chans'])

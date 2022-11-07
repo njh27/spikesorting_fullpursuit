@@ -15,6 +15,9 @@ def remove_artifacts(Probe, sigma, artifact_cushion, artifact_tol, n_artifact_ch
     voltage stored in Probe.voltage and the Probe is returned for clarity.
     """
     # Catch common input types/errors
+    if Probe.num_channels == 1:
+        print("Attempting artifact detection on only 1 channel is not allowed! Skipping")
+        return Probe
     if not isinstance(artifact_cushion, list):
         artifact_cushion = [artifact_cushion]
     if len(artifact_cushion) == 1:
@@ -43,10 +46,7 @@ def remove_artifacts(Probe, sigma, artifact_cushion, artifact_tol, n_artifact_ch
     # Working with ABSOLUTE voltage here
     total_chan_crossings = np.zeros((Probe.n_samples, ), dtype=np.uint16)
     for chan in range(0, Probe.num_channels):
-        if Probe.num_channels == 1:
-            voltage = np.abs(Probe.voltage)
-        else:
-            voltage = np.abs(Probe.voltage[chan, :])
+        voltage = np.abs(Probe.voltage[chan, :])
         first_thresh_index = np.zeros(voltage.shape[0], dtype="bool")
         # Find points above threshold where preceeding sample was below threshold (excludes first point)
         first_thresh_index[1:] = np.logical_and(voltage[1:] > thresholds[chan], voltage[0:-1] <= thresholds[chan])

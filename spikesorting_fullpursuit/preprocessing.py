@@ -32,7 +32,7 @@ def remove_artifacts(Probe, sigma, artifact_cushion, artifact_tol, n_artifact_ch
     artifact_tol = int(round(artifact_tol))
     if n_artifact_chans <= 0:
         raise ValueError("Invalid value for n_artifact_chans {0}.".format(n_artifact_chans))
-    if n_artifact_chans < 1:
+    if n_artifact_chans <= 1:
         n_artifact_chans *= Probe.num_channels
     n_artifact_chans = int(round(n_artifact_chans))
     if n_artifact_chans <= 1:
@@ -59,7 +59,7 @@ def remove_artifacts(Probe, sigma, artifact_cushion, artifact_tol, n_artifact_ch
 
     # Go through all artifacts and zero out their voltage window
     artifacts = np.nonzero(total_chan_crossings >= n_artifact_chans)[0]
-    print("Found {0} total ARTIFACTS to remove.".format(artifacts.size))
+    print("Found {0} total ARTIFACTS to remove using {1} channels within {2} indices.".format(artifacts.size, n_artifact_chans, artifact_tol))
     for atf in range(0, artifacts.size):
         # find when this event ends by going under threshold on artifact chans
         t = artifacts[atf]

@@ -187,9 +187,8 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 				miss clusters for very low firing rate units on multiple channels in rare occasions
 		'n_cov_samples': 100000, # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000
 				tends to produce nearly identical results across attempts, 10,000 has some small variance. This step can be slow for large values.
-		# e.g. sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; 99.9%: 3.090  NOTE: these are one sided
-		'sigma_bp_noise': 3.090, # Number of noise standard deviations an expected template match must exceed the decision boundary by.
-				Otherwise it is a candidate for deletion or increased threshold.
+		# e.g. sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; 99.9%: 3.090; 99.99% 3.719  NOTE: these are one sided
+		'sigma_bp_noise': 3.719, # Number of noise standard deviations an expected template match must exceed the decision boundary by.Otherwise it is a candidate for deletion or increased threshold. Higher values = lower false positives and higher false negatives
 		'sigma_bp_CI': None, # Number of noise standard deviations a template match must fall under for a spike to be added. np.inf or None
 				ignores this parameter. Can help with large noise event rejection, but is relatively fickle and can miss real spikes as well.
 		'bp_chan_snr': None, # SNR required for a template on a given channel to be used for binary pursuit. Channels lower than this are set to zero template signal. This is computed as in the output in units of 3x STD of the background noise relative to peak/valley of the template. Thus .33 	would indicate removing channels where signal is within 1 STD of the noise. Values of 'None' or <=0 are ignored (all channels included).

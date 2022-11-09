@@ -44,8 +44,8 @@ def spike_sorting_settings_parallel(**kwargs):
         'n_artifact_chans': 0.90, # Amount of channels event must cross threshold on to be considered an artifact. Numbers <= 1 are treated as proportions of channels. Numbers >= 2 are treated as an absolute number of channels.
         'sort_peak_clips_only': True, # If True, each sort only uses clips with peak on the main channel. Improves speed and accuracy but can miss clusters for low firing rate units on multiple channels
         'n_cov_samples': 100000, # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
-        # e.g., sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; 99.9%: 3.090 NOTE: these are one sided
-        'sigma_bp_noise': 3.090, # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold.
+        # e.g., sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; 99.9%: 3.090; 99.99% 3.719 NOTE: these are one sided
+        'sigma_bp_noise': 3.719, # Number of noise standard deviations an expected template match must exceed the decision boundary by. Otherwise it is a candidate for deletion or increased threshold. Higher values = lower false positives and higher false negatives
         'sigma_bp_CI': None, # Number of noise standard deviations a template match must fall within for a spike to be added. np.inf or None ignores this parameter.
         'bp_chan_snr': None, # SNR required for a template on a given channel to be used for binary pursuit. Channels lower than this are set to zero template signal.
         'absolute_refractory_period': 10e-4, # Absolute refractory period expected between spikes of a single neuron. This is used in postprocesing.

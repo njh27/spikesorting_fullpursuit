@@ -206,7 +206,8 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 				a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
 		'wiener_filter': True, # Use wiener filter on data before binary pursuit. MUST use sort_peak_clips_only!
     'wiener_filter_smoothing': 150 # Hz or None for no smoothing. Smooths the signal and noise voltage spectra in the frequency domain so that the filter does not become overly specific to the frequency of discovered templates. A roughly ideal number will be the max
-		frequency of all events on a channel (combined over all neurons). Probably in the range ~100-200 is good with similar results.
+		frequency of all events on a channel (combined over all neurons). Probably in the range ~100-200 is good with similar results. High values result
+		in more specific filtering and lower values less specific.
 		'same_wiener': False, # If true, compute Wiener filter over all channels at once, using the same filter for every channel. Otherwise compute separately for each channel
     'use_memmap': False, # Will keep clips and voltages stored in numpy memmap files (voltage is preloaded as needed into ram for faster processing)
     'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running

@@ -182,7 +182,7 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 		'remove_artifacts': False, # If true the artifact removal settings will be used to detect and zero out artifacts defined by the number of channels with simultaneous threshold crossing. Changes Probe.voltage in place! NOTE: This can have catastrophic consequences if inappropriate values are chosen resulting in significant portions of the voltage date being set to 0.
     'artifact_cushion': None, # Same format as clip_width defining a pre/post window for removal around artifacts. None defaults to same as clip_width
     'artifact_tol': 0, # +/- tolerance, in samples, for counting an event as "simultaneous" across channels.
-    'n_artifact_chans': 0.90, # Amount of channels event must cross threshold on to be considered an artifact. Numbers <= 1 are treated as proportions of channels. Numbers >= 2 are treated as an absolute number of channels.
+    'n_artifact_chans': 1.0, # Amount of channels event must cross threshold on to be considered an artifact. Numbers <= 1 are treated as proportions of channels. Numbers >= 2 are treated as an absolute number of channels.
 		'sort_peak_clips_only': True, # If True, each sort only uses clips with peak on the main channel. Improves speed and accuracy but can
 				miss clusters for very low firing rate units on multiple channels in rare occasions
 		'n_cov_samples': 100000, # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000
@@ -205,7 +205,7 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 		'output_separability_metrics': True, # Setting True will output the separability metrics dictionary for each segment. This contains
 				a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
 		'wiener_filter': True, # Use wiener filter on data before binary pursuit. MUST use sort_peak_clips_only!
-    'wiener_filter_smoothing': 150 # Hz or None for no smoothing. Smooths the signal and noise voltage spectra in the frequency domain so that the filter does not become overly specific to the frequency of discovered templates. A roughly ideal number will be the max
+    'wiener_filter_smoothing': 100 # Hz or None for no smoothing. Smooths the signal and noise voltage spectra in the frequency domain so that the filter does not become overly specific to the frequency of discovered templates. A roughly ideal number will be the max
 		frequency of all events on a channel (combined over all neurons). Probably in the range ~100-200 is good with similar results. High values result
 		in more specific filtering and lower values less specific.
 		'same_wiener': False, # If true, compute Wiener filter over all channels at once, using the same filter for every channel. Otherwise compute separately for each channel

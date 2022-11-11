@@ -41,7 +41,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'remove_artifacts': False, # If true the artifact removal settings will be used to detect and zero out artifacts defined by the number of channels with simultaneous threshold crossing. Changes Probe.voltage in place.
         'artifact_cushion': None, # Same format as clip_width defining a pre/post window for removal around artifacts. None defaults to same as clip_width
         'artifact_tol': 0, # +/- tolerance, in samples, for counting an event as "simultaneous" across channels.
-        'n_artifact_chans': 0.90, # Amount of channels event must cross threshold on to be considered an artifact. Numbers <= 1 are treated as proportions of channels. Numbers >= 2 are treated as an absolute number of channels.
+        'n_artifact_chans': 1.0, # Amount of channels event must cross threshold on to be considered an artifact. Numbers <= 1 are treated as proportions of channels. Numbers >= 2 are treated as an absolute number of channels.
         'sort_peak_clips_only': True, # If True, each sort only uses clips with peak on the main channel. Improves speed and accuracy but can miss clusters for low firing rate units on multiple channels
         'n_cov_samples': 100000, # Number of random clips to use to estimate noise covariance matrix. Empirically and qualitatively, 100,000 tends to produce nearly identical results across attempts, 10,000 has some small variance.
         # e.g., sigma_bp_noise = 95%: 1.645, 97.5%: 1.96, 99%: 2.326; 99.9%: 3.090; 99.99% 3.719 NOTE: these are one sided
@@ -57,7 +57,7 @@ def spike_sorting_settings_parallel(**kwargs):
         'log_dir': None, # Directory where output logs will be saved as text files for each parallel process during clustering. Processes can not usually print to the main screen.
         'output_separability_metrics': True, # Setting True will output the separability metrics dictionary for each segment. This contains a lot of information not currently used after sorting, such as noise covariance matrices and templates used by binary pursuit.
         'wiener_filter': True, # Use wiener filter on data before binary pursuit.
-        'wiener_filter_smoothing': 150, # Hz or None for no smoothing
+        'wiener_filter_smoothing': 100, # Hz or None for no smoothing
         'same_wiener': False, # If true, compute Wiener filter over all channels at once, using the same filter for every channel
         'use_memmap': False, # Will keep clips and voltages stored in memmap files (voltage is preloaded as needed into ram for faster processing)
         'memmap_dir': None, # Location to memmap numpy arrays. None uses os.getcwd(). Should all be deleted after successfully running

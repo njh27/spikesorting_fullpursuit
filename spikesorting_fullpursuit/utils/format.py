@@ -78,9 +78,9 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
                     n['filename__'] = filename
             elif nv_key == 'channel_id__':
                 if neuroviz_only:
-                    viz_dict['channel_id__'] = n['channel'][0] + 1
+                    viz_dict['channel_id__'] = np.array(n['channel'][0] + 1, dtype=np.uint16)
                 else:
-                    n['channel_id__'] = n['channel'][0] + 1
+                    n['channel_id__'] = np.array(n['channel'][0] + 1, dtype=np.uint16)
             elif nv_key == 'type__':
                 if neuroviz_only:
                     viz_dict['type__'] = "Neuron"
@@ -93,9 +93,9 @@ def to_neuroviz(neurons, save_fname, neuroviz_only=False, filename=None):
                     n['sampling_rate__'] = n['sort_info']['sampling_rate']
             elif nv_key == 'spike_indices__':
                 if neuroviz_only:
-                    viz_dict['spike_indices__'] = n['spike_indices'] + 1
+                    viz_dict['spike_indices__'] = n['spike_indices'].astype(np.uint32) + 1
                 else:
-                    n['spike_indices__'] = n['spike_indices'] + 1
+                    n['spike_indices__'] = n['spike_indices'].astype(np.uint32) + 1
             elif nv_key == 'spike_indices_channel__':
                 if neuroviz_only:
                     viz_dict['spike_indices_channel__'] = (n['channel'][0] + 1) * np.ones(n['spike_indices'].shape, dtype=np.uint16)

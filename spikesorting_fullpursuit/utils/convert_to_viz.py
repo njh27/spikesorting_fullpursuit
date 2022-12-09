@@ -18,7 +18,7 @@ def f_neurons_to_viz(fname_neurons, save_fname=None, neuroviz_only=False, filena
         save_fname = fname_neurons.split(".")[0]
         save_fname = save_fname + "_viz.pkl"
 
-    to_neuroviz(fname_neurons, save_fname, neuroviz_only=False, filename=None)
+    to_neuroviz(fname_neurons, save_fname, neuroviz_only=neuroviz_only, filename=filename)
 
     return None
 
@@ -42,4 +42,4 @@ if __name__ == '__main__':
         else:
             print("Save file name does not indicate _viz file or .pkl.")
 
-    f_neurons_to_viz(fname_neurons, save_fname=save_fname, neuroviz_only=False, filename=None)
+    f_neurons_to_viz(fname_neurons, save_fname=save_fname, neuroviz_only=True, filename=None)

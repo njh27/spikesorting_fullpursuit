@@ -727,8 +727,8 @@ __kernel void parse_overlap_recheck_indices(
         overlap_recheck[id] = 0;
         return; /* Shifts didn't improve so just return the previous values */
     }
-
     /* Shifts improved likelihood, so we need to use best shifts ID and crazy indices to find answer */
+
     if ((best_template_shifts_id % (n_local_ID * local_size)) >= items_per_index)
     {
         overlap_recheck[id] = 0;
@@ -739,13 +739,6 @@ __kernel void parse_overlap_recheck_indices(
     __private const unsigned int template_number = (unsigned int) (best_template_shifts_id % (size_t) num_templates);
     __private const signed int fixed_shift_ref_ind = (unsigned int) ((best_template_shifts_id / (size_t) num_templates) % num_shifts);
     __private const signed int template_shift_ref_ind = (unsigned int) ((best_template_shifts_id / (num_shifts * (size_t) num_templates)) % num_shifts);
-
-    // if ( (best_group_likelihood < likelihood_lower_thresholds[best_spike_label_private])
-    //     && (best_group_likelihood < likelihood_lower_thresholds[template_number]) )
-    // {
-    //     overlap_recheck[id] = 0;
-    //     return; /* Combined template doesn't exceed both units' thresholds */
-    // }
 
     /* These should all be in bounds or overlap_recheck_indices wouldn't have */
     /* likelihood > 0 */
@@ -763,25 +756,11 @@ __kernel void parse_overlap_recheck_indices(
     }
 
     /* Reset the likelihood and best index and label to maximum.
-      These need to be reset only if the new index can pass the
-      threshold check in "binary_pursuit" below. Otherwise this
-      spike won't get added but it will continue to be checked. */
-    // if ((actual_template_likelihood_at_index >= actual_current_maximum_likelihood)
-    //     && (actual_template_likelihood_at_index > 0.0))
-    // {
-    //     /* The main label has better likelihood than best shifted match */
-    //     best_spike_likelihoods[id] = best_group_likelihood;
-    //     overlap_best_spike_labels[id] = best_spike_label_private;
-    //     overlap_best_spike_indices[id] = absolute_fixed_index;
-    // }
-    // else if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index )
-    //     && (actual_current_maximum_likelihood > 0.0))
-    // {
-    //     /* The best shifted match unit has better likelihood than the main label */
-    //     best_spike_likelihoods[id] = best_group_likelihood;
-    //     overlap_best_spike_labels[id] = template_number;
-    //     overlap_best_spike_indices[id] = absolute_shift_index;
-    // }
+    This is an excessive number of cases but shows options for clarity.
+    Preferential treatment is given to the original index, which we know
+    exceeded threshold and so can be added so long as it exceeds zero. The
+    overlap shifted template is required to beat out the original template
+    and exceed zero (or its trehsold). */
     if ((actual_template_likelihood_at_index >= actual_current_maximum_likelihood)
         && (actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private]))
     {
@@ -1008,7 +987,7 @@ __kernel void binary_pursuit(
     }
 
     /* If the best maximum likelihood is greater than threshold and within our window */
-    /* or was an overlap recheck) add the spike to the output */
+    /* (or was an overlap recheck) add the spike to the output */
     local_scratch[local_id] = 0;
     has_spike = 0;
     if ( (maximum_likelihood > likelihood_lower_thresholds[maximum_likelihood_neuron]) || (overlap_recheck[id] == 1))

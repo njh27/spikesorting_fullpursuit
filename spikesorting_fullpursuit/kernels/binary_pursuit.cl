@@ -475,7 +475,8 @@ __kernel void overlap_recheck_indices(
     __local float * restrict local_likelihoods,
     __local unsigned int * restrict local_ids,
     __global float * restrict overlap_group_best_likelihood,
-    __global unsigned int * restrict overlap_group_best_work_id)
+    __global unsigned int * restrict overlap_group_best_work_id,
+    __global const float * restrict likelihood_lower_thresholds)
 {
     const size_t local_id = get_local_id(0);
     const size_t local_size = get_local_size(0);
@@ -528,6 +529,16 @@ __kernel void overlap_recheck_indices(
         const size_t id = overlap_window_indices[id_index];
         best_spike_label_private = best_spike_labels[id];
         best_spike_index_private = best_spike_indices[id];
+        __private const float best_spike_likelihood_private = full_likelihood_function[best_spike_label_private * voltage_length + best_spike_index_private];
+
+        /* This check will ensure that we never add a spike when one wouldn't have
+        been added without overlap recheck turned on. */
+        if (best_spike_likelihood_private < likelihood_lower_thresholds[best_spike_label_private])
+        {
+            /* Original spike likelihood doesn't exceed its threshold so skip */
+            skip_curr_id = 1;
+        }
+
         if (best_spike_index_private >= (voltage_length - template_length))
         {
             skip_curr_id = 1;
@@ -700,11 +711,13 @@ __kernel void parse_overlap_recheck_indices(
     __private float best_group_likelihood = best_spike_likelihood_private;
     __private unsigned int best_template_shifts_id = 0;
 
-    if (best_spike_likelihood_private < likelihood_lower_thresholds[best_spike_label_private])
-    {
-        overlap_recheck[id] = 0;
-        return; /* Original spike likelihood doesn't exceed its threshold so skip */
-    }
+    // /* This check will ensure that we never add a spike when one wouldn't have
+    // been added without overlap recheck turned on. */
+    // if (best_spike_likelihood_private < likelihood_lower_thresholds[best_spike_label_private])
+    // {
+    //     overlap_recheck[id] = 0;
+    //     return; /* Original spike likelihood doesn't exceed its threshold so skip */
+    // }
 
     __private const unsigned int start_id_index = (unsigned int) (n_local_ID * global_id);
     __private unsigned int search_index;
@@ -823,6 +836,13 @@ __kernel void parse_overlap_recheck_indices(
     //     overlap_best_spike_labels[id] = template_number;
     //     overlap_best_spike_indices[id] = absolute_shift_index;
     // }
+    else if (actual_template_likelihood_at_index > 0.0)
+    {
+        /* The main label has likelihood greater than zero */
+        best_spike_likelihoods[id] = actual_template_likelihood_at_index;
+        overlap_best_spike_labels[id] = best_spike_label_private;
+        overlap_best_spike_indices[id] = absolute_fixed_index;
+    }
     else
     {
         /* Says "do nothing" so we stick with our original spike index

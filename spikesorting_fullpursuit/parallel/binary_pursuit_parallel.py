@@ -473,6 +473,7 @@ def binary_pursuit(voltage, v_dtype, sort_info,
             # Construct a local buffer (uint32 * local_work_size)
             overlap_local_ids__buffer = cl.LocalMemory(4 * overlap_local_work_size)
             overlap_recheck_indices_kernel.set_arg(13, overlap_local_ids__buffer)
+            overlap_recheck_indices_kernel.set_arg(16, lower_thresholds_buffer)
 
             # Set input arguments for parse overlap recheck kernel
             parse_overlap_recheck_indices_kernel.set_arg(0, chunk_voltage_length) # Length of chunk voltage

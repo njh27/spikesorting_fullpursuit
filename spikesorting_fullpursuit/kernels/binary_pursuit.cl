@@ -532,7 +532,7 @@ __kernel void overlap_recheck_indices(
         __private const float best_spike_likelihood_private = full_likelihood_function[best_spike_label_private * voltage_length + best_spike_index_private];
 
         /* This check will ensure that we never add a spike when one wouldn't have
-        been added without overlap recheck turned on. */
+        been added without overlap recheck. */
         if (best_spike_likelihood_private < likelihood_lower_thresholds[best_spike_label_private])
         {
             /* Original spike likelihood doesn't exceed its threshold so skip */
@@ -711,14 +711,6 @@ __kernel void parse_overlap_recheck_indices(
     __private float best_group_likelihood = best_spike_likelihood_private;
     __private unsigned int best_template_shifts_id = 0;
 
-    // /* This check will ensure that we never add a spike when one wouldn't have
-    // been added without overlap recheck turned on. */
-    // if (best_spike_likelihood_private < likelihood_lower_thresholds[best_spike_label_private])
-    // {
-    //     overlap_recheck[id] = 0;
-    //     return; /* Original spike likelihood doesn't exceed its threshold so skip */
-    // }
-
     __private const unsigned int start_id_index = (unsigned int) (n_local_ID * global_id);
     __private unsigned int search_index;
     /* Search over the work group results corresponding to our current id */
@@ -813,13 +805,13 @@ __kernel void parse_overlap_recheck_indices(
         overlap_best_spike_labels[id] = best_spike_label_private;
         overlap_best_spike_indices[id] = absolute_fixed_index;
     }
-    // else if (actual_current_maximum_likelihood > likelihood_lower_thresholds[template_number])
-    // {
-    //     /* The best shifted match exceeds threshold */
-    //     best_spike_likelihoods[id] = actual_current_maximum_likelihood;
-    //     overlap_best_spike_labels[id] = template_number;
-    //     overlap_best_spike_indices[id] = absolute_shift_index;
-    // }
+    else if (actual_current_maximum_likelihood > likelihood_lower_thresholds[template_number])
+    {
+        /* The best shifted match exceeds threshold */
+        best_spike_likelihoods[id] = actual_current_maximum_likelihood;
+        overlap_best_spike_labels[id] = template_number;
+        overlap_best_spike_indices[id] = absolute_shift_index;
+    }
     else if ((actual_template_likelihood_at_index >= actual_current_maximum_likelihood)
         && (actual_template_likelihood_at_index > 0.0))
     {
@@ -828,14 +820,14 @@ __kernel void parse_overlap_recheck_indices(
         overlap_best_spike_labels[id] = best_spike_label_private;
         overlap_best_spike_indices[id] = absolute_fixed_index;
     }
-    // else if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index )
-    //     && (actual_current_maximum_likelihood > 0.0))
-    // {
-    //     /* The best shifted match unit has better likelihood than the main label and is greater than zero */
-    //     best_spike_likelihoods[id] = actual_current_maximum_likelihood;
-    //     overlap_best_spike_labels[id] = template_number;
-    //     overlap_best_spike_indices[id] = absolute_shift_index;
-    // }
+    else if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index )
+        && (actual_current_maximum_likelihood > 0.0))
+    {
+        /* The best shifted match unit has better likelihood than the main label and is greater than zero */
+        best_spike_likelihoods[id] = actual_current_maximum_likelihood;
+        overlap_best_spike_labels[id] = template_number;
+        overlap_best_spike_indices[id] = absolute_shift_index;
+    }
     else if (actual_template_likelihood_at_index > 0.0)
     {
         /* The main label has likelihood greater than zero */

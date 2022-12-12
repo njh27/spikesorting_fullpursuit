@@ -700,6 +700,12 @@ __kernel void parse_overlap_recheck_indices(
     __private float best_group_likelihood = best_spike_likelihood_private;
     __private unsigned int best_template_shifts_id = 0;
 
+    if (best_spike_likelihood_private < likelihood_lower_thresholds[best_spike_label_private])
+    {
+        overlap_recheck[id] = 0;
+        return; /* Original spike likelihood doesn't exceed its threshold so skip */
+    }
+
     __private const unsigned int start_id_index = (unsigned int) (n_local_ID * global_id);
     __private unsigned int search_index;
     /* Search over the work group results corresponding to our current id */
@@ -720,6 +726,7 @@ __kernel void parse_overlap_recheck_indices(
     /* Shifts improved likelihood, so we need to use best shifts ID and crazy indices to find answer */
     if ((best_template_shifts_id % (n_local_ID * local_size)) >= items_per_index)
     {
+        overlap_recheck[id] = 0;
         return; /* Extra worker with nothing to do */
     }
 
@@ -742,6 +749,13 @@ __kernel void parse_overlap_recheck_indices(
 
     float actual_template_likelihood_at_index = full_likelihood_function[best_spike_label_private * voltage_length + absolute_fixed_index];
     float actual_current_maximum_likelihood = full_likelihood_function[template_number * voltage_length + absolute_shift_index];
+
+    if ( (best_group_likelihood < actual_template_likelihood_at_index)
+        || (best_group_likelihood < actual_current_maximum_likelihood) )
+    {
+        overlap_recheck[id] = 0;
+        return; /* Combined template doesn't exceed both units' likelihoods individually */
+    }
 
     /* Reset the likelihood and best index and label to maximum.
       These need to be reset only if the new index can pass the
@@ -766,7 +780,7 @@ __kernel void parse_overlap_recheck_indices(
     if ((actual_template_likelihood_at_index >= actual_current_maximum_likelihood)
         && (actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private]))
     {
-        /* The main label has better likelihood than best shifted match */
+        /* The main label has better likelihood than best shifted match and exceeds its threshold */
         best_spike_likelihoods[id] = actual_template_likelihood_at_index;
         overlap_best_spike_labels[id] = best_spike_label_private;
         overlap_best_spike_indices[id] = absolute_fixed_index;
@@ -774,7 +788,7 @@ __kernel void parse_overlap_recheck_indices(
     else if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index)
         && (actual_current_maximum_likelihood > likelihood_lower_thresholds[template_number]))
     {
-        /* The best shifted match unit has better likelihood than the main label */
+        /* The best shifted match unit has better likelihood than the main label and exceeds its threashold */
         best_spike_likelihoods[id] = actual_current_maximum_likelihood;
         overlap_best_spike_labels[id] = template_number;
         overlap_best_spike_indices[id] = absolute_shift_index;
@@ -801,14 +815,14 @@ __kernel void parse_overlap_recheck_indices(
         overlap_best_spike_labels[id] = best_spike_label_private;
         overlap_best_spike_indices[id] = absolute_fixed_index;
     }
-    else if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index )
-        && (actual_current_maximum_likelihood > 0.0))
-    {
-        /* The best shifted match unit has better likelihood than the main label */
-        best_spike_likelihoods[id] = best_group_likelihood;
-        overlap_best_spike_labels[id] = template_number;
-        overlap_best_spike_indices[id] = absolute_shift_index;
-    }
+    // else if ((actual_current_maximum_likelihood > actual_template_likelihood_at_index )
+    //     && (actual_current_maximum_likelihood > 0.0))
+    // {
+    //     /* The best shifted match unit has better likelihood than the main label */
+    //     best_spike_likelihoods[id] = best_group_likelihood;
+    //     overlap_best_spike_labels[id] = template_number;
+    //     overlap_best_spike_indices[id] = absolute_shift_index;
+    // }
     else
     {
         /* Says "do nothing" so we stick with our original spike index

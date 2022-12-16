@@ -785,7 +785,8 @@ __kernel void parse_overlap_recheck_indices(
     }
     else if (actual_template_likelihood_at_index > likelihood_lower_thresholds[best_spike_label_private])
     {
-        /* The main label exceeds threshold */
+        /* The main label exceeds threshold. (above implies it has lower
+        likelihood than best shifted match though.) */
         best_spike_likelihoods[id] = actual_template_likelihood_at_index;
         overlap_best_spike_labels[id] = best_spike_label_private;
         overlap_best_spike_indices[id] = absolute_fixed_index;

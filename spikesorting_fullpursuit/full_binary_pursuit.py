@@ -94,7 +94,19 @@ def get_binary_pursuit_clip_width(seg_w_items, clips_dict, voltage, data_dict, s
     clip_n = last_indices[0] - first_indices[0] # New expanded clip width
     original_clip_starts = np.arange(clip_start_ind, clip_n*(sort_info['n_channels']), clip_n, dtype=np.int64)
     original_clip_stops = np.arange(clip_stop_ind, (clip_n+1)*sort_info['n_channels'], clip_n, dtype=np.int64)
-
+    print(1, bp_chan_win_samples)
+    print(2, chan_win_samples)
+    print(3, max_pre_samples)
+    print(4, first_indices)
+    print(5, bp_clip_width)
+    print(6, min_post_samples)
+    print(7, last_indices)
+    print(8, bp_samples_per_chan)
+    print(9, clip_start_ind)
+    print(10, clip_stop_ind)
+    print(11, clip_n)
+    print(12, original_clip_starts)
+    print(13, original_clip_stops)
     # Make clip_width symmetric
     bp_cw_max = max(np.abs(bp_clip_width))
     bp_clip_width = [-1*bp_cw_max, bp_cw_max]

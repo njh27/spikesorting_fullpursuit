@@ -304,6 +304,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                 # This should never be possible, but just to be sure
                 raise RuntimeError("Could not find a matching work item for unit")
             seg_data.append([[], [], [], [], curr_item['ID']])
+        # Set these back to match input values
+        sort_info['clip_width'] = original_clip_width
+        sort_info['n_samples_per_chan'] = bp_reduction_samples_per_chan
         return seg_data
 
     # Perform final sharpening, this time including channel covariance matrices
@@ -339,6 +342,9 @@ def full_binary_pursuit(work_items, data_dict, seg_number,
                 # This should never be possible, but just to be sure
                 raise RuntimeError("Could not find a matching work item for unit")
             seg_data.append([[], [], [], [], curr_item['ID']])
+        # Set these back to match input values
+        sort_info['clip_width'] = original_clip_width
+        sort_info['n_samples_per_chan'] = bp_reduction_samples_per_chan
         return seg_data
 
     if sort_info['verbose']: print("Starting full binary pursuit search with", separability_metrics['templates'].shape[0], "templates in segment", seg_number+1)

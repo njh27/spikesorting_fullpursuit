@@ -640,8 +640,8 @@ def calculate_robust_template(clips):
 
     if clips.shape[0] == 1 or clips.ndim == 1:
         # Only 1 clip so nothing to average over
-        return clips
-    robust_template = np.zeros(clips.shape[1], dtype=clips.dtype)
+        return np.squeeze(clips) # Return 1D array
+    robust_template = np.zeros((clips.shape[1], ), dtype=clips.dtype)
     sample_medians = np.median(clips, axis=0)
     for sample in range(0, clips.shape[1]):
         # Compute MAD with standard deviation conversion factor

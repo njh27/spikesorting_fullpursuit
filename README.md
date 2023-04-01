@@ -201,7 +201,7 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 		'bp_chan_snr': None, # SNR required for a template on a given channel to be used for binary pursuit. Channels lower than this are set to zero template signal. This is computed as in the output in units of 3x STD of the background noise relative to peak/valley of the template. Thus .33 	would indicate removing channels where signal is within 1 STD of the noise. Values of 'None' or <=0 are ignored (all channels included).
 		'absolute_refractory_period': 10e-4, # Absolute refractory period expected between spikes of a single neuron. This is used in
 				postprocesing.
-		'get_adjusted_clips': False, # Returns spike clips after the waveforms of any potentially overlapping spikes have been removed
+		'get_adjusted_clips': False, # Returns spike clips after the waveforms of any potentially overlapping spikes have been removed --!this is NOT recommended as it has not been thoroughly tested, is very GPU and memory intensive, and provides minimal benefit.
 		'max_binary_pursuit_clip_width_factor': 2.0, # The factor by which binary pursuit template matching can be increased relative to clip
 				width for clustering. The best values for clustering and template matching are not always the same.
 				# Factor of 1.0 means use the same clip width. Less than 1 is invalid and will use the clip width.

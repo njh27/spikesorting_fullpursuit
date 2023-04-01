@@ -27,11 +27,18 @@ modifications to these files.
 
 A GPU is required to run the binary pursuit algorithm via pyopencl. This step
 can be tricky and depends on specific hardware/firmware/software configurations.
-We give brief guidance here, but can off little help otherwise. You may need
+We give brief guidance here, but can offer little help otherwise. You may need
 to install an OpenCL driver for your specific GPU in order for it to work with
 OpenCL. Depending on the age of your machine and/or GPU, it may be the case that
 you need to choose to install an older version of pyopencl. The oldest case we
-tested was pyopencl version 2019.1.2.
+tested was pyopencl version 2019.1.2. Running time consuming processes on a
+Windows OS can result in the OS terminating the process and crashing the
+program due to the Windows Timeout Detection & Recovery (TDR). The solution is
+usually to alter the tdr registry keys in the Windows OS such as TdrDelay as
+described here:
+https://learn.microsoft.com/en-us/windows-hardware/drivers/display/tdr-registry-keys
+Other instructions can usually be found from specific GPU manufacturers, but
+specifics for your hardware may be relevant.
 
 Memory usage is very high especially for large files and floating point values.
 The opencl GPU code generally only handles up to float32 and so it makes the

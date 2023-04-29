@@ -1,7 +1,7 @@
 ## Spike Sorting Full Binary Pursuit
 
 This package provides a neural spike sorting algorithm implementation as described
-in our publication Hall et al. The internal algorithm clusters spike waveforms in a manner derived from
+in our publication [Hall et al. (2021) Evaluation and resolution of many challenges of neural spike sorting: a new sorter](https://journals.physiology.org/doi/full/10.1152/jn.00047.2021?rfr_dat=cr_pub++0pubmed&url_ver=Z39.88-2003&rfr_id=ori%3Arid%3Acrossref.org). The internal algorithm clusters spike waveforms in a manner derived from
 the isocut algorithm of [Chung et al. 2017](https://www.sciencedirect.com/science/article/pii/S0896627317307456) to discover neuron spike waveforms. These spike waveform templates are then used to derive
 all the spike event times associated with each neuron using a slightly modified version
 of the binary pursuit algorithm proposed by [Pillow et al. 2013](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0062123). The current code-base significantly extends this work by adding alignment, sharpening, and noise estimation among other things. Because all spike events are ultimately discovered by the binary

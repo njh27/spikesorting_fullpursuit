@@ -4,7 +4,7 @@ presence of spike events that overlap in space and time. It is distributed
 freely under the GNU General Public License which can be found at
 <https://www.gnu.org/licenses/>.
 
-Copyright (C) 2021  Nathan Hall
+Copyright (C) 2021  Nathan Hall and David Herzfeld
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

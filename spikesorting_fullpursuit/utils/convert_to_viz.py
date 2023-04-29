@@ -3,6 +3,9 @@ from spikesorting_fullpursuit.utils.format import to_neuroviz
 
 
 
+""" A couple functions useful for converting the out "neurons" dictionary of the
+sorter into a format that can be read by "NeuroViz" for manual inspection and
+post-processing. """
 def f_neurons_to_viz(fname_neurons, save_fname=None, neuroviz_only=False, filename=None):
     fname_neurons = fname_neurons.rsplit(".")
     if len(fname_neurons) == 2:

@@ -951,7 +951,7 @@ class WorkItemSummary(object):
             print("Skipped stitching")
             return
 
-        update_new2orig_seg_labels = [[] for x in range(0, len(self.sort_data[0]))]
+        update_new2orig_seg_labels = [[] for _ in range(0, len(self.sort_data[0]))]
         # Stitch each channel separately
         for chan in range(0, self.n_chans):
             print("Start stitching channel", chan)
@@ -1039,9 +1039,8 @@ class WorkItemSummary(object):
                     if len(best_pair) == 0:
                         break
                     if clips_1.shape[0] == 1 or clips_2.shape[0] == 1:
-                        # Don't mess around with only 1 spike, if they are
-                        # nearest each other they can merge
-                        ismerged = True
+                        # Don't mess around with only 1 spike, it is not helpful to merge
+                        is_merged = False
                     else:
                         is_merged, _, _ = self.merge_test_two_units(
                                 clips_1, clips_2, self.sort_info['p_value_cut_thresh'],
@@ -1062,8 +1061,6 @@ class WorkItemSummary(object):
                         else:
                             old_label = old_label[0]
                         update_new2orig_seg_labels[next_seg].append([best_pair[0], self.new2orig_seg_labels[next_seg][old_label]])
-                        # self.new2orig_seg_labels[next_seg][best_pair[0]] = self.new2orig_seg_labels[next_seg][old_label]
-                        # del self.new2orig_seg_labels[next_seg][old_label]
                         leftover_labels.remove(best_pair[1])
                         main_labels.remove(best_pair[0])
                     else:

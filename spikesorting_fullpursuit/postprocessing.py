@@ -1893,13 +1893,26 @@ class WorkItemSummary(object):
                     for conf1_label in n1['max_confusion'].keys():
                         for conf2_label in n2['labels']:
                             if conf1_label == conf2_label:
+                                # some early formatting might be messed up sometimes so enforce proper list format here
                                 if n2['id'] in new_confusion:
-                                    new_confusion[n2['id']].append(n1['max_confusion'][conf1_label])
+                                    if isinstance(n1['max_confusion'][conf1_label], list):
+                                        new_confusion[n2['id']].extend(n1['max_confusion'][conf1_label])
+                                    else:
+                                        new_confusion[n2['id']].append(n1['max_confusion'][conf1_label])
                                 else:
-                                    new_confusion[n2['id']] = [n1['max_confusion'][conf1_label]]
+                                    new_confusion[n2['id']] = n1['max_confusion'][conf1_label]
+                                    if not isinstance(new_confusion[n2['id']], list):
+                                        new_confusion[n2['id']] = list(new_confusion[n2['id']])
                 # Now go through and take mean of new confusions
                 for nc in new_confusion.keys():
-                    new_confusion[nc] = np.nanmean(new_confusion[nc])
+                    try:
+                        new_confusion[nc] = np.nanmean(new_confusion[nc])
+                    except:
+                        print(new_confusion)
+                        print(nc)
+                        print(n2['id'])
+                        print(n1['max_confusion'])
+                        raise
                 all_new_confusion.append(new_confusion)
             for n, c in zip(neuron_summary, all_new_confusion):
                 n['max_confusion'] = c

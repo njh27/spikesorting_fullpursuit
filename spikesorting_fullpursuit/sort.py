@@ -344,10 +344,6 @@ def iso_cut(projection, p_value_cut_thresh):
         flip_right_stop = len(x_axis) - right_start
         critical_range = np.arange(flip_right_start, flip_right_stop)
         citical_side = 'right'
-        if critical_range[0] == peak_density_ind and critical_range[-1] == obs_counts.size - 1:
-            # This means all the points are the same so no reason to check p-value
-            # Due to if/else statement, this only happens here and not for left above
-            return 1., None
 
     m_gof = multinomial_gof.MultinomialGOF(
                 obs_counts[critical_range],
@@ -367,24 +363,36 @@ def iso_cut(projection, p_value_cut_thresh):
         residual_densities = obs_counts - null_counts
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
         residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities[critical_range], np.ones_like(critical_range))
-        if citical_side == 'left':
-            # Ensure we cut closest to center in event of a tie
-            cutpoint_ind = np.argmax(residual_densities_fit[-1::-1])
-            cutpoint_ind = len(critical_range) - cutpoint_ind - 1
-        else:
-            cutpoint_ind = np.argmax(residual_densities_fit)
+        # A full critical range suggests possible bad fit because distribution is extremely bimodal so check them
+        found_dip = False
+        if ( (peak_density_ind < obs_counts.size/2) and (critical_range[-1] == obs_counts.size - 1) ):
+            min_null_fit = np.amin(null_counts)
+            for cutpoint_ind in range(0, residual_densities_fit.size):
+                if ( (null_counts[cutpoint_ind] == min_null_fit) and (residual_densities_fit[cutpoint_ind] < 0) ):
+                    # This means the null fit missed a second hump because it was so extreme
+                    found_dip = True
+                    break
+            if cutpoint_ind > 0:
+                cutpoint_ind -= 1
+        elif ( (peak_density_ind > obs_counts.size/2) and (critical_range[-1] == obs_counts.size - 1) ):
+            min_null_fit = np.amin(null_counts)
+            for cutpoint_ind in range(residual_densities_fit.size - 1, -1, -1):
+                if ( (null_counts[cutpoint_ind] == min_null_fit) and (residual_densities_fit[cutpoint_ind] < 0) ):
+                    # This means the null fit missed a second hump because it was so extreme
+                    found_dip = True
+                    break
+            if cutpoint_ind < (residual_densities_fit.size - 1):
+                cutpoint_ind += 1
+        if not found_dip:
+            if citical_side == 'left':
+                # Ensure we cut closest to center in event of a tie
+                cutpoint_ind = np.argmax(residual_densities_fit[-1::-1])
+                cutpoint_ind = len(critical_range) - cutpoint_ind - 1
+            else:
+                cutpoint_ind = np.argmax(residual_densities_fit)
         cutpoint = choose_optimal_cutpoint(cutpoint_ind, residual_densities_fit,
                     x_axis[critical_range])
-
-        # Not technically the cutpoint_ind used since choose_optimal_cutpoint
-        # will choose center of repeated indices, but will have the same number
-        # of counts so still useful
-        cutpoint_ind += critical_range[0]
-        if obs_counts[cutpoint_ind] > null_counts[cutpoint_ind]:
-            print("!!! CUTPOINT ISNT A DIP !!!, skipping this cut")
-            p_value = 1.
-            cutpoint = None
-
+        
     return p_value, cutpoint
 
 
@@ -504,10 +512,8 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
         labels[:] = unique_labels[np.argmax(u_counts)]
         return labels
 
-    original_pval = p_value_cut_thresh
     previously_compared_pairs = []
     num_iter = 0
-    min_size_check = False
     none_merged = True
     while True:
         if num_iter > max_iter:

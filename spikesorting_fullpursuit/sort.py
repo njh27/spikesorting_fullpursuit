@@ -100,6 +100,28 @@ def initial_cluster_farthest(data, median_cluster_size, choose_percentile=0.95, 
     return labels
 
 
+def assign_nearest_label(data, labels):
+    """ Reassigns all the data to their nearest cluster center according to labels.
+    """
+    unq_labels = np.unique(labels)
+    centers = {}
+    distances = np.zeros((data.shape[0]))
+    # Get each label center and assign its current points to it
+    for lab in unq_labels:
+        sel_label = labels == lab
+        centers[lab] = np.mean(data[sel_label, :], axis=0)
+        distances[sel_label] = np.sum((data[sel_label, :] - centers[lab])**2, axis=1)
+
+    # No go through each center and assign nearest to it
+    for label, center in centers.items():
+        temp_distances = np.sum((data - center)**2, axis=1)
+        sel_relabel = temp_distances < distances
+        labels[sel_relabel] = label
+        distances[sel_relabel] = temp_distances[sel_relabel]
+
+    return labels
+
+
 def reorder_labels(labels):
     """
     Rename labels from 0 to n-1, where n is the number of unique labels.
@@ -361,6 +383,46 @@ def iso_cut(projection, p_value_cut_thresh):
     cutpoint = None
     if p_value < p_value_cut_thresh:
         residual_densities = obs_counts - null_counts
+
+        if np.any(residual_densities > 0.):
+            residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities, np.ones_like(x_axis))
+            if (peak_density_ind <= obs_counts.size/2):
+                n_consec_0 = 0
+                start_consec = False
+                ind = peak_density_ind + 1
+                while ind < obs_counts.size:
+                    if residual_densities_fit[ind] < 0.:
+                        break
+                    if ( (obs_counts[ind] == 0.) and (not start_consec) ):
+                        start_consec = True
+                        n_consec_0 = 1
+                    if obs_counts[ind] != 0.:
+                        start_consec = False
+                    if ( (obs_counts[ind] == 0.) and (start_consec) ):
+                        n_consec_0 += 1
+                    ind += 1
+                if ( (n_consec_0 / obs_counts.size > 0.1) and (n_consec_0 > 3) ):
+                    cutpoint = choose_optimal_cutpoint(ind - 1, residual_densities_fit, x_axis)
+                    return p_value, cutpoint
+            else:
+                n_consec_0 = 0
+                start_consec = False
+                ind = peak_density_ind - 1
+                while ind >= 0:
+                    if residual_densities_fit[ind] < 0.:
+                        break
+                    if ( (obs_counts[ind] == 0.) and (not start_consec) ):
+                        start_consec = True
+                        n_consec_0 = 1
+                    if obs_counts[ind] != 0.:
+                        start_consec = False
+                    if ( (obs_counts[ind] == 0.) and (start_consec) ):
+                        n_consec_0 += 1
+                    ind -= 1
+                if ( (n_consec_0 / obs_counts.size > 0.1) and (n_consec_0 > 3) ):
+                    cutpoint = choose_optimal_cutpoint(ind + 1, residual_densities_fit, x_axis)
+                    return p_value, cutpoint
+
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
         residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities[critical_range], np.ones_like(critical_range))
         # A full critical range suggests possible bad fit because distribution is extremely bimodal so check them
@@ -497,6 +559,7 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
     # START ACTUAL OUTER FUNCTION
     if labels.size == 0:
         return labels
+    labels = assign_nearest_label(data, labels)
     unique_labels, u_counts = np.unique(labels, return_counts=True)
     if unique_labels.size <= 1:
         # Return all labels merged into most prevalent label

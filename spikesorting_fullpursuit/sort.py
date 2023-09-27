@@ -377,6 +377,7 @@ def iso_cut(projection, p_value_cut_thresh):
                         start_consec = False
                     if ( (obs_counts[ind] == 0.) and (start_consec) ):
                         n_consec_0 += 1
+                    ind += 1
             if ( (n_consec_0 / obs_counts.size > 0.1) and (n_consec_0 > 3) ):
                 residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities, np.ones_like(x_axis))
                 cutpoint = choose_optimal_cutpoint(ind - 1, residual_densities_fit, x_axis)

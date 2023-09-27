@@ -363,7 +363,7 @@ def iso_cut(projection, p_value_cut_thresh):
         residual_densities = obs_counts - null_counts
 
         if np.any(residual_densities > 0.):
-            if (peak_density_ind < obs_counts.size/2):
+            if (peak_density_ind <= obs_counts.size/2):
                 n_consec_0 = 0
                 start_consec = False
                 ind = peak_density_ind + 1
@@ -381,6 +381,25 @@ def iso_cut(projection, p_value_cut_thresh):
                 if ( (n_consec_0 / obs_counts.size > 0.1) and (n_consec_0 > 3) ):
                     residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities, np.ones_like(x_axis))
                     cutpoint = choose_optimal_cutpoint(ind - 1, residual_densities_fit, x_axis)
+                    return p_value, cutpoint
+            else:
+                n_consec_0 = 0
+                start_consec = False
+                ind = peak_density_ind - 1
+                while ind >= 0:
+                    if residual_densities[ind] > 0.:
+                        break
+                    if ( (obs_counts[ind] == 0.) and (not start_consec) ):
+                        start_consec = True
+                        n_consec_0 = 1
+                    if obs_counts[ind] != 0.:
+                        start_consec = False
+                    if ( (obs_counts[ind] == 0.) and (start_consec) ):
+                        n_consec_0 += 1
+                    ind -= 1
+                if ( (n_consec_0 / obs_counts.size > 0.1) and (n_consec_0 > 3) ):
+                    residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities, np.ones_like(x_axis))
+                    cutpoint = choose_optimal_cutpoint(ind + 1, residual_densities_fit, x_axis)
                     return p_value, cutpoint
 
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN

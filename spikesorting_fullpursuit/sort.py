@@ -581,7 +581,6 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
         if num_iter > max_iter:
             print("Maximum number of iterations exceeded")
             return labels
-        labels = assign_nearest_label(data, labels)
         minimum_distance_pairs = sort_cython.identify_clusters_to_compare(data, labels, previously_compared_pairs)
         if len(minimum_distance_pairs) == 0 and none_merged:
             break # Done, no more clusters to compare

@@ -391,7 +391,7 @@ def iso_cut(projection, p_value_cut_thresh):
                 start_consec = False
                 ind = peak_density_ind + 1
                 while ind < obs_counts.size:
-                    if -1*residual_densities[ind] < 0.:
+                    if residual_densities_fit[ind] < 0.:
                         break
                     if ( (obs_counts[ind] == 0.) and (not start_consec) ):
                         start_consec = True
@@ -409,7 +409,7 @@ def iso_cut(projection, p_value_cut_thresh):
                 start_consec = False
                 ind = peak_density_ind - 1
                 while ind >= 0:
-                    if -1*residual_densities[ind] < 0.:
+                    if residual_densities_fit[ind] < 0.:
                         break
                     if ( (obs_counts[ind] == 0.) and (not start_consec) ):
                         start_consec = True
@@ -509,6 +509,9 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # 1D projection
             projection = np.squeeze(np.copy(scores))
 
+        distances1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
+        distances2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
+
         p_value, optimal_cut = iso_cut(projection[np.logical_or(labels == c1, labels == c2)], p_value_cut_thresh)
         if p_value >= p_value_cut_thresh: #or np.isnan(p_value):
             # These two clusters should be combined
@@ -543,7 +546,6 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                     # Our optimal split forced a merge. This can happen even with
                     # 'split_only' set to True.
                     return True
-                return False
             else:
                 # Reassign labels to cluster keeping label numbers that minimize
                 # projection distance between original and new center
@@ -555,6 +557,16 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                 else:
                     labels[select_greater] = c2
                     labels[select_less] = c1
+
+            new_distances1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
+            new_distances2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
+
+            if np.mean(new_distances1) > np.mean(distances1):
+                print("Cluster 1 distances got bigger...")
+            if np.mean(new_distances2) > np.mean(distances2):
+                print("Cluster 2 distances got bigger...")
+
+            return False
 
     # START ACTUAL OUTER FUNCTION
     if labels.size == 0:

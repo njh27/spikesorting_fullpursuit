@@ -512,6 +512,9 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
         distances1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
         distances2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
 
+        between_dist1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
+        between_dist2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
+
         p_value, optimal_cut = iso_cut(projection[np.logical_or(labels == c1, labels == c2)], p_value_cut_thresh)
         if p_value >= p_value_cut_thresh: #or np.isnan(p_value):
             # These two clusters should be combined

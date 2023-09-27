@@ -391,7 +391,7 @@ def iso_cut(projection, p_value_cut_thresh):
                 start_consec = False
                 ind = peak_density_ind + 1
                 while ind < obs_counts.size:
-                    if residual_densities_fit[ind] < 0.:
+                    if -1*residual_densities[ind] < 0.:
                         break
                     if ( (obs_counts[ind] == 0.) and (not start_consec) ):
                         start_consec = True
@@ -409,7 +409,7 @@ def iso_cut(projection, p_value_cut_thresh):
                 start_consec = False
                 ind = peak_density_ind - 1
                 while ind >= 0:
-                    if residual_densities_fit[ind] < 0.:
+                    if -1*residual_densities[ind] < 0.:
                         break
                     if ( (obs_counts[ind] == 0.) and (not start_consec) ):
                         start_consec = True

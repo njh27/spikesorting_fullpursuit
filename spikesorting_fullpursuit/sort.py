@@ -519,6 +519,8 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
         mean_bd1 = np.mean(between_dist1)
         mean_bd2 = np.mean(between_dist2)
 
+        old_labels = np.copy(labels)
+
 
         p_value, optimal_cut = iso_cut(projection[np.logical_or(labels == c1, labels == c2)], p_value_cut_thresh)
         if p_value >= p_value_cut_thresh: #or np.isnan(p_value):
@@ -581,8 +583,11 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                 print("Some cluster got bigger within")
                 if mean_nbd1 < mean_bd1:
                     print("Between cluster 1 distances got SMALLER...")
+                    labels = old_labels
                 if mean_nbd2 < mean_bd2:
                     print("Between cluster 2 distances got SMALLER...")
+                    labels = old_labels
+                
 
             return False
 

@@ -511,8 +511,8 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
 
         distances1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
         distances2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
-        mean_d1 = np.mean(distances1)
-        mean_d2 = np.mean(distances2)
+        mean_d1 = np.var(distances1)
+        mean_d2 = np.var(distances2)
         mean_d_total = (distances1.shape[0] / labels.shape[0]) * mean_d1 + (distances2.shape[0] / labels.shape[0]) * mean_d2
 
         between_dist1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
@@ -571,8 +571,8 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
 
             new_distances1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
             new_distances2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
-            mean_nd1 = np.mean(new_distances1)
-            mean_nd2 = np.mean(new_distances2)
+            mean_nd1 = np.var(new_distances1)
+            mean_nd2 = np.var(new_distances2)
             mean_nd_total = (new_distances1.shape[0] / labels.shape[0]) * mean_nd1 + (new_distances2.shape[0] / labels.shape[0]) * mean_nd2
 
             new_between_dist1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
@@ -582,13 +582,13 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             mean_nbd_total = (new_between_dist1.shape[0] / labels.shape[0]) * mean_nbd1 + (new_between_dist2.shape[0] / labels.shape[0]) * mean_nbd2
 
 
-            # if mean_nd_total > mean_d_total:
-            #     labels[select_greater] = old_select_greater
-            #     labels[select_less] = old_select_less
-
-            if mean_nbd_total < mean_bd_total:
+            if mean_nd_total > mean_d_total:
                 labels[select_greater] = old_select_greater
                 labels[select_less] = old_select_less
+
+            # if mean_nbd_total < mean_bd_total:
+            #     labels[select_greater] = old_select_greater
+            #     labels[select_less] = old_select_less
 
 
 

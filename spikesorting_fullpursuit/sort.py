@@ -519,9 +519,6 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
         mean_bd1 = np.mean(between_dist1)
         mean_bd2 = np.mean(between_dist2)
 
-        old_labels = np.copy(labels)
-
-
         p_value, optimal_cut = iso_cut(projection[np.logical_or(labels == c1, labels == c2)], p_value_cut_thresh)
         if p_value >= p_value_cut_thresh: #or np.isnan(p_value):
             # These two clusters should be combined
@@ -535,6 +532,8 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # Reassign based on the optimal value
             select_greater = np.logical_and(np.logical_or(labels == c1, labels == c2), (projection > optimal_cut + 1e-6))
             select_less = np.logical_and(np.logical_or(labels == c1, labels == c2), ~select_greater)
+            old_select_greater = labels[select_greater]
+            old_select_less = labels[select_less]
             if flip_labels:
                 # Make label with most data going in the same as that going out
                 assign_max_c1 = True if np.count_nonzero(labels == c1) >= np.count_nonzero(labels == c2) else False
@@ -583,10 +582,12 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                 print("Some cluster got bigger within")
             if mean_nbd1 < mean_bd1:
                 print("Between cluster 1 distances got SMALLER...")
-                labels = old_labels
+                labels[select_greater] = old_select_greater
+                labels[select_less] = old_select_less
             if mean_nbd2 < mean_bd2:
                 print("Between cluster 2 distances got SMALLER...")
-                labels = old_labels
+                labels[select_greater] = old_select_greater
+                labels[select_less] = old_select_less
                 
 
             return False

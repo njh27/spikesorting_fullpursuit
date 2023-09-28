@@ -583,12 +583,10 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
 
 
             if mean_nd_total > mean_d_total:
-                print("Total within distances went up!")
                 labels[select_greater] = old_select_greater
                 labels[select_less] = old_select_less
 
             if mean_nbd_total < mean_bd_total:
-                print("Total BETWEEN distances went DOWN!")
                 labels[select_greater] = old_select_greater
                 labels[select_less] = old_select_less
 

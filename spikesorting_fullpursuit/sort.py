@@ -579,10 +579,10 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # if ( (mean_nd1 > mean_d1) or (mean_nd2 > mean_d2) ):
             #     # At least 1 cluster within got bigger
             #     print("Some cluster got bigger within")
-            if mean_nbd1 > mean_bd1:
-                print("Between cluster 1 distances got bigger...")
-            if mean_nbd2 > mean_bd2:
-                print("Between cluster 2 distances got bigger...")
+            if mean_nbd1 < mean_bd1:
+                print("Between cluster 1 distances got SMALLER...")
+            if mean_nbd2 < mean_bd2:
+                print("Between cluster 2 distances got SMALLER...")
 
             return False
 

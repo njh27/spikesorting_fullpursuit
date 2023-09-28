@@ -582,9 +582,9 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             mean_nbd_total = (new_between_dist1.shape[0] / labels.shape[0]) * mean_nbd1 + (new_between_dist2.shape[0] / labels.shape[0]) * mean_nbd2
 
 
-            if mean_nd_total > mean_d_total:
-                labels[select_greater] = old_select_greater
-                labels[select_less] = old_select_less
+            # if mean_nd_total > mean_d_total:
+            #     labels[select_greater] = old_select_greater
+            #     labels[select_less] = old_select_less
 
             if mean_nbd_total < mean_bd_total:
                 labels[select_greater] = old_select_greater

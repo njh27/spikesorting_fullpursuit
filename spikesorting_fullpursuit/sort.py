@@ -511,9 +511,14 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
 
         distances1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
         distances2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
+        mean_d1 = np.mean(distances1)
+        mean_d2 = np.mean(distances2)
 
         between_dist1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
         between_dist2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
+        mean_bd1 = np.mean(between_dist1)
+        mean_bd2 = np.mean(between_dist2)
+
 
         p_value, optimal_cut = iso_cut(projection[np.logical_or(labels == c1, labels == c2)], p_value_cut_thresh)
         if p_value >= p_value_cut_thresh: #or np.isnan(p_value):
@@ -563,11 +568,21 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
 
             new_distances1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
             new_distances2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
+            mean_nd1 = np.mean(new_distances1)
+            mean_nd2 = np.mean(new_distances2)
 
-            if np.mean(new_distances1) > np.mean(distances1):
-                print("Cluster 1 distances got bigger...")
-            if np.mean(new_distances2) > np.mean(distances2):
-                print("Cluster 2 distances got bigger...")
+            new_between_dist1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
+            new_between_dist2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
+            mean_nbd1 = np.mean(new_between_dist1)
+            mean_nbd2 = np.mean(new_between_dist2)
+
+            # if ( (mean_nd1 > mean_d1) or (mean_nd2 > mean_d2) ):
+            #     # At least 1 cluster within got bigger
+            #     print("Some cluster got bigger within")
+            if mean_nbd1 > mean_bd1:
+                print("Between cluster 1 distances got bigger...")
+            if mean_nbd2 > mean_bd2:
+                print("Between cluster 2 distances got bigger...")
 
             return False
 

@@ -513,7 +513,6 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
         distances2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
         mean_d1 = np.mean(distances1)
         mean_d2 = np.mean(distances2)
-        print(distances1.shape, labels.shape)
         mean_d_total = (distances1.shape[0] / labels.shape[0]) * mean_d1 + (distances2.shape[0] / labels.shape[0]) * mean_d2
 
         between_dist1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
@@ -580,13 +579,21 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             new_between_dist2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
             mean_nbd1 = np.mean(new_between_dist1)
             mean_nbd2 = np.mean(new_between_dist2)
-            mean_nd_total = (new_between_dist1.shape[0] / labels.shape[0]) * mean_nbd1 + (new_between_dist2.shape[0] / labels.shape[0]) * mean_nbd2
+            mean_nbd_total = (new_between_dist1.shape[0] / labels.shape[0]) * mean_nbd1 + (new_between_dist2.shape[0] / labels.shape[0]) * mean_nbd2
 
 
             if mean_nd_total > mean_d_total:
                 print("Total within distances went up!")
                 labels[select_greater] = old_select_greater
                 labels[select_less] = old_select_less
+
+            if mean_nbd_total < mean_bd_total:
+                print("Total BETWEEN distances went DOWN!")
+                labels[select_greater] = old_select_greater
+                labels[select_less] = old_select_less
+
+
+
             # if ( (mean_nbd1 < mean_bd1) or (mean_nbd2 < mean_bd2) ):
 
             #     labels[select_greater] = old_select_greater

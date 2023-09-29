@@ -447,6 +447,9 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # 1D projection
             projection = np.squeeze(np.copy(scores))
 
+        # Store original labels for label assignments at the end and tracking distance changes
+        original_labels = np.copy(labels)
+
         p_value, optimal_cut = iso_cut(projection[np.logical_or(labels == c1, labels == c2)], p_value_cut_thresh)
         if p_value >= p_value_cut_thresh: #or np.isnan(p_value):
             # These two clusters should be combined
@@ -461,11 +464,19 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             select_greater = np.logical_and(np.logical_or(labels == c1, labels == c2), (projection > optimal_cut + 1e-6))
             select_less = np.logical_and(np.logical_or(labels == c1, labels == c2), ~select_greater)
 
+            # Get mean and distance measures for the original labels so we can check this split and assign labels
+            center_1_orig = np.mean(projection[labels == c1])
+            center_2_orig = np.mean(projection[labels == c2])
+            within_dist_1_orig = np.sum((projection[labels == c1] - center_1_orig)**2)
+            within_dist_2_orig = np.sum((projection[labels == c2] - center_2_orig)**2)
+            between_dist_1_2_orig = np.sum((projection[labels == c1] - center_2_orig)**2)
+            between_dist_2_1_orig = np.sum((projection[labels == c2] - center_1_orig)**2)
+            raw_dist_within_orig = np.sum(within_dist_1_orig) + np.sum(within_dist_2_orig)
+            raw_dist_between_orig = np.sum(between_dist_1_2_orig) + np.sum(between_dist_2_1_orig)
+
             # Reassign labels to cluster keeping label numbers that minimize
             # projection distance between original and new center
-            original_c1 = np.mean(projection[labels == c1])
-            original_c2 = np.mean(projection[labels == c2])
-            if original_c1 >= original_c2:
+            if center_1_orig >= center_2_orig:
                 labels[select_greater] = c1
                 labels[select_less] = c2
             else:

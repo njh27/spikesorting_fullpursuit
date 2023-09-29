@@ -280,7 +280,7 @@ def iso_cut(projection, p_value_cut_thresh):
     if N <= 2:
         # Don't try any comparison with only two samples since can't split
         # merge_clusters shouldn't get to this point
-        return 1., None
+        return 1., None, 0
 
     num_bins = np.ceil(np.sqrt(N)).astype(np.int64)
     if num_bins < 2: num_bins = 2
@@ -289,13 +289,13 @@ def iso_cut(projection, p_value_cut_thresh):
     # smooth_pdf, x_axis, _ = kde_builtin(projection, num_bins)
     if x_axis.size == 1:
         # All data are in same bin so merge (shouldn't happen)
-        return 1., None
+        return 1., None, 0
     # Output density of kde does not sum to one, so normalize it.
     smooth_pdf = smooth_pdf / np.sum(smooth_pdf)
     # kde function estimates at power of two spacing levels so compute num_points
     num_points = smooth_pdf.size
     if np.any(np.isnan(smooth_pdf)):
-        return 1., None # (shouldn't happen)
+        return 1., None, 0 # (shouldn't happen)
 
     # Approximate observations per spacing used for computing n for statistics
     smooth_pdf[smooth_pdf < 0] = 0
@@ -316,7 +316,7 @@ def iso_cut(projection, p_value_cut_thresh):
     null_counts = np.around(densities_unimodal_fit * N).astype(np.int64)
 
     if np.all(obs_counts == null_counts):
-        return 1., None
+        return 1., None, 0
     if num_points <= 4:
         m_gof = multinomial_gof.MultinomialGOF(
                     obs_counts,
@@ -328,7 +328,7 @@ def iso_cut(projection, p_value_cut_thresh):
             cutpoint_ind = np.argmax(null_counts - obs_counts)
             cutpoint = choose_optimal_cutpoint(cutpoint_ind, null_counts - obs_counts, x_axis)
             # print("Early EXACT critical cut at p=", p_value,"!")
-        return p_value, cutpoint
+        return p_value, cutpoint, 0
 
     sse_left, left_start, left_stop = max_sse_window(obs_counts[0:peak_density_ind+1],
                              null_counts[0:peak_density_ind+1])
@@ -359,6 +359,7 @@ def iso_cut(projection, p_value_cut_thresh):
 
     # Only compute cutpoint if we plan on using it, also skipped if p_value is np.nan
     cutpoint = None
+    residual_densities_fit = 0
     if p_value < p_value_cut_thresh:
         residual_densities = obs_counts - null_counts
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
@@ -393,7 +394,9 @@ def iso_cut(projection, p_value_cut_thresh):
         cutpoint = choose_optimal_cutpoint(cutpoint_ind, residual_densities_fit,
                     x_axis[critical_range])
         
-    return p_value, cutpoint
+        residual_densities_fit = -1 * residual_densities
+        
+    return p_value, cutpoint, residual_densities_fit
 
 
 """
@@ -409,6 +412,8 @@ Explanation of parameters:
    components). This can help separate larger clusters into smaller clusters.
  - merge_only. Only perform merges, do not split.
 """
+import matplotlib.pyplot as plt
+print("import PYPLOT line 413")
 def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                    merge_only=False, split_only=False, max_iter=20000,
                    flip_labels=True, verbose=False):
@@ -423,6 +428,66 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             V = np.matmul(V, inv_average_covariance)
 
         return V
+    
+    # previously_split = []
+    def recursive_split(projection, labels, split_label, comp_point):
+        """ Recursively calls isocut and attempts to split the data for the input label. Each successful
+        split is relabeled in-place for the input labels and critically keeps the original label assigned
+        to the cluster that was nearest to the input comparison data point "comp_point", which as used
+        here is the center of the original cluster against which the current "split_label" was being
+        compared in "merge_test".
+        """
+        # if split_label in previously_split:
+        #     return labels
+        # previously_split.append(split_label)
+         # Recursively split split_label
+        next_new_label = np.amax(labels) + 1
+        labels_to_split = [split_label]
+        new_labels_added = [split_label]
+        min_comp_dist = np.inf
+        closest_to_comp = split_label
+        while len(labels_to_split) > 0:
+            curr_split_label = labels_to_split.pop()
+            p_value, optimal_cut = iso_cut(projection[labels == curr_split_label], p_value_cut_thresh)
+            if p_value >= p_value_cut_thresh:
+                # No split so on to next label
+                continue
+            # There was a split within this label so reassign both
+            select_greater = np.logical_and(labels == curr_split_label, (projection > optimal_cut + 1e-6))
+            select_less = np.logical_and(labels == curr_split_label, ~select_greater)
+            # First run through all the greaters
+            labels[select_greater] = next_new_label
+            new_labels_added.append(next_new_label)
+            labels_to_split.append(next_new_label)
+            greater_comp_dist = np.abs(np.mean(projection[select_greater]) - comp_point)
+            if greater_comp_dist < min_comp_dist:
+                min_comp_dist = greater_comp_dist
+                closest_to_comp = next_new_label
+            next_new_label += 1
+
+            # Then run through all the lessers
+            labels[select_less] = next_new_label
+            new_labels_added.append(next_new_label)
+            labels_to_split.append(next_new_label)
+            lesser_comp_dist = np.abs(np.mean(projection[select_less]) - comp_point)
+            if lesser_comp_dist < min_comp_dist:
+                min_comp_dist = lesser_comp_dist
+                closest_to_comp = next_new_label
+            next_new_label += 1
+        # Now to preserve previous comparisons, we need to reassign the label from the splits that was
+        # closest to the comparison point with the original split label
+        labels[labels == closest_to_comp] = split_label
+        # And this label is no longer part of new labels so remove it
+        new_labels_added.remove(closest_to_comp)
+        
+        if len(new_labels_added) > 0:
+            print(f"Split on iter {num_iter}")
+            print(f"Recursive split just added {len(new_labels_added)} new labels!")
+            print(f"splitting {split_label}")
+            # plt.hist(projection[labels == split_label])
+            # plt.show()
+        # Labels are changed in place so we don't need to return them
+        return labels
 
     # This helper function determines if we should perform merging of two clusters
     # This function returns a boolean if we should merge the clusters
@@ -447,7 +512,9 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # 1D projection
             projection = np.squeeze(np.copy(scores))
 
-        p_value, optimal_cut = iso_cut(projection[np.logical_or(labels == c1, labels == c2)], p_value_cut_thresh)
+        original_labels = np.copy(labels)
+
+        p_value, optimal_cut, residual_densities_fit = iso_cut(projection[np.logical_or(labels == c1, labels == c2)], p_value_cut_thresh)
         if p_value >= p_value_cut_thresh: #or np.isnan(p_value):
             # These two clusters should be combined
             if split_only:
@@ -460,6 +527,7 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # Reassign based on the optimal value
             select_greater = np.logical_and(np.logical_or(labels == c1, labels == c2), (projection > optimal_cut + 1e-6))
             select_less = np.logical_and(np.logical_or(labels == c1, labels == c2), ~select_greater)
+            
             if flip_labels:
                 # Make label with most data going in the same as that going out
                 assign_max_c1 = True if np.count_nonzero(labels == c1) >= np.count_nonzero(labels == c2) else False
@@ -481,18 +549,42 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                     # Our optimal split forced a merge. This can happen even with
                     # 'split_only' set to True.
                     return True
-                return False
             else:
                 # Reassign labels to cluster keeping label numbers that minimize
                 # projection distance between original and new center
-                original_c1 = np.median(projection[labels == c1])
-                original_c2 = np.median(projection[labels == c2])
+                original_c1 = np.mean(projection[labels == c1])
+                original_c2 = np.mean(projection[labels == c2])
                 if original_c1 >= original_c2:
                     labels[select_greater] = c1
                     labels[select_less] = c2
                 else:
                     labels[select_greater] = c2
                     labels[select_less] = c1
+
+                # # Recursively split c1
+                # labels = recursive_split(projection, labels, c1, original_c2)
+                # # Recursively split c2
+                # labels = recursive_split(projection, labels, c2, original_c1)
+            # if np.amin(projection[original_labels == c2]) > np.amax(projection[original_labels == c1]):
+            #     # Not overlapping, c2 greater    
+            #     labels[:] = original_labels        
+            #                                   
+            p_value, optimal_cut, residual_densities_fit = iso_cut(projection[labels == c1], p_value_cut_thresh)
+            if p_value < p_value_cut_thresh:
+                labels[:] = original_labels
+                print(f"Rejected cutpoint iter {num_iter}")
+                print(np.count_nonzero(residual_densities_fit < 0.))
+                return False
+            
+            p_value, optimal_cut, residual_densities_fit = iso_cut(projection[labels == c2], p_value_cut_thresh)
+            if p_value < p_value_cut_thresh:
+                labels[:] = original_labels
+                print(f"Rejected cutpoint iter {num_iter}")
+                print(np.count_nonzero(residual_densities_fit < 0.))
+                return False
+
+            return False
+
 
     # START ACTUAL OUTER FUNCTION
     if labels.size == 0:
@@ -524,8 +616,6 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
         if len(minimum_distance_pairs) == 0 and none_merged:
             break # Done, no more clusters to compare
         none_merged = True
-        # if len(minimum_distance_pairs) != 0:
-        #     p_value_cut_thresh = original_pval / len(minimum_distance_pairs)
         for c1, c2 in minimum_distance_pairs:
             if verbose: print("Comparing ", c1, " with ", c2)
             n_c1 = np.count_nonzero(labels == c1)
@@ -545,9 +635,9 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                 if verbose: print("Iter: ", num_iter, ", Unique clusters: ", np.unique(labels).size)
                 none_merged = False
                 # labels changed, so any previous comparison is no longer valid and is removed
-                for ind, pair in reversed(list(enumerate(previously_compared_pairs))):
-                    if c1 in pair or c2 in pair:
-                        del previously_compared_pairs[ind]
+                # for ind, pair in reversed(list(enumerate(previously_compared_pairs))):
+                #     if c1 in pair or c2 in pair:
+                #         del previously_compared_pairs[ind]
             else:
                 previously_compared_pairs.append((c1, c2))
                 if verbose: print("split clusters, ", c1, c2)

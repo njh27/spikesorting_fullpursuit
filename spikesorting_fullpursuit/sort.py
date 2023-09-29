@@ -471,6 +471,8 @@ Explanation of parameters:
    components). This can help separate larger clusters into smaller clusters.
  - merge_only. Only perform merges, do not split.
 """
+print("IMPORT MATPLOT LIB 474")
+import matplotlib.pyplot as plt
 def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                    merge_only=False, split_only=False, max_iter=20000,
                    flip_labels=True, verbose=False):
@@ -509,17 +511,16 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # 1D projection
             projection = np.squeeze(np.copy(scores))
 
-        distances1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
-        distances2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
-        mean_d1 = np.mean(distances1)
-        mean_d2 = np.mean(distances2)
-        mean_d_total = (distances1.shape[0] / labels.shape[0]) * mean_d1 + (distances2.shape[0] / labels.shape[0]) * mean_d2
+        original_labels = np.copy(labels)
 
-        between_dist1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
-        between_dist2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
-        mean_bd1 = np.mean(between_dist1)
-        mean_bd2 = np.mean(between_dist2)
-        mean_bd_total = (between_dist1.shape[0] / labels.shape[0]) * mean_bd1 + (between_dist2.shape[0] / labels.shape[0]) * mean_bd2
+        center_1_orig = np.mean(projection[labels == c1])
+        center_2_orig = np.mean(projection[labels == c2])
+        within_dist_1_orig = np.sum((projection[labels == c1] - center_1_orig)**2)
+        within_dist_2_orig = np.sum((projection[labels == c2] - center_2_orig)**2)
+        between_dist_1_2_orig = np.sum((projection[labels == c1] - center_2_orig)**2)
+        between_dist_2_1_orig = np.sum((projection[labels == c2] - center_1_orig)**2)
+        raw_dist_within_orig = np.sum(within_dist_1_orig) + np.sum(within_dist_2_orig)
+        raw_dist_between_orig = np.sum(between_dist_1_2_orig) + np.sum(between_dist_2_1_orig)
 
         p_value, optimal_cut = iso_cut(projection[np.logical_or(labels == c1, labels == c2)], p_value_cut_thresh)
         if p_value >= p_value_cut_thresh: #or np.isnan(p_value):
@@ -534,8 +535,6 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # Reassign based on the optimal value
             select_greater = np.logical_and(np.logical_or(labels == c1, labels == c2), (projection > optimal_cut + 1e-6))
             select_less = np.logical_and(np.logical_or(labels == c1, labels == c2), ~select_greater)
-            old_select_greater = labels[select_greater]
-            old_select_less = labels[select_less]
             if flip_labels:
                 # Make label with most data going in the same as that going out
                 assign_max_c1 = True if np.count_nonzero(labels == c1) >= np.count_nonzero(labels == c2) else False
@@ -569,49 +568,49 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                     labels[select_greater] = c2
                     labels[select_less] = c1
 
-            new_distances1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
-            new_distances2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
-            mean_nd1 = np.mean(new_distances1)
-            mean_nd2 = np.mean(new_distances2)
-            mean_nd_total = (new_distances1.shape[0] / labels.shape[0]) * mean_nd1 + (new_distances2.shape[0] / labels.shape[0]) * mean_nd2
-
-            new_between_dist1 = np.sum((scores[labels == c1, :] - np.mean(scores[labels == c2, :], axis=0))**2, axis=1)
-            new_between_dist2 = np.sum((scores[labels == c2, :] - np.mean(scores[labels == c1, :], axis=0))**2, axis=1)
-            mean_nbd1 = np.mean(new_between_dist1)
-            mean_nbd2 = np.mean(new_between_dist2)
-            mean_nbd_total = (new_between_dist1.shape[0] / labels.shape[0]) * mean_nbd1 + (new_between_dist2.shape[0] / labels.shape[0]) * mean_nbd2
+            center_1_post = np.mean(projection[labels == c1])
+            center_2_post = np.mean(projection[labels == c2])
+            within_dist_1_post = np.sum((projection[labels == c1] - center_1_post)**2)
+            within_dist_2_post = np.sum((projection[labels == c2] - center_2_post)**2)
+            between_dist_1_2_post = np.sum((projection[labels == c1] - center_2_post)**2)
+            between_dist_2_1_post = np.sum((projection[labels == c2] - center_1_post)**2)
+            raw_dist_within_post = np.sum(within_dist_1_post) + np.sum(within_dist_2_post)
+            raw_dist_between_post = np.sum(between_dist_1_2_post) + np.sum(between_dist_2_1_post)
 
 
-            if mean_nd_total > mean_d_total:
-                print("Total within distances went up!")
-                labels[select_greater] = old_select_greater
-                labels[select_less] = old_select_less
+            # if total_between_dist_post > total_between_dist_orig:
+            if (raw_dist_within_post / raw_dist_between_post) >= (raw_dist_within_orig / raw_dist_between_orig):
+                # print("bad not doing anything")
+                # # Calculate the bin edges based on the combined data
+                # combined_data = np.concatenate((projection[original_labels == c1], projection[original_labels == c2]))
+                # bin_edges = np.histogram_bin_edges(combined_data, bins=40)
 
-            if mean_nbd_total < mean_bd_total:
-                print("Total BETWEEN distances went DOWN!")
-                labels[select_greater] = old_select_greater
-                labels[select_less] = old_select_less
+                # # print(f"The ORIG var here is: within = {avg_var_within_orig}, between = {avg_var_between_orig}")
+                # # print(f"The POST var here is: within = {avg_var_within_post}, between = {avg_var_between_post}")
 
+                # print(f"The ORIG RAW var here is: within = {raw_dist_within_orig}, between = {raw_dist_between_orig}")
+                # print(f"The POST RAW var here is: within = {raw_dist_within_post}, between = {raw_dist_between_post}")
 
+                # # Create histograms for both data1 and data2 using the same bin edges
+                # print("BEFORE CUT")
+                # plt.hist(projection[original_labels == c1], bins=bin_edges, alpha=0.5, color='blue', label='Data 1')
+                # plt.hist(projection[original_labels == c2], bins=bin_edges, alpha=0.5, color='red', label='Data 2')
 
-            # if ( (mean_nbd1 < mean_bd1) or (mean_nbd2 < mean_bd2) ):
+                # plt.axvline(optimal_cut)
+                # plt.show()
 
-            #     labels[select_greater] = old_select_greater
-            #     labels[select_less] = old_select_less
+                # combined_data = np.concatenate((projection[labels == c1], projection[labels == c2]))
+                # bin_edges = np.histogram_bin_edges(combined_data, bins=40)
 
-            # if ( (mean_nd1 > mean_d1) or (mean_nd2 > mean_d2) ):
-            #     # At least 1 cluster within got bigger
-            #     # print("Some cluster got bigger within")
-            #     labels[select_greater] = old_select_greater
-            #     labels[select_less] = old_select_less
-            #     if mean_nbd1 < mean_bd1:
-            #         print("Between cluster 1 distances got SMALLER...")
-            #         labels[select_greater] = old_select_greater
-            #         labels[select_less] = old_select_less
-            #     if mean_nbd2 < mean_bd2:
-            #         print("Between cluster 2 distances got SMALLER...")
-            #         labels[select_greater] = old_select_greater
-            #         labels[select_less] = old_select_less
+                # # Create histograms for both data1 and data2 using the same bin edges
+                # print("AFTER CUT")
+                # plt.hist(projection[labels == c1], bins=bin_edges, alpha=0.5, color='blue', label='Data 1')
+                # plt.hist(projection[labels == c2], bins=bin_edges, alpha=0.5, color='red', label='Data 2')
+
+                # plt.axvline(optimal_cut)
+                # plt.show()
+                print("BAD, REVERTING LABELS!")
+                labels[:] = original_labels
                 
 
             return False

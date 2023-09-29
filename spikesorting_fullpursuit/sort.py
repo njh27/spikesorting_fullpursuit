@@ -363,33 +363,12 @@ def iso_cut(projection, p_value_cut_thresh):
         residual_densities = obs_counts - null_counts
         # Multiply by negative residual densities since isotonic.unimodal_prefix_isotonic_regression_l2 only does UP-DOWN
         residual_densities_fit, _ = isotonic.unimodal_prefix_isotonic_regression_l2(-1 * residual_densities[critical_range], np.ones_like(critical_range))
-        # A full critical range suggests possible bad fit because distribution is extremely bimodal so check them
-        found_dip = False
-        if ( (peak_density_ind < obs_counts.size/2) and (critical_range[-1] == obs_counts.size - 1) ):
-            min_null_fit = np.amin(null_counts)
-            for cutpoint_ind in range(0, residual_densities_fit.size):
-                if ( (null_counts[cutpoint_ind] == min_null_fit) and (residual_densities_fit[cutpoint_ind] < 0) ):
-                    # This means the null fit missed a second hump because it was so extreme
-                    found_dip = True
-                    break
-            if cutpoint_ind > 0:
-                cutpoint_ind -= 1
-        elif ( (peak_density_ind > obs_counts.size/2) and (critical_range[-1] == obs_counts.size - 1) ):
-            min_null_fit = np.amin(null_counts)
-            for cutpoint_ind in range(residual_densities_fit.size - 1, -1, -1):
-                if ( (null_counts[cutpoint_ind] == min_null_fit) and (residual_densities_fit[cutpoint_ind] < 0) ):
-                    # This means the null fit missed a second hump because it was so extreme
-                    found_dip = True
-                    break
-            if cutpoint_ind < (residual_densities_fit.size - 1):
-                cutpoint_ind += 1
-        if not found_dip:
-            if citical_side == 'left':
-                # Ensure we cut closest to center in event of a tie
-                cutpoint_ind = np.argmax(residual_densities_fit[-1::-1])
-                cutpoint_ind = len(critical_range) - cutpoint_ind - 1
-            else:
-                cutpoint_ind = np.argmax(residual_densities_fit)
+        if citical_side == 'left':
+            # Ensure we cut closest to center in event of a tie
+            cutpoint_ind = np.argmax(residual_densities_fit[-1::-1])
+            cutpoint_ind = len(critical_range) - cutpoint_ind - 1
+        else:
+            cutpoint_ind = np.argmax(residual_densities_fit)
         cutpoint = choose_optimal_cutpoint(cutpoint_ind, residual_densities_fit,
                     x_axis[critical_range])
         
@@ -411,7 +390,7 @@ Explanation of parameters:
 """
 def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                    merge_only=False, split_only=False, max_iter=20000,
-                   flip_labels=True, verbose=False):
+                   verbose=False):
 
     def whiten_cluster_pairs(scores, labels, c1, c2):
         centroid_1 = sort_cython.compute_cluster_centroid(scores, labels, c1)
@@ -483,6 +462,20 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                 labels[select_greater] = c2
                 labels[select_less] = c1
 
+            # No that we have reassigned labels according to the split, get the new distance info
+            center_1_post = np.mean(projection[labels == c1])
+            center_2_post = np.mean(projection[labels == c2])
+            within_dist_1_post = np.sum((projection[labels == c1] - center_1_post)**2)
+            within_dist_2_post = np.sum((projection[labels == c2] - center_2_post)**2)
+            between_dist_1_2_post = np.sum((projection[labels == c1] - center_2_post)**2)
+            between_dist_2_1_post = np.sum((projection[labels == c2] - center_1_post)**2)
+            raw_dist_within_post = np.sum(within_dist_1_post) + np.sum(within_dist_2_post)
+            raw_dist_between_post = np.sum(between_dist_1_2_post) + np.sum(between_dist_2_1_post)
+
+            if (raw_dist_within_post / raw_dist_between_post) >= (raw_dist_within_orig / raw_dist_between_orig):
+                # If the within distances increased relative to the between distances after our split, this indicates
+                # that the split is probably making the clustering worse, so revert the labels
+                labels[:] = original_labels
 
             if np.count_nonzero(labels == c1) == 0 or np.count_nonzero(labels == c2) == 0:
                 # Our optimal split forced a merge. This can happen even with
@@ -544,7 +537,7 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                 none_merged = False
                 # labels changed, so any previous comparison is no longer valid and is removed
                 for ind, pair in reversed(list(enumerate(previously_compared_pairs))):
-                    if c1 in pair or c2 in pair:
+                    if ( (c1 in pair) or (c2 in pair) ):
                         del previously_compared_pairs[ind]
             else:
                 previously_compared_pairs.append((c1, c2))

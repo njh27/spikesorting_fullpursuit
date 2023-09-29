@@ -460,39 +460,26 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # Reassign based on the optimal value
             select_greater = np.logical_and(np.logical_or(labels == c1, labels == c2), (projection > optimal_cut + 1e-6))
             select_less = np.logical_and(np.logical_or(labels == c1, labels == c2), ~select_greater)
-            if flip_labels:
-                # Make label with most data going in the same as that going out
-                assign_max_c1 = True if np.count_nonzero(labels == c1) >= np.count_nonzero(labels == c2) else False
-                if np.count_nonzero(select_greater) >= np.count_nonzero(select_less):
-                    if assign_max_c1:
-                        labels[select_greater] = c1
-                        labels[select_less] = c2
-                    else:
-                        labels[select_greater] = c2
-                        labels[select_less] = c1
-                else:
-                    if assign_max_c1:
-                        labels[select_greater] = c2
-                        labels[select_less] = c1
-                    else:
-                        labels[select_greater] = c1
-                        labels[select_less] = c2
-                if np.count_nonzero(labels == c1) == 0 or np.count_nonzero(labels == c2) == 0:
-                    # Our optimal split forced a merge. This can happen even with
-                    # 'split_only' set to True.
-                    return True
-                return False
+
+            # Reassign labels to cluster keeping label numbers that minimize
+            # projection distance between original and new center
+            original_c1 = np.mean(projection[labels == c1])
+            original_c2 = np.mean(projection[labels == c2])
+            if original_c1 >= original_c2:
+                labels[select_greater] = c1
+                labels[select_less] = c2
             else:
-                # Reassign labels to cluster keeping label numbers that minimize
-                # projection distance between original and new center
-                original_c1 = np.median(projection[labels == c1])
-                original_c2 = np.median(projection[labels == c2])
-                if original_c1 >= original_c2:
-                    labels[select_greater] = c1
-                    labels[select_less] = c2
-                else:
-                    labels[select_greater] = c2
-                    labels[select_less] = c1
+                labels[select_greater] = c2
+                labels[select_less] = c1
+
+
+            if np.count_nonzero(labels == c1) == 0 or np.count_nonzero(labels == c2) == 0:
+                # Our optimal split forced a merge. This can happen even with
+                # 'split_only' set to True.
+                return True
+            return False
+            
+
 
     # START ACTUAL OUTER FUNCTION
     if labels.size == 0:
@@ -652,19 +639,6 @@ def kde_builtin(data, n):
         # enforce that here """
         a[0] = 1.
         return a
-        """
-        --------------------------------------------------------------------
-                ORIGINAL FUNCTION BELOW
-        --------------------------------------------------------------------
-        """
-        # computes the discrete cosine transform of the column vector data
-        # Compute weights to multiply DFT coefficients
-        data_copy = np.copy(data)
-        weight = np.hstack((1, 2*(np.exp(-1 * 1j * np.arange(1, data_copy.size) * np.pi / (2 * data_copy.size)))))
-        # Re-order the elements of the columns of x
-        data_copy = np.hstack((data_copy[0::2], data_copy[-1:0:-2]))
-        #Multiply FFT by weights:
-        return np.real(weight * fft(data_copy))
 
     def idct1d(data):
         # computes the inverse discrete cosine transform

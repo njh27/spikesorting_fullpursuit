@@ -423,17 +423,43 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             V = np.matmul(V, inv_average_covariance)
 
         return V
+    
+    def create_matched_cluster(scores, labels, c1, c2):
+        """ Finds the smallest and largest cluster of the labels c1 and c2. Then chooses a matched number of points from
+        the larger cluster that are nearest the smallest cluster centroid. These are assigned a new label (the maximum
+        value of a numpy.int64) so that merge and isocut can be performed on this matched subset of nearest points. Returns
+        the label of the smallest cluster input and the new cluster.
+        """
+        # Use an output label equal to the maximum integer value, assuming there are not nearly this many labels used in "labels"
+        matched_label = np.iinfo(np.int64).max
+        if np.count_nonzero(labels == c1) >= np.count_nonzero(labels == c2):
+            larger_cluster = c1
+            smaller_cluster = c2
+        else:
+            larger_cluster = c2
+            smaller_cluster = c1
+        small_centroid = sort_cython.compute_cluster_centroid(scores, labels, smaller_cluster)
+        n_small = np.count_nonzero(labels == smaller_cluster)
+        select_large = labels == larger_cluster
+        indices_large = np.where(select_large)[0]
+        large_distances = np.sum((scores[select_large, :] - small_centroid) ** 2, axis=1)
+        large_order = np.argsort(large_distances)[0:n_small]
+        # Give the n_small nearest points from the large cluster a new label
+        labels[indices_large[large_order]] = matched_label
+
+        return smaller_cluster, matched_label
 
     # This helper function determines if we should perform merging of two clusters
     # This function returns a boolean if we should merge the clusters
     def merge_test(scores, labels, c1, c2):
+        smaller_cluster, matched_label = create_matched_cluster(scores, labels, c1, c2)
         if scores.shape[1] > 1:
             # Get V, the vector connecting the two centroids either with or without whitening
             if whiten_clusters:
-                V = whiten_cluster_pairs(scores, labels, c1, c2)
+                V = whiten_cluster_pairs(scores, labels, smaller_cluster, matched_label)
             else:
-                centroid_1 = sort_cython.compute_cluster_centroid(scores, labels, c1)
-                centroid_2 = sort_cython.compute_cluster_centroid(scores, labels, c2)
+                centroid_1 = sort_cython.compute_cluster_centroid(scores, labels, smaller_cluster)
+                centroid_2 = sort_cython.compute_cluster_centroid(scores, labels, matched_label)
                 V = centroid_2 - centroid_1
             norm_V = la.norm(V)
             if norm_V == 0:
@@ -447,7 +473,17 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # 1D projection
             projection = np.squeeze(np.copy(scores))
 
-        p_value, optimal_cut = iso_cut(projection[np.logical_or(labels == c1, labels == c2)], p_value_cut_thresh)
+        p_value, optimal_cut = iso_cut(projection[np.logical_or(labels == smaller_cluster, labels == matched_label)], p_value_cut_thresh)
+        # Now that we have done the iso_cut test and found any cutpoints, we don't need matched labels anymore so revert
+        if smaller_cluster == c1:
+            # Larger cluster must have been c2
+            labels[labels == matched_label] = c2
+        elif smaller_cluster == c2:
+            # Larger cluster must have been c1
+            labels[labels == matched_label] = c1
+        else:
+            # I must have made a horrible mistake
+            raise RuntimeError("Lost track of the labels")
         if p_value >= p_value_cut_thresh: #or np.isnan(p_value):
             # These two clusters should be combined
             if split_only:

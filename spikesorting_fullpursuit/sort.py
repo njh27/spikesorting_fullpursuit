@@ -2,6 +2,7 @@ import numpy as np
 from numpy import linalg as la
 from scipy.fftpack import dct, idct, fft, ifft
 from scipy.optimize import fsolve, fminbound
+from sklearn.neighbors import BallTree
 from spikesorting_fullpursuit import isotonic
 from spikesorting_fullpursuit.c_cython import sort_cython
 from spikesorting_fullpursuit import multinomial_gof

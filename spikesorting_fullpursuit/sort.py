@@ -496,39 +496,95 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             # Reassign based on the optimal value
             select_greater = np.logical_and(np.logical_or(labels == c1, labels == c2), (projection > optimal_cut + 1e-6))
             select_less = np.logical_and(np.logical_or(labels == c1, labels == c2), ~select_greater)
-            if flip_labels:
-                # Make label with most data going in the same as that going out
-                assign_max_c1 = True if np.count_nonzero(labels == c1) >= np.count_nonzero(labels == c2) else False
-                if np.count_nonzero(select_greater) >= np.count_nonzero(select_less):
-                    if assign_max_c1:
-                        labels[select_greater] = c1
-                        labels[select_less] = c2
-                    else:
-                        labels[select_greater] = c2
-                        labels[select_less] = c1
-                else:
-                    if assign_max_c1:
-                        labels[select_greater] = c2
-                        labels[select_less] = c1
-                    else:
-                        labels[select_greater] = c1
-                        labels[select_less] = c2
-                if np.count_nonzero(labels == c1) == 0 or np.count_nonzero(labels == c2) == 0:
-                    # Our optimal split forced a merge. This can happen even with
-                    # 'split_only' set to True.
-                    return True
-                return False
+
+            # Get mean and distance measures for the original labels so we can check this split and assign labels
+            center_1_orig = np.mean(projection[labels == c1])
+            center_2_orig = np.mean(projection[labels == c2])
+            within_dist_1_orig = np.mean((projection[labels == c1] - center_1_orig)**2)
+            within_dist_2_orig = np.mean((projection[labels == c2] - center_2_orig)**2)
+            # between_dist_1_2_orig = np.mean((projection[labels == c1] - center_2_orig)**2)
+            # between_dist_2_1_orig = np.mean((projection[labels == c2] - center_1_orig)**2)
+            # sorted_1_2_dists = np.sort((projection[labels == c1] - center_2_orig)**2)
+            # perc_10_ind = int(np.ceil( 0.10 * sorted_1_2_dists.size))
+            # between_dist_1_2_orig = np.mean(sorted_1_2_dists[0:perc_10_ind]) / perc_10_ind
+            # sorted_2_1_dists = np.sort((projection[labels == c2] - center_1_orig)**2)
+            # perc_10_ind = int(np.ceil( 0.10 * sorted_2_1_dists.size))
+            # between_dist_2_1_orig = np.mean(sorted_2_1_dists[0:perc_10_ind]) / perc_10_ind
+            # sorted_1_2_dists = np.sort((projection[labels == c1] - center_2_orig)**2)
+            # sorted_2_1_dists = np.sort((projection[labels == c2] - center_1_orig)**2)
+            # n_nearest = min(sorted_1_2_dists.size, sorted_2_1_dists.size)
+            # between_dist_1_2_orig = np.mean(sorted_1_2_dists[0:n_nearest])
+            # between_dist_2_1_orig = np.mean(sorted_2_1_dists[0:n_nearest])
+            clust1 = projection[labels == c1].reshape(-1, 1)
+            clust2 = projection[labels == c2].reshape(-1, 1)
+            if clust1.shape[0] >= clust2.shape[0]:
+                ball_array = clust1
+                test_array = clust2
             else:
-                # Reassign labels to cluster keeping label numbers that minimize
-                # projection distance between original and new center
-                original_c1 = np.median(projection[labels == c1])
-                original_c2 = np.median(projection[labels == c2])
-                if original_c1 >= original_c2:
-                    labels[select_greater] = c1
-                    labels[select_less] = c2
-                else:
-                    labels[select_greater] = c2
-                    labels[select_less] = c1
+                ball_array = clust2
+                test_array = clust1
+            tree = BallTree(ball_array)
+            distances, _ = tree.query(test_array, k=1)
+            test_10_percent = int(np.ceil(0.10 * test_array.shape[0]))
+            raw_dist_between_orig = np.amin(np.sort(distances.ravel())[:test_10_percent])
+
+            # raw_dist_within_orig = np.mean(within_dist_1_orig) + np.mean(within_dist_2_orig)
+            # raw_dist_between_orig = np.mean(between_dist_1_2_orig) + np.mean(between_dist_2_1_orig)
+
+            # Reassign labels to cluster keeping label numbers that minimize
+            # projection distance between original and new center
+            if center_1_orig >= center_2_orig:
+                labels[select_greater] = c1
+                labels[select_less] = c2
+            else:
+                labels[select_greater] = c2
+                labels[select_less] = c1
+
+            # No that we have reassigned labels according to the split, get the new distance info
+            center_1_post = np.mean(projection[labels == c1])
+            center_2_post = np.mean(projection[labels == c2])
+            within_dist_1_post = np.mean((projection[labels == c1] - center_1_post)**2)
+            within_dist_2_post = np.mean((projection[labels == c2] - center_2_post)**2)
+            # between_dist_1_2_post = np.mean((projection[labels == c1] - center_2_post)**2)
+            # between_dist_2_1_post = np.mean((projection[labels == c2] - center_1_post)**2)
+            # sorted_1_2_dists = np.sort((projection[labels == c1] - center_2_post)**2)
+            # perc_10_ind = int(np.ceil( 0.10 * sorted_1_2_dists.size))
+            # between_dist_1_2_post = np.mean(sorted_1_2_dists[0:perc_10_ind]) / perc_10_ind
+            # sorted_2_1_dists = np.sort((projection[labels == c2] - center_1_post)**2)
+            # perc_10_ind = int(np.ceil( 0.10 * sorted_2_1_dists.size))
+            # between_dist_2_1_post = np.mean(sorted_2_1_dists[0:perc_10_ind]) / perc_10_ind
+            # sorted_1_2_dists = np.sort((projection[labels == c1] - center_2_post)**2)
+            # sorted_2_1_dists = np.sort((projection[labels == c2] - center_1_post)**2)
+            # n_nearest = min(n_nearest, sorted_1_2_dists.size, sorted_2_1_dists.size)
+            # between_dist_1_2_post = np.mean(sorted_1_2_dists[0:n_nearest])
+            # between_dist_2_1_post = np.mean(sorted_2_1_dists[0:n_nearest])
+            clust1 = projection[labels == c1].reshape(-1, 1)
+            clust2 = projection[labels == c2].reshape(-1, 1)
+            if clust1.shape[0] >= clust2.shape[0]:
+                ball_array = clust1
+                test_array = clust2
+            else:
+                ball_array = clust2
+                test_array = clust1
+            tree = BallTree(ball_array)
+            distances, _ = tree.query(test_array, k=1)
+            test_10_percent = min(test_10_percent, int(np.ceil(0.10 * test_array.shape[0])))
+            raw_dist_between_post = np.amin(np.sort(distances.ravel())[:test_10_percent])
+
+            # raw_dist_within_post = np.mean(within_dist_1_post) + np.mean(within_dist_2_post)
+            # raw_dist_between_post = np.mean(between_dist_1_2_post) + np.mean(between_dist_2_1_post)
+
+            # if (raw_dist_within_post / raw_dist_between_post) >= (raw_dist_within_orig / raw_dist_between_orig):
+            if raw_dist_between_post <= raw_dist_between_orig:
+                # If the within distances increased relative to the between distances after our split, this indicates
+                # that the split is probably making the clustering worse, so revert the labels
+                labels[:] = original_labels
+
+            if np.count_nonzero(labels == c1) == 0 or np.count_nonzero(labels == c2) == 0:
+                # Our optimal split forced a merge. This can happen even with
+                # 'split_only' set to True.
+                return True
+            return False
 
     # START ACTUAL OUTER FUNCTION
     if labels.size == 0:

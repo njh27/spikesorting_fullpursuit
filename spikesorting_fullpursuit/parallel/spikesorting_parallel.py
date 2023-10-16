@@ -24,6 +24,8 @@ def spike_sorting_settings_parallel(**kwargs):
         'sigma': 4.0, # Threshold based on noise level
         'clip_width': [-15e-4, 15e-4], # Width of clip in seconds, used for clustering. Made symmetric with largest value for binary pursuit!
         'p_value_cut_thresh': 0.01, # Statistical criterion for splitting clusters during iso-cut
+        'match_cluster_size': False, # Pairwise comparisons during isocut cluster merge testing are matched in sample size. This makes the test more robust to comparisons of small clusters with large ones but could result in an excess of clusters
+        'check_splits': False, # Check isocut splits to ensure they are not doing anything the brings clusters closer together that may indicate a bad cut point. Not thoroughly tested and could have unknown consequences.
         'segment_duration': 600, # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
         'segment_overlap': 120, # Seconds of overlap between adjacent segments
         'do_branch_PCA': True, # Use branch PCA method to split clusters
@@ -95,7 +97,8 @@ def spike_sorting_settings_parallel(**kwargs):
                     'sort_peak_clips_only', 'get_adjusted_clips',
                     'output_separability_metrics', 'wiener_filter',
                     'same_wiener', 'use_memmap', 'save_clips', 'parallel_zca',
-                    'seg_work_order', 'remove_artifacts']:
+                    'seg_work_order', 'remove_artifacts',
+                    'match_cluster_size', 'check_splits']:
             if type(settings[key]) != bool:
                 if settings[key] != 'False' and settings[key] != 0:
                     settings[key] = True

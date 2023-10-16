@@ -681,7 +681,9 @@ class WorkItemSummary(object):
         scores = np.float64(scores)
         neuron_labels = merge_clusters(scores, neuron_labels,
                             split_only=split_only, merge_only=merge_only,
-                            p_value_cut_thresh=p_cut, flip_labels=False)
+                            p_value_cut_thresh=p_cut,
+                            match_cluster_size=self.sort_info['match_cluster_size'], 
+                            check_splits=self.sort_info['check_splits'])
 
         label_is_1 = neuron_labels == 1
         label_is_2 = neuron_labels == 2

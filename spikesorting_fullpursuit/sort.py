@@ -508,12 +508,12 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             select_greater = np.logical_and(np.logical_or(labels == c1, labels == c2), (projection > optimal_cut + 1e-6))
             select_less = np.logical_and(np.logical_or(labels == c1, labels == c2), ~select_greater)
 
+            # Get mean and distance measures for the original labels so we can check this split and assign labels
+            center_1_orig = np.mean(projection[labels == c1])
+            center_2_orig = np.mean(projection[labels == c2])
             if check_iso_splits:
                 # We will first check how the current split alters the distances between the nearest neighboring points of clusters
                 # and if it looks bad, revert the split
-                # Get mean and distance measures for the original labels so we can check this split and assign labels
-                center_1_orig = np.mean(projection[labels == c1])
-                center_2_orig = np.mean(projection[labels == c2])
                 clust1 = projection[labels == c1].reshape(-1, 1)
                 clust2 = projection[labels == c2].reshape(-1, 1)
                 if clust1.shape[0] >= clust2.shape[0]:

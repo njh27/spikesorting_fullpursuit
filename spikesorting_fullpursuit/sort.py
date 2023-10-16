@@ -1,7 +1,6 @@
 import numpy as np
 from numpy import linalg as la
-from scipy.fftpack import dct, idct, fft, ifft
-from scipy.optimize import fsolve, fminbound
+from scipy.fftpack import dct, fft, ifft
 from sklearn.neighbors import BallTree
 from spikesorting_fullpursuit import isotonic
 from spikesorting_fullpursuit.c_cython import sort_cython
@@ -898,7 +897,6 @@ def kde_builtin(data, n):
         if np.sign(f_0) != np.sign(f_tol):
             # use fzero to solve the equation t=zeta*gamma^[5](t)
             """ I am using fsolve here rather than MatLab 'fzero' """
-            # t_star = fminbound(fixed_point_abs, tol_0, tol, args=(N, I, a2))
             t_star = bound_grad_desc_fixed_point_abs(N, I, a2, tol_0, tol, 1e-6, 1e-6)
             break
         else:
@@ -907,7 +905,6 @@ def kde_builtin(data, n):
             f_0 = f_tol
         if tol == 1.0: # if all else fails
             """ Failed to find zero crossing so find absolute minimum value """
-            # t_star = fminbound(fixed_point_abs, 0, 1.0, args=(N, I, a2))
             t_star = bound_grad_desc_fixed_point_abs(N, I, a2, 0, 1.0, 1e-6, 1e-6)
             break
     # smooth the discrete cosine transform of initial data using t_star

@@ -411,7 +411,7 @@ Explanation of parameters:
 """
 def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
                    merge_only=False, split_only=False, max_iter=20000,
-                   flip_labels=True, verbose=False):
+                   match_cluster_size=False, check_splits=False, verbose=False):
 
     def whiten_cluster_pairs(scores, labels, c1, c2):
         centroid_1 = sort_cython.compute_cluster_centroid(scores, labels, c1)
@@ -452,7 +452,7 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
     # This helper function determines if we should perform merging of two clusters
     # This function returns a boolean if we should merge the clusters, and reassigns
     # labels in-place according to the iso_cut split otherwise
-    def merge_test(scores, labels, c1, c2, match_cluster=True):
+    def merge_test(scores, labels, c1, c2, match_cluster=False, check_iso_splits=False):
         # Save the labels so we can revert to them at the end if needed
         original_labels = np.copy(labels)
         if match_cluster:
@@ -508,35 +508,43 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             select_greater = np.logical_and(np.logical_or(labels == c1, labels == c2), (projection > optimal_cut + 1e-6))
             select_less = np.logical_and(np.logical_or(labels == c1, labels == c2), ~select_greater)
 
-            # Get mean and distance measures for the original labels so we can check this split and assign labels
-            center_1_orig = np.mean(projection[labels == c1])
-            center_2_orig = np.mean(projection[labels == c2])
-            clust1 = projection[labels == c1].reshape(-1, 1)
-            clust2 = projection[labels == c2].reshape(-1, 1)
-            if clust1.shape[0] >= clust2.shape[0]:
-                ball_array = clust1
-                test_array = clust2
-            else:
-                ball_array = clust2
-                test_array = clust1
-            tree = BallTree(ball_array)
-            distances, _ = tree.query(test_array, k=1)
-            test_10_percent = int(np.ceil(0.10 * test_array.shape[0]))
-            raw_dist_between_orig = np.mean(np.sort(distances.ravel())[:test_10_percent])
+            if check_iso_splits:
+                # We will first check how the current split alters the distances between the nearest neighboring points of clusters
+                # and if it looks bad, revert the split
+                # Get mean and distance measures for the original labels so we can check this split and assign labels
+                center_1_orig = np.mean(projection[labels == c1])
+                center_2_orig = np.mean(projection[labels == c2])
+                clust1 = projection[labels == c1].reshape(-1, 1)
+                clust2 = projection[labels == c2].reshape(-1, 1)
+                if clust1.shape[0] >= clust2.shape[0]:
+                    ball_array = clust1
+                    test_array = clust2
+                else:
+                    ball_array = clust2
+                    test_array = clust1
+                tree = BallTree(ball_array)
+                distances, _ = tree.query(test_array, k=1)
+                test_10_percent = int(np.ceil(0.10 * test_array.shape[0]))
+                raw_dist_between_orig = np.mean(np.sort(distances.ravel())[:test_10_percent])
 
-            # No that we have reassigned labels according to the split, get the new distance info
-            clust1 = projection[labels == c1].reshape(-1, 1)
-            clust2 = projection[labels == c2].reshape(-1, 1)
-            if clust1.shape[0] >= clust2.shape[0]:
-                ball_array = clust1
-                test_array = clust2
+                # No that we have reassigned labels according to the split, get the new distance info
+                clust1 = projection[labels == c1].reshape(-1, 1)
+                clust2 = projection[labels == c2].reshape(-1, 1)
+                if clust1.shape[0] >= clust2.shape[0]:
+                    ball_array = clust1
+                    test_array = clust2
+                else:
+                    ball_array = clust2
+                    test_array = clust1
+                tree = BallTree(ball_array)
+                distances, _ = tree.query(test_array, k=1)
+                test_10_percent = min(test_10_percent, int(np.ceil(0.10 * test_array.shape[0])))
+                raw_dist_between_post = np.mean(np.sort(distances.ravel())[:test_10_percent])
             else:
-                ball_array = clust2
-                test_array = clust1
-            tree = BallTree(ball_array)
-            distances, _ = tree.query(test_array, k=1)
-            test_10_percent = min(test_10_percent, int(np.ceil(0.10 * test_array.shape[0])))
-            raw_dist_between_post = np.mean(np.sort(distances.ravel())[:test_10_percent])
+                # This will force skipping the revert labels below and go straight to reassignment accordng to cut point
+                raw_dist_between_post = 1
+                raw_dist_between_orig = 0
+            
 
             if raw_dist_between_post <= raw_dist_between_orig:
                 # If the 10% nearest neighbors are closer after split than before, this might be a bad split so undo
@@ -593,9 +601,9 @@ def merge_clusters(data, labels, p_value_cut_thresh=0.01, whiten_clusters=True,
             n_c2 = np.count_nonzero(labels == c2)
             if ( (n_c1 > 1) and (n_c2 > 1) ):
                 # Need more than 1 spike in each matched cluster 
-                merge = merge_test(data, labels, c1, c2, match_cluster=True)
+                merge = merge_test(data, labels, c1, c2, match_cluster=match_cluster_size, check_iso_splits=check_splits)
             elif ( (n_c1 > 1) or (n_c2 > 1) ):
-                merge = merge_test(data, labels, c1, c2, match_cluster=False)
+                merge = merge_test(data, labels, c1, c2, match_cluster=False, check_iso_splits=check_splits)
             else:
                 # c1 and c2 have one spike each so merge them (algorithm can't
                 # split in this case and they are mutually closest pairs)

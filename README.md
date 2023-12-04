@@ -121,8 +121,9 @@ during a comparison with a distant, small cluster, creating 2 large clusters, on
 inappropriately joined with the small cluster.
 
 Both changes have been tested on sets of test and real data, including UMAP clusters and found
-to avoid major errors in certain cases. However the total testing is small relative to the
-space of possible datasets so unforseen new errors could be created.
+to avoid major errors in certain cases. They are therefore recommended for use but default to
+False to maintain identical backward compatible behavior. However the total testing is small 
+relative to the space of possible datasets so unforseen new errors could be created.
 
 For more details about what has changed in version 1.1.	0, see the [CHANGELOG](CHANGELOG.md).
 

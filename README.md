@@ -72,8 +72,8 @@ copied and can become similarly large. Total processing for 16 channel recording
 running ~14 processes with tens of thousands of spikes can easily consume on
 the order of 200 GB of RAM.
 
-#### UPDATES
-## MEMORY MAPPING
+### UPDATES
+#### MEMORY MAPPING
 The total memory usage will always depend on the segment duration, number
 of threshold crossings identified in a segment, and the number of simultaneous
 processes that are run. Minimally, with 'use_memmap'=True, all voltage segments
@@ -90,7 +90,7 @@ for a single channel discovered in that segment. This step is done
 in memory for improved processing speed because it is unlikely to consume
 more memory than the clustering step across multiple processes.
 
-## VERSION 1.1.0
+#### VERSION 1.1.0
 Two major clustering algorithm improvements were added as options. These options specifically
 improve clustering where the data points are distributed with non-uniform density over the
 clustering space, such as is often the case with UMAP projections or during late stage merge

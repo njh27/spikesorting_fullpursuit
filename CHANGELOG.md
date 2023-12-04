@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-## [1.1.0] - 2023-03-10
+## [1.1.0] - 2023-12-04
 
 ### Added
 - Option to base the core cluster comparison test on a matched sample of nearest neighboring datapoints so that large clusters do not iteratively consume small ones

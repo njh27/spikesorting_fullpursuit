@@ -2,7 +2,6 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Build import cythonize
 import pkg_resources
-from pkg_resources import DistributionNotFound, VersionConflict
 import numpy as np
 
 dependencies = [
@@ -17,7 +16,7 @@ pkg_req = [
 ]
 
 setup(name='spikesorting_fullpursuit',
-      version='1.0',
+      version='1.1.0',
       description='Spike sorting algorithm with overlap detection.',
       author='Nathan Hall',
       author_email='nathan.hall@duke.edu',

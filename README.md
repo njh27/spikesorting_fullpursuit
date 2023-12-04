@@ -41,6 +41,28 @@ https://learn.microsoft.com/en-us/windows-hardware/drivers/display/tdr-registry-
 Other instructions can usually be found from specific GPU manufacturers, but
 specifics for your hardware may be relevant.
 
+The most recent version of pyopencl can be installed with conda using:  
+```
+conda install -c conda-forge pyopencl
+```
+
+Older versions can be installed by specifying the version. e.g.:  
+```
+conda install -c conda-forge pyopencl=2019.1.2
+```
+
+A simple test to see whether pyopencl can detect your graphics card is to run:  
+```
+import pyopencl as cl
+platforms = cl.get_platforms()
+for platform in platforms:
+	devices = platform.get_devices(cl.device_type.GPU)
+	print(devices)
+```
+If successful this should print the name of your GPU(s). If multiple GPUs are
+detected, the current code searches for the one with greatest memory for use.
+This can be checked or modified in binary_pursuit_parallel.py ~lines 221-231.
+
 Memory usage is very high especially for large files and floating point values.
 The opencl GPU code generally only handles up to float32 and so it makes the
 most sense to input numpy voltage arrays as datatype "np.float32". Operations
@@ -68,7 +90,7 @@ for a single channel discovered in that segment. This step is done
 in memory for improved processing speed because it is unlikely to consume
 more memory than the clustering step across multiple processes.
 
-## VERSION 2.0
+## VERSION 1.1.0
 Two major clustering algorithm improvements were added as options. These options specifically
 improve clustering where the data points are distributed with non-uniform density over the
 clustering space, such as is often the case with UMAP projections or during late stage merge
@@ -78,37 +100,32 @@ of point density, cluster comparison order and cluster size. These options can p
 clustering improvement and in the worst case result in a (small) increase in the number of 
 clusters found, i.e. it enhances the overall algorithm strategy to favor incorrect splits 
 over incorrect merges.
-1) Matching cluster size for pairwise comparisons with "match_cluster_size". When comparing
-a large cluster, A, of size N, with a smaller cluster, B, of size n, the n points in A
+1) Matching cluster size for pairwise comparisons with "match_cluster_size" setting option. When
+comparing a large cluster, A, of size N, with a smaller cluster, B, of size n, the n points in A
 nearest B are used for the iso-cut test instead of all points in A. This prevents the situation
 where a large cluster can consume small clusters that are distant, especially in the case that
-the large cluster is multi-modal along the comparison axis.
+the large cluster is multi-modal along the comparison axis. It additionally results in performing
+cluster comparisons along an axis that is not dominated by the larger cluster centroid but rather
+better reflects the location of the smaller cluster relative to the edge of the larger cluster. This
+can prevent inappropriate merges, splits, and un-doing of good splits that are caused by the
+fact that the 1D projections of the high dimensional distributions can have a different number of
+modes depending on the projection axis that is selected.
 2) Checking the validity of split decisions by requiring that splits increase the distance
-between the clusters being compared.
-For more details about what has changed in version 2.0, see the [CHANGELOG](CHANGELOG.md).
+between the clusters being compared with "check_splits" setting option. Each time the iso-cut
+algorithm decides to split the 2 clusters being compared, we check the pre- and post-split distances
+between the nearest neighboring 10% of pairwise inter-cluster datapoints. If the split decision
+will result in a decrease in this distance, the algorithm rejects the split, and chooses to leave
+the two clusters as-is and proceed to the next iteration. This is intended to specifically avoid
+the situation in which a large cluster that is multimodal can be split along one of its modes
+during a comparison with a distant, small cluster, creating 2 large clusters, one of which is
+inappropriately joined with the small cluster.
 
+Both changes have been tested on sets of test and real data, including UMAP clusters and found
+to avoid major errors in certain cases. However the total testing is small relative to the
+space of possible datasets so unforseen new errors could be created.
 
-The most recent version of pyopencl can be installed with conda using:  
-```
-conda install -c conda-forge pyopencl
-```
+For more details about what has changed in version 1.1.	0, see the [CHANGELOG](CHANGELOG.md).
 
-Older versions can be installed by specifying the version. e.g.:  
-```
-conda install -c conda-forge pyopencl=2019.1.2
-```
-
-A simple test to see whether pyopencl can detect your graphics card is to run:  
-```
-import pyopencl as cl
-platforms = cl.get_platforms()
-for platform in platforms:
-	devices = platform.get_devices(cl.device_type.GPU)
-	print(devices)
-```
-If successful this should print the name of your GPU(s). If multiple GPUs are
-detected, the current code searches for the one with greatest memory for use.
-This can be checked or modified in binary_pursuit_parallel.py ~lines 221-231.
 
 #### Install package
 Copy the remote git repository locally, for example with:
@@ -193,6 +210,8 @@ to the call to spikesorting_parallel via a settings dictionary argument, e.g.
 		'sigma': 4.0, # Threshold based on noise level for discovering spikes
 		'clip_width': [-15e-4, 15e-4], # Width of clip in seconds, used for clustering. Made symmetric with largest value for binary pursuit!
 		'p_value_cut_thresh': 0.01, # Statistical criterion for splitting clusters during iso-cut
+		'match_cluster_size': False, # Pairwise comparisons during isocut cluster merge testing are matched in sample size. This makes the test more robust to comparisons of small clusters with large ones but could result in an increased number of clusters
+        'check_splits': False, # Check isocut splits to ensure they are not doing anything that brings clusters closer together, which may indicate a bad cut point
 		segment_duration': 600, # Seconds (None/Inf uses the entire recording) Can be increased but not decreased by sorter to be same size
 		'segment_overlap': 120, # Seconds of overlap between adjacent segments
 		'do_branch_PCA': True, # Use branch PCA method to split clusters

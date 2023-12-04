@@ -17,7 +17,8 @@ simultaneously recorded neurons even in the face of high firing rates.
 ### Installation
 
 #### Requirements
-This package depends on the numpy and scipy python packages. The easiest way
+This package depends on the numpy and scipy python packages. Version 2.0 requires
+the sklearn.neightbors BallTree object for computing pairwise point distances. The easiest way
 to ensure the majority of package requirements are met is to install via the ANACONDA
 source and API. Additional requirements not part of the standard Anaconda install
 are pyopencl, and the multiprocessing library, all of which are freely available
@@ -49,7 +50,8 @@ copied and can become similarly large. Total processing for 16 channel recording
 running ~14 processes with tens of thousands of spikes can easily consume on
 the order of 200 GB of RAM.
 
-#### UPDATED numpy memmap to reduce memory consumption
+#### UPDATES
+## MEMORY MAPPING
 The total memory usage will always depend on the segment duration, number
 of threshold crossings identified in a segment, and the number of simultaneous
 processes that are run. Minimally, with 'use_memmap'=True, all voltage segments
@@ -65,6 +67,26 @@ additional arrays equal in size to 1 segment of voltage and all the spike clips
 for a single channel discovered in that segment. This step is done
 in memory for improved processing speed because it is unlikely to consume
 more memory than the clustering step across multiple processes.
+
+## VERSION 2.0
+Two major clustering algorithm improvements were added as options. These options specifically
+improve clustering where the data points are distributed with non-uniform density over the
+clustering space, such as is often the case with UMAP projections or during late stage merge
+testing across typical PCA projections. The previous iso-cut algorithm is prone to major
+errors that inappropriately combine clusters or parts of clusters under certain conditions
+of point density, cluster comparison order and cluster size. These options can provide 
+clustering improvement and in the worst case result in a (small) increase in the number of 
+clusters found, i.e. it enhances the overall algorithm strategy to favor incorrect splits 
+over incorrect merges.
+1) Matching cluster size for pairwise comparisons with "match_cluster_size". When comparing
+a large cluster, A, of size N, with a smaller cluster, B, of size n, the n points in A
+nearest B are used for the iso-cut test instead of all points in A. This prevents the situation
+where a large cluster can consume small clusters that are distant, especially in the case that
+the large cluster is multi-modal along the comparison axis.
+2) Checking the validity of split decisions by requiring that splits increase the distance
+between the clusters being compared.
+For more details about what has changed in version 2.0, see the [CHANGELOG](CHANGELOG.md).
+
 
 The most recent version of pyopencl can be installed with conda using:  
 ```

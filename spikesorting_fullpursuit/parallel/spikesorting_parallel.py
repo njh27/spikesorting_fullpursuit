@@ -1,8 +1,6 @@
-import pickle
 import os
 import sys
 sys.path.append(os.getcwd())
-from tempfile import mkdtemp
 from shutil import rmtree
 import mkl
 import numpy as np
@@ -13,7 +11,6 @@ from traceback import print_tb
 from spikesorting_fullpursuit.parallel import segment_parallel
 from spikesorting_fullpursuit import sort, preprocessing, full_binary_pursuit
 from spikesorting_fullpursuit.wiener_filter import wiener_filter_segment
-from spikesorting_fullpursuit.parallel import binary_pursuit_parallel
 from spikesorting_fullpursuit.utils.memmap_close import MemMapClose
 
 

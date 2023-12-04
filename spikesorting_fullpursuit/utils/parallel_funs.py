@@ -3,7 +3,6 @@ from scipy.signal import filtfilt, butter
 import multiprocessing as mp
 import psutil
 import mkl
-from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 from spikesorting_fullpursuit.utils.robust_covariance import MinCovDet
 
 

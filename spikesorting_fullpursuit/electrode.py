@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.signal import filtfilt, butter
-from spikesorting_fullpursuit import preprocessing
 from spikesorting_fullpursuit.utils.parallel_funs import filter_parallel
 
 

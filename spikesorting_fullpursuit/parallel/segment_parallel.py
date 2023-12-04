@@ -2,7 +2,6 @@ import numpy as np
 from scipy import signal
 import copy
 from os import path
-from spikesorting_fullpursuit import sort
 from spikesorting_fullpursuit.utils.memmap_close import MemMapClose
 
 

@@ -1,10 +1,8 @@
 import numpy as np
 from scipy.stats import norm
-from spikesorting_fullpursuit.sort import merge_clusters, initial_cluster_farthest
+from spikesorting_fullpursuit.sort import merge_clusters
 from spikesorting_fullpursuit import preprocessing
 from spikesorting_fullpursuit.analyze_spike_timing import remove_spike_event_duplicates
-
-import matplotlib.pyplot as plt
 
 
 

@@ -1,6 +1,5 @@
 import numpy as np
 from copy import deepcopy
-import os
 from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples, get_singlechannel_clips, get_clips, memmap_to_mem
 from spikesorting_fullpursuit.consolidate import SegSummary
 from spikesorting_fullpursuit.preprocessing import calculate_robust_template

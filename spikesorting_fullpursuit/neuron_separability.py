@@ -1,8 +1,6 @@
 import numpy as np
 from scipy.stats import norm
 from spikesorting_fullpursuit.consolidate import optimal_align_templates
-from spikesorting_fullpursuit.analyze_spike_timing import find_overlapping_spike_bool
-from spikesorting_fullpursuit.parallel.segment_parallel import time_window_to_samples
 
 
 
